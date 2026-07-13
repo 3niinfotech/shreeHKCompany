@@ -1,0 +1,73 @@
+@use "../variables" as v;
+
+.modal {
+  :global(.ant-modal-content) {
+    padding: 0;
+    overflow: hidden;
+    border-radius: 10px;
+  }
+
+  :global(.ant-modal-header) {
+    margin: 0;
+    padding: 0;
+    border-bottom: none;
+    background: transparent;
+  }
+
+  :global(.ant-modal-body) {
+    padding: 0;
+  }
+
+  :global(.ant-modal-footer) {
+    margin: 0;
+    padding: 12px 20px 16px;
+    border-top: 1px solid v.$border-color;
+    background: var(--table-row-zebra);
+  }
+}
+
+.header {
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid v.$border-color;
+}
+
+.headerAccent {
+  border-top-width: 4px;
+  border-top-style: solid;
+}
+
+.title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: v.$text-color;
+  line-height: 1.3;
+}
+
+.subtitle {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  color: v.$text-secondary;
+}
+
+.body {
+  padding: 16px 20px 8px;
+  max-height: min(62vh, 520px);
+  overflow-y: auto;
+}
+
+.formItem {
+  margin-bottom: 14px !important;
+}
+
+.okBtn {
+  min-width: 88px;
+  font-weight: 600;
+  color: var(--color-text-inverse) !important;
+
+  &:hover {
+    opacity: 0.92;
+    color: var(--color-text-inverse) !important;
+  }
+}

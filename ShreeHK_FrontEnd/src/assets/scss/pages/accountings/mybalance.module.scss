@@ -1,0 +1,392 @@
+@use '../../variables' as *;
+
+.container {
+    padding: 24px;
+    width: 100%;
+}
+
+// ── Shared card shell ──
+.card {
+    background: $card-bg;
+    border-radius: $radius-card;
+    box-shadow: var(--shadow-md);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.cardHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid $border-color;
+    flex-shrink: 0;
+}
+
+.cardHeaderLeft {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cardIcon {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: $primary;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-inverse);
+    flex-shrink: 0;
+}
+
+.cardTitleGroup {
+    display: flex;
+    flex-direction: column;
+}
+
+.cardTitle {
+    font-size: 15px;
+    font-weight: 600;
+    color: $navy;
+    line-height: 1.3;
+}
+
+.cardSubtitle {
+    font-size: 12px;
+    color: $neutral;
+    line-height: 1.3;
+}
+
+.cardActions {
+    display: flex;
+    gap: 8px;
+}
+
+.btnAdd {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    border: 1.5px solid $primary;
+    border-radius: 6px;
+    background: transparent;
+    color: $primary;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+        background: $primary-light;
+    }
+}
+
+.btnSave {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    border: none;
+    border-radius: 6px;
+    background: $primary;
+    color: var(--color-text-inverse);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+        background: $primary-dark;
+    }
+}
+
+// ── Table styles ──
+.cardBody {
+    padding: 0;
+    flex: 1;
+    overflow: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.table thead th {
+    background: $primary-light;
+    color: $navy;
+    font-weight: 600;
+    padding: 10px 14px;
+    text-align: left;
+    white-space: nowrap;
+    border-bottom: 1px solid $border-color;
+}
+
+.table tbody td {
+    padding: 10px 14px;
+    color: var(--color-text-body);
+    border-bottom: 1px solid var(--table-row-hover);
+    vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.table tbody tr:hover {
+    background: var(--table-row-zebra);
+}
+
+.currencyCell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.flagEmoji {
+    font-size: 20px;
+    line-height: 1;
+}
+
+.actionBtns {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.iconBtn {
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: opacity 0.2s;
+
+    &:hover {
+        opacity: 0.85;
+    }
+}
+
+.editBtn {
+    @extend .iconBtn;
+    background: var(--color-primary-pale);
+    color: $primary;
+}
+
+.deleteBtn {
+    @extend .iconBtn;
+    background: $danger-light;
+    color: $danger;
+}
+
+.tableFooter {
+    padding: 8px 14px;
+    font-size: 12px;
+    color: $neutral;
+    border-top: 1px solid var(--table-row-hover);
+}
+
+// ── Bank Transfer form card ──
+.formBody {
+    padding: 20px;
+    flex: 1;
+}
+
+.formRow {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.formGroup {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.formGroupFull {
+    @extend .formGroup;
+    width: 100%;
+}
+
+.formLabel {
+    font-size: 13px;
+    font-weight: 500;
+    color: $navy;
+    margin-bottom: 6px;
+
+    .required {
+        color: $danger;
+        margin-left: 2px;
+    }
+}
+
+.formSelect {
+    width: 100%;
+    height: 38px;
+    padding: 0 12px;
+    border: 1px solid $border-color;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--color-text-body);
+    background: var(--color-bg-card);
+    appearance: none;
+    cursor: pointer;
+
+    &:focus {
+        outline: none;
+        border-color: $primary;
+        box-shadow: 0 0 0 2px var(--color-input-focus-ring);
+    }
+}
+
+.inputWithPrefix {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid $border-color;
+    border-radius: 6px;
+    overflow: hidden;
+
+    &:focus-within {
+        border-color: $primary;
+        box-shadow: 0 0 0 2px var(--color-input-focus-ring);
+    }
+}
+
+.inputPrefix {
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    background: var(--color-bg-muted);
+    border-right: 1px solid $border-color;
+    font-size: 13px;
+    color: $neutral;
+    font-weight: 500;
+}
+
+.formInput {
+    width: 100%;
+    height: 38px;
+    padding: 0 12px;
+    border: 1px solid $border-color;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--color-text-body);
+
+    &:focus {
+        outline: none;
+        border-color: $primary;
+        box-shadow: 0 0 0 2px var(--color-input-focus-ring);
+    }
+}
+
+.formInputNoBorder {
+    flex: 1;
+    height: 38px;
+    padding: 0 12px;
+    border: none;
+    font-size: 13px;
+    color: var(--color-text-body);
+    outline: none;
+}
+
+.formFooter {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 0 20px 20px;
+}
+
+.btnReset {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 20px;
+    border: none;
+    border-radius: 6px;
+    background: var(--color-nav-text);
+    color: var(--color-text-inverse);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+
+    &:hover {
+        background: var(--color-badge-neutral-text);
+    }
+}
+
+.btnTransfer {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 20px;
+    border: none;
+    border-radius: 6px;
+    background: $primary;
+    color: var(--color-text-inverse);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+
+    &:hover {
+        background: $primary-dark;
+    }
+}
+
+// ── Live Rates status badge ──
+.statusLive {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 4px;
+    background: var(--color-success-light);
+    color: var(--color-success-dark);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.formFooterInline {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.spinning {
+    animation: spin 1s linear infinite;
+}
+
+.btnRefresh {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    border: 1.5px solid $border-color;
+    border-radius: 6px;
+    background: var(--color-bg-card);
+    color: $navy;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+        border-color: $primary;
+        color: $primary;
+    }
+}

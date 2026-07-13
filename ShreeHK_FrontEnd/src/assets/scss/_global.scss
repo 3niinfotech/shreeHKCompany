@@ -1,0 +1,21 @@
+@use "./variables" as v;
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-family-base);
+  background: v.$page-bg;
+  color: v.$text-color;
+}
+
+#root {
+  background-color: v.$page-bg !important;
+  min-height: 100vh;
+}
+
+.ant-layout {
+  background: transparent !important;
+}

@@ -1,0 +1,155 @@
+.pageContainer {
+    height: var(--app-page-height);
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    gap: 14px;
+
+    .tableCard {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+
+        :global(.ant-card-body) {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+    }
+}
+
+.headerRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.exportBtn {
+    background-color: var(--color-info);
+    border-color: var(--color-info);
+
+    &:hover {
+        background-color: var(--color-info-dark) !important;
+        border-color: var(--color-info-dark) !important;
+    }
+}
+
+.tableCard {
+    border: none;
+    box-shadow: var(--shadow-md);
+}
+
+.customTable {
+    :global(.ant-table-thead > tr > th) {
+        background-color: var(--color-primary-light) !important;
+        color: var(--color-navy) !important;
+        font-weight: 600;
+        text-align: center;
+        border-bottom: 0.5px solid var(--color-border) !important;
+    }
+
+    :global(.ant-table-tbody > tr:hover > td) {
+        background: var(--table-row-hover) !important;
+    }
+}
+
+.summaryRow {
+    .bold {
+        font-weight: bolder;
+        color: var(--color-text-heading);
+    }
+}
+
+/* Transaction Report filter — single flex row */
+.transactionFilterForm {
+    width: 100%;
+
+    :global(.ant-form-item) {
+        margin-bottom: 0 !important;
+    }
+}
+
+.filterFieldsFlex {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+
+.filterItem {
+    margin-bottom: 0 !important;
+    flex: 0 0 auto;
+}
+
+.fieldMd {
+    width: 170px !important;
+}
+
+.fieldLg {
+    width: 210px !important;
+}
+
+.fieldDate {
+    width: 170px !important;
+}
+
+.giaChecks {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    height: 38px;
+    padding: 0 4px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+
+    :global(.ant-checkbox-wrapper) {
+        margin-inline-start: 0 !important;
+        font-size: 13px;
+        line-height: 38px;
+    }
+}
+
+.transactionFilterForm {
+    :global(.ant-select),
+    :global(.ant-picker),
+    :global(.ant-input-affix-wrapper) {
+        height: 38px !important;
+    }
+
+    :global(.ant-select-selector),
+    :global(.ant-picker),
+    :global(.ant-input-affix-wrapper) {
+        height: 38px !important;
+        min-height: 38px !important;
+        border-radius: 8px !important;
+        display: flex;
+        align-items: center;
+    }
+
+    :global(.ant-select-selection-item),
+    :global(.ant-select-selection-placeholder),
+    :global(.ant-picker-input > input) {
+        font-size: 13px;
+        line-height: 36px !important;
+    }
+}
+
+@media (max-width: 1200px) {
+    .fieldMd,
+    .fieldLg,
+    .fieldDate {
+        width: 100% !important;
+        min-width: 160px;
+    }
+
+    .filterItem {
+        flex: 1 1 160px;
+    }
+}

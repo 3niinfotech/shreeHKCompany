@@ -1,0 +1,915 @@
+// Diamond inventory table — enterprise SaaS table UI
+
+$border-soft: var(--color-border);
+$border-cell: var(--color-table-border);
+$header-bg: var(--color-table-inventory-header-bg);
+$header-text: var(--color-table-header-text);
+$body-text: var(--color-text-body);
+$accent-muted: var(--color-text-muted);
+$accent-link: var(--color-badge-neutral-text);
+$surface-card: var(--color-bg-card);
+$zebra-even: var(--table-row-zebra);
+$hover-row: var(--table-row-hover);
+$selected-row: var(--color-table-row-selected);
+$selected-row-border: var(--color-chart-muted);
+$shadow-soft: var(--shadow-inventory-table);
+$row-height: 36px;
+
+// Finance column accents — subtle, readable
+$rap-value: var(--color-entity-product-text);
+$price-value: var(--color-success-dark);
+$amount-value: var(--color-primary-dark);
+$finance-empty: var(--color-chart-muted);
+
+.inventory-page-wrapper {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+
+  .inventory-filter-wrapper {
+    flex-shrink: 0;
+    margin: 0 0 10px;
+    overflow: visible;
+  }
+
+  .erp-table-container {
+    flex: 1 1 auto;
+    min-height: 0;
+    background: $surface-card;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    margin: 0 0 8px;
+    border-radius: 12px;
+    border: 1px solid $border-soft;
+    box-shadow: $shadow-soft;
+
+    .ant-table-wrapper {
+      height: 100% !important;
+      display: flex;
+      flex-direction: column;
+
+      .ant-spin-nested-loading,
+      .ant-spin-container {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+      }
+    }
+
+    .ant-table-footer {
+      flex-shrink: 0;
+      padding: 0 !important;
+      background: transparent;
+      border-top: 1px solid $border-soft;
+    }
+
+    .diamond-inventory-table.ant-table-wrapper {
+      .ant-table {
+        height: 100%;
+        font-size: 12px;
+        line-height: 1.4;
+        color: $body-text;
+        background: $surface-card;
+        font-feature-settings: "tnum" 1;
+
+        .ant-table-container {
+          flex: 1 1 auto;
+          min-height: 0;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          border-radius: 12px;
+        }
+
+        table {
+          table-layout: fixed;
+        }
+
+        // Sticky header
+        .ant-table-header {
+          position: sticky;
+          top: 0;
+          z-index: 3;
+          border-radius: 12px 12px 0 0;
+        }
+
+        // Ant Design 6: th/td use .ant-table-cell — align header + body together
+        .ant-table-thead > tr > th.ant-table-cell,
+        .ant-table-tbody > tr > td.ant-table-cell {
+          padding: 8px 10px !important;
+          vertical-align: middle !important;
+          line-height: 1.35;
+          box-sizing: border-box;
+        }
+
+        .ant-table-thead > tr > th.ant-table-cell {
+          height: 40px;
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.03em;
+          text-transform: uppercase;
+          color: $header-text !important;
+          background: $header-bg !important;
+          border-color: $border-cell !important;
+          border-bottom: 1px solid $border-soft !important;
+          white-space: nowrap;
+          transition: background 0.18s ease, color 0.18s ease;
+
+          &::before {
+            display: none !important;
+          }
+
+          &:hover {
+            background: var(--color-table-inventory-header-hover) !important;
+          }
+
+          .ant-table-column-title {
+            flex: 1 1 auto;
+            min-width: 0;
+          }
+
+          .ant-table-column-sorters {
+            display: inline-flex;
+            align-items: center;
+            justify-content: inherit;
+            gap: 4px;
+            width: 100%;
+            padding: 0;
+          }
+
+          .ant-table-column-sorter {
+            margin-inline-start: 2px;
+            color: var(--color-input-placeholder);
+            transition: color 0.15s ease;
+
+            &-inner {
+              display: inline-flex;
+              flex-direction: column;
+              align-items: center;
+              line-height: 1;
+            }
+          }
+
+          .ant-table-column-sorter-up.active,
+          .ant-table-column-sorter-down.active {
+            color: $accent-muted;
+          }
+
+          .ant-table-filter-trigger {
+            margin-inline-start: 4px;
+            color: var(--color-text-muted);
+            transition: color 0.15s ease;
+
+            &:hover {
+              color: $accent-muted;
+            }
+          }
+        }
+
+        // Right-aligned headers (finance + numeric)
+        .ant-table-thead > tr > th.ant-table-cell-align-right {
+          .ant-table-column-sorters {
+            justify-content: flex-end;
+          }
+        }
+
+        .ant-table-tbody > tr > td.ant-table-cell {
+          color: $body-text;
+          border-color: $border-cell !important;
+          min-height: $row-height;
+          // Min-height trick: row grows with tallest cell; vertical-align centers content
+          height: 1px !important;
+          transition: background 0.14s ease, box-shadow 0.14s ease;
+        }
+
+        .ant-table-tbody > tr > td.ant-table-cell:not(.ant-table-selection-column) {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        // Center inline / inline-flex / inline-block children (flags, tags, links)
+        .ant-table-tbody > tr > td.ant-table-cell > * {
+          vertical-align: middle;
+        }
+
+        .ant-table-tbody > tr {
+          transition: background 0.14s ease;
+        }
+
+        // Zebra + hover for neutral rows
+        .ant-table-tbody > tr:not(.inventory-row-green):not(.inventory-row-blue):not(.inventory-row-red):not(.inventory-row-grey) {
+          &:nth-child(even) > td {
+            background-color: $zebra-even;
+          }
+
+          &:hover > td {
+            background-color: $hover-row !important;
+            box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--color-text-body) 1.5%, transparent);
+          }
+
+          &.ant-table-row-selected > td {
+            background-color: $selected-row !important;
+            box-shadow: inset 3px 0 0 0 $selected-row-border;
+          }
+        }
+
+        // Fixed columns
+        .ant-table-cell-fix-left,
+        .ant-table-cell-fix-right {
+          z-index: 2;
+        }
+
+        .ant-table-thead .ant-table-cell-fix-left,
+        .ant-table-thead .ant-table-cell-fix-right {
+          background: $header-bg !important;
+          box-shadow: var(--shadow-md);
+        }
+
+        .ant-table-tbody .ant-table-cell-fix-left {
+          background: inherit;
+        }
+
+        // Selection column
+        .ant-table-selection-column {
+          width: 36px !important;
+          min-width: 36px !important;
+          max-width: 36px !important;
+          padding: 8px !important;
+          text-align: center !important;
+          vertical-align: middle !important;
+          height: 1px !important;
+          overflow: visible !important;
+          text-overflow: clip !important;
+
+          .ant-checkbox-wrapper {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .ant-checkbox-inner {
+            width: 15px;
+            height: 15px;
+            border-radius: 4px;
+            border-color: var(--color-chart-muted);
+            transition: border-color 0.15s ease, background 0.15s ease;
+          }
+
+          .ant-checkbox-checked .ant-checkbox-inner {
+            background-color: $accent-muted;
+            border-color: $accent-muted;
+          }
+
+          .ant-checkbox-indeterminate .ant-checkbox-inner::after {
+            background-color: $accent-muted;
+          }
+        }
+
+        // Finance columns — header tint only
+        .inventory-finance-col {
+          text-align: right !important;
+
+          &.inventory-rap-col {
+            background: color-mix(in srgb, var(--table-row-hover) 65%, transparent) !important;
+          }
+
+          &.inventory-price-col {
+            background: color-mix(in srgb, var(--color-success-light) 55%, transparent) !important;
+          }
+
+          &.inventory-amount-col {
+            background: color-mix(in srgb, var(--color-primary-pale) 45%, transparent) !important;
+          }
+        }
+
+        .ant-table-thead .inventory-finance-col {
+          font-weight: 600;
+          color: var(--color-text-body) !important;
+        }
+
+        // Row status tones
+        $row-green-bg: var(--color-success-light);
+        $row-green-text: var(--color-success-dark);
+        $row-blue-bg: var(--color-info-light);
+        $row-blue-text: var(--color-info-dark);
+        $row-red-bg: var(--color-error-light);
+        $row-red-text: var(--color-error-dark);
+        $row-grey-bg: var(--color-bg-muted);
+        $row-grey-text: var(--color-badge-neutral-text);
+
+        @mixin inventory-row-tone($bg, $text, $bg-hover) {
+          > td {
+            background-color: $bg !important;
+            color: $text !important;
+            border-color: var(--color-border-strong) !important;
+            box-shadow: none !important;
+
+            a.inventory-sku-link {
+              color: var(--color-text-body) !important;
+            }
+
+            .inventory-lab-tag {
+              background: color-mix(in srgb, var(--color-bg-card) 85%, transparent) !important;
+              color: $text !important;
+            }
+
+            .inventory-finance-value {
+              opacity: 0.95;
+            }
+          }
+
+          &:hover > td {
+            background-color: $bg-hover !important;
+            border-color: $bg-hover !important;
+          }
+
+          &.ant-table-row-selected > td {
+            background-color: $bg-hover !important;
+            box-shadow: inset 3px 0 0 0 color-mix(in srgb, var(--color-chart-muted) 55%, transparent);
+          }
+        }
+
+        .ant-table-tbody > tr.inventory-row-green {
+          @include inventory-row-tone($row-green-bg, $row-green-text, var(--color-success-light));
+        }
+
+        .ant-table-tbody > tr.inventory-row-blue {
+          @include inventory-row-tone($row-blue-bg, $row-blue-text, var(--color-info-light));
+        }
+
+        .ant-table-tbody > tr.inventory-row-red {
+          @include inventory-row-tone($row-red-bg, $row-red-text, var(--color-error-light));
+        }
+
+        .ant-table-tbody > tr.inventory-row-grey {
+          @include inventory-row-tone($row-grey-bg, $row-grey-text, var(--color-border));
+        }
+
+        // Scroll — smooth; height driven by JS scroll.y (no fixed max-height override)
+        .ant-table-content,
+        .ant-table-header {
+          overflow-x: hidden !important;
+          overflow-y: hidden !important;
+          scroll-behavior: smooth;
+
+          &::-webkit-scrollbar {
+            display: none !important;
+            height: 0 !important;
+          }
+        }
+
+        .ant-table-body {
+          overflow-x: auto !important;
+          overflow-y: auto !important;
+          scroll-behavior: smooth;
+          -webkit-overflow-scrolling: touch;
+
+          &::-webkit-scrollbar {
+            height: 8px !important;
+            width: 8px;
+            display: block !important;
+          }
+
+          &::-webkit-scrollbar-thumb {
+            background-color: var(--color-chart-muted) !important;
+            border-radius: 8px;
+            border: 2px solid var(--color-bg-muted);
+
+            &:hover {
+              background-color: var(--color-chart-muted) !important;
+            }
+          }
+
+          &::-webkit-scrollbar-track {
+            background: var(--table-row-hover);
+            border-radius: 8px;
+          }
+        }
+
+        &.ant-table-bordered {
+          .ant-table-container {
+            border-color: $border-soft;
+          }
+
+          .ant-table-thead > tr > th,
+          .ant-table-tbody > tr > td {
+            border-inline-end-color: $border-cell !important;
+          }
+        }
+
+        // Empty state
+        .ant-table-placeholder {
+          .ant-table-cell {
+            border-bottom: none !important;
+            padding: 48px 24px !important;
+          }
+        }
+      }
+
+      .ant-spin-dot-item {
+        background-color: $accent-muted;
+      }
+    }
+
+    .inventory-table-footer-totals {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: 10px 20px;
+      padding: 11px 16px;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      background: linear-gradient(180deg, var(--table-row-zebra) 0%, var(--table-row-hover) 100%);
+      border-top: 1px solid $border-soft;
+    }
+
+    .inventory-footer-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 16px;
+    }
+
+    .inventory-footer-divider {
+      width: 1px;
+      height: 16px;
+      background: var(--color-chart-muted);
+      margin: 0 4px;
+    }
+
+    .inventory-footer-stat {
+      color: var(--color-nav-text);
+      white-space: nowrap;
+
+      b {
+        color: $amount-value;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        margin-left: 3px;
+      }
+    }
+
+    .inventory-footer-group--selected .inventory-footer-stat b {
+      color: var(--color-badge-neutral-text);
+    }
+  }
+}
+
+// In-cell elements
+.inventory-sku-link {
+  display: inline-block;
+  vertical-align: middle;
+  font-weight: 600;
+  color: $accent-link;
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-badge-neutral-text) 30%, transparent);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+
+  &:hover {
+    color: var(--color-text-body);
+    border-bottom-color: color-mix(in srgb, var(--color-badge-neutral-text) 55%, transparent);
+  }
+}
+
+.inventory-lab-tag {
+  margin: 0;
+  padding: 0 7px;
+  font-size: 10px;
+  line-height: 18px;
+  font-weight: 600;
+  border-radius: 4px;
+  background: var(--table-row-hover) !important;
+  color: var(--color-badge-neutral-text) !important;
+  border: 1px solid var(--color-border) !important;
+  vertical-align: middle;
+}
+
+.inventory-remark-cell {
+  display: inline-block;
+  vertical-align: middle;
+  white-space: normal;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-nav-text);
+  max-width: 240px;
+}
+
+// Location column
+.inventory-location-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  vertical-align: middle;
+  line-height: 1.35;
+  max-width: 100%;
+}
+
+.inventory-location-flag {
+  flex-shrink: 0;
+  display: block;
+}
+
+.inventory-location-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Finance values
+.inventory-finance-value {
+  display: inline-block;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  line-height: 1.35;
+  vertical-align: middle;
+}
+
+.inventory-rap-value {
+  color: $rap-value;
+}
+
+.inventory-price-value {
+  color: $price-value;
+}
+
+.inventory-amount-value {
+  color: $amount-value;
+  font-weight: 600;
+}
+
+.inventory-finance-empty {
+  color: $finance-empty;
+  font-weight: 500;
+}
+
+// Empty state
+.inventory-table-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 0;
+  color: var(--color-nav-text);
+
+  &__title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-badge-neutral-text);
+  }
+
+  &__hint {
+    font-size: 12px;
+    color: var(--color-chart-muted);
+  }
+}
+
+.inventory-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  .ant-form-item {
+    margin-bottom: 4px !important;
+  }
+
+  .ant-select {
+    min-width: 110px;
+  }
+
+  .ant-select-selector {
+    height: 32px !important;
+    background: var(--color-border) !important;
+    border: none !important;
+    border-radius: 6px !important;
+    font-size: 12px;
+  }
+
+  .ant-form-item {
+    margin-bottom: 6px !important;
+  }
+
+  .ant-select-selector {
+    height: 32px !important;
+    background: var(--color-border) !important;
+    border-radius: 6px !important;
+    font-size: 12px;
+  }
+
+  .ant-radio-group {
+    display: flex;
+    gap: 6px;
+  }
+
+  .ant-form-item-label {
+    display: none !important;
+  }
+}
+
+.inventory-carat-cell {
+  position: relative;
+  display: inline-block;
+  min-width: 100%;
+  padding-top: 10px;
+  text-align: right;
+}
+
+.inventory-carat-cell--has-memo {
+  cursor: help;
+}
+
+.inventory-carat-value {
+  display: block;
+  line-height: 1.2;
+}
+
+.inventory-memo-carat {
+  position: absolute;
+  top: -6px;
+  right: 22px;
+  left: auto;
+  color: var(--color-error);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.inventory-memo-carat--interactive {
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 4px;
+  transition: background 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    background: var(--color-badge-error-bg);
+    color: var(--color-error-dark);
+  }
+}
+
+.memo-carat-popover-overlay {
+  pointer-events: auto;
+
+  .ant-popover-inner {
+    padding: 0;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: var(--shadow-modal);
+  }
+}
+
+.memo-carat-popover {
+  width: 360px;
+  max-width: 90vw;
+  font-size: 12px;
+  color: var(--color-text-heading);
+}
+
+.memo-carat-popover__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, var(--color-warning-light) 0%, var(--color-warning-light) 100%);
+  border-bottom: 1px solid var(--color-badge-warning-border);
+}
+
+.memo-carat-popover__title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.memo-carat-popover__icon {
+  color: var(--color-warning-dark);
+  font-size: 14px;
+}
+
+.memo-carat-popover__title {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.memo-carat-popover__total {
+  font-weight: 700;
+  color: var(--color-error);
+  white-space: nowrap;
+}
+
+.memo-carat-popover__table-head,
+.memo-carat-popover__row {
+  display: grid;
+  grid-template-columns: 1.2fr 0.7fr 1fr 0.9fr;
+  gap: 8px;
+  align-items: start;
+  padding: 8px 12px;
+}
+
+.memo-carat-popover__table-head {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-input-placeholder);
+  background: var(--color-bg-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.memo-carat-popover__list {
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.memo-carat-popover__row {
+  border-bottom: 1px solid var(--color-bg-muted);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: var(--color-warning-light);
+  }
+}
+
+.memo-carat-popover__sku,
+.memo-carat-popover__party {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.memo-carat-popover__carat {
+  font-weight: 600;
+  color: var(--color-error);
+  text-align: right;
+}
+
+.memo-carat-popover__invoice {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.2;
+
+  small {
+    color: var(--color-input-placeholder);
+    font-size: 10px;
+  }
+}
+
+.memo-carat-popover__invoice-link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-info);
+  font-size: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    color: var(--color-info-dark);
+  }
+}
+
+.memo-carat-popover__history {
+  border-top: 1px solid var(--color-border);
+  background: var(--table-row-zebra);
+}
+
+.memo-carat-popover__history-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  background: var(--color-bg-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.memo-carat-popover__history-list {
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.memo-carat-popover__history-row {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: var(--color-bg-card);
+  }
+}
+
+.memo-carat-popover__history-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.memo-carat-popover__history-date {
+  font-size: 10px;
+  color: var(--color-input-placeholder);
+}
+
+.memo-carat-popover__history-action {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--color-info-light);
+  color: var(--color-info);
+
+  &--memo,
+  &--consign {
+    background: var(--color-error-light);
+    color: var(--color-error-dark);
+  }
+
+  &--unboxing {
+    background: var(--color-bg-card)3e0;
+    color: var(--color-warning-dark);
+  }
+
+  &--sale {
+    background: var(--color-success-light);
+    color: var(--color-success-dark);
+  }
+}
+
+.memo-carat-popover__history-type {
+  font-size: 10px;
+  font-weight: 700;
+
+  &--dr {
+    color: var(--color-error-dark);
+  }
+
+  &--cr {
+    color: var(--color-success-dark);
+  }
+}
+
+.memo-carat-popover__history-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.memo-carat-popover__history-sku {
+  font-weight: 600;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.memo-carat-popover__history-desc {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.memo-carat-popover__history-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--color-text-muted);
+
+  span:first-child {
+    font-weight: 700;
+    color: var(--color-error);
+  }
+}

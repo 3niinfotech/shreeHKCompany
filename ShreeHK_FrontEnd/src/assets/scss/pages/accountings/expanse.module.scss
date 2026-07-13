@@ -1,0 +1,288 @@
+.Container {
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 14px 18px 16px;
+    background: var(--color-page-bg);
+    box-sizing: border-box;
+}
+
+.hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    padding: 14px 18px;
+    border-radius: 14px;
+    border: 1px solid var(--color-border);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 10%, transparent) 0%, rgba(255, 255, 255, 0.98) 58%);
+    box-shadow: 0 8px 22px color-mix(in srgb, var(--color-primary-dark) 6%, transparent);
+    flex-shrink: 0;
+}
+
+.heroMain {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 240px;
+}
+
+.heroIcon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: #fff;
+    background: linear-gradient(145deg, var(--color-primary), var(--color-primary-dark));
+    flex-shrink: 0;
+}
+
+.breadcrumbText {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    color: var(--color-primary);
+    margin-bottom: 1px;
+}
+
+.pageTitle {
+    margin: 0 !important;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    line-height: 1.25 !important;
+}
+
+.pageSubtitle {
+    display: none;
+}
+
+.heroActions {
+    align-self: center;
+}
+
+.primaryBtn {
+    border-radius: 10px;
+    height: 38px;
+    padding-inline: 16px;
+    font-weight: 600;
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--color-primary) 16%, transparent);
+}
+
+.secondaryBtn {
+    border-radius: 10px;
+    height: 38px;
+    font-weight: 600;
+    border-color: var(--color-border);
+}
+
+.rowLayout {
+    display: flex;
+    justify-content: center;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.formCol {
+    width: 100%;
+    max-width: 1100px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.formCard {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    border-radius: 14px;
+    border: 1px solid var(--color-border);
+    background: var(--color-card-bg, #fff);
+    box-shadow: 0 10px 28px rgba(10, 30, 45, 0.08);
+    overflow: hidden;
+
+    :global(.ant-card-head) {
+        display: none;
+    }
+
+    :global(.ant-card-body) {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+        min-height: 0;
+        overflow: hidden;
+    }
+}
+
+.formCardHead {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--color-border);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--color-primary) 6%, transparent), transparent);
+    flex-shrink: 0;
+}
+
+.formCardHeadIcon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    flex-shrink: 0;
+}
+
+.formCardTitle {
+    display: block;
+    font-size: 15px;
+    line-height: 1.2;
+}
+
+.formCardSub {
+    display: block;
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.expenseForm {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 12px 18px 14px;
+    overflow: hidden;
+
+    :global(.ant-form-item) {
+        margin-bottom: 10px;
+    }
+
+    :global(.ant-form-item-label) {
+        padding-bottom: 2px !important;
+
+        > label {
+            font-size: 12px;
+            font-weight: 600;
+            height: auto;
+        }
+    }
+
+    :global(.ant-input),
+    :global(.ant-input-number),
+    :global(.ant-select-selector),
+    :global(.ant-picker) {
+        border-radius: 8px !important;
+        min-height: 36px !important;
+    }
+
+    :global(.ant-select-selection-item),
+    :global(.ant-select-selection-placeholder),
+    :global(.ant-picker-input > input) {
+        font-size: 13px;
+    }
+}
+
+.formSection {
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--color-primary) 12%, transparent);
+    background: color-mix(in srgb, var(--color-primary) 3%, transparent);
+    flex-shrink: 0;
+
+    &:last-of-type {
+        margin-bottom: 0;
+    }
+}
+
+.sectionLabel {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-primary);
+    margin-bottom: 6px;
+}
+
+.footerActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--color-border);
+    flex-shrink: 0;
+
+    .btnReset {
+        background-color: var(--color-nav-text);
+        color: var(--color-text-inverse);
+        border: none;
+        height: 38px;
+        padding: 0 20px;
+        font-weight: 600;
+        border-radius: 10px;
+
+        &:hover {
+            background-color: var(--color-badge-neutral-text) !important;
+            color: var(--color-text-inverse) !important;
+        }
+    }
+
+    .btnSave {
+        height: 38px;
+        padding: 0 22px;
+        font-weight: 600;
+        border-radius: 10px;
+        box-shadow: 0 8px 18px color-mix(in srgb, var(--color-primary) 16%, transparent);
+    }
+}
+
+@media (max-width: 992px) {
+    .expenseForm {
+        :global(.ant-col-6) {
+            flex: 0 0 50%;
+            max-width: 50%;
+        }
+    }
+}
+
+@media (max-width: 576px) {
+    .pageSubtitle {
+        display: block;
+        font-size: 12px;
+    }
+
+    .expenseForm {
+        :global(.ant-col-6) {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+    }
+}
+
+[data-theme="dark"] {
+    .hero {
+        background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 16%, transparent) 0%, var(--color-card-bg) 58%);
+    }
+
+    .formSection {
+        background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+    }
+}

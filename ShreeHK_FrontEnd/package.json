@@ -1,0 +1,42 @@
+{
+  "name": "shreehk",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@radix-ui/react-select": "^2.3.3",
+    "@tanstack/react-query": "^5.90.21",
+    "antd": "^6.3.0",
+    "axios": "^1.13.5",
+    "dayjs": "^1.11.19",
+    "lodash": "^4.17.23",
+    "lucide-react": "^0.575.0",
+    "react": "^19.2.0",
+    "react-country-flag": "^3.1.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.13.0",
+    "react-select": "^5.10.2",
+    "sonner": "^2.0.7",
+    "xlsx-js-style": "^1.2.0",
+    "zustand": "^5.0.11"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "sass-embedded": "^1.97.3",
+    "vite": "^7.3.1"
+  }
+}

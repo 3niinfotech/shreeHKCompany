@@ -1,0 +1,207 @@
+/* Sale / Export invoice — styles (used by SaleInvoice.jsx + print iframe) */
+
+.approval-memo-root .sale-in-word {
+  padding: 8px 15px 0;
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
+.approval-memo-root .sale-in-word b {
+  color: var(--pink);
+}
+
+.approval-memo-root .sale-payment {
+  padding: 6px 15px;
+  font-size: 11.5px;
+  border-top: 1px solid var(--line);
+}
+
+.approval-memo-root .sale-payment-grid {
+  display: flex;
+  gap: 24px;
+}
+
+.approval-memo-root .sale-payment-col {
+  flex: 1;
+}
+
+.approval-memo-root .sale-field {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.approval-memo-root .sale-field .lbl {
+  flex: 0 0 32%;
+  color: #666;
+}
+
+.approval-memo-root .sale-field .val {
+  flex: 1;
+  border-bottom: 1px dotted #999;
+  text-align: center;
+  min-height: 18px;
+  color: var(--ink);
+}
+
+.approval-memo-root .sale-field .unit {
+  flex: 0 0 10%;
+  text-align: right;
+  color: #666;
+}
+
+.approval-memo-root .sale-part-pay {
+  text-align: right;
+  padding-top: 8px;
+  color: var(--pink);
+  font-size: 12px;
+}
+
+.approval-memo-root .sale-divider {
+  margin: 0 15px;
+  border: none;
+  border-top: 1px dashed var(--line);
+}
+
+.approval-memo-root .sale-bank {
+  padding: 4px 15px;
+  font-size: 9px;
+}
+
+.approval-memo-root .sale-bank-title {
+  color: var(--pink);
+  font-weight: 700;
+  margin: 0 0 6px;
+  font-size: 11px;
+}
+
+.approval-memo-root .sale-bank table {
+  width: 100%;
+}
+
+.approval-memo-root .sale-bank td {
+  padding: 2px 4px;
+  vertical-align: top;
+}
+
+.approval-memo-root .sale-bank .key {
+  color: var(--blue);
+  width: 22%;
+}
+
+.approval-memo-root .sale-signatures {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 15px;
+  gap: 24px;
+}
+
+.approval-memo-root .sale-sig {
+  flex: 1;
+  text-align: left;
+}
+
+.approval-memo-root .sale-sig .line {
+  border-bottom: 1px solid #999;
+  height: 32px;
+  margin-top: 8px;
+}
+
+.approval-memo-root .sale-sig .cap {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #666;
+}
+
+.approval-memo-root .sale-sig .for {
+  color: var(--pink);
+  font-size: 12.5px;
+  margin-bottom: 4px;
+}
+
+.approval-memo-root .sale-disclaimer {
+  padding: 4px 15px 10px;
+  font-size: 8.5px;
+  line-height: 1.3;
+  color: #444;
+}
+
+.approval-memo-root .sale-disclaimer .note {
+  color: var(--pink);
+  margin-top: 4px;
+}
+
+.approval-memo-root tfoot .sale-total-label {
+  text-align: right;
+}
+
+.approval-memo-root tfoot .sale-total-amt {
+  font-weight: 700;
+}
+
+.approval-memo-root .sheet.sale-invoice-sheet {
+  display: flex;
+  flex-direction: column;
+  width: 210mm;
+  max-width: 100%;
+  height: 297mm;
+  max-height: 297mm;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.approval-memo-root .sheet.sale-invoice-sheet .header {
+  padding: 16px 15px 10px;
+}
+
+.approval-memo-root .sheet.sale-invoice-sheet .company-block {
+  padding: 10px 15px;
+}
+
+.approval-memo-root .sheet.sale-invoice-sheet .table-wrap {
+  padding: 8px 15px 0;
+}
+
+.approval-memo-root .sale-invoice-top {
+  flex-shrink: 0;
+}
+
+.approval-memo-root .sale-invoice-grow {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.approval-memo-root .sale-invoice-grow .table-wrap {
+  flex: 0 0 auto;
+  padding-bottom: 0;
+}
+
+.approval-memo-root .sale-invoice-sheet tbody td {
+  vertical-align: middle;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  font-size: 12px;
+}
+
+.approval-memo-root .sale-invoice-bottom {
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
+@media print {
+  .approval-memo-root .sheet.sale-invoice-sheet {
+    width: 210mm !important;
+    height: 297mm !important;
+    max-height: 297mm !important;
+    min-height: 297mm !important;
+    overflow: hidden !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+}

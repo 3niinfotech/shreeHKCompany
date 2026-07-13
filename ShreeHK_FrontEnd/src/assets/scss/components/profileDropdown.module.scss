@@ -1,0 +1,471 @@
+@use "../variables" as v;
+
+// Trigger (header) — unchanged feel, subtle open state
+.profileLink {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  text-decoration: none;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+  // background: #f5f3ff;
+
+  &:hover,
+  &.profileLinkActive {
+    background: var(--color-sidebar-hover-bg);
+    border-color: color-mix(in srgb, var(--color-text-inverse) 12%, transparent);
+  }
+
+  &.profileLinkActive {
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+  }
+}
+
+.avatar {
+  flex-shrink: 0;
+  background: var(--color-text-inverse) !important;
+  color: var(--color-header-bg) !important;
+  width: 40px !important;
+  height: 40px !important;
+  border: 2px solid color-mix(in srgb, var(--color-text-inverse) 35%, transparent);
+}
+
+.profileText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  user-select: none;
+}
+
+.companyName {
+  color: var(--color-text-inverse);
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.roleName {
+  color: color-mix(in srgb, var(--color-text-inverse) 78%, transparent);
+  font-size: 12px;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.chevron {
+  color: color-mix(in srgb, var(--color-text-inverse) 85%, transparent);
+  margin-left: 2px;
+  flex-shrink: 0;
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  transform: rotate(-90deg);
+}
+
+.chevronOpen {
+  transform: rotate(0deg);
+}
+
+// Portaled dropdown shell
+.popupRoot {
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+
+  :global(.ant-dropdown-menu) {
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    min-width: 0 !important;
+  }
+
+  :global(.ant-dropdown-menu-root) {
+    padding: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+}
+
+.panel {
+  width: min(320px, calc(100vw - 24px));
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, #d4af37 22%, var(--color-border));
+  background:
+    linear-gradient(165deg,
+      color-mix(in srgb, var(--color-card-bg) 94%, #fff) 0%,
+      var(--color-card-bg) 48%,
+      color-mix(in srgb, var(--color-primary-pale) 35%, var(--color-card-bg)) 100%);
+  box-shadow:
+    0 28px 56px rgba(15, 23, 42, 0.18),
+    0 10px 24px rgba(15, 23, 42, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(18px);
+  animation: profilePanelEnter 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.panelHero {
+  position: relative;
+  padding: 18px 18px 16px;
+  overflow: hidden;
+  border-bottom: 1px solid color-mix(in srgb, #d4af37 18%, var(--color-border));
+  // background:
+  //   linear-gradient(135deg,
+  //     color-mix(in srgb, var(--color-header-bg) 88%, var(--color-primary-dark)) 0%,
+  //     color-mix(in srgb, var(--color-header-bg) 72%, var(--color-primary-dark)) 55%,
+  //     color-mix(in srgb, var(--color-primary-dark) 90%, #000) 100%);
+  background:
+    linear-gradient(313deg,
+      color-mix(in srgb, #6e2929 88%, #4680c9) 0%,
+      color-mix(in srgb, #561f1f 72%, var(--color-primary-dark)) 55%,
+      color-mix(in srgb, #4b90d0 90%, #000) 100%)
+}
+
+.heroGlow {
+  position: absolute;
+  top: -40px;
+  right: -20px;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.35) 0%, transparent 68%);
+  pointer-events: none;
+}
+
+.heroShine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg,
+      transparent 40%,
+      rgba(255, 255, 255, 0.08) 50%,
+      transparent 60%);
+  animation: profileHeroShine 4.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.heroContent {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.heroAvatarWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.heroAvatarRing {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, #d4af37 55%, transparent);
+  animation: profileRingPulse 2.8s ease-in-out infinite;
+}
+
+.heroAvatar {
+  background: linear-gradient(145deg, #fff 0%, #f1f5f9 100%) !important;
+  color: var(--color-header-bg) !important;
+  border: 2px solid rgba(255, 255, 255, 0.85) !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+}
+
+.heroBadge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #7c5e10;
+  background: linear-gradient(145deg, #f5e6a8 0%, #d4af37 100%);
+  border: 2px solid #fff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+}
+
+.heroText {
+  min-width: 0;
+  flex: 1;
+}
+
+.heroEyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, #d4af37 75%, #fff);
+}
+
+.heroTitle {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: #fff;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.heroMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+}
+
+.roleChip,
+.yearChip,
+.companyChip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.companyChip {
+  color: #dbeafe;
+  background: rgba(59, 130, 246, 0.18);
+  border: 1px solid rgba(147, 197, 253, 0.35);
+}
+
+.roleChip {
+  color: #ecfdf5;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.yearChip {
+  color: #7c5e10;
+  background: linear-gradient(145deg, #faf3d8 0%, #e8d48b 100%);
+  border: 1px solid color-mix(in srgb, #d4af37 45%, transparent);
+}
+
+.menuList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.22s ease,
+    border-color 0.22s ease,
+    box-shadow 0.22s ease;
+
+  &:hover {
+    transform: translateX(3px);
+    background: color-mix(in srgb, var(--color-primary-pale) 55%, var(--color-card-bg));
+    border-color: color-mix(in srgb, var(--color-primary) 16%, var(--color-border));
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--color-primary) 10%, transparent);
+
+    .menuArrow {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .menuIcon {
+      transform: scale(1.05);
+    }
+  }
+}
+
+.menuIcon {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.22s ease;
+}
+
+.menuIconAccount {
+  color: var(--color-primary-dark);
+  background: linear-gradient(145deg, var(--color-primary-pale) 0%, #fff 100%);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+
+.menuIconSettings {
+  color: var(--color-primary);
+  background: linear-gradient(145deg, var(--color-primary-pale) 0%, #fff 100%);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+
+.menuIconContext {
+  color: var(--color-primary-dark);
+  background: linear-gradient(145deg, var(--color-primary-light) 0%, #fff 100%);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+
+.menuCopy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.menuLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-heading);
+  line-height: 1.2;
+}
+
+.menuHint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  line-height: 1.2;
+}
+
+.menuArrow {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  opacity: 0;
+  transform: translateX(-4px) rotate(-90deg);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.panelFooter {
+  padding: 4px 12px 14px;
+}
+
+.logoutBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid color-mix(in srgb, var(--color-danger) 28%, transparent);
+  border-radius: 12px;
+  background: linear-gradient(145deg,
+      color-mix(in srgb, var(--color-danger) 8%, #fff) 0%,
+      color-mix(in srgb, var(--color-danger) 4%, #fff) 100%);
+  color: var(--color-danger);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    background: linear-gradient(145deg,
+        color-mix(in srgb, var(--color-danger) 14%, #fff) 0%,
+        color-mix(in srgb, var(--color-danger) 8%, #fff) 100%);
+    box-shadow: 0 8px 20px color-mix(in srgb, var(--color-danger) 18%, transparent);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.logoutIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+}
+
+@keyframes profilePanelEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes profileHeroShine {
+
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateX(-30%);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: translateX(30%);
+  }
+}
+
+@keyframes profileRingPulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .panel,
+  .heroShine,
+  .heroAvatarRing,
+  .menuItem,
+  .logoutBtn {
+    animation: none !important;
+    transition: none !important;
+  }
+}

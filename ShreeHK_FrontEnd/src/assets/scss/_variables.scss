@@ -1,0 +1,82 @@
+// Design system — ShreeHK ERP
+// All values resolve from CSS custom properties (src/theme/ is the single source of truth).
+
+// Primary palette
+$primary: var(--color-primary);
+$primary-dark: var(--color-primary-dark);
+$primary-light: var(--color-primary-light);
+$primary-medium: var(--color-primary-medium);
+$primary-pale: var(--color-primary-pale);
+$navy: var(--color-navy);
+$page-bg: var(--color-page-bg);
+$card-bg: var(--color-card-bg);
+$border-color: var(--color-border);
+
+// Semantic
+$danger: var(--color-danger);
+$danger-light: var(--color-danger-light);
+$success: var(--color-success);
+$warning: var(--color-warning);
+$info: var(--color-info);
+$neutral: var(--color-neutral);
+$secondary: var(--color-secondary);
+
+// Layout
+$brand-teal: $primary;
+$brand-accent: $primary;
+$nav-border: $border-color;
+$nav-active: var(--color-nav-active);
+$nav-text: var(--color-nav-text);
+$sidebar-bg: var(--color-sidebar-bg);
+$header-height: var(--layout-header-height);
+$sidebar-width: var(--layout-sidebar-width);
+$text-color: var(--color-text-body);
+$text-heading: var(--color-text-heading);
+$text-muted: var(--color-text-muted);
+$text-inverse: var(--color-text-inverse);
+$bg-color: $page-bg;
+$blur-amount: var(--blur-amount);
+$bg-overlay: var(--color-bg-overlay);
+
+$primary-color: $primary;
+$bg-light: $page-bg;
+$header-bg: var(--color-header-bg);
+$header-bg-dark: var(--color-header-bg-dark);
+$text-secondary: $neutral;
+
+// Modal / form buttons
+$modal-btn-color: $primary;
+$save-btn-color: var(--color-btn-save-bg);
+$cancel-btn-color: var(--color-btn-cancel-bg);
+$cancel-btn-border: var(--border-width-thin) solid $border-color;
+$reload-btn-color: $info;
+
+// Radii
+$radius-card: var(--radius-card);
+$radius-control: var(--radius-control);
+
+// Shadows
+$shadow-sm: var(--shadow-sm);
+$shadow-md: var(--shadow-md);
+$shadow-lg: var(--shadow-lg);
+$shadow-header: var(--shadow-header);
+
+// Tables
+$table-header-bg: var(--color-table-header-bg);
+$table-row-hover: var(--table-row-hover);
+$table-row-zebra: var(--table-row-zebra);
+$table-border: var(--color-table-border);
+
+// Status
+$status-online: var(--color-status-online);
+$status-offline: var(--color-status-offline);
+
+// Layout dimensions (spacing aliases)
+$spacing2: var(--spacing-2);
+$spacing3: var(--spacing-3);
+$spacing4: var(--spacing-4);
+$spacing5: var(--spacing-5);
+
+// Inventory tables — excluded from global table restyling
+$inventory-table-selectors: ".diamond-inventory-table", ".custom-ant-table", ".erp-table",
+  ".parcel-erp-table";

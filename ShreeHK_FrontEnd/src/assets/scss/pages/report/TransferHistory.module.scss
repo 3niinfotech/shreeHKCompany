@@ -1,0 +1,145 @@
+.erpContainer {
+  height: var(--app-page-height);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  gap: 14px;
+
+  .tableCard {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    :global(.ant-card-body) {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+  }
+
+  .headerSection {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    background: var(--color-bg-card);
+    padding: 20px;
+    border-radius: 10px;
+
+    .pageTitle {
+      margin: 0 !important;
+      color: var(--color-text-heading);
+      font-weight: 700;
+    }
+  }
+
+  .filterCard {
+    margin-bottom: 24px;
+    box-shadow: var(--shadow-card);
+    border-radius: 12px;
+
+    :global(.ant-card-body) {
+      padding: 20px;
+    }
+  }
+
+  .checkboxGroup {
+    display: flex;
+    justify-content: center;
+
+    .customCheckbox {
+      font-weight: 500;
+      color: var(--color-text-muted);
+    }
+  }
+
+  .tableCard {
+    box-shadow: var(--shadow-md);
+    border-radius: 12px;
+
+    .tableToolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding: 0 4px;
+    }
+
+    .modernTable {
+      :global(.ant-table-thead > tr > th) {
+        background: var(--color-primary-light) !important;
+        font-weight: 600;
+        color: var(--color-navy) !important;
+        border-bottom: 0.5px solid var(--color-border) !important;
+      }
+
+      :global(.ant-table-tbody > tr:hover > td) {
+        background: var(--table-row-hover) !important;
+      }
+    }
+  }
+
+  .skuColumn {
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-weight: 600;
+    color: var(--color-entity-order-text);
+  }
+
+  .exportBtn {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    border-radius: var(--radius-control);
+    height: 40px;
+  }
+}
+
+.transferFilterForm {
+  :global(.ant-form-item) {
+    margin-bottom: 0 !important;
+  }
+
+  :global(.ant-input),
+  :global(.ant-picker) {
+    height: 26px !important;
+  }
+
+  :global(.ant-input-affix-wrapper),
+  :global(.ant-picker) {
+    height: 38px !important;
+    min-height: 38px !important;
+    border-radius: 8px !important;
+  }
+}
+
+.filterFieldsFlex {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.filterItem {
+  margin-bottom: 0 !important;
+  flex: 0 0 auto;
+}
+
+.fieldSku {
+  width: 200px !important;
+
+  &:global(.ant-input) {
+    height: 38px !important;
+    font-size: 13px !important;
+    color: var(--color-text-body) !important;
+    background-color: var(--color-bg-card) !important;
+    border-radius: 8px !important;
+  }
+}
+
+.fieldDate {
+  width: 160px !important;
+}

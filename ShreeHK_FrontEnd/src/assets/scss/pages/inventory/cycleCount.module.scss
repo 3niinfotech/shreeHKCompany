@@ -1,0 +1,21 @@
+.cycleCountPage {
+  height: var(--app-page-height);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  gap: 16px;
+
+  .scanCard {
+    flex-shrink: 0;
+  }
+
+  .tableSection {
+    flex: 1;
+    min-height: 0;
+  }
+}
+
+.scanCard {
+  border-radius: 12px;
+}

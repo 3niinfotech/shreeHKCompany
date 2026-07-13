@@ -1,0 +1,375 @@
+// Dark mode — inventory, transaction, reports, and other page chrome
+[data-theme="dark"] {
+  // ── Shared page headers & toolbars (inside routed content) ──
+  .app-page-root,
+  .inventory-page-wrapper,
+  .inventory-filter-wrapper,
+  .inventory-page-toolbar-wrap {
+    [class*="headerSection"],
+    [class*="headerRow"],
+    [class*="sectionHeader"],
+    [class*="statsBar"],
+    [class*="formSection"],
+    [class*="footerStats"],
+    [class*="actionBar"],
+    [class*="searchCard"] {
+      // background: var(--color-card-bg) !important;
+      // border-color: var(--color-border) !important;
+      // color: var(--color-navy);
+      // box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    [class*="headerSection"],
+    [class*="headerRow"],
+    [class*="sectionHeader"] {
+      // border-bottom: 0.5px solid var(--color-border);
+
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      [class*="title"] {
+        color: var(--color-navy) !important;
+      }
+    }
+
+    [class*="statsBar"],
+    [class*="footerStats"] {
+      [class*="statItem"] label,
+      label {
+        color: var(--color-neutral) !important;
+      }
+
+      [class*="statItem"] span,
+      span {
+        color: var(--color-navy) !important;
+      }
+    }
+
+    [class*="pageWrapper"],
+    [class*="cardContainer"],
+    [class*="mainCard"],
+    [class*="pageContainer"] {
+      background-color: var(--color-page-bg) !important;
+    }
+
+    [class*="cardContainer"],
+    [class*="mainCard"],
+    [class*="detailsCard"],
+    [class*="tableCard"],
+    [class*="filterCard"],
+    [class*="tree-card"],
+    [class*="details-card"] {
+      background: var(--color-card-bg) !important;
+      border-color: var(--color-border) !important;
+      box-shadow: var(--shadow-card);
+    }
+
+    [class*="statsBar"] b,
+    [class*="totalText"] {
+      color: var(--color-navy) !important;
+    }
+
+    [class*="inputLabel"],
+    [class*="searchLabel"] {
+      color: var(--color-neutral) !important;
+    }
+
+    [class*="searchBtn"],
+    [class*="reloadBtn"] {
+      background: var(--color-card-bg) !important;
+      border-color: var(--color-border) !important;
+      color: var(--color-navy) !important;
+    }
+
+    input:not([type="checkbox"]):not([type="radio"]) {
+      background: var(--color-card-bg) !important;
+      border-color: var(--color-border) !important;
+      color: var(--color-navy) !important;
+    }
+  }
+
+  // ── Inventory filter panel (diamond, on-hand, barcode, etc.) ──
+  .inventory-page-wrapper,
+  .inventory-filter-wrapper,
+  .inventory-page-toolbar-wrap {
+    [class*="panel"] {
+      background: var(--color-card-bg) !important;
+      border-color: var(--color-border) !important;
+      box-shadow: var(--shadow-card);
+    }
+
+    [class*="panel"] > [class*="header"] {
+      border-bottom-color: var(--color-border);
+    }
+
+    [class*="sectionTitle"],
+    [class*="caratLabel"],
+    [class*="filterGroupTitle"],
+    [class*="actionPanelHeader"],
+    [class*="actionTileLabel"] {
+      color: var(--color-navy) !important;
+    }
+
+    [class*="totalBadge"] {
+      background: var(--color-page-bg) !important;
+      color: var(--color-neutral) !important;
+
+      b {
+        color: var(--color-primary) !important;
+      }
+    }
+
+    [class*="caratInput"] {
+      background: var(--color-page-bg) !important;
+      border-color: var(--color-border) !important;
+      color: var(--color-navy) !important;
+    }
+
+    [class*="compactSelect"],
+    [class*="compactSelectWide"] {
+      :global(.ant-select-selector) {
+        background: var(--color-page-bg) !important;
+        border-color: var(--color-border) !important;
+        color: var(--color-navy) !important;
+      }
+    }
+
+    [class*="actionPanelTrigger"] {
+      background: var(--color-page-bg) !important;
+      border-color: var(--color-border) !important;
+      color: var(--color-neutral) !important;
+    }
+
+    [class*="actionPanelTriggerActive"] {
+      background: var(--color-card-bg) !important;
+      border-color: color-mix(in srgb, var(--color-primary) 45%, transparent) !important;
+      color: var(--color-primary) !important;
+    }
+
+    [class*="actionPanelBody"] {
+      background: var(--color-card-bg) !important;
+    }
+
+    [class*="actionPanelHeader"] {
+      border-bottom-color: var(--color-border);
+    }
+
+    [class*="advancedBody"],
+    [class*="advancedInner"],
+    [class*="filterGroup"],
+    [class*="filterGroupBody"],
+    [class*="groupPanel"] {
+      background: var(--color-page-bg) !important;
+      border-color: var(--color-border) !important;
+    }
+
+    [class*="toolbarRow"] {
+      border-color: var(--color-border);
+    }
+  }
+
+  // ── Diamond inventory table shell ──
+  .inventory-page-wrapper {
+    .erp-table-container {
+      background: var(--color-card-bg) !important;
+      border-color: var(--color-border) !important;
+      box-shadow: var(--shadow-inventory-table);
+    }
+
+    .diamond-inventory-table {
+      .ant-table-thead > tr > th.ant-table-cell {
+        background: var(--color-table-inventory-header-bg) !important;
+        color: var(--color-table-header-text) !important;
+        border-color: var(--color-border) !important;
+
+        &:hover {
+          background: var(--color-table-inventory-header-hover) !important;
+        }
+      }
+
+      .ant-table-tbody > tr > td.ant-table-cell {
+        color: var(--color-navy) !important;
+        border-color: var(--color-border) !important;
+        background: var(--color-card-bg) !important;
+      }
+
+      .ant-table-tbody > tr:nth-child(even) > td.ant-table-cell {
+        background: var(--table-row-zebra) !important;
+      }
+
+      .ant-table-tbody > tr:hover > td.ant-table-cell {
+        background: var(--table-row-hover) !important;
+      }
+
+      .inventory-table-empty__title {
+        color: var(--color-navy);
+      }
+
+      .inventory-table-empty__hint {
+        color: var(--color-neutral);
+      }
+    }
+  }
+
+  // ── On-hand / barcode toolbars ──
+  .on-hand-toolbar-total {
+    background: var(--color-card-bg) !important;
+    box-shadow: var(--shadow-card);
+  }
+
+  .on-hand-stock-page {
+    .on-hand-toolbar {
+      background: var(--color-card-bg) !important;
+      box-shadow: var(--shadow-card);
+    }
+
+    .on-hand-toolbar__total {
+      color: var(--color-navy) !important;
+    }
+
+    .on-hand-table-wrap {
+      background: var(--color-card-bg) !important;
+      box-shadow: var(--shadow-card);
+    }
+
+    .on-hand-footer {
+      background: linear-gradient(180deg, var(--color-card-bg) 0%, var(--color-page-bg) 100%) !important;
+      border-color: var(--color-border) !important;
+      color: var(--color-accent-gold);
+      box-shadow: var(--shadow-footer);
+    }
+
+    .on-hand-cell-stack__primary {
+      color: var(--color-navy) !important;
+    }
+
+    .on-hand-cell-stack__secondary {
+      color: var(--color-neutral) !important;
+    }
+  }
+
+  // ── Category inventory page ──
+  .inventory-container {
+    background-color: var(--color-page-bg) !important;
+
+    .page-header h4 {
+      color: var(--color-navy) !important;
+    }
+  }
+
+  // ── Transaction inward forms ──
+  [class*="purchaseContainer"] {
+    [class*="headerRow"],
+    [class*="formSection"],
+    [class*="footerStats"] {
+      background: var(--color-card-bg) !important;
+      border-color: var(--color-border) !important;
+
+      h4 {
+        color: var(--color-navy) !important;
+      }
+    }
+
+    [class*="formSection"] :global(.ant-form-item-label) label {
+      color: var(--color-neutral) !important;
+    }
+  }
+
+  // ── Stone update / transfer history erp container ──
+  [class*="erpContainer"] {
+    [class*="headerSection"] {
+      background: var(--color-card-bg) !important;
+      border: 0.5px solid var(--color-border);
+      box-shadow: var(--shadow-card);
+
+      [class*="inputLabel"] {
+        color: var(--color-neutral) !important;
+      }
+    }
+
+    [class*="mainCard"] {
+      background: var(--color-card-bg) !important;
+      border-color: var(--color-border) !important;
+
+      [class*="actionBar"] {
+        background: var(--color-page-bg) !important;
+        border-bottom-color: var(--color-border) !important;
+      }
+
+      [class*="toggleLabel"] {
+        color: var(--color-neutral) !important;
+      }
+    }
+  }
+
+  // ── Outward ──
+  [class*="outwardContainer"] {
+    [class*="statsBar"] {
+      background: var(--color-card-bg) !important;
+      border-color: var(--color-border) !important;
+    }
+  }
+
+  // ── Master table template stats bar ──
+  [class*="statsBar"] {
+    background-color: var(--color-page-bg) !important;
+    border-color: var(--color-border) !important;
+    color: var(--color-navy);
+  }
+
+  // ── Box / single-to-box page shells ──
+  [class*="summaryRowNoBg"] :global(.ant-table-cell) {
+    background-color: var(--color-card-bg) !important;
+    border-top-color: var(--color-border) !important;
+    color: var(--color-navy);
+  }
+
+  .main-singletobox,
+  .main-single-to-parcel {
+    background: var(--color-page-bg);
+
+    .erpTable,
+    [class*="erpTable"] {
+      background: var(--color-card-bg) !important;
+      border-color: var(--color-border) !important;
+    }
+  }
+
+  // ── Reports (header rows + filter cards) ──
+  .app-page-root {
+    [class*="pageContainer"] [class*="headerRow"] {
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+
+    [class*="filterCard"],
+    [class*="tableCard"],
+    [class*="detailsCard"] {
+      :global(.ant-card) {
+        background: var(--color-card-bg) !important;
+        border-color: var(--color-border) !important;
+      }
+    }
+
+    [class*="sectionHeader"] {
+      background: var(--color-page-bg) !important;
+      border-color: var(--color-border) !important;
+      color: var(--color-navy) !important;
+    }
+  }
+
+  // ── Accounting pages with hardcoded white panels ──
+  [class*="mybalance"],
+  [class*="partyWise"],
+  [class*="advanceTransaction"],
+  [class*="transactionModule"] {
+    [class*="headerRow"],
+    [class*="filterPanel"],
+    [class*="summaryCard"] {
+      background: var(--color-card-bg) !important;
+      border-color: var(--color-border) !important;
+    }
+  }
+}

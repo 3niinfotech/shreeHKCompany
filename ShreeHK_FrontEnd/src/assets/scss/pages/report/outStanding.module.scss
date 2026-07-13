@@ -1,0 +1,110 @@
+.pageContainer {
+    height: var(--app-page-height);
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    gap: 14px;
+
+    .tableCard {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+
+        :global(.ant-card-body) {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+    }
+}
+
+.headerRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.exportBtn {
+    background-color: var(--color-info);
+    border-color: var(--color-info);
+    border-radius: 4px;
+
+    &:hover {
+        background-color: var(--color-info-dark) !important;
+        border-color: var(--color-info-dark) !important;
+    }
+}
+
+.filterCard {
+    margin-bottom: 10px;
+    border: none;
+    box-shadow: var(--shadow-xs);
+
+    :global(.ant-card-body) {
+        padding: 10px;
+    }
+}
+
+.tableCard {
+    border: none;
+    box-shadow: var(--shadow-card);
+}
+
+.customTable {
+    :global(.ant-table-thead > tr > th) {
+        background-color: var(--color-primary-light) !important;
+        color: var(--color-navy) !important;
+        font-weight: 600;
+        text-align: center;
+        border-bottom: 0.5px solid var(--color-border) !important;
+    }
+
+    :global(.ant-table-placeholder) {
+        background-color: var(--color-card-bg);
+    }
+
+    :global(.ant-table-tbody > tr:hover > td) {
+        background: var(--table-row-hover) !important;
+    }
+}
+
+.clickableEntry {
+    color: var(--color-info);
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: all 0.3s;
+
+    &:hover {
+        color: var(--color-primary);
+        background-color: var(--color-primary-light);
+        padding: 2px 4px;
+        border-radius: var(--radius-control);
+    }
+}
+
+
+.filterCard {
+    :global {
+        .ant-form-item {
+            margin-bottom: 0 !important;
+        }
+
+        .ant-form-item-label {
+            display: none;
+        }
+
+        .ant-input,
+        .ant-select-selector,
+        .ant-picker {
+            height: 40px !important;
+            border-radius: 6px;
+        }
+    }
+}

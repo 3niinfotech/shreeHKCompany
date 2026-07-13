@@ -1,0 +1,45 @@
+.modalTitle {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--color-navy);
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+}
+
+.modalBody {
+  padding: 10px 0;
+  max-height: 70vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.btnCancel {
+  background-color: var(--color-neutral) !important;
+  border-color: var(--color-neutral) !important;
+  color: var(--color-text-inverse) !important;
+  height: 38px;
+  padding: 0 20px;
+  font-weight: 500;
+  border-radius: var(--radius-control);
+
+  &:hover {
+    background-color: var(--color-btn-cancel-hover) !important;
+    border-color: var(--color-btn-cancel-hover) !important;
+  }
+}
+
+.btnSave {
+  background-color: var(--color-success) !important;
+  border-color: var(--color-success) !important;
+  color: var(--color-text-inverse) !important;
+  height: 38px;
+  padding: 0 25px;
+  font-weight: 500;
+  border-radius: var(--radius-control);
+
+  &:hover {
+    background-color: var(--color-success-dark) !important;
+    border-color: var(--color-success-dark) !important;
+  }
+}

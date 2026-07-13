@@ -1,0 +1,55 @@
+.panel {
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+.panelBody {
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-text-body);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.insightCard {
+  margin-bottom: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+
+  :global(.ant-card-head) {
+    border-bottom: 1px solid var(--table-row-hover);
+    min-height: 48px;
+  }
+}
+
+.insightBody {
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-badge-neutral-text);
+  min-height: 60px;
+}
+
+.priceBlock {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-right: 12px;
+}
+
+.priceResult {
+  max-width: 360px;
+  font-size: 12px;
+  color: var(--color-nav-text);
+  white-space: pre-wrap;
+}
+
+.barcodeRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}

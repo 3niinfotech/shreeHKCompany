@@ -1,0 +1,135 @@
+.pageContainer {
+    height: var(--app-page-height);
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    gap: 14px;
+
+    .tableCard {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+
+        :global(.ant-card-body) {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+    }
+}
+
+.headerRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.exportBtn {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    border-radius: var(--radius-control);
+
+    &:hover {
+        background-color: var(--color-primary-dark) !important;
+        border-color: var(--color-primary-dark) !important;
+    }
+}
+
+.filterCard {
+    margin-bottom: 12px;
+    border: none;
+    box-shadow: var(--shadow-xs);
+
+    :global(.ant-card-body) {
+        padding: 10px;
+    }
+}
+
+.tableCard {
+    border: none;
+    box-shadow: var(--shadow-card);
+}
+
+.customTable {
+    :global(.ant-table-thead > tr > th) {
+        background-color: var(--color-primary-light) !important;
+        color: var(--color-navy) !important;
+        font-weight: 600;
+        text-align: center;
+        border-bottom: 0.5px solid var(--color-border) !important;
+        white-space: nowrap;
+    }
+
+    :global(.ant-table-tbody > tr > td) {
+        white-space: nowrap;
+        color: var(--color-navy);
+    }
+
+    :global(.ant-table-tbody > tr:hover > td) {
+        background: var(--table-row-hover) !important;
+    }
+}
+
+.filterCard {
+    :global {
+        .ant-form-item {
+            margin-bottom: 0 !important;
+        }
+
+        .ant-form-item-label {
+            display: none;
+        }
+
+        .ant-input,
+        .ant-select-selector,
+        .ant-picker {
+            height: 40px !important;
+            border-radius: 6px;
+        }
+    }
+}
+
+.saleStockFilterForm {
+    :global(.ant-form-item) {
+        margin-bottom: 0 !important;
+    }
+
+    :global(.ant-select),
+    :global(.ant-picker),
+    :global(.ant-input-affix-wrapper),
+    :global(.ant-input) {
+        height: 38px !important;
+        min-height: 38px !important;
+        border-radius: 8px !important;
+    }
+}
+
+.filterFieldsFlex {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.filterItem {
+    margin-bottom: 0 !important;
+    flex: 0 0 auto;
+}
+
+.fieldParty {
+    width: 200px !important;
+}
+
+.fieldInvoice {
+    width: 180px !important;
+}
+
+.fieldDate {
+    width: 160px !important;
+}

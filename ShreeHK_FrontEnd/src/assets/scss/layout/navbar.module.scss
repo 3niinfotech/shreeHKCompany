@@ -1,0 +1,105 @@
+@use "../variables" as v;
+
+.navWrapper {
+  background: var(--color-navbar-bg);
+  border-bottom: var(--border-width-thin) solid v.$border-color;
+  padding: 0 v.$spacing5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  .desktopMenu {
+    display: flex;
+    flex: 1;
+
+    :global(.ant-menu-horizontal) {
+      width: 100%;
+      border-bottom: none !important;
+      background: transparent !important;
+      line-height: 48px !important;
+
+      :global(.ant-menu-submenu-arrow) {
+        display: none !important;
+      }
+
+      :global(.ant-menu-item),
+      :global(.ant-menu-submenu-title),
+      :global(.ant-menu-title-content) {
+        cursor: pointer !important;
+        user-select: none !important;
+        -webkit-user-select: none !important;
+        caret-color: transparent !important;
+      }
+
+      > :global(.ant-menu-item),
+      > :global(.ant-menu-submenu) {
+        top: 0 !important;
+        padding-inline: 18px !important;
+        color: v.$nav-text !important;
+        background: transparent !important;
+        transition: color 0.2s ease !important;
+
+        &::after {
+          inset-inline: 18px !important;
+          border-bottom-width: 3px !important;
+          border-bottom-color: transparent !important;
+          transition: border-color 0.2s ease !important;
+        }
+
+        &:hover:not(:global(.ant-menu-item-selected)):not(:global(.ant-menu-submenu-selected)) {
+          color: v.$nav-active !important;
+          background: transparent !important;
+        }
+      }
+
+      > :global(.ant-menu-submenu) > :global(.ant-menu-submenu-title) {
+        padding-inline: 18px !important;
+        color: inherit !important;
+        background: transparent !important;
+      }
+
+      > :global(.ant-menu-item-selected),
+      > :global(.ant-menu-submenu-selected) {
+        color: v.$nav-active !important;
+        font-weight: var(--font-weight-semibold);
+        background: transparent !important;
+
+        &::after {
+          border-bottom-color: v.$nav-active !important;
+        }
+      }
+
+      > :global(.ant-menu-submenu-selected) > :global(.ant-menu-submenu-title) {
+        color: inherit !important;
+        font-weight: inherit !important;
+        background: transparent !important;
+
+        &::after {
+          border-bottom-color: transparent !important;
+        }
+      }
+
+      :global(.ant-menu-title-content) {
+        font-size: var(--font-size-md);
+      }
+
+      :global(.ant-menu-item-icon),
+      :global(.anticon) {
+        color: inherit !important;
+      }
+    }
+
+    @media (max-width: 768px) {
+      display: none;
+    }
+  }
+
+  .mobileToggle {
+    display: none;
+
+    @media (max-width: 768px) {
+      display: block;
+      padding: 10px 0;
+    }
+  }
+}

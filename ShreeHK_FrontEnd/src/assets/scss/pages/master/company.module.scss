@@ -1,0 +1,101 @@
+@use "../../variables" as v;
+
+.pageWrapper {
+  height: 100%;
+  max-height: 100%;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.cardContainer {
+  border-radius: v.$radius-card;
+  height: 100%;
+  width: 100%;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 0.5px solid var(--color-border);
+  background: var(--color-card-bg);
+
+  :global(.ant-card-body) {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+}
+
+.tableContainer {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+.headerSection {
+  flex-shrink: 0;
+  margin-bottom: 16px;
+
+  .headerFlex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    h4 {
+      margin: 0;
+      color: var(--color-navy);
+    }
+  }
+}
+
+.searchInput {
+  width: 250px;
+}
+
+.addButton {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  border-radius: v.$radius-control;
+
+  &:hover {
+    background-color: var(--color-primary-dark) !important;
+    border-color: var(--color-primary-dark) !important;
+  }
+}
+
+.totalItemsFooter {
+  flex-shrink: 0;
+  padding-top: 12px;
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+
+  .totalText {
+    color: var(--color-navy);
+    font-weight: bold;
+  }
+}
+
+.actionIcons {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+
+  .editIcon {
+    color: var(--color-primary);
+    cursor: pointer;
+  }
+
+  .deleteIcon {
+    color: var(--color-danger);
+    cursor: pointer;
+  }
+}

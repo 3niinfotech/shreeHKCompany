@@ -1,0 +1,313 @@
+@use "../variables" as v;
+
+.dashboardLayout {
+  height: 100vh;
+  overflow: hidden;
+
+  .dashboardSider {
+    overflow: hidden;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    left: 0;
+    background: var(--color-sidebar-bg) !important;
+    border-right: 0.5px solid var(--color-sidebar-border);
+    box-shadow: var(--shadow-lg);
+
+    :global(.ant-layout-sider-children) {
+      display: flex;
+      flex-direction: column;
+      background: var(--color-sidebar-bg);
+      overflow: hidden;
+    }
+
+    // ── Brand / Logo ──
+    .brand {
+      height: 55px;
+      min-height: 55px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      // background: linear-gradient(135      deg, #17332f 0%, #1a3838 50%, #1e3535 100%);
+      color: var(--color-text-inverse);
+      border-bottom: 0.5px solid var(--color-sidebar-border);
+
+      a {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: inherit;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+
+      .brandIcon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        background: var(--color-sidebar-hover-bg);
+        border-radius: 8px;
+      }
+
+      .brandText {
+        font-size: 1.25rem;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+      }
+
+      .brandBadge {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        background: var(--color-sidebar-active-bg);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.2s;
+
+        &:hover {
+          background: color-mix(in srgb, var(--color-primary) 70%, transparent);
+        }
+      }
+    }
+
+    // ── Scrollable body (menu + help card) ──
+    .sidebarBody {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+
+      &::-webkit-scrollbar {
+        width: 4px;
+      }
+
+      &::-webkit-scrollbar-thumb {
+        background: var(--color-sidebar-hover-bg);
+        border-radius: 2px;
+      }
+    }
+
+    // ── Side Menu ──
+    .sideMenu {
+      flex: 1;
+      border-inline-end: none !important;
+      background: var(--color-sidebar-bg);
+      padding: 8px 0;
+
+      :global(.ant-menu-item),
+      :global(.ant-menu-submenu-title),
+      :global(.ant-menu-title-content) {
+        margin-inline: 8px;
+        width: calc(100% - 16px);
+        border-radius: v.$radius-control;
+        color: var(--color-neutral);
+        cursor: pointer;
+        user-select: none;
+        -webkit-user-select: none;
+        caret-color: transparent;
+      }
+
+      :global(.ant-menu-item-selected) {
+        color: var(--color-sidebar-accent) !important;
+        background: var(--color-sidebar-active-bg) !important;
+        font-weight: 500;
+      }
+
+      :global(.ant-menu-item:hover),
+      :global(.ant-menu-submenu-title:hover) {
+        color: var(--color-sidebar-accent) !important;
+        background: var(--color-sidebar-hover-bg) !important;
+      }
+
+      :global(.ant-menu-submenu-selected > .ant-menu-submenu-title) {
+        color: var(--color-sidebar-accent) !important;
+      }
+
+      :global(.ant-menu-sub .ant-menu-item-selected) {
+        color: var(--color-sidebar-accent) !important;
+        background: var(--color-sidebar-active-bg) !important;
+      }
+
+      // Divider between main nav and USER MANAGEMENT
+      :global(.ant-menu-item-divider) {
+        margin: 6px 16px;
+        border-color: var(--color-sidebar-border);
+      }
+
+      // Group title "USER MANAGEMENT"
+      :global(.ant-menu-item-group-title) {
+        color: var(--color-neutral) !important;
+        font-size: 0.68rem;
+        font-weight: 600;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+        padding: 10px 24px 4px;
+      }
+
+      :global(.ant-menu-item-group-list .ant-menu-item) {
+        margin-inline: 8px;
+        width: calc(100% - 16px);
+        border-radius: v.$radius-control;
+      }
+    }
+
+    // ── Help Card ──
+    .helpCard {
+      margin: 12px 14px 16px;
+      padding: 20px 16px;
+      background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-medium) 100%);
+      border-radius: 12px;
+      text-align: left;
+      flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+
+      .helpDecor {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        border: 2px dotted color-mix(in srgb, var(--color-text-inverse) 8%, transparent);
+        pointer-events: none;
+
+        &::before {
+          content: "";
+          position: absolute;
+          top: 10px;
+          left: 10px;
+          width: 46px;
+          height: 46px;
+          border-radius: 50%;
+          border: 2px dotted color-mix(in srgb, var(--color-text-inverse) 6%, transparent);
+        }
+      }
+
+      .helpTitle {
+        color: var(--color-text-inverse);
+        font-size: 0.92rem;
+        font-weight: 700;
+        margin-bottom: 4px;
+        position: relative;
+      }
+
+      .helpSub {
+        color: var(--color-input-placeholder);
+        font-size: 0.76rem;
+        margin-bottom: 16px;
+        position: relative;
+      }
+
+      .helpBtn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        padding: 10px 16px;
+        border: 1px solid color-mix(in srgb, var(--color-text-inverse) 20%, transparent);
+        border-radius: 8px;
+        background: color-mix(in srgb, var(--color-text-inverse) 14%, transparent);
+        color: var(--color-text-inverse);
+        font-size: 0.8rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s, border-color 0.2s;
+        position: relative;
+
+        &:hover {
+          background: color-mix(in srgb, var(--color-text-inverse) 22%, transparent);
+          border-color: color-mix(in srgb, var(--color-text-inverse) 32%, transparent);
+        }
+      }
+    }
+
+    // ── Collapse Toggle ──
+    .collapseToggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 16px;
+      color: var(--color-neutral);
+      font-size: 0.82rem;
+      cursor: pointer;
+      border-top: 0.5px solid var(--color-sidebar-border);
+      background: var(--color-sidebar-footer-bg);
+      transition: color 0.2s, background 0.2s;
+      white-space: nowrap;
+      flex-shrink: 0;
+      user-select: none;
+
+      &:hover {
+        color: var(--color-sidebar-accent);
+        background: var(--color-sidebar-hover-bg);
+      }
+    }
+
+    // ── Collapsed state ──
+    &:global(.ant-layout-sider-collapsed) {
+      .brand {
+        padding: 0;
+        justify-content: center;
+
+        a {
+          justify-content: center;
+        }
+
+        .brandIcon {
+          width: 28px;
+          height: 28px;
+        }
+      }
+
+      .helpCard {
+        display: none;
+      }
+
+      .collapseToggle span {
+        display: none;
+      }
+    }
+  }
+
+  // ── Main content area ──
+  .dashboardMain {
+    height: 100vh;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-page-bg);
+
+    :global(.headerStyle) {
+      flex-shrink: 0;
+    }
+  }
+
+  .pageOutlet {
+    flex: 1;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .dashboardContent:global(.ant-layout-content) {
+    flex: 1;
+    min-height: 0;
+    padding: 20px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-page-bg) !important;
+  }
+}

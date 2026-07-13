@@ -1,0 +1,122 @@
+.authFluid {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  overflow: hidden;
+
+  .authFluidRight {
+    flex: 1;
+    position: relative;
+    display: block;
+
+    .bgImageHolder {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    .overlay {
+      position: absolute;
+      height: 100%;
+      width: 100%;
+      // background: var(--color-bg-overlay);
+    }
+  }
+
+  .authFluidFormBox {
+    width: 500px;
+    background-color: var(--color-card-bg);
+    display: flex;
+    align-items: center;
+    padding: 3rem 4rem;
+    z-index: 10;
+    box-shadow: var(--shadow-lg);
+
+    .formInner {
+      width: 100%;
+    }
+
+    .logoWrapper {
+      margin-bottom: 2rem;
+
+      .logoIcon {
+        height: 40px;
+        width: auto;
+      }
+    }
+
+    .loginTitle {
+      font-weight: 700;
+      color: var(--color-navy);
+      margin-bottom: 8px !important;
+    }
+
+    .loginSubtitle {
+      color: var(--color-neutral);
+      margin-bottom: 2.5rem;
+      display: block;
+    }
+
+    :global(.ant-form-item-label > label) {
+      font-weight: 600;
+      color: var(--color-neutral);
+    }
+
+    .customInput {
+      height: 45px;
+      background-color: var(--color-page-bg);
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-control);
+
+      &:hover,
+      &:focus {
+        background-color: var(--color-card-bg);
+        border-color: var(--color-primary);
+      }
+    }
+
+    .signInBtn {
+      height: 45px;
+      background-color: var(--color-primary);
+      border-color: var(--color-primary);
+      font-weight: 600;
+      margin-top: 1rem;
+      border-radius: var(--radius-control);
+
+      &:hover {
+        background-color: var(--color-primary-dark) !important;
+        border-color: var(--color-primary-dark) !important;
+      }
+    }
+
+    .footerText {
+      margin-top: 4rem;
+      text-align: center;
+      color: var(--color-neutral);
+    }
+  }
+}
+
+@media (max-width: 1024px) {
+  .authFluidFormBox {
+    width: 400px;
+    padding: 2.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .authFluidRight {
+    display: none;
+  }
+
+  .authFluidFormBox {
+    width: 100%;
+    padding: 2rem;
+    box-shadow: none;
+  }
+}

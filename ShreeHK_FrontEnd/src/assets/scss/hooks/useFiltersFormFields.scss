@@ -1,0 +1,54 @@
+.filter-form-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+
+  .filter-item {
+    margin: 0 !important;
+
+    .ant-select-selector,
+    .ant-input-affix-wrapper,
+    .ant-picker {
+      height: 30px !important;
+      min-height: 30px !important;
+      display: flex;
+      align-items: center;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+  }
+
+  // Exact widths from your inline styles
+  .width-type { width: 160px; }
+  .width-invoice { width: 220px; }
+  .width-date { width: 300px; }
+  .width-party { width: 250px; }
+
+  .filter-checks {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 10px;
+
+    .ant-checkbox-wrapper {
+      margin-inline-start: 0 !important;
+      font-size: 12px;
+    }
+  }
+
+  .filter-radios {
+    .ant-radio-button-wrapper {
+      height: 30px;
+      line-height: 28px;
+      padding: 0 10px;
+      font-size: 12px;
+    }
+  }
+
+  // Hover effect for a better ERP feel
+  .ant-select:hover .ant-select-selector,
+  .ant-input-affix-wrapper:hover,
+  .ant-picker:hover {
+    border-color: var(--color-primary) !important;
+  }
+}

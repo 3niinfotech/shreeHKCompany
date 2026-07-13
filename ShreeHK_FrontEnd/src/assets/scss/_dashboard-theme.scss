@@ -1,0 +1,130 @@
+// Dashboard view structural styles (color tokens from src/theme via applyTheme)
+[data-view-mode="dashboard"]:not([data-theme="dark"]) {
+  [class*="dashboardSider"] {
+    box-shadow: none !important;
+    border-right: var(--border-width-thin) solid var(--color-sidebar-border) !important;
+
+    [class*="brand"] {
+      color: var(--color-text-heading);
+      border-bottom-color: var(--color-sidebar-border);
+
+      a {
+        color: inherit;
+      }
+    }
+
+    [class*="brandIcon"] {
+      background: var(--color-primary-pale);
+      color: var(--color-primary);
+    }
+
+    [class*="brandBadge"] {
+      background: var(--color-primary-light);
+      color: var(--color-primary);
+    }
+
+    [class*="sideMenu"] {
+      :global(.ant-menu-item),
+      :global(.ant-menu-submenu-title) {
+        color: var(--color-text-muted) !important;
+      }
+
+      :global(.ant-menu-item-selected) {
+        color: var(--color-sidebar-accent) !important;
+        background: var(--color-sidebar-active-bg) !important;
+        font-weight: 600;
+        border-left: 3px solid var(--color-primary);
+        border-radius: 0 var(--radius-md) var(--radius-md) 0 !important;
+      }
+
+      :global(.ant-menu-item:hover),
+      :global(.ant-menu-submenu-title:hover) {
+        color: var(--color-sidebar-accent) !important;
+        background: var(--color-sidebar-hover-bg) !important;
+      }
+
+      :global(.ant-menu-submenu-selected > .ant-menu-submenu-title) {
+        color: var(--color-sidebar-accent) !important;
+      }
+
+      :global(.ant-menu-item-group-title) {
+        color: var(--color-text-muted) !important;
+        opacity: 0.95;
+      }
+
+      :global(.ant-menu-item-divider) {
+        border-color: var(--color-sidebar-border) !important;
+      }
+
+      :global(.ant-menu-sub.ant-menu-inline) {
+        background: var(--color-sidebar-bg) !important;
+      }
+    }
+
+    [class*="helpCard"] {
+      background: linear-gradient(
+        145deg,
+        var(--color-primary) 0%,
+        var(--color-primary-medium) 55%,
+        var(--color-primary-dark) 100%
+      );
+      border: none;
+
+      [class*="helpTitle"] {
+        color: var(--color-text-inverse);
+      }
+
+      [class*="helpSub"] {
+        color: var(--color-text-on-primary);
+        opacity: 0.72;
+      }
+
+      [class*="helpBtn"] {
+        background: var(--color-sidebar-hover-bg);
+        border-color: var(--color-sidebar-border);
+        color: var(--color-text-inverse);
+
+        &:hover {
+          background: var(--color-sidebar-active-bg);
+          border-color: var(--color-border);
+        }
+      }
+
+      [class*="helpDecor"] {
+        border-color: var(--color-sidebar-border);
+
+        &::before {
+          border-color: var(--color-sidebar-border);
+          opacity: 0.6;
+        }
+      }
+    }
+
+    [class*="collapseToggle"] {
+      color: var(--color-text-muted);
+      background: var(--color-sidebar-footer-bg);
+      border-top-color: var(--color-sidebar-border);
+
+      &:hover {
+        color: var(--color-primary);
+        background: var(--color-sidebar-hover-bg);
+      }
+    }
+  }
+
+  [class*="headerStyle"] {
+    [class*="appHeader"] {
+      background: var(--color-header-bg) !important;
+      border-bottom: var(--border-width-thin) solid var(--color-border);
+      box-shadow: var(--shadow-header);
+    }
+  }
+
+  .ant-input:focus,
+  .ant-input-affix-wrapper-focused,
+  .ant-input-number-focused,
+  .ant-select-focused .ant-select-selector,
+  .ant-picker-focused {
+    box-shadow: 0 0 0 2px var(--color-input-focus-ring) !important;
+  }
+}

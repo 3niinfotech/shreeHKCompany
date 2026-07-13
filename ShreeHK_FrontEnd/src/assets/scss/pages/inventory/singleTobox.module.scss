@@ -1,0 +1,190 @@
+@use "../../variables" as v;
+
+.main-singletobox {
+  padding: 16px;
+  background-color: v.$bg-light;
+  min-height: 100vh;
+  overflow-y: hidden;
+
+  .infoCard {
+    margin-bottom: 16px;
+    border-radius: 8px;
+    border: 1px solid v.$border-color;
+    box-shadow: var(--shadow-sm);
+
+    :global(.ant-card-body) {
+      padding: 16px 20px;
+    }
+  }
+
+  .box-action-button {
+    background-color: v.$primary-color;
+    border-color: v.$primary-color;
+    font-weight: 500;
+    height: 36px;
+    padding: 0 20px;
+
+    &:hover {
+      background-color: var(--color-primary-dark) !important;
+      border-color: var(--color-primary-dark) !important;
+    }
+  }
+}
+
+.statsText {
+  font-size: 13px;
+  color: var(--color-text-body);
+
+  b {
+    font-size: 14px;
+    margin-left: 4px;
+  }
+}
+
+.erpTable {
+  background: var(--color-bg-card);
+  border-radius: 4px;
+  overflow: hidden;
+
+  :global {
+    .ant-table-thead>tr>th {
+      background-color: v.$header-bg !important;
+      color: var(--color-text-inverse) !important;
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: capitalize;
+      border-bottom: 1px solid var(--color-secondary-dark);
+      padding: 10px 8px !important;
+
+      &.ant-table-cell-fix-left-last::after {
+        border-right: 1px solid var(--color-secondary-dark);
+      }
+    }
+
+    .ant-table-tbody>tr>td {
+      font-size: 12px;
+      padding: 8px !important;
+      border-bottom: 1px solid v.$border-color;
+    }
+
+    .ant-table-tbody>tr:hover>td {
+      background-color: var(--color-info-light) !important;
+    }
+
+    .ant-table-summary {
+      background-color: var(--color-bg-muted);
+      font-weight: 600;
+      color: var(--color-text-heading);
+
+      td {
+        border-top: 2px solid v.$border-color;
+        padding: 12px 8px !important;
+      }
+    }
+
+    .ant-checkbox-inner {
+      border-radius: 2px;
+    }
+  }
+}
+
+.addToBoxBtn {
+  background-color: v.$primary-color;
+  border-color: v.$primary-color;
+  font-weight: 500;
+  height: 36px;
+  padding: 0 20px;
+
+  &:hover {
+    background-color: var(--color-primary-dark) !important;
+    border-color: var(--color-primary-dark) !important;
+  }
+}
+
+.main-single-to-parcel {
+  padding: 16px;
+  background-color: v.$bg-light;
+  min-height: 100vh;
+  overflow-y: hidden;
+
+  .parcel-info-card {
+    margin-bottom: 16px;
+    border-radius: 8px;
+    border: 1px solid v.$border-color;
+    box-shadow: var(--shadow-sm);
+
+    :global(.ant-card-body) {
+      padding: 16px 20px;
+    }
+  }
+
+  .parcel-stats-text {
+    font-size: 13px;
+    color: var(--color-text-body);
+
+    b {
+      font-size: 14px;
+      margin-left: 4px;
+    }
+  }
+
+  .parcel-erp-table {
+    background: var(--color-bg-card);
+    border-radius: 4px;
+    overflow: hidden;
+
+    :global {
+      .ant-table-thead>tr>th {
+        background-color: v.$header-bg !important;
+        color: var(--color-text-inverse) !important;
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: capitalize;
+        border-bottom: 1px solid var(--color-secondary-dark);
+        padding: 10px 8px !important;
+
+        &.ant-table-cell-fix-left-last::after {
+          border-right: 1px solid var(--color-secondary-dark);
+        }
+      }
+
+      .ant-table-tbody>tr>td {
+        font-size: 12px;
+        padding: 8px !important;
+        border-bottom: 1px solid v.$border-color;
+      }
+
+      .ant-table-tbody>tr:hover>td {
+        background-color: var(--color-info-light) !important;
+      }
+
+      .ant-table-summary {
+        background-color: var(--color-bg-muted);
+        font-weight: 600;
+        color: var(--color-text-heading);
+
+        td {
+          border-top: 2px solid v.$border-color;
+          padding: 12px 8px !important;
+        }
+      }
+
+      .ant-checkbox-inner {
+        border-radius: 2px;
+      }
+    }
+  }
+
+  .parcel-action-btn {
+    background-color: v.$primary-color;
+    border-color: v.$primary-color;
+    font-weight: 500;
+    height: 36px;
+    padding: 0 20px;
+
+    &:hover {
+      background-color: var(--color-primary-dark) !important;
+      border-color: var(--color-primary-dark) !important;
+    }
+  }
+}

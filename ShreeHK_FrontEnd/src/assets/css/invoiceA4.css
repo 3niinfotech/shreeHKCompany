@@ -1,0 +1,76 @@
+/* Shared A4 full-page sizing for transaction invoice preview + print */
+
+.approval-memo-root .sheet,
+.gia-memo-invoice-root .sheet,
+.purchase-invoice-root .sheet,
+.venya-invoice-page {
+  width: 210mm;
+  min-height: 297mm;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 210mm;
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .pageShell,
+  .transaction-invoice-modal-wrap,
+  .transaction-invoice-modal,
+  .transaction-invoice-print-root {
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #fff !important;
+  }
+
+  .pageShell .paper {
+    width: 210mm !important;
+    max-width: none !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+  }
+
+  .approval-memo-root .sheet,
+  .gia-memo-invoice-root .sheet,
+  .purchase-invoice-root .sheet,
+  .venya-invoice-page {
+    width: 210mm !important;
+    max-width: none !important;
+    min-height: 297mm;
+    margin: 0 auto !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .approval-memo-root .am-page-break,
+  .gia-memo-invoice-root .gia-page-break {
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .approval-memo-root .am-page-break:last-child,
+  .gia-memo-invoice-root .gia-page-break:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  .approval-memo-root .sheet.sale-invoice-sheet {
+    height: 297mm !important;
+    max-height: 297mm !important;
+    overflow: hidden !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}

@@ -1,0 +1,408 @@
+.on-memo-modal {
+
+  .ant-modal-content {
+    padding: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    height: calc(100vh - 40px);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ant-modal-header {
+    padding: 0;
+    margin: 0;
+    border-bottom: none;
+    flex-shrink: 0;
+
+    .memo-modal-title {
+      padding: 16px 24px;
+      border-radius: 8px 8px 0 0;
+
+      .memo-title-text {
+        display: block;
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--color-text-body);
+      }
+
+      .memo-title-count {
+        display: block;
+        font-size: 13px;
+        color: var(--color-text-muted);
+        margin-top: 4px;
+      }
+    }
+  }
+
+  .ant-modal-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .memo-modal-header {
+    padding: 12px 16px;
+    background: var(--color-bg-card);
+    border-bottom: 1px solid var(--color-border);
+    flex-shrink: 0;
+
+    .memo-header-form {
+      row-gap: 10px;
+
+      .ant-form-item {
+        margin-bottom: 0;
+        margin-right: 12px;
+      }
+
+      .ant-form-item-label>label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--color-text-body);
+      }
+
+      .ant-input,
+      .ant-picker,
+      .ant-select-selector,
+      .ant-input-number {
+        width: 126px;
+        padding: 8px 10px;
+      }
+
+      .ant-input-number {
+        display: flex;
+        align-items: center;
+
+        .ant-input-number-input {
+          padding: 0;
+          height: auto;
+        }
+      }
+
+      .ant-select-selector {
+        height: auto !important;
+        display: flex;
+        align-items: center;
+      }
+    }
+  }
+
+  .memo-modal-table {
+    flex: 1;
+    overflow: hidden;
+    margin: 20px 0px;
+
+    .ant-table-wrapper {
+      height: 100%;
+
+      .ant-table {
+        font-size: 13px;
+
+        .ant-table-thead>tr>th {
+          padding: 10px 12px;
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--color-text-body);
+          background: var(--color-bg-muted);
+          border-bottom: 2px solid var(--color-border);
+        }
+
+        .ant-table-tbody>tr>td {
+          padding: 8px 12px;
+          font-size: 13px;
+          color: var(--color-text-body);
+          border-bottom: 1px solid var(--color-border);
+        }
+
+        .ant-table-tbody>tr:hover>td {
+          background: var(--table-row-hover);
+        }
+      }
+    }
+
+    .memo-editable-cell {
+      width: 110px;
+
+      .ant-input-number-input {
+        font-size: 13px;
+        height: 30px;
+        padding: 4px 8px;
+      }
+    }
+  }
+
+  .memo-sell-extra-fields {
+    padding: 14px 20px;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-bg-card);
+    display: flex;
+    align-items: anchor-center;
+    justify-content: space-between;
+
+    .memo-sell-group {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+
+      .memo-sell-label-top {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--color-text-body);
+        margin-bottom: 6px;
+        white-space: nowrap;
+      }
+
+      .memo-sell-inputs {
+        display: flex;
+        gap: 6px;
+
+        .ant-input-number-readonly {
+          background: var(--color-bg-muted);
+          color: var(--color-text-muted);
+          font-weight: 600;
+        }
+      }
+    }
+
+    .memo-sell-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 16px;
+      margin-bottom: 12px;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    .ant-input,
+    .ant-input-number,
+    .ant-picker {
+      height: 32px;
+      font-size: 13px;
+      padding: 4px 10px;
+      border: 1px solid var(--color-border-strong);
+      border-radius: 4px;
+    }
+
+    .ant-input-number {
+      display: flex;
+      align-items: center;
+
+      .ant-input-number-input {
+        height: 24px;
+        padding: 0;
+      }
+    }
+
+    .ant-select {
+      .ant-select-selector {
+        height: 32px !important;
+        font-size: 13px;
+        padding: 0 10px;
+        display: flex;
+        align-items: center;
+        border-radius: 4px;
+      }
+    }
+
+    .ant-picker {
+      .ant-picker-input>input {
+        font-size: 13px;
+      }
+    }
+
+    .ant-checkbox-wrapper {
+      font-size: 13px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+    }
+  }
+
+  .memo-modal-footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-bg-card);
+    flex-shrink: 0;
+
+    .memo-footer-stats {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+
+      .memo-stat-card {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+        padding: 12px 16px;
+        border-radius: 8px;
+        background: var(--color-success-light);
+        border: 1px solid var(--color-badge-success-border);
+      }
+
+      .memo-stat-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        background: var(--color-bg-card);
+        border: 1px solid var(--color-badge-success-border);
+
+        &--price {
+          color: var(--color-success-dark);
+          font-size: 16px;
+        }
+
+        &--final {
+          color: var(--color-info);
+          background: var(--color-info-light);
+          border-color: var(--color-badge-info-border);
+        }
+      }
+
+      .memo-stat-info {
+        display: flex;
+        flex-direction: column;
+
+        .memo-stat-label {
+          font-size: 12px;
+          color: var(--color-text-muted);
+        }
+
+        .memo-stat-value {
+          font-size: 16px;
+          font-weight: 700;
+          color: var(--color-text-body);
+
+          &--amount {
+            color: var(--color-error);
+          }
+        }
+      }
+    }
+
+    .memo-footer-narration {
+      margin-bottom: 30px;
+
+      .memo-narration-label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--color-text-body);
+        margin-bottom: 6px;
+
+        span {
+          font-weight: 400;
+          color: var(--color-chart-muted);
+          font-style: italic;
+        }
+      }
+
+      .ant-input-textarea {
+        .ant-input {
+          font-size: 14px;
+          border-radius: 6px;
+        }
+      }
+    }
+
+    .memo-footer-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+
+      .ant-btn {
+        height: 36px;
+        font-size: 14px;
+        padding: 0 20px;
+        border-radius: 6px;
+      }
+    }
+  }
+}
+
+.on-memo-modal--sell {
+  .ant-modal-header .memo-modal-title {
+    padding: 10px 20px;
+  }
+
+  .memo-modal-header {
+    padding: 8px 16px;
+
+    .memo-header-form {
+      row-gap: 6px;
+
+      .ant-form-item {
+        margin-right: 8px;
+      }
+    }
+  }
+
+  .memo-modal-table {
+    .ant-table-wrapper .ant-table {
+      .ant-table-thead>tr>th {
+        padding: 6px 10px;
+      }
+
+      .ant-table-tbody>tr>td {
+        padding: 4px 10px;
+      }
+    }
+  }
+
+  .memo-sell-extra-fields {
+    padding: 8px 20px;
+
+    .memo-sell-row {
+      margin-bottom: 8px;
+      gap: 12px;
+    }
+
+    .memo-sell-group .memo-sell-label-top {
+      margin-bottom: 2px;
+    }
+
+    .ant-input,
+    .ant-input-number,
+    .ant-picker {
+      height: 28px;
+    }
+
+    .ant-select .ant-select-selector {
+      height: 28px !important;
+    }
+
+    .ant-checkbox-wrapper {
+      height: 28px;
+    }
+  }
+
+  .memo-modal-footer {
+    padding: 10px 20px;
+
+    .memo-footer-stats {
+      margin-bottom: 8px;
+
+      .memo-stat-card {
+        padding: 8px 12px;
+      }
+
+      .memo-stat-icon {
+        width: 30px;
+        height: 30px;
+        font-size: 14px;
+      }
+
+      .memo-stat-info .memo-stat-value {
+        font-size: 14px;
+      }
+    }
+  }
+}

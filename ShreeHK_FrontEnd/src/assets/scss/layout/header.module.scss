@@ -1,0 +1,807 @@
+@use "../variables" as v;
+
+.headerStyle {
+  .appHeader {
+    height: v.$header-height;
+    min-height: v.$header-height;
+    background: v.$header-bg !important;
+    padding: 0 v.$spacing5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: v.$spacing5;
+    line-height: normal;
+    position: relative;
+    z-index: 1000;
+    flex-shrink: 0;
+    box-shadow: v.$shadow-header;
+
+    &.appHeaderCompact {
+      .headerLeft {
+        padding-left: 0;
+      }
+    }
+
+    .headerLeft {
+      display: flex;
+      align-items: center;
+      gap: v.$spacing4;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .logoLink {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: v.$text-inverse;
+      text-decoration: none;
+      white-space: nowrap;
+
+      &:hover {
+        color: v.$text-inverse;
+      }
+    }
+
+    .logoImage {
+      display: block;
+      height: 36px;
+      width: auto;
+      max-width: 160px;
+      object-fit: contain;
+    }
+
+    .logoIcon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      color: v.$text-inverse;
+    }
+
+    .logoText {
+      font-size: var(--font-size-2xl);
+      font-weight: var(--font-weight-semibold);
+      letter-spacing: var(--letter-spacing-wide);
+    }
+
+    .menuToggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      border: none;
+      border-radius: var(--radius-md);
+      background: transparent;
+      color: var(--color-primary);
+      cursor: pointer;
+      transition: background 0.2s ease;
+
+      &:hover {
+        background: var(--color-sidebar-hover-bg);
+      }
+    }
+
+    .headerSearch {
+      flex: 1;
+      min-width: 0;
+      max-width: 560px;
+
+      :global(.topbar-smart-search) {
+        width: 100%;
+      }
+    }
+
+    .headerRight {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: v.$spacing4;
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+
+    .connectionStatus {
+      display: inline-flex;
+      align-items: center;
+      gap: v.$spacing4;
+      padding: 10px 18px;
+      border-radius: 8px;
+      border: var(--border-width-default) solid var(--color-sidebar-border);
+      background: var(--color-sidebar-hover-bg);
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      line-height: 1;
+      white-space: nowrap;
+      color: v.$text-inverse;
+      transition:
+        background 0.35s ease,
+        border-color 0.35s ease,
+        box-shadow 0.35s ease,
+        color 0.35s ease;
+
+      .statusIndicator {
+        position: relative;
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .statusPulseRing {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .statusDot {
+        position: relative;
+        z-index: 1;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+
+      .statusLabel {
+        letter-spacing: 0.02em;
+      }
+
+      &.online {
+        animation: connectionOnlineGlow 2.8s ease-in-out infinite;
+
+        .statusDot {
+          background: v.$status-online;
+          box-shadow: 0 0 8px rgba(82, 196, 26, 0.85);
+          animation: statusDotBreathe 2.2s ease-in-out infinite;
+        }
+
+        .statusPulseRing {
+          border: 1.5px solid v.$status-online;
+          animation: statusPulseRing 2.4s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+
+          &:nth-child(2) {
+            animation-delay: 1.2s;
+          }
+        }
+      }
+
+      &.offline {
+        background: var(--color-status-offline-bg);
+        border-color: var(--color-status-offline-border);
+        animation: connectionOfflineAlert 1.4s ease-in-out infinite;
+
+        .statusDot {
+          background: v.$status-offline;
+          box-shadow: 0 0 10px rgba(255, 77, 79, 0.75);
+          animation: statusDotBlink 1s step-end infinite;
+        }
+
+        .statusPulseRing {
+          border: 1.5px solid v.$status-offline;
+          animation: statusPulseRingUrgent 1.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+
+          &:nth-child(2) {
+            animation-delay: 0.8s;
+          }
+        }
+      }
+    }
+
+    @keyframes statusPulseRing {
+      0% {
+        transform: scale(0.55);
+        opacity: 0.75;
+      }
+
+      70% {
+        opacity: 0.15;
+      }
+
+      100% {
+        transform: scale(2.6);
+        opacity: 0;
+      }
+    }
+
+    @keyframes statusPulseRingUrgent {
+      0% {
+        transform: scale(0.5);
+        opacity: 0.9;
+      }
+
+      100% {
+        transform: scale(2.8);
+        opacity: 0;
+      }
+    }
+
+    @keyframes statusDotBreathe {
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.2);
+      }
+    }
+
+    @keyframes statusDotBlink {
+      0%,
+      45% {
+        opacity: 1;
+      }
+
+      50%,
+      100% {
+        opacity: 0.35;
+      }
+    }
+
+    @keyframes connectionOnlineGlow {
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(82, 196, 26, 0);
+      }
+
+      50% {
+        box-shadow: 0 0 14px 1px rgba(82, 196, 26, 0.22);
+      }
+    }
+
+    @keyframes connectionOfflineAlert {
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(255, 77, 79, 0);
+      }
+
+      50% {
+        box-shadow: 0 0 16px 2px rgba(255, 77, 79, 0.28);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .connectionStatus,
+      .connectionStatus .statusDot,
+      .connectionStatus .statusPulseRing {
+        animation: none !important;
+      }
+    }
+
+    .notificationBtn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      border: none;
+      border-radius: 10px;
+      background: transparent;
+      color: v.$text-inverse;
+      cursor: pointer;
+      transition: background 0.2s ease;
+
+      &:hover {
+        background: var(--color-sidebar-hover-bg);
+      }
+
+      &.hasUnread {
+        animation: bellShake 0.7s ease both;
+      }
+    }
+
+    @keyframes bellShake {
+      0%   { transform: rotate(0deg); }
+      15%  { transform: rotate(18deg); }
+      30%  { transform: rotate(-16deg); }
+      45%  { transform: rotate(12deg); }
+      60%  { transform: rotate(-8deg); }
+      75%  { transform: rotate(4deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+    .notificationBadge {
+      position: absolute;
+      top: -9px;
+      right: -5px;
+      min-width: 24px;
+      height: 24px;
+      border-radius: var(--radius-full);
+      background: v.$danger;
+      color: v.$text-inverse;
+      font-size: 11px;
+      font-weight: var(--font-weight-bold);
+      line-height: 20px;
+      text-align: center;
+      border: 2px solid v.$header-bg;
+      animation: badgePop 0.35s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+
+      &.badgePulse {
+        animation: badgePop 0.35s cubic-bezier(0.36, 0.07, 0.19, 0.97) both,
+                   badgePulse 1.8s ease 0.35s 2;
+      }
+    }
+
+    @keyframes badgePop {
+      0%   { transform: scale(0.4); opacity: 0; }
+      70%  { transform: scale(1.25); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes badgePulse {
+      0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, v.$danger 60%, transparent); }
+      50%       { box-shadow: 0 0 0 6px color-mix(in srgb, v.$danger 0%, transparent); }
+    }
+  }
+
+  @media (max-width: 992px) {
+    .appHeader {
+      grid-template-columns: auto 1fr auto;
+      gap: v.$spacing3;
+      padding: 0 14px;
+
+      .headerCenter {
+        max-width: none;
+      }
+    }
+  }
+
+  @media (max-width: 768px) {
+    .appHeader {
+      .headerCenter {
+        display: none;
+      }
+
+      .connectionStatus .statusLabel {
+        display: none;
+      }
+
+      .connectionStatus {
+        padding: 7px 10px;
+      }
+    }
+  }
+
+  @media (max-width: 576px) {
+    .appHeader {
+      padding: 0 10px;
+      gap: v.$spacing2;
+
+      .logoText {
+        font-size: var(--font-size-xl);
+      }
+
+      .headerRight {
+        gap: v.$spacing2;
+      }
+    }
+  }
+}
+
+:global([data-view-mode="dashboard"]:not([data-theme="dark"])) {
+  .headerStyle .appHeader {
+    background: var(--color-header-bg) !important;
+    border-bottom: var(--border-width-thin) solid var(--color-border);
+    box-shadow: var(--shadow-header);
+
+    .connectionStatus {
+      background: var(--color-alert-success-bg);
+      border-color: var(--color-badge-success-border);
+      color: var(--color-alert-success-text);
+      animation: none;
+
+      &.online {
+        animation: connectionOnlineGlowLight 2.8s ease-in-out infinite;
+
+        .statusDot {
+          background: var(--color-success);
+          box-shadow: 0 0 8px rgba(82, 196, 26, 0.55);
+        }
+
+        .statusPulseRing {
+          border-color: var(--color-success);
+        }
+      }
+
+      &.offline {
+        background: var(--color-alert-error-bg);
+        border-color: var(--color-badge-error-border);
+        color: var(--color-alert-error-text);
+        animation: connectionOfflineAlert 1.4s ease-in-out infinite;
+
+        .statusDot {
+          background: var(--color-danger);
+          box-shadow: 0 0 10px rgba(255, 77, 79, 0.55);
+        }
+
+        .statusPulseRing {
+          border-color: var(--color-danger);
+        }
+      }
+    }
+
+    @keyframes connectionOnlineGlowLight {
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(82, 196, 26, 0);
+      }
+
+      50% {
+        box-shadow: 0 0 12px 1px rgba(82, 196, 26, 0.18);
+      }
+    }
+
+    .notificationBtn {
+      color: var(--color-text-heading);
+    }
+
+    .notificationBadge {
+      border-color: var(--color-text-inverse);
+    }
+  }
+
+  :global(.profile-dropdown-link) {
+    [class*="companyName"] {
+      color: var(--color-text-heading) !important;
+    }
+
+    [class*="roleName"] {
+      color: var(--color-text-muted) !important;
+    }
+
+    [class*="chevron"] {
+      color: var(--color-text-muted) !important;
+    }
+
+    [class*="avatar"] {
+      background: var(--color-primary-pale) !important;
+      color: var(--color-primary) !important;
+      border-color: var(--color-border) !important;
+    }
+
+    &:hover {
+      background: var(--color-input-focus-ring) !important;
+    }
+  }
+}
+
+// Portaled modal — must live outside .headerStyle
+.networkModalRoot {
+  :global(.ant-modal-content) {
+    padding: 0;
+    border-radius: 22px;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    box-shadow:
+      0 24px 48px rgba(15, 23, 42, 0.18),
+      0 8px 20px rgba(15, 23, 42, 0.1);
+    animation: networkModalEnter 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  :global(.ant-modal-body) {
+    padding: 0;
+  }
+
+  :global(.ant-modal-mask) {
+    backdrop-filter: blur(6px);
+    background: rgba(15, 23, 42, 0.45) !important;
+  }
+}
+
+.networkModalBody {
+  overflow: hidden;
+  background: var(--color-bg-elevated, #fff);
+  color: var(--color-text-heading, #1e293b);
+
+  &.online {
+    .networkModalHero {
+      background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--color-success, #52c41a) 18%, #fff) 0%,
+        color-mix(in srgb, var(--color-primary) 12%, #fff) 100%
+      );
+    }
+
+    .networkModalIcon {
+      color: var(--color-success, #52c41a);
+      background: rgba(255, 255, 255, 0.92);
+      border-color: color-mix(in srgb, var(--color-success, #52c41a) 35%, transparent);
+      box-shadow: 0 10px 28px color-mix(in srgb, var(--color-success, #52c41a) 28%, transparent);
+    }
+
+    .networkModalPulse {
+      border-color: var(--color-success, #52c41a);
+    }
+
+    .networkModalBadge {
+      background: color-mix(in srgb, var(--color-success, #52c41a) 14%, #fff);
+      color: var(--color-success, #389e0d);
+      border-color: color-mix(in srgb, var(--color-success, #52c41a) 28%, transparent);
+    }
+
+    .networkModalProgressBar {
+      background: linear-gradient(90deg, var(--color-success), var(--color-primary));
+    }
+  }
+
+  &.offline {
+    .networkModalHero {
+      background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--color-danger, #ff4d4f) 16%, #fff) 0%,
+        color-mix(in srgb, #f97316 10%, #fff) 100%
+      );
+    }
+
+    .networkModalIcon {
+      color: var(--color-danger, #ff4d4f);
+      background: rgba(255, 255, 255, 0.94);
+      border-color: color-mix(in srgb, var(--color-danger, #ff4d4f) 35%, transparent);
+      box-shadow: 0 10px 28px color-mix(in srgb, var(--color-danger, #ff4d4f) 26%, transparent);
+      animation: networkIconShake 2.4s ease-in-out infinite;
+    }
+
+    .networkModalPulse {
+      border-color: var(--color-danger, #ff4d4f);
+      animation-duration: 1.8s;
+    }
+
+    .networkModalBadge {
+      background: color-mix(in srgb, var(--color-danger, #ff4d4f) 12%, #fff);
+      color: var(--color-danger, #cf1322);
+      border-color: color-mix(in srgb, var(--color-danger, #ff4d4f) 28%, transparent);
+    }
+  }
+}
+
+.networkModalHero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 32px 24px 26px;
+  text-align: center;
+}
+
+.networkModalIconWrap {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.networkModalPulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  opacity: 0;
+  animation: networkModalPulse 2.4s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+
+  &:nth-child(2) {
+    animation-delay: 1.2s;
+  }
+}
+
+.networkModalIcon {
+  position: relative;
+  z-index: 1;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.networkModalBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold, 600);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.networkModalContent {
+  padding: 8px 28px 28px;
+  text-align: center;
+}
+
+.networkModalTitle {
+  font-size: clamp(1.35rem, 2.5vw, 1.65rem);
+  font-weight: var(--font-weight-bold, 700);
+  letter-spacing: -0.02em;
+  margin-bottom: 10px;
+  color: var(--color-text-heading, #0f172a);
+}
+
+.networkModalSubTitle {
+  font-size: var(--font-size-md, 0.95rem);
+  line-height: 1.55;
+  color: var(--color-text-muted, #64748b);
+  margin: 0 auto 18px;
+  max-width: 34ch;
+}
+
+.networkModalTips {
+  list-style: none;
+  margin: 0 0 22px;
+  padding: 14px 16px;
+  text-align: left;
+  border-radius: 12px;
+  background: var(--color-alert-error-bg, #fff2f0);
+  border: 1px solid var(--color-badge-error-border, #ffccc7);
+
+  li {
+    position: relative;
+    padding-left: 18px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--color-text-muted, #64748b);
+
+    &::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.55em;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--color-danger, #ff4d4f);
+    }
+
+    + li {
+      margin-top: 8px;
+    }
+  }
+}
+
+.networkModalProgressTrack {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-border, #e2e8f0);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.networkModalProgressBar {
+  display: block;
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  animation: networkModalProgressShrink linear forwards;
+  border-radius: inherit;
+}
+
+.networkModalActions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.networkModalBtnPrimary,
+.networkModalBtnGhost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: var(--font-weight-semibold, 600);
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.networkModalBtnPrimary {
+  border: none;
+  color: #fff;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-medium) 100%);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--color-primary) 32%, transparent);
+
+  &:hover {
+    box-shadow: 0 10px 24px color-mix(in srgb, var(--color-primary) 40%, transparent);
+  }
+
+  .offline & {
+    background: linear-gradient(135deg, var(--color-danger, #ff4d4f) 0%, #f97316 100%);
+    box-shadow: 0 8px 20px color-mix(in srgb, var(--color-danger, #ff4d4f) 30%, transparent);
+  }
+}
+
+.networkModalBtnGhost {
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: transparent;
+  color: var(--color-text-muted, #64748b);
+
+  &:hover {
+    background: var(--color-sidebar-hover-bg, #f8fafc);
+    border-color: var(--color-border-strong, #cbd5e1);
+    color: var(--color-text-heading, #334155);
+  }
+}
+
+@keyframes networkModalEnter {
+  0% {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes networkModalPulse {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.75;
+  }
+
+  100% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
+}
+
+@keyframes networkModalProgressShrink {
+  from {
+    transform: scaleX(1);
+  }
+
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes networkIconShake {
+  0%,
+  88%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  90% {
+    transform: rotate(-8deg);
+  }
+
+  94% {
+    transform: rotate(8deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .networkModalRoot :global(.ant-modal-content),
+  .networkModalPulse,
+  .networkModalIcon,
+  .networkModalProgressBar {
+    animation: none !important;
+  }
+}

@@ -1,0 +1,82 @@
+// Global modal & pop-up shell — border-radius 5px + header close alignment
+
+.ant-modal .ant-modal-container,
+.ant-modal-container,
+.ant-modal .ant-modal-content,
+.ant-modal-content {
+  border-radius: 5px !important;
+  overflow: hidden;
+}
+
+.ant-modal-container {
+  position: relative !important;
+}
+
+.ant-modal-header {
+  display: flex !important;
+  align-items: center !important;
+  min-height: 48px;
+  padding-inline-end: 48px !important;
+  margin-bottom: 0 !important;
+}
+
+.ant-modal-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.4 !important;
+  display: flex;
+  align-items: center;
+}
+
+// Close sits on .ant-modal-container (Ant Design 6) — keep in header band, not modal center
+.ant-modal-close {
+  position: absolute !important;
+  top: 8px !important;
+  inset-inline-end: 8px !important;
+  left: auto !important;
+  transform: none !important;
+  z-index: 11 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 5px !important;
+}
+
+.ant-modal-close-x {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  line-height: 1 !important;
+  font-size: 14px !important;
+}
+
+.ant-popover .ant-popover-inner,
+.ant-popconfirm .ant-popover-inner {
+  border-radius: 5px !important;
+}
+
+.ant-dropdown .ant-dropdown-menu,
+.ant-dropdown-menu {
+  border-radius: 5px !important;
+}
+
+.ant-select-dropdown,
+.ant-picker-dropdown .ant-picker-panel-container,
+.ant-picker-dropdown .ant-picker-panel {
+  border-radius: 5px !important;
+}
+
+.ant-drawer .ant-drawer-content {
+  border-radius: 5px !important;
+}
+
+.ant-modal-confirm .ant-modal-container,
+.ant-modal-confirm .ant-modal-content {
+  border-radius: 5px !important;
+}

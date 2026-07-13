@@ -1,0 +1,74 @@
+// Shared page + table scroll layout (viewport-height tables)
+
+:root {
+  --layout-header-height: 64px;
+  --layout-tabbar-height: 46px;
+  --layout-footer-height: 48px;
+  --layout-content-padding-y: 40px;
+  // Fill parent outlet (dashboard/pageOutlet already accounts for chrome).
+  --app-page-height: 100%;
+}
+
+// Dashboard content outlet — child pages scroll inside pageOutlet.
+.app-page-root {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+// Flex column page shell for list/report screens (filters + table).
+.app-page-fill,
+.page-shell {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.app-page-fill__toolbar {
+  flex-shrink: 0;
+}
+
+.app-page-fill__table {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+// Ant Design table wrapper — body scrolls vertically/horizontally inside viewport.
+.erp-table-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+
+  .ant-table-wrapper {
+    height: 100% !important;
+    display: flex;
+    flex-direction: column;
+
+    .ant-spin-nested-loading,
+    .ant-spin-container {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+  }
+
+  .ant-table {
+    height: 100%;
+  }
+
+  .ant-table-footer {
+    flex-shrink: 0;
+  }
+}

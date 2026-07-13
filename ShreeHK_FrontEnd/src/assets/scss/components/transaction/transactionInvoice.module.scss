@@ -1,0 +1,31 @@
+.pageShell {
+  background: #f1f1f1;
+  padding: 24px 16px 32px;
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  color: #222;
+  -webkit-font-smoothing: antialiased;
+}
+
+.paper {
+  width: 210mm;
+  max-width: 100%;
+  margin: 0 auto;
+  background: transparent;
+  border: none;
+  padding: 0;
+  overflow: visible;
+}
+
+@media print {
+  .pageShell {
+    background: #fff;
+    padding: 0;
+    margin: 0;
+  }
+
+  .paper {
+    width: 210mm;
+    max-width: none;
+    margin: 0 auto;
+  }
+}

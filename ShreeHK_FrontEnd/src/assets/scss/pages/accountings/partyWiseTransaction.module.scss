@@ -1,0 +1,93 @@
+.pageContainer {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.headerRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.addBtn {
+    background-color: var(--color-secondary);
+    border-color: var(--color-secondary);
+    border-radius: 4px;
+    &:hover {
+        background-color: var(--color-secondary-dark) !important;
+        border-color: var(--color-secondary-dark) !important;
+    }
+}
+
+.tableCard {
+    border-radius: 8px;
+    border: none;
+    box-shadow: var(--shadow-md);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    :global(.ant-card-body) {
+        padding: 15px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    :global(.ant-table-footer) {
+        padding: 6px 12px !important;
+        background: transparent;
+    }
+}
+
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    color: var(--color-text-muted);
+}
+
+.searchWrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.searchInput {
+    width: 200px;
+    border-radius: 4px;
+}
+
+.customTable {
+    :global(.ant-table-thead > tr > th) {
+        background-color: var(--color-primary-light) !important;
+        color: var(--color-navy) !important;
+        font-weight: 600;
+        text-align: center;
+        border-bottom: 0.5px solid var(--color-border) !important;
+    }
+
+    :global(.ant-table-tbody > tr:hover > td) {
+        background: var(--table-row-hover) !important;
+    }
+}
+
+.activeRow {
+    background-color: var(--color-primary) !important;
+    td {
+        color: var(--color-text-inverse) !important;
+    }
+    &:hover td {
+        background-color: var(--color-primary-dark) !important;
+    }
+}
+
+.viewIcon { color: var(--color-info); cursor: pointer; }
+.editIcon { color: var(--color-primary); cursor: pointer; }
+.deleteIcon { color: var(--color-danger); cursor: pointer; }

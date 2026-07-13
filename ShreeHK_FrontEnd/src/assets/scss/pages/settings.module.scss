@@ -1,0 +1,58 @@
+.settingsLayout {
+  background: var(--color-card-bg);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+}
+
+.settingsSider {
+  border-right: 1px solid var(--color-border);
+  overflow: auto;
+  height: 100%;
+}
+
+.settingsMenu {
+  height: 100%;
+  padding-top: 16px;
+}
+
+.settingsContent {
+  padding: 24px 40px;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+}
+
+.sectionWrap {
+  max-width: 1080px;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.inputMd {
+  max-width: 400px;
+}
+
+.inputSm {
+  max-width: 220px;
+}
+
+.inlineHint {
+  margin-left: 12px;
+}
+
+@media (max-width: 992px) {
+  .settingsLayout {
+    height: 100%;
+    max-height: 100%;
+  }
+
+  .settingsContent {
+    padding: 18px;
+  }
+}

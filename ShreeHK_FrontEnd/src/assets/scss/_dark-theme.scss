@@ -1,0 +1,184 @@
+// Dark mode structural overrides (color tokens applied via src/theme/applyTheme.ts)
+[data-theme="dark"] {
+  // placeholder — tokens set on :root by ThemeApplier
+}
+
+// ── Dashboard sidebar (Ant Design sider + inline menu) ──
+[data-theme="dark"] [class*="dashboardSider"] {
+  background: var(--color-sidebar-bg) !important;
+
+  :global(.ant-layout-sider-children) {
+    background: var(--color-sidebar-bg) !important;
+  }
+
+  [class*="sideMenu"] {
+    background: var(--color-sidebar-bg) !important;
+
+    :global(.ant-menu.ant-menu-dark),
+    :global(.ant-menu-dark) {
+      background: transparent !important;
+      color: var(--color-text-on-primary);
+    }
+
+    :global(.ant-menu-item),
+    :global(.ant-menu-submenu-title) {
+      color: var(--color-text-on-primary) !important;
+    }
+
+    :global(.ant-menu-item-selected),
+    :global(.ant-menu-submenu-selected > .ant-menu-submenu-title) {
+      color: var(--color-sidebar-accent) !important;
+    }
+
+    :global(.ant-menu-sub.ant-menu-inline) {
+      background: var(--color-sidebar-footer-bg) !important;
+    }
+  }
+
+  [class*="brand"] {
+    color: var(--color-text-inverse);
+    border-bottom-color: var(--color-sidebar-border);
+  }
+
+  [class*="helpCard"] {
+    background: linear-gradient(
+      135deg,
+      var(--color-sidebar-hover-bg) 0%,
+      var(--color-sidebar-active-bg) 100%
+    );
+    border: var(--border-width-thin) solid var(--color-sidebar-border);
+
+    [class*="helpBtn"] {
+      background: var(--color-sidebar-active-bg);
+      border-color: var(--color-sidebar-border);
+
+      &:hover {
+        background: var(--color-primary-light);
+      }
+    }
+  }
+
+  [class*="collapseToggle"] {
+    color: var(--color-text-muted);
+    background: var(--color-sidebar-footer-bg);
+    border-top-color: var(--color-sidebar-border);
+
+    &:hover {
+      color: var(--color-text-inverse);
+    }
+  }
+}
+
+// Submenu flyout (collapsed sidebar)
+[data-theme="dark"] :global(.ant-menu-dark.ant-menu-submenu-popup) {
+  background: var(--color-popover-bg) !important;
+
+  :global(.ant-menu-item),
+  :global(.ant-menu-submenu-title) {
+    color: var(--color-text-on-primary) !important;
+  }
+}
+
+// ── Top app header (dashboard + web view) ──
+[data-theme="dark"] [class*="headerStyle"] {
+  [class*="appHeader"] {
+    background: var(--color-header-bg) !important;
+    border-bottom: var(--border-width-thin) solid var(--color-border);
+    box-shadow: var(--shadow-md);
+  }
+
+  :global(.topbar-input.ant-input-affix-wrapper),
+  :global(.topbar-input.ant-input) {
+    background-color: var(--color-sidebar-hover-bg) !important;
+    border: var(--border-width-thin) solid var(--color-sidebar-border) !important;
+
+    :global(.ant-input) {
+      color: var(--color-text-on-primary) !important;
+      background: transparent !important;
+
+      &::placeholder {
+        color: var(--color-input-placeholder) !important;
+      }
+    }
+
+    :global(.ant-input-suffix .anticon) {
+      color: var(--color-text-muted) !important;
+    }
+  }
+
+  [class*="connectionStatus"] {
+    &.online {
+      background: var(--color-status-online-bg);
+      border-color: var(--color-status-online-border);
+      color: var(--color-status-online);
+    }
+
+    &.offline {
+      background: var(--color-status-offline-bg);
+      border-color: var(--color-status-offline-border);
+      color: var(--color-status-offline);
+    }
+  }
+}
+
+// ── Web view horizontal navbar ──
+[data-theme="dark"] [class*="navWrapper"] {
+  background: var(--color-card-bg) !important;
+  border-bottom-color: var(--color-border) !important;
+
+  :global(.ant-menu-horizontal) {
+    background: transparent !important;
+
+    > :global(.ant-menu-item),
+    > :global(.ant-menu-submenu) > :global(.ant-menu-submenu-title) {
+      color: var(--color-neutral) !important;
+      background: transparent !important;
+
+      &:hover:not(:global(.ant-menu-item-selected)) {
+        color: var(--color-primary) !important;
+        background: transparent !important;
+      }
+    }
+
+    > :global(.ant-menu-item-selected),
+    > :global(.ant-menu-submenu-selected) > :global(.ant-menu-submenu-title) {
+      color: var(--color-primary) !important;
+      background: transparent !important;
+
+      &::after {
+        border-bottom-color: var(--color-primary) !important;
+      }
+    }
+  }
+}
+
+// ── Tab bar (dashboard view) ──
+[data-theme="dark"] [class*="tabsRoot"] {
+  :global(.ant-tabs-tab:hover:not(.ant-tabs-tab-active)) {
+    background: var(--color-sidebar-hover-bg) !important;
+    border-color: var(--color-border) !important;
+
+    :global(.ant-tabs-tab-btn) {
+      color: var(--color-text-heading) !important;
+    }
+  }
+
+  :global(.ant-tabs-tab-active) {
+    box-shadow: var(--shadow-tab-active);
+  }
+}
+
+// ── Settings page inner layout ──
+[data-theme="dark"] [class*="settingsPage"] {
+  background: var(--color-card-bg) !important;
+  box-shadow: var(--shadow-lg) !important;
+
+  :global(.ant-layout-sider-light) {
+    background: var(--color-card-bg) !important;
+    border-right-color: var(--color-border) !important;
+  }
+
+  :global(.ant-menu-light) {
+    background: var(--color-card-bg) !important;
+  }
+}

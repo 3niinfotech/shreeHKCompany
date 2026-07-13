@@ -1,0 +1,345 @@
+@use "./variables" as v;
+
+// ---------------------------------------------------------------------------
+// Global component styles (tokens applied via src/theme/applyTheme.ts)
+// ---------------------------------------------------------------------------
+body,
+#root {
+  background-color: var(--color-page-bg) !important;
+  color: var(--color-text-body);
+}
+
+.ant-layout-content {
+  background: transparent !important;
+}
+
+// Cards & modals
+.ant-card {
+  background: var(--color-card-bg) !important;
+  border: 0.5px solid var(--color-border) !important;
+  border-radius: var(--radius-card) !important;
+}
+
+.ant-modal-content {
+  background: var(--color-card-bg) !important;
+  border: 0.5px solid var(--color-border) !important;
+  border-radius: 5px !important;
+}
+
+.ant-modal-header {
+  border-bottom: 0.5px solid var(--color-border) !important;
+}
+
+.ant-modal-title {
+  color: var(--color-text-heading) !important;
+}
+
+// Delete confirmation modal
+.ant-modal:has(.conformation_modal) .ant-modal-content,
+.ant-modal:has(.conformation_modal) .ant-modal-body {
+  background: var(--color-danger-light) !important;
+}
+
+.conformation_modal .massage {
+  color: var(--color-danger) !important;
+}
+
+// ---------------------------------------------------------------------------
+// Typography headings
+// ---------------------------------------------------------------------------
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.ant-typography h1,
+.ant-typography h2,
+.ant-typography h3,
+.ant-typography h4,
+.ant-typography h5,
+.ant-typography h6 {
+  color: var(--color-text-heading);
+}
+
+.ant-typography-secondary,
+.ant-form-item-extra,
+.ant-form-item-explain {
+  color: var(--color-neutral) !important;
+}
+
+// ---------------------------------------------------------------------------
+// Borders (global)
+// ---------------------------------------------------------------------------
+.ant-divider {
+  border-block-start-color: var(--color-border) !important;
+}
+
+// ---------------------------------------------------------------------------
+// Buttons
+// ---------------------------------------------------------------------------
+.ant-btn-primary:not(:disabled) {
+  background: var(--color-btn-primary-bg) !important;
+  border-color: var(--color-btn-primary-bg) !important;
+  border-radius: var(--radius-control) !important;
+  color: var(--color-btn-primary-text) !important;
+
+  &:hover:not(:disabled) {
+    background: var(--color-btn-primary-hover) !important;
+    border-color: var(--color-btn-primary-hover) !important;
+  }
+}
+
+.ant-btn-default:not(:disabled) {
+  color: var(--color-btn-secondary-text) !important;
+  border: var(--border-width-thin) solid var(--color-btn-outline-border) !important;
+  border-radius: var(--radius-control) !important;
+  background: var(--color-btn-secondary-bg) !important;
+
+  &:hover:not(:disabled) {
+    color: var(--color-text-heading) !important;
+    border-color: var(--color-border) !important;
+    background: var(--color-btn-secondary-hover) !important;
+  }
+}
+
+// Delete / danger buttons
+.ant-btn-dangerous:not(.ant-btn-link):not(:disabled) {
+  background: var(--color-btn-danger-bg) !important;
+  border-color: var(--color-btn-danger-bg) !important;
+  border-radius: var(--radius-control) !important;
+  color: var(--color-btn-danger-text) !important;
+
+  &,
+  .ant-btn-icon,
+  .anticon,
+  svg {
+    color: var(--color-btn-danger-text) !important;
+  }
+
+  svg {
+    stroke: currentColor;
+  }
+
+  &:hover:not(:disabled),
+  &:focus:not(:disabled),
+  &:active:not(:disabled) {
+    background: var(--color-btn-danger-hover) !important;
+    border-color: var(--color-btn-danger-hover) !important;
+    color: var(--color-btn-danger-text) !important;
+
+    .ant-btn-icon,
+    .anticon,
+    svg {
+      color: var(--color-btn-danger-text) !important;
+    }
+  }
+}
+
+// Modal / Popconfirm confirm delete
+.ant-modal-confirm-btns .ant-btn-dangerous:not(:disabled),
+.ant-popconfirm-buttons .ant-btn-dangerous:not(:disabled) {
+  color: var(--color-btn-danger-text) !important;
+
+  .anticon,
+  svg {
+    color: var(--color-btn-danger-text) !important;
+  }
+}
+
+.ant-btn-link {
+  color: var(--color-info) !important;
+  border-radius: var(--radius-control) !important;
+}
+
+// ---------------------------------------------------------------------------
+// Inputs & selects
+// ---------------------------------------------------------------------------
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-input-number,
+.ant-select-selector,
+.ant-picker {
+  border-radius: var(--radius-control) !important;
+  border: 0.5px solid var(--color-border) !important;
+  background: var(--color-card-bg) !important;
+}
+
+.ant-input:focus,
+.ant-input-affix-wrapper-focused,
+.ant-input-number-focused,
+.ant-select-focused .ant-select-selector,
+.ant-picker-focused {
+  border-color: var(--color-input-focus-border) !important;
+  box-shadow: 0 0 0 2px var(--color-input-focus-ring) !important;
+}
+
+// Remove inner input border when nested inside a wrapper (prevents double border)
+.ant-input-affix-wrapper .ant-input,
+.ant-input-affix-wrapper .ant-input:focus,
+.ant-input-affix-wrapper .ant-input:hover,
+.ant-input-affix-wrapper .ant-input:focus-visible {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  background: transparent !important;
+}
+
+.ant-input-number .ant-input-number-input-wrap,
+.ant-input-number .ant-input-number-input,
+.ant-input-number .ant-input-number-input:focus,
+.ant-input-number .ant-input-number-input:hover {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.ant-picker .ant-picker-input > input,
+.ant-picker .ant-picker-input > input:focus,
+.ant-picker .ant-picker-input > input:hover {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.ant-select .ant-select-selector input,
+.ant-select .ant-select-selector input:focus {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+// ---------------------------------------------------------------------------
+// Tags / status badges
+// ---------------------------------------------------------------------------
+.ant-tag-success {
+  color: var(--color-badge-success-text) !important;
+  background: var(--color-badge-success-bg) !important;
+  border-color: var(--color-badge-success-border) !important;
+}
+
+.ant-tag-warning {
+  color: var(--color-badge-warning-text) !important;
+  background: var(--color-badge-warning-bg) !important;
+  border-color: var(--color-badge-warning-border) !important;
+}
+
+.ant-tag-error {
+  color: var(--color-badge-error-text) !important;
+  background: var(--color-badge-error-bg) !important;
+  border-color: var(--color-badge-error-border) !important;
+}
+
+.ant-tag-processing,
+.ant-tag-blue {
+  color: var(--color-badge-info-text) !important;
+  background: var(--color-badge-info-bg) !important;
+  border-color: var(--color-badge-info-border) !important;
+}
+
+// ---------------------------------------------------------------------------
+// Pagination
+// ---------------------------------------------------------------------------
+.ant-pagination-item {
+  border: 0.5px solid var(--color-border) !important;
+  border-radius: var(--radius-control) !important;
+  background: var(--color-card-bg) !important;
+
+  a {
+    color: var(--color-navy) !important;
+  }
+}
+
+.ant-pagination-item-active {
+  border-color: var(--color-btn-primary-bg) !important;
+  background: var(--color-btn-primary-bg) !important;
+
+  a {
+    color: var(--color-btn-primary-text) !important;
+  }
+}
+
+.ant-pagination-prev .ant-pagination-item-link,
+.ant-pagination-next .ant-pagination-item-link {
+  border: 0.5px solid var(--color-border) !important;
+  border-radius: var(--radius-control) !important;
+}
+
+// ---------------------------------------------------------------------------
+// Tables (all except inventory — see $inventory-table-selectors)
+// ---------------------------------------------------------------------------
+$inv-not: ":not(.diamond-inventory-table):not(.custom-ant-table):not(.erp-table):not(.parcel-erp-table)";
+
+.ant-table-wrapper#{$inv-not} {
+  background: var(--color-card-bg);
+  border: 0.5px solid var(--color-border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+.ant-table-wrapper#{$inv-not} .ant-table {
+  background: var(--color-card-bg);
+}
+
+.ant-table-wrapper#{$inv-not} .ant-table-thead > tr > th {
+  background: var(--color-table-header-bg) !important;
+  color: var(--color-table-header-text) !important;
+  font-weight: 600 !important;
+  border-bottom: var(--border-width-thin) solid var(--color-table-border) !important;
+}
+
+.ant-table-wrapper#{$inv-not} .ant-table-tbody > tr > td {
+  background: var(--color-table-row-bg) !important;
+  color: var(--color-text-body);
+  border-bottom: var(--border-width-thin) solid var(--color-table-border) !important;
+}
+
+.ant-table-wrapper#{$inv-not} .ant-table-tbody > tr:nth-child(even) > td {
+  background: var(--table-row-zebra) !important;
+}
+
+.ant-table-wrapper#{$inv-not} .ant-table-tbody > tr:hover > td {
+  background: var(--table-row-hover) !important;
+}
+
+.ant-table-wrapper#{$inv-not} .ant-table-tbody > tr.ant-table-row-selected > td {
+  background: var(--color-primary-light) !important;
+}
+
+// Table action icons (master / list pages)
+.ant-table-wrapper#{$inv-not} {
+  .editIcon,
+  [class*="editIcon"] {
+    color: var(--color-primary) !important;
+  }
+
+  .deleteIcon,
+  [class*="deleteIcon"] {
+    color: var(--color-danger) !important;
+  }
+}
+
+// Modal footer buttons (shared modal.module.scss classes)
+.btnSave {
+  background-color: var(--color-btn-save-bg) !important;
+  border-color: var(--color-btn-save-bg) !important;
+  border-radius: var(--radius-control) !important;
+  color: var(--color-btn-primary-text) !important;
+
+  &:hover {
+    background-color: var(--color-btn-save-hover) !important;
+    border-color: var(--color-btn-save-hover) !important;
+  }
+}
+
+.btnCancel {
+  background-color: var(--color-btn-cancel-bg) !important;
+  border-color: var(--color-btn-cancel-bg) !important;
+  border-radius: var(--radius-control) !important;
+  color: var(--color-btn-primary-text) !important;
+
+  &:hover {
+    background-color: var(--color-btn-cancel-hover) !important;
+    border-color: var(--color-btn-cancel-hover) !important;
+  }
+}

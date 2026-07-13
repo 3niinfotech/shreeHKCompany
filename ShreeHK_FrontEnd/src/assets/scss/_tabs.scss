@@ -1,0 +1,45 @@
+// Global Ant Design line tabs (e.g. My Account) — card tabs styled in tabBar.module.scss
+
+.ant-tabs:not(.ant-tabs-card):not(.ant-tabs-editable-card) {
+  .ant-tabs-nav {
+    margin-bottom: 20px;
+
+    &::before {
+      border-bottom: 0.5px solid var(--color-border);
+    }
+  }
+
+  .ant-tabs-tab {
+    padding: 10px 4px;
+    margin: 0 20px 0 0;
+    transition: color 0.18s ease;
+
+    .ant-tabs-tab-btn {
+      color: var(--color-neutral);
+      font-size: 14px;
+      font-weight: 500;
+      outline: none;
+    }
+
+    &:hover .ant-tabs-tab-btn {
+      color: var(--color-navy);
+    }
+  }
+
+  .ant-tabs-tab-active {
+    .ant-tabs-tab-btn {
+      color: var(--color-primary) !important;
+      font-weight: 600;
+    }
+  }
+
+  .ant-tabs-ink-bar {
+    height: 3px;
+    border-radius: 3px 3px 0 0;
+    background: var(--color-primary) !important;
+  }
+
+  .ant-tabs-content-holder {
+    padding-top: 4px;
+  }
+}

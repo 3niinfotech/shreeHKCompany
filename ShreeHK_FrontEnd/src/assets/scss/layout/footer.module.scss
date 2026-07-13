@@ -1,0 +1,14 @@
+.footerStyle {
+  flex-shrink: 0;
+
+  .appFooter {
+    height: 48px;
+    background: var(--color-card-bg);
+    border-top: 0.5px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: var(--color-neutral);
+  }
+}

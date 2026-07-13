@@ -1,0 +1,52 @@
+.conformation_modal {
+    font-size: 14px;
+    line-height: 1.6;
+
+    .massage {
+        display: inline-block;
+        color: red;
+        font-weight: 600;
+
+        /* 👇 faster vibration */
+        animation: shakeX 0.25s linear 0s 4;
+        /* 0.25 × 12 ≈ 3 seconds */
+    }
+}
+
+/* Remove modal focus outline */
+.ant-modal:focus,
+.ant-modal-content:focus,
+.ant-modal-close:focus,
+.ant-modal-close:focus-visible,
+.ant-btn:focus,
+.ant-btn:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* Fast horizontal shake */
+@keyframes shakeX {
+    0% {
+        transform: translateX(0);
+    }
+
+    20% {
+        transform: translateX(-4px);
+    }
+
+    40% {
+        transform: translateX(4px);
+    }
+
+    60% {
+        transform: translateX(-4px);
+    }
+
+    80% {
+        transform: translateX(4px);
+    }
+
+    100% {
+        transform: translateX(0);
+    }
+}

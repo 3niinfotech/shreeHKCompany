@@ -1,0 +1,238 @@
+.pageContainer {
+    min-height: var(--app-page-height);
+    background-color: var(--color-page-bg);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.searchCard {
+    margin-bottom: 12px;
+    border: 1px solid var(--color-border) !important;
+    border-radius: 10px !important;
+    box-shadow: var(--shadow-xs);
+
+    :global(.ant-card-body) {
+        padding: 12px 14px !important;
+    }
+
+    :global(.ant-form-inline) {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    :global(.ant-form-item) {
+        margin-bottom: 0 !important;
+        margin-inline-end: 0 !important;
+    }
+}
+
+.searchLabel {
+    flex: 0 0 auto;
+    margin: 0;
+    padding-right: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-secondary, #5f7383);
+    line-height: 38px;
+    white-space: nowrap;
+}
+
+.stoneSearchRow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.searchForm {
+    flex: 0 1 auto;
+    min-width: 0;
+}
+
+.searchFieldItem {
+    margin-bottom: 0 !important;
+    margin-inline-end: 0 !important;
+}
+
+.skuSearchInput {
+    width: 280px !important;
+    min-width: 220px;
+
+    &:global(.ant-input) {
+        height: 38px !important;
+        border-radius: 8px !important;
+        font-size: 13px !important;
+        color: var(--color-text-body) !important;
+        background-color: var(--color-bg-card) !important;
+    }
+}
+
+.iconBtn {
+    height: 36px !important;
+    min-width: 108px;
+    border: 1px solid var(--color-primary) !important;
+    border-radius: 8px !important;
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-medium) 100%) !important;
+    box-shadow: var(--shadow-md);
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 14px !important;
+
+    &:hover {
+        border-color: var(--color-primary-dark) !important;
+        background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%) !important;
+        box-shadow: var(--shadow-lg);
+    }
+
+    &:focus-visible {
+        box-shadow: 0 0 0 3px var(--color-input-focus-ring);
+    }
+}
+
+.resetBtn {
+    height: 36px !important;
+    min-width: 108px;
+    border-radius: 8px !important;
+    border: 1px solid var(--color-chart-muted) !important;
+    background: var(--color-bg-card) !important;
+    color: var(--color-badge-neutral-text) !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 14px !important;
+
+    &:hover {
+        border-color: var(--color-chart-muted) !important;
+        color: var(--color-text-heading) !important;
+        background: var(--color-bg-muted) !important;
+    }
+
+    &:focus-visible {
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-chart-muted) 18%, transparent);
+    }
+}
+
+.actionButtons {
+    margin-left: 2px;
+}
+
+.sectionsWrap {
+    display: grid;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.historyTableCard {
+    flex-shrink: 0;
+
+    :global(.ant-card-body) {
+        padding: 10px 12px 12px !important;
+    }
+}
+
+.detailsCard {
+    border: 1px solid var(--color-border) !important;
+    border-radius: 10px !important;
+    box-shadow: var(--shadow-xs);
+
+    :global(.ant-card-body) {
+        padding: 10px 12px 12px !important;
+    }
+}
+
+.sectionHeader {
+    width: 100%;
+    height: 34px;
+    border: none;
+    background: var(--color-bg-card);
+    border-bottom: 1px solid var(--color-table-border);
+    margin-bottom: 10px;
+    padding: 0 2px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--color-text-heading);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.sectionHeaderLeft {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    svg {
+        color: var(--color-primary);
+    }
+}
+
+// --- DynamicForm UI Overrides ---
+.customFormDesign {
+    :global {
+        .ant-form-item {
+            display: flex;
+            flex-direction: row;
+            align-items: stretch;
+            border: 1px solid var(--color-border);
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .ant-form-item-label {
+            width: 110px;
+            background-color: var(--color-bg-muted);
+            padding: 0 8px !important;
+            display: flex;
+            align-items: center;
+            border-right: 1px solid var(--color-border);
+            text-align: left;
+
+            label {
+                height: 100%;
+                display: flex;
+                align-items: center;
+                font-size: 12px;
+                color: var(--color-badge-neutral-text);
+                
+                &::after { display: none; }
+            }
+        }
+
+        .ant-form-item-control {
+            flex: 1;
+            
+            .ant-input, .ant-input-number, .ant-input-affix-wrapper {
+                border: none !important;
+                background-color: var(--color-bg-card) !important;
+                border-radius: 0;
+                height: 30px !important;
+                box-shadow: none !important;
+                color: var(--color-text-body) !important;
+                font-size: 12px !important;
+                padding: 0 8px !important;
+
+                &:disabled {
+                    color: var(--color-text-body) !important;
+                    background-color: var(--color-bg-card) !important;
+                    cursor: default;
+                }
+            }
+        }
+    }
+}
+
+.formDivider {
+    margin: 20px 0;
+}
