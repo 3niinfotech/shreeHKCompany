@@ -171,7 +171,7 @@ h6,
 .ant-select-focused .ant-select-selector,
 .ant-picker-focused {
   border-color: var(--color-input-focus-border) !important;
-  box-shadow: 0 0 0 2px var(--color-input-focus-ring) !important;
+  // box-shadow: 0 0 0 2px var(--color-input-focus-ring) !important;
 }
 
 // Remove inner input border when nested inside a wrapper (prevents double border)

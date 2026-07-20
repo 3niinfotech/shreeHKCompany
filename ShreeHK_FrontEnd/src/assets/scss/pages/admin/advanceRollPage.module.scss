@@ -28,7 +28,7 @@
     min-height: 0;
   }
 
-  > section {
+  >section {
     flex-shrink: 0;
   }
 }
@@ -437,16 +437,32 @@
 }
 
 .emptyIcon {
+  // width: 64px;
+  // height: 64px;
+  // margin-bottom: 14px;
+  // border-radius: 16px;
+  // display: flex;
+  // align-items: center;
+  // justify-content: center;
+  // font-size: 28px;
+  // color: var(--color-primary);
+  // background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+
   width: 64px;
   height: 64px;
-  margin-bottom: 14px;
+  margin: 0 auto 14px;
   border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 28px;
+  line-height: 1;
   color: var(--color-primary);
   background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+
+  svg {
+    display: block;
+  }
 }
 
 .emptySearch {

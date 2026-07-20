@@ -27,7 +27,8 @@ accSubgroupRouter.post("/accounting/subgroup/save", authenticateToken, async (re
       }
 
       if (id) {
-        await q("UPDATE acc_subgroup SET name = ?, group_id = ? WHERE id = ?", [
+        // await q("UPDATE acc_subgroup SET name = ?, group_id = ? WHERE id = ?", [
+        await q("UPDATE acc_subgroup SET name = ? WHERE id = ?", [
           name,
           group_id || null,
           id,
@@ -42,7 +43,8 @@ accSubgroupRouter.post("/accounting/subgroup/save", authenticateToken, async (re
           newValue: newRows[0],
         });
       } else {
-        const result = await q("INSERT INTO acc_subgroup (name, group_id) VALUES (?, ?)", [
+        // const result = await q("INSERT INTO acc_subgroup (name, group_id) VALUES (?, ?)", [
+        const result = await q("INSERT INTO acc_subgroup (name) VALUES (?, ?)", [
           name,
           group_id || null,
         ]);

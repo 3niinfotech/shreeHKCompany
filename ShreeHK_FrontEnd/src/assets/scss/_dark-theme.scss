@@ -95,7 +95,6 @@
     :global(.ant-input) {
       color: var(--color-text-on-primary) !important;
       background: transparent !important;
-
       &::placeholder {
         color: var(--color-input-placeholder) !important;
       }
