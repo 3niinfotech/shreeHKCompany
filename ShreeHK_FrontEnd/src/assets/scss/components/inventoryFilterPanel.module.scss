@@ -161,7 +161,7 @@ $compact-accent-hover: var(--color-primary-dark);
   &:focus,
   &:focus-within {
     border-color: $compact-accent-bg !important;
-    box-shadow: 0 0 0 2px var(--color-input-focus-ring) !important;
+    // box-shadow: 0 0 0 2px var(--color-input-focus-ring) !important;
   }
 }
 

@@ -41,7 +41,7 @@ const CycleCount = () => {
     setScanned((prev) => {
       if (prev.some((r) => r.sku.toLowerCase() === key)) return prev;
       return [{ id: `${Date.now()}-${sku}`, sku, found, scannedAt: new Date().toLocaleTimeString() }, ...prev];
-    });
+    });                                                  
     setScanValue("");
   };
 
@@ -89,7 +89,7 @@ const CycleCount = () => {
               Missing from scan: {expectedSkus.size ? missingCount : "—"}
             </Tag>
           </Space>
-          <Space.Compact style={{ maxWidth: 480, width: "100%" }}>
+          <Space.Compact style={{ maxWidth: 480, width: "100%", gap: 8 }}>
             <Input
               placeholder="Scan or enter SKU / barcode"
               value={scanValue}
@@ -104,15 +104,15 @@ const CycleCount = () => {
         </Space>
       </Card>
       <div ref={tableRef} className={`${styles.tableSection} erp-table-container`}>
-      <Table
-        size="small"
-        bordered
-        rowKey="id"
-        columns={columns}
-        dataSource={scanned}
-        pagination={{ pageSize: 50 }}
-        scroll={{ x: "max-content", y: tableHeight }}
-      />
+        <Table
+          size="small"
+          bordered
+          rowKey="id"
+          columns={columns}
+          dataSource={scanned}
+          pagination={{ pageSize: 50 }}
+          scroll={{ x: "max-content", y: tableHeight }}
+        />
       </div>
     </div>
   );
