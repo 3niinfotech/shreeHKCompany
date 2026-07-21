@@ -485,7 +485,7 @@ const InwardTransactionForm = ({
 
       <div
         className={`${styles.tableSection} ${scrollableTable ? styles.tableSectionScrollable : ''}`}
-        style={scrollableTable ? { '--inward-visible-rows': visibleRowCount } : undefined}
+        // style={scrollableTable ? { '--inward-visible-rows': visibleRowCount } : undefined}
       >
         {useModernLayout ? (
           <div className={styles.tableCardHead}>
