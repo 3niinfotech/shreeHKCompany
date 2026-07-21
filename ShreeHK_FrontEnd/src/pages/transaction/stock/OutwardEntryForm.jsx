@@ -468,7 +468,9 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
       <Form form={form} layout="vertical" className={styles.formSection} onValuesChange={handleValuesChange}>
         <DynamicForm fields={headerFields} />
       </Form>
-      <div className={`${styles.tableSection} ${styles.tableSectionScrollable}`} style={{ '--inward-visible-rows': 1 }}>
+      <div className={`${styles.tableSection} ${styles.tableSectionScrollable}`}
+      // style={{ '--inward-visible-rows': 1 }}
+      >
         <Table
           columns={columns}
           dataSource={items}
