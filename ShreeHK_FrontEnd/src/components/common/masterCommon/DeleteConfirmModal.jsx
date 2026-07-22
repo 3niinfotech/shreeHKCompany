@@ -17,9 +17,6 @@ const DeleteConfirmModal = ({
             title={title}
             onCancel={onCancel}
             keyboard={false}
-            // maskClosable={false}
-            // destroyOnClose
-            // focusTriggerAfterClose={false}
             centered
             footer={[
                 <Button key="close" onClick={onCancel}>

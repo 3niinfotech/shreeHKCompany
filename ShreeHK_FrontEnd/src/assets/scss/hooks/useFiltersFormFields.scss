@@ -20,10 +20,23 @@
   }
 
   // Exact widths from your inline styles
-  .width-type { width: 160px; }
-  .width-invoice { width: 220px; }
-  .width-date { width: 300px; }
-  .width-party { width: 250px; }
+  .width-type {
+    width: 160px;
+    padding: 7px 10px;
+  }
+
+  .width-invoice {
+    width: 220px;
+  }
+
+  .width-date {
+    width: 300px;
+  }
+
+  .width-party {
+    width: 250px;
+    padding: 7px 10px;
+  }
 
   .filter-checks {
     display: inline-flex;

@@ -9,6 +9,7 @@ import {
 import { api } from "../../api/axiosInstance";
 import { ENDPOINTS } from "../../constants/endpoints";
 import useAuthStore from "../../store/Auth.Store";
+import { ArrowLeftOutlined } from "@ant-design/icons";
 import { toastApiSuccess, toastApiError } from "../../utils/apiToast";
 import styles from "../../assets/scss/pages/admin/companyYearPicker.module.scss";
 
@@ -20,6 +21,13 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
   const [options, setOptions] = useState([]);
   const setSessionContext = useAuthStore((s) => s.setSessionContext);
   const setShowContextPicker = useAuthStore((s) => s.setShowContextPicker);
+  const [selectedCompany, setSelectedCompany] = useState(null);
+  const [companyOptions, setCompanyOptions] = useState([]);
+  const yearOptions = selectedCompany
+    ? options.filter(
+      (x) => x.companyId === selectedCompany.companyId
+    )
+    : [];
   const login = useAuthStore((s) => s.login);
   const user = useAuthStore((s) => s.user);
 
@@ -28,15 +36,33 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
     setLoading(true);
     api.get(ENDPOINTS.portal.companyYears)
       .then((res) => {
-        const rowsRaw = res.data?.Data || [];
-        const seen = new Set();
-        const rows = rowsRaw.filter((item) => {
-          const key = `${String(item.companyName || "").trim().toLowerCase()}::${String(item.yearLabel || "").trim().toLowerCase()}`;
-          if (!key || seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
+        const rows = res.data?.Data || [];
+
         setOptions(rows);
+
+        const companies = [];
+        const seen = new Set();
+
+        rows.forEach((item) => {
+          if (!seen.has(item.companyId)) {
+            seen.add(item.companyId);
+
+            companies.push({
+              companyId: item.companyId,
+              companyName: item.companyName,
+            });
+          }
+        });
+
+        setCompanyOptions(companies);
+        // const seen = new Set();
+        // const rows = rowsRaw.filter((item) => {
+        //   const key = `${String(item.companyName || "").trim().toLowerCase()}::${String(item.yearLabel || "").trim().toLowerCase()}`;
+        //   if (!key || seen.has(key)) return false;
+        //   seen.add(key);
+        //   return true;
+        // });
+        // setOptions(rows);
 
         if (rows.length === 0) {
           toastApiError({ response: { data: res.data } });
@@ -49,6 +75,19 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
       .catch((err) => toastApiError(err))
       .finally(() => setLoading(false));
   }, [open, onClose, setShowContextPicker]);
+
+  const handleCompanySelect = (company) => {
+    const years = options.filter(
+      (x) => x.companyId === company.companyId
+    );
+
+    if (years.length === 1) {
+      selectContext(years[0]);
+      return;
+    }
+
+    setSelectedCompany(company);
+  };
 
   const selectContext = async (item) => {
     const itemKey = `${item.companyId}-${item.yearId}`;
@@ -88,15 +127,29 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
     }
   };
 
+  useEffect(() => {
+    if (open) {
+      setSelectedCompany(null);
+    }
+  }, [open]);
+
   const modalTitle = (
     <div className={styles.modalTitle}>
       <div className={styles.titleIcon}>
         <SwapOutlined />
       </div>
       <div>
-        <div className={styles.titleText}>Select Company & Year</div>
-        <Text className={styles.titleSubtext}>
+        {/* <div className={styles.titleText}>Select Company & Year</div> */}
+        <div className={styles.titleText}>
+          {selectedCompany ? "Select Financial Year" : "Select Company"}
+        </div>
+        {/* <Text className={styles.titleSubtext}>
           Choose a workspace to continue. You can switch context anytime from the header.
+        </Text> */}
+        <Text className={styles.titleSubtext}>
+          {selectedCompany
+            ? `Company : ${selectedCompany.companyName}`
+            : "Choose your company to continue"}
         </Text>
       </div>
     </div>
@@ -124,10 +177,10 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
         <Empty description="No company/year mapping found" className={styles.emptyState} />
       ) : (
         <>
-          <div className={styles.resultMeta}>
+          {/* <div className={styles.resultMeta}>
             <Text type="secondary">{options.length} context{options.length === 1 ? "" : "s"} available</Text>
-          </div>
-          <div className={styles.cardGrid}>
+          </div> */}
+          {/* <div className={styles.cardGrid}>
             {options.map((item, idx) => {
               const itemKey = `${item.companyId}-${item.yearId}-${idx}`;
               const isSelecting = selectingKey === `${item.companyId}-${item.yearId}`;
@@ -161,6 +214,83 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
                 </button>
               );
             })}
+          </div> */}
+          {selectedCompany && (
+            <div className={styles.backWrapper}>
+              <button
+                type="button"
+                className={styles.backButton}
+                onClick={() => setSelectedCompany(null)}
+              >
+                <ArrowLeftOutlined />
+                <span>Back to Companies</span>
+              </button>
+            </div>
+          )}
+          <div className={styles.cardGrid}>
+            {!selectedCompany &&
+              companyOptions.map((item) => {
+                return (
+                  <button
+                    key={item.companyId}
+                    type="button"
+                    className={styles.contextCard}
+                    onClick={() => handleCompanySelect(item)}
+                  >
+                    <div className={styles.cardTop}>
+                      <span className={styles.cardHeadIcon}>
+                        <BankOutlined />
+                      </span>
+                      <span className={styles.cardArrow}>
+                        <RightOutlined />
+                      </span>
+                    </div>
+                    <Title
+                      level={5}
+                      className={styles.companyName}
+                    >
+                      {item.companyName}
+                    </Title>
+                  </button>
+                )
+              })
+            }
+            {selectedCompany &&
+              yearOptions.map((item) => {
+                const isSelecting =
+                  selectingKey === `${item.companyId}-${item.yearId}`;
+                return (
+                  <button
+                    key={item.yearId}
+                    type="button"
+                    disabled={Boolean(selectingKey)}
+                    className={`${styles.contextCard} ${isSelecting
+                      ? styles.contextCardSelecting
+                      : ""
+                      }`}
+                    onClick={() => selectContext(item)}
+                  >
+                    <div className={styles.cardTop}>
+                      <span className={styles.cardHeadIcon}>
+                        <CalendarOutlined />
+                      </span>
+                      <span className={styles.cardArrow}>
+                        {isSelecting
+                          ? <Spin size="small" />
+                          : <RightOutlined />
+                        }
+                      </span>
+                    </div>
+                    <Title
+                      level={5}
+                      className={styles.companyName}
+                    >
+                      {item.yearLabel}
+                    </Title>
+                  </button>
+                )
+              })
+            }
           </div>
         </>
       )}

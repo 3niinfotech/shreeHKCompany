@@ -141,7 +141,7 @@ const CompanyPage = () => {
             }
         };
 
-        window.addEventListener("scroll", handleScroll);
+        // window.addEventListener("scroll", handleScroll);
         return () => window.removeEventListener("scroll", handleScroll);
     }, [isFetching, combinedData.length, data?.TotalItems]);
 
@@ -181,7 +181,7 @@ const CompanyPage = () => {
                 loading={modalLoading}
                 form={form}
                 formFields={companyFields}
-                title="Add Company Management Details"
+                title="Add Company Management"
                 width={800}
             />
 
