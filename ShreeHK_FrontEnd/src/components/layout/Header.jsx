@@ -286,7 +286,7 @@ const Header = ({
               <span className={styles.logoIcon}>
                 <Gem size={20} strokeWidth={2.2} />
               </span>
-              <span className={styles.logoText}>ShreeHK</span>
+              <span className={styles.logoText}>Smart DIA</span>
             </Link>
           )}
 
@@ -300,7 +300,7 @@ const Header = ({
         </div>
 
         <div className={styles.headerRight}>
-          <ConnectionStatusPill isOnline={isOnline} />
+          {/* <ConnectionStatusPill isOnline={isOnline} /> */}
           <NotificationDropdown
             buttonClassName={styles.notificationBtn}
             badgeClassName={styles.notificationBadge}

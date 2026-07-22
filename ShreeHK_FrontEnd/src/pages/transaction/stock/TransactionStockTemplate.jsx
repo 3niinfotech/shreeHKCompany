@@ -682,49 +682,49 @@ const TransactionStockTemplate = ({
 
       <Card variant="none" className={styles.cardContainer}>
         <div ref={tableRef} className="erp-table-container">
-        <Table
-          columns={mainColumns}
-          dataSource={groups}
-          rowKey="id"
-          loading={infiniteScroll ? (isLoading && offset === 0) : (isLoading || isFetching)}
-          className={styles.tableWrapper}
-          size="small"
-          bordered
-          tableLayout="fixed"
-          scroll={{ x: 1200, y: tableHeight }}
-          onScroll={infiniteScroll ? handleTableScroll : undefined}
-          locale={{
-            emptyText: (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="No records found. Adjust filters or create a new entry."
-              />
-            ),
-          }}
-          expandable={{
-            expandedRowRender: renderExpandedRow,
-            expandedRowClassName: () => styles.expandedRow,
-            expandedRowKeys,
-            onExpandedRowsChange: setExpandedRowKeys,
-          }}
-          pagination={infiniteScroll ? false : {
-            current: page,
-            pageSize,
-            total: totalItems,
-            showSizeChanger: true,
-            pageSizeOptions: PAGE_SIZE_OPTIONS,
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} entries`,
-            onChange: handlePaginationChange,
-            position: ['bottomCenter'],
-            hideOnSinglePage: totalItems <= PAGE_SIZE_DEFAULT,
-          }}
-          footer={infiniteScroll ? () => (
-            <div style={{ textAlign: 'center', padding: 4, fontSize: 12, color: cssVar('color-text-muted') }}>
-              {(isFetching || scrollFetching) ? <Spin size="small" /> :
-                hasMore ? 'Scroll down for more...' : `All ${groups.length} entries loaded`}
-            </div>
-          ) : undefined}
-        />
+          <Table
+            columns={mainColumns}
+            dataSource={groups}
+            rowKey="id"
+            loading={infiniteScroll ? (isLoading && offset === 0) : (isLoading || isFetching)}
+            className={styles.tableWrapper}
+            size="small"
+            bordered
+            tableLayout="fixed"
+            scroll={{ x: 1200, y: tableHeight }}
+            onScroll={infiniteScroll ? handleTableScroll : undefined}
+            locale={{
+              emptyText: (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="No records found. Adjust filters or create a new entry."
+                />
+              ),
+            }}
+            expandable={{
+              expandedRowRender: renderExpandedRow,
+              expandedRowClassName: () => styles.expandedRow,
+              expandedRowKeys,
+              onExpandedRowsChange: setExpandedRowKeys,
+            }}
+            pagination={infiniteScroll ? false : {
+              current: page,
+              pageSize,
+              total: totalItems,
+              showSizeChanger: true,
+              pageSizeOptions: PAGE_SIZE_OPTIONS,
+              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} entries`,
+              onChange: handlePaginationChange,
+              position: ['bottomCenter'],
+              hideOnSinglePage: totalItems <= PAGE_SIZE_DEFAULT,
+            }}
+            footer={infiniteScroll ? () => (
+              <div style={{ textAlign: 'center', padding: 4, fontSize: 12, color: cssVar('color-text-muted') }}>
+                {(isFetching || scrollFetching) ? <Spin size="small" /> :
+                  hasMore ? 'Scroll down for more...' : `All ${groups.length} entries loaded`}
+              </div>
+            ) : undefined}
+          />
         </div>
       </Card>
 

@@ -1,20 +1,22 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Table, Button, Card, Form, Tag, message } from 'antd';
+import dayjs from 'dayjs';
+import { cssVar } from '../../theme';
+import debounce from 'lodash/debounce';
+import { useLocation } from 'react-router-dom';
+import { BarChartOutlined, ReloadOutlined } from '@ant-design/icons';
+import { ENDPOINTS } from '../../constants/endpoints';
 import { FileUp, Search, Sparkles } from 'lucide-react';
 import AIResultPanel from '../../components/ai/AIResultPanel';
 import useAiSalesReport from '../../components/ai/useAiSalesReport';
 import useFiltersFormFields from '../../hooks/useFiltersFormFields';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
-import { ENDPOINTS } from '../../constants/endpoints';
-import debounce from 'lodash/debounce';
 import OutstandingCalculationModal from './OutstandingcalculationModal';
-import { cssVar } from '../../theme';
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
 import PageHeroHeader from '../../components/common/PageHeroHeader';
-import { BarChartOutlined } from '@ant-design/icons';
 import { exportReportToExcel } from '../../utils/reportExcelExport';
-import styles from '../../assets/scss/pages/report/outStanding.module.scss';
 import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
+import styles from '../../assets/scss/pages/report/outStanding.module.scss';
 
 const OutStandingReport = () => {
     const [tableData, setTableData] = useState([]);
@@ -22,7 +24,7 @@ const OutStandingReport = () => {
     const [selectedRow, setSelectedRow] = useState(null);
     const [page, setPage] = useState(1);
     const [exporting, setExporting] = useState(false);
-
+    const location = useLocation();
     const { data: companyData, isLoading: isCompanyLoading } = useFetchApi('GetCompany', ENDPOINTS.company.options);
     const { mutate: fetchData, isPending: isSubmitting } = usePostApiRequest(ENDPOINTS.report.outstanding, 'outstanding', { showToast: false });
     const {
@@ -196,12 +198,24 @@ const OutStandingReport = () => {
         }
     };
 
+    useEffect(() => {
+        const incomingRange = location.state?.dateRange;
+        if (incomingRange && incomingRange.length === 2) {
+            const rangeValue = [dayjs(incomingRange[0]), dayjs(incomingRange[1])];
+            form.setFieldsValue({ dateRange: rangeValue });
+            handleSearch({ ...form.getFieldsValue(), dateRange: rangeValue }, true);
+            // state clear kar do taaki refresh/back par dobara na lage
+            window.history.replaceState({}, document.title);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     const tableRef = useRef(null);
     const tableHeight = useTableBodyScrollHeight(tableRef, [tableData.length, isSubmitting, page]);
 
     return (
         <div className={styles.pageContainer}>
-            <PageHeroHeader
+            {/* <PageHeroHeader
                 breadcrumb="REPORTS"
                 title="Outstanding Report"
                 icon={<BarChartOutlined />}
@@ -217,10 +231,10 @@ const OutStandingReport = () => {
                         <Button type="primary" icon={<FileUp />} className={styles.exportBtn} loading={exporting} onClick={handleExport} disabled={!tableData.length}>Export to Excel</Button>
                     </>
                 )}
-            />
+            /> */}
 
             <AdvancedFilterPanel
-                title="Filter Outstanding Report"
+                title="Outstanding Report"
                 subtitle="Filter by type, party, invoice, and date range."
                 showClear={false}
                 onSearch={() => handleSearch(form.getFieldsValue(), true)}
@@ -228,7 +242,7 @@ const OutStandingReport = () => {
                 extraActions={(
                     <Button
                         type="default"
-                        icon={<Search />}
+                        icon={<ReloadOutlined />}
                         className={filterPanelStyles.btnClear}
                         onClick={() => handleSearch(form.getFieldsValue(), true)}
                         loading={isSubmitting}
@@ -255,26 +269,26 @@ const OutStandingReport = () => {
 
             <Card styles={{ body: { padding: 0 } }} className={styles.tableCard}>
                 <div ref={tableRef} className="erp-table-container">
-                <Table
-                    columns={columns}
-                    dataSource={tableData}
-                    pagination={{
-                        current: page,
-                        pageSize: 10,
-                        onChange: (p) => {
-                            setPage(p);
-                            const values = form.getFieldsValue();
-                            const payload = { ...values, page: p };
-                            handleSearch(values, false);
-                        },
-                        showTotal: (total) => `Total ${total} items`
-                    }}
-                    bordered
-                    size="small"
-                    loading={isSubmitting}
-                    rowKey="id"
-                    scroll={{ x: "max-content", y: tableHeight }}
-                />
+                    <Table
+                        columns={columns}
+                        dataSource={tableData}
+                        pagination={{
+                            current: page,
+                            pageSize: 10,
+                            onChange: (p) => {
+                                setPage(p);
+                                const values = form.getFieldsValue();
+                                const payload = { ...values, page: p };
+                                handleSearch(values, false);
+                            },
+                            showTotal: (total) => `Total ${total} items`
+                        }}
+                        bordered
+                        size="small"
+                        loading={isSubmitting}
+                        rowKey="id"
+                        scroll={{ x: "max-content", y: tableHeight }}
+                    />
                 </div>
 
                 <OutstandingCalculationModal

@@ -17,6 +17,8 @@ const MasterListTable = ({
     rowSelection,
     extraHeaderActions,
     searchPlaceholder = "Search diamonds...",
+    searchValue,
+    onSearchChange,
     onAdd,
     onEdit,
     onDelete,
@@ -67,7 +69,7 @@ const MasterListTable = ({
             <Card variant="none" className={styles.cardContainer}>
                 <PageHeroHeader
                     breadcrumb="MASTER"
-                    title={`${title} Details`}
+                    title={`${title}`}
                     icon={<AppstoreOutlined />}
                     actions={(
                         <Space wrap>
@@ -75,6 +77,9 @@ const MasterListTable = ({
                                 placeholder={searchPlaceholder}
                                 prefix={<Search size={16} color={theme.textMuted} />}
                                 className={styles.searchInput}
+                                value={searchValue}
+                                onChange={(e) => onSearchChange?.(e.target.value)}
+                                allowClear
                             />
                             {!hideCrudActions && (
                                 <Button

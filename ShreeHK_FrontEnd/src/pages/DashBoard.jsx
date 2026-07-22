@@ -222,15 +222,15 @@ const Dashboard = () => {
     const recentTransactions = useMemo(() => {
         const TXN_META = txnMetaForTheme(theme);
         return (summary?.recentTransactions || []).map((txn) => {
-        const meta = TXN_META[txn.type] || TXN_META.default;
-        return {
-            ...txn,
-            ...meta,
-            time: txn.date ? dayjs(txn.date).format('DD MMM YYYY') : '-',
-            amount: txn.type === 'Purchase' ? fmtMoney(txn.amount) : fmtMoney(txn.amount),
-            statusColor: theme.primaryMedium,
-        };
-    });
+            const meta = TXN_META[txn.type] || TXN_META.default;
+            return {
+                ...txn,
+                ...meta,
+                time: txn.date ? dayjs(txn.date).format('DD MMM YYYY') : '-',
+                amount: txn.type === 'Purchase' ? fmtMoney(txn.amount) : fmtMoney(txn.amount),
+                statusColor: theme.primaryMedium,
+            };
+        });
     }, [summary?.recentTransactions, theme]);
 
     const topParties = useMemo(() => (summary?.topParties || []).map((p) => ({
@@ -257,7 +257,7 @@ const Dashboard = () => {
 
     return (
         <div className='dashboard-page'>
-            <div className="dashboard-header">
+            {/* <div className="dashboard-header">
                 <div className="header-left">
                     <Title level={3} className="page-title">Inventory Dashboard</Title>
                     <Text className="welcome-text">
@@ -270,7 +270,7 @@ const Dashboard = () => {
                         {dayjs().format('DD MMM, YYYY')}
                     </span>
                 </div>
-            </div>
+            </div> */}
 
             <div className='cardGroup dashboard-grid'>
                 <Row gutter={[20, 20]} align="stretch">
@@ -293,11 +293,11 @@ const Dashboard = () => {
                 </Row>
             </div>
 
-            <Row gutter={[16, 16]}>
+            {/* <Row gutter={[16, 16]}>
                 <Col span={24}>
                     <AIInsightCard />
                 </Col>
-            </Row>
+            </Row> */}
 
             <Row gutter={[20, 20]} className="middle-section dashboard-grid" align="stretch">
                 <Col xs={24} xl={12} className="dashboard-grid__col">
@@ -312,7 +312,12 @@ const Dashboard = () => {
                                     <span className="card-subtitle-text">Outstanding within 7 days</span>
                                 </div>
                             </div>
-                            <a className="view-all-link" onClick={() => navigate('/report/outstanding')}>View All</a>
+                            {/* <a className="view-all-link" onClick={() => navigate('/report/outstanding')}>View All</a> */}
+                            <a className="view-all-link" onClick={() => navigate('/report/outstanding', {
+                                state: {
+                                    dateRange: [dayjs().format('YYYY-MM-DD'), dayjs().add(7, 'day').format('YYYY-MM-DD')]
+                                }
+                            })}>View All</a>
                         </div>
                         <div className="table-wrapper">
                             {isLoading ? (

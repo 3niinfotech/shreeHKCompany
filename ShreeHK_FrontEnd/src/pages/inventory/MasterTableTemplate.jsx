@@ -89,7 +89,7 @@ const MasterTableTemplate = ({
     const selectedAvgPrice = selectedTotals.carat > 0 ? selectedTotals.amount / selectedTotals.carat : 0;
 
     useEffect(() => {
-      onSelectedRowsChange?.(selectedRows, selectedRowKeys);
+        onSelectedRowsChange?.(selectedRows, selectedRowKeys);
     }, [selectedRows, selectedRowKeys, onSelectedRowsChange]);
 
     const handleInternalSave = async () => {
