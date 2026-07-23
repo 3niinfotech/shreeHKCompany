@@ -29,7 +29,7 @@ const LayoutShell = () => {
     <>
       <AuditUiTracker />
       {viewMode === "dashboard" ? <DashboardLayout /> : <MainLayout />}
-      <FloatingRapaportPanel />
+      {/* <FloatingRapaportPanel /> */}
       <FloatingAIChat />
       <CompanyYearPicker
         open={showContextPicker}

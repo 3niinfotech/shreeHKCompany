@@ -85,7 +85,7 @@ const Login = () => {
           </Form>
 
           <footer className={styles.footerText}>
-            <Text type="secondary">2026 © Your ShreeHK</Text>
+            <Text type="secondary">2026 © Your Smart DIA</Text>
           </footer>
         </div>
       </div>

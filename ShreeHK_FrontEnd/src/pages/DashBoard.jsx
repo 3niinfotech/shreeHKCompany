@@ -1,4 +1,4 @@
-import { Card, Row, Col, Table, Typography, Tooltip, Spin } from 'antd';
+import { Card, Row, Col, Table, Typography, Tooltip, Spin, Tabs } from 'antd';
 import {
     Diamond,
     Tag,
@@ -157,7 +157,6 @@ const Dashboard = () => {
     const user = useAuthStore(state => state.user);
     const companyName = useAuthStore(state => state.companyName);
     const [taskInput, setTaskInput] = useState("");
-
     const { data: summaryRes, isLoading } = useFetchApi(
         'dashboardSummary',
         ENDPOINTS.dashboard.summary,
@@ -167,6 +166,8 @@ const Dashboard = () => {
     const summary = summaryRes?.Data;
     const widgets = summary?.widgets;
     const breakdowns = summary?.breakdowns;
+    const duePayments = summary?.duePayments || [];
+    const purchaseDuePayments = summary?.purchaseDuePayments || [];
 
     const statCards = useMemo(() => {
         if (!widgets) return [];
@@ -208,16 +209,58 @@ const Dashboard = () => {
 
     const quickActions = useMemo(() => quickActionsForTheme(theme), [theme]);
 
-    const duePayments = summary?.duePayments || [];
-    const dueTotals = useMemo(() => duePayments.reduce(
-        (acc, row) => ({
-            entry: acc.entry + 1,
-            total: acc.total + Number(row.total || 0),
-            paid: acc.paid + Number(row.paid || 0),
-            balance: acc.balance + Number(row.balance || 0),
-        }),
-        { entry: 0, total: 0, paid: 0, balance: 0 }
-    ), [duePayments]);
+    const dueTotals = useMemo(
+        () =>
+            duePayments.reduce(
+                (acc, row) => ({
+                    entry: acc.entry + 1,
+                    total: acc.total + Number(row.total || 0),
+                    paid: acc.paid + Number(row.paid || 0),
+                    balance: acc.balance + Number(row.balance || 0),
+                }),
+                { entry: 0, total: 0, paid: 0, balance: 0 }
+            ),
+        [duePayments]
+    );
+
+    const purchaseDueTotals = useMemo(
+        () =>
+            purchaseDuePayments.reduce(
+                (acc, row) => ({
+                    entry: acc.entry + 1,
+                    total: acc.total + Number(row.total || 0),
+                    paid: acc.paid + Number(row.paid || 0),
+                    balance: acc.balance + Number(row.balance || 0),
+                }),
+                { entry: 0, total: 0, paid: 0, balance: 0 }
+            ),
+        [purchaseDuePayments]
+    );
+    
+    // const purchaseDueTotals = useMemo(
+    //     () =>
+    //         purchaseDuePayments.reduce(
+    //             (acc, row) => ({
+    //                 entry: acc.entry + 1,
+    //                 total: acc.total + Number(row.total || 0),
+    //                 paid: acc.paid + Number(row.paid || 0),
+    //                 balance: acc.balance + Number(row.balance || 0),
+    //             }),
+    //             { entry: 0, total: 0, paid: 0, balance: 0 }
+    //         ),
+    //     [purchaseDuePayments]
+    // );
+
+    // const duePayments = summary?.duePayments || [];
+    // const dueTotals = useMemo(() => duePayments.reduce(
+    //     (acc, row) => ({
+    //         entry: acc.entry + 1,
+    //         total: acc.total + Number(row.total || 0),
+    //         paid: acc.paid + Number(row.paid || 0),
+    //         balance: acc.balance + Number(row.balance || 0),
+    //     }),
+    //     { entry: 0, total: 0, paid: 0, balance: 0 }
+    // ), [duePayments]);
 
     const recentTransactions = useMemo(() => {
         const TXN_META = txnMetaForTheme(theme);
@@ -319,7 +362,7 @@ const Dashboard = () => {
                                 }
                             })}>View All</a>
                         </div>
-                        <div className="table-wrapper">
+                        {/* <div className="table-wrapper">
                             {isLoading ? (
                                 <div style={{ padding: 24, textAlign: 'center' }}><Spin /></div>
                             ) : duePayments.length > 0 ? (
@@ -353,7 +396,114 @@ const Dashboard = () => {
                             ) : (
                                 <div style={{ padding: 16, color: theme.textMuted }}>No due payments in the next 7 days.</div>
                             )}
-                        </div>
+                        </div> */}
+                        <Tabs
+                            defaultActiveKey="sale"
+                            items={[
+                                {
+                                    key: "sale",
+                                    label: "Sale Due Payments",
+                                    children: (
+                                        <div className="table-wrapper">
+                                            {isLoading ? (
+                                                <div style={{ padding: 24, textAlign: "center" }}>
+                                                    <Spin />
+                                                </div>
+                                            ) : duePayments.length > 0 ? (
+                                                <table className="inventory-table">
+                                                    <thead>
+                                                        <tr>
+                                                            {columns.map((col) => (
+                                                                <th key={col.key} style={{ textAlign: col.align || "left" }}>
+                                                                    {col.title}
+                                                                </th>
+                                                            ))}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {duePayments.map((row, idx) => (
+                                                            <tr key={`${row.entry}-${idx}`}>
+                                                                <td>{row.party}</td>
+                                                                <td style={{ textAlign: "center" }}>{row.entry}</td>
+                                                                <td style={{ textAlign: "center" }}>{fmtMoney(row.total)}</td>
+                                                                <td style={{ textAlign: "center" }}>{fmtMoney(row.paid)}</td>
+                                                                <td className="balance-cell" style={{ textAlign: "center" }}>
+                                                                    {fmtMoney(row.balance)}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                        <tr className="total-row">
+                                                            <td><strong>Total</strong></td>
+                                                            <td style={{ textAlign: "center" }}><strong>{dueTotals.entry}</strong></td>
+                                                            <td style={{ textAlign: "center" }}><strong>{fmtMoney(dueTotals.total)}</strong></td>
+                                                            <td style={{ textAlign: "center" }}><strong>{fmtMoney(dueTotals.paid)}</strong></td>
+                                                            <td className="balance-cell" style={{ textAlign: "center" }}>
+                                                                <strong>{fmtMoney(dueTotals.balance)}</strong>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            ) : (
+                                                <div style={{ padding: 16, color: theme.textMuted }}>
+                                                    No due payments in the next 7 days.
+                                                </div>
+                                            )}
+                                        </div>
+                                    ),
+                                },
+                                {
+                                    key: "purchase",
+                                    label: "Purchase Due Payments",
+                                    children: (
+                                        <div className="table-wrapper">
+                                            {isLoading ? (
+                                                <div style={{ padding: 24, textAlign: "center" }}>
+                                                    <Spin />
+                                                </div>
+                                            ) : purchaseDuePayments.length > 0 ? (
+                                                <table className="inventory-table">
+                                                    <thead>
+                                                        <tr>
+                                                            {columns.map((col) => (
+                                                                <th key={col.key} style={{ textAlign: col.align || "left" }}>
+                                                                    {col.title}
+                                                                </th>
+                                                            ))}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {purchaseDuePayments.map((row, idx) => (
+                                                            <tr key={`${row.entry}-${idx}`}>
+                                                                <td>{row.party}</td>
+                                                                <td style={{ textAlign: "center" }}>{row.entry}</td>
+                                                                <td style={{ textAlign: "center" }}>{fmtMoney(row.total)}</td>
+                                                                <td style={{ textAlign: "center" }}>{fmtMoney(row.paid)}</td>
+                                                                <td className="balance-cell" style={{ textAlign: "center" }}>
+                                                                    {fmtMoney(row.balance)}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                        <tr className="total-row">
+                                                            <td><strong>Total</strong></td>
+                                                            <td style={{ textAlign: "center" }}><strong>{purchaseDueTotals.entry}</strong></td>
+                                                            <td style={{ textAlign: "center" }}><strong>{fmtMoney(purchaseDueTotals.total)}</strong></td>
+                                                            <td style={{ textAlign: "center" }}><strong>{fmtMoney(purchaseDueTotals.paid)}</strong></td>
+                                                            <td className="balance-cell" style={{ textAlign: "center" }}>
+                                                                <strong>{fmtMoney(purchaseDueTotals.balance)}</strong>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            ) : (
+                                                <div style={{ padding: 16, color: theme.textMuted }}>
+                                                    No purchase due payments in the next 7 days.
+                                                </div>
+                                            )}
+                                        </div>
+                                    ),
+                                },
+                            ]}
+                        />
                     </Card>
                 </Col>
 

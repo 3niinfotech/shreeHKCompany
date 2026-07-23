@@ -16,7 +16,8 @@ const MasterListTable = ({
     rowKey = "id",
     rowSelection,
     extraHeaderActions,
-    searchPlaceholder = "Search diamonds...",
+    // searchPlaceholder = "Search Companies...",
+    searchPlaceholder,
     searchValue,
     onSearchChange,
     onAdd,
@@ -74,7 +75,7 @@ const MasterListTable = ({
                     actions={(
                         <Space wrap>
                             <Input
-                                placeholder={searchPlaceholder}
+                                placeholder={searchPlaceholder || `Search ${title}...`}
                                 prefix={<Search size={16} color={theme.textMuted} />}
                                 className={styles.searchInput}
                                 value={searchValue}

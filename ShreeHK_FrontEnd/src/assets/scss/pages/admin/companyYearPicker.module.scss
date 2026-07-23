@@ -15,14 +15,15 @@
   }
 
   :global(.ant-modal-close) {
-    top: 14px;
-    inset-inline-end: 14px;
-    left: auto;
+    top: 25px !important;
+    inset-inline-end: 14px !important;
+    left: auto !important;
     width: 34px;
     height: 34px;
     border-radius: 5px;
     background: rgba(255, 255, 255, 0.14);
     transition: background 0.2s ease;
+    right: 30px !important;
 
     &:hover {
       background: rgba(255, 255, 255, 0.24);
@@ -30,7 +31,7 @@
   }
 
   :global(.ant-modal-close-x) {
-    color: #fff;
+    color: #ffffff;
     font-size: 14px;
     line-height: 34px;
   }

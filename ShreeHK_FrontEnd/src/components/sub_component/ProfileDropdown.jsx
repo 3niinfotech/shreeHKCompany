@@ -91,8 +91,8 @@ const ProfileMenuPanel = ({
                 {displayCompany}
               </span>
             ) : null}
-            <span className={styles.roleChip}>{roleLabel}</span>
-            {yearId ? <span className={styles.yearChip}>FY {yearId}</span> : null}
+            {/* <span className={styles.roleChip}>{roleLabel}</span> */}
+            {/* {yearId ? <span className={styles.yearChip}>FY {yearId}</span> : null} */}
           </p>
         </div>
       </div>
@@ -173,9 +173,11 @@ const ProfileDropdown = () => {
     : (user?.user_name || userDisplayName).charAt(0).toUpperCase();
   const roleLabel = getRoleLabel(user);
 
-  const profileSubtitle = [displayCompany, roleLabel, yearId ? `FY ${yearId}` : null]
-    .filter(Boolean)
-    .join(" · ");
+  // const profileSubtitle = [displayCompany, roleLabel, yearId ? `FY ${yearId}` : null]
+  //   .filter(Boolean)
+  //   .join(" · ");
+
+  const profileSubtitle = "";
 
   useEffect(() => {
     if (!companyId || companyName) return undefined;
@@ -188,7 +190,7 @@ const ProfileDropdown = () => {
         const name = res.data?.Data?.[0]?.name;
         if (name) setSessionContext({ companyName: name });
       })
-      .catch(() => {});
+      .catch(() => { });
 
     return () => {
       cancelled = true;
@@ -250,12 +252,18 @@ const ProfileDropdown = () => {
           {!user?.profile_image && userInitial}
         </Avatar>
 
-        <span className={styles.profileText}>
+        {/* <span className={styles.profileText}>
           <span className={styles.companyName} title={userDisplayName}>
             {userDisplayName}
           </span>
           <span className={styles.roleName} title={profileSubtitle}>
             {profileSubtitle}
+          </span>
+        </span> */}
+
+        <span className={styles.profileText}>
+          <span className={styles.companyName} title={userDisplayName}>
+            {userDisplayName}
           </span>
         </span>
 

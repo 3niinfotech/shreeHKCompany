@@ -128,7 +128,7 @@ const GroupReport = () => {
 
     return (
         <div className={styles.pageContainer}>
-            <PageHeroHeader
+            {/* <PageHeroHeader
                 breadcrumb="REPORTS"
                 title="Group Report"
                 icon={<BarChartOutlined />}
@@ -137,16 +137,27 @@ const GroupReport = () => {
                         Export to Excel
                     </Button>
                 )}
-            />
+            /> */}
 
             <AdvancedFilterPanel
-                title="Filter Group Report"
+                title="Group Report"
                 subtitle="Choose report type, groups, company, and date range."
                 activeCount={getActiveCount()}
                 onClear={handleClear}
                 clearDisabled={!getActiveCount()}
                 onSearch={handleSearch}
                 searchLoading={tableLoading}
+                extraActions={
+                    <Button
+                        type="primary"
+                        icon={<FileUp size={16} />}
+                        loading={exporting}
+                        onClick={handleExport}
+                        disabled={!tableData.length}
+                    >
+                        Export to Excel
+                    </Button>
+                }
             >
                 <div className={filterPanelStyles.filterFormWide}>
                     <Form form={form}>
@@ -157,16 +168,16 @@ const GroupReport = () => {
 
             <Card className={styles.tableCard}>
                 <div ref={tableRef} className="erp-table-container">
-                <Table
-                    columns={columns}
-                    dataSource={tableData}
-                    loading={tableLoading}
-                    pagination={{ pageSize: 50 }}
-                    bordered
-                    size="small"
-                    scroll={{ x: "max-content", y: tableHeight }}
-                    className={styles.customTable}
-                />
+                    <Table
+                        columns={columns}
+                        dataSource={tableData}
+                        loading={tableLoading}
+                        pagination={{ pageSize: 50 }}
+                        bordered
+                        size="small"
+                        scroll={{ x: "max-content", y: tableHeight }}
+                        className={styles.customTable}
+                    />
                 </div>
             </Card>
         </div>

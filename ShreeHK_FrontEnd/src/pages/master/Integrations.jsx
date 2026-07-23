@@ -59,7 +59,7 @@ const Integrations = () => {
       label: "GIA Lookup",
       children: (
         <Card>
-          <Title level={5}>GIA Report Lookup</Title>
+          <Title level={5} style={{margin:0}}>GIA Report Lookup</Title>
           <Text type="secondary">Search inventory by certificate report number (PHP gia.php parity).</Text>
           <div style={{ display: "flex", gap: 8, marginTop: 16, maxWidth: 480 }}>
             <Input
@@ -115,8 +115,8 @@ const Integrations = () => {
   ];
 
   return (
-    <div style={{ padding: 24 }}>
-      <Title level={3}>Integrations</Title>
+    <div style={{ padding: '7px 24px' }}>
+      <Title level={3} style={{ margin: 0 }}>Integrations</Title>
       <Tabs items={items} />
     </div>
   );

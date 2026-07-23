@@ -129,8 +129,8 @@ const FloatingAIChat = () => {
                   <img src={logo} alt="logo" className={styles.logo} />
                 </div>
                 <div className={styles.headerTitles}>
-                  <h3>Diamond Inventory AI</h3>
-                  <p>Shreehk · Surat, Gujarat</p>
+                  <h3>Smart Diamond Inventory AI</h3>
+                  <p>Smart DIA · Surat, Gujarat</p>
                   <div className={styles.statusRow}>
                     <span className={styles.statusDot} />
                     <span className={styles.statusText}>Gemini 2.5 Flash · Live</span>
@@ -160,7 +160,8 @@ const FloatingAIChat = () => {
                 <div className={styles.welcomeIcon}>
                   <Bot size={28} strokeWidth={1.5} />
                 </div>
-                <div className={styles.welcomeTitle}>Namaste!</div>
+                {/* <div className={styles.welcomeTitle}>Namaste!</div> */}
+                <div className={styles.welcomeTitle}>Hello!</div>
                 <p className={styles.welcomeSub}>
                   Your luxury diamond inventory assistant is here to help with stock availability, pricing intelligence, and business insights—just ask.
                 </p>
@@ -240,7 +241,7 @@ const FloatingAIChat = () => {
               <textarea
                 ref={textareaRef}
                 className={styles.chatTextarea}
-                placeholder="Apna sawaal likho... inventory, stock, price"
+                placeholder="Enter YOur Question... inventory, stock, price..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {

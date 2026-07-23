@@ -121,7 +121,7 @@ const TransactionReport = () => {
 
     return (
         <div className={styles.pageContainer}>
-            <PageHeroHeader
+            {/* <PageHeroHeader
                 breadcrumb="REPORTS"
                 title="Transaction Report"
                 icon={<BarChartOutlined />}
@@ -140,14 +140,30 @@ const TransactionReport = () => {
                         </Button>
                     </>
                 )}
-            />
+            /> */}
 
             <AdvancedFilterPanel
-                title="Filter Transaction Report"
+                // title="Filter Transaction Report"
+                title="Transaction Report"
                 subtitle="Refine by sale status, company, location, invoice, and dates."
                 showClear={false}
                 onSearch={handleSearch}
                 searchLoading={tableLoading}
+                extraActions={
+                    <>
+                        {/* <Button
+                            icon={<Sparkles size={16} />}
+                            onClick={() => runSalesReport(tableData)}
+                            loading={aiReportLoading}
+                            disabled={!tableData.length}
+                        >
+                            Generate AI Report
+                        </Button> */}
+                        <Button type="primary" icon={<FileUp />} className={styles.exportBtn} loading={exporting} onClick={handleExport} disabled={!tableData.length}>
+                            Export to Excel
+                        </Button>
+                    </>
+                }
             >
                 <div className={`${filterPanelStyles.filterInlineRow} ${styles.transactionFilterForm}`}>
                     <Form
@@ -230,41 +246,41 @@ const TransactionReport = () => {
 
             <Card className={styles.tableCard}>
                 <div ref={tableRef} className="erp-table-container">
-                <Table
-                    columns={columns}
-                    dataSource={tableData}
-                    loading={tableLoading}
-                    pagination={{ pageSize: 50 }}
-                    bordered
-                    size="small"
-                    className={styles.customTable}
-                    scroll={{ x: "max-content", y: tableHeight }}
-                    summary={(pageData) => {
-                        let totalPcs = 0;
-                        let totalAmount = 0;
-                        pageData.forEach(({ pcs, amount }) => {
-                            totalPcs += Number(pcs) || 0;
-                            totalAmount += Number(amount) || 0;
-                        });
-                        return (
-                            <Table.Summary fixed>
-                                <Table.Summary.Row className={styles.summaryRow}>
-                                    <Table.Summary.Cell index={0} colSpan={4}>
-                                        <Text strong>Total</Text>
-                                    </Table.Summary.Cell>
-                                    <Table.Summary.Cell index={1} align="center">
-                                        <Text strong>{totalPcs}</Text>
-                                    </Table.Summary.Cell>
-                                    <Table.Summary.Cell index={2} colSpan={3} />
-                                    <Table.Summary.Cell index={3} align="right">
-                                        <Text strong>{totalAmount.toFixed(2)}</Text>
-                                    </Table.Summary.Cell>
-                                    <Table.Summary.Cell index={4} colSpan={2} />
-                                </Table.Summary.Row>
-                            </Table.Summary>
-                        );
-                    }}
-                />
+                    <Table
+                        columns={columns}
+                        dataSource={tableData}
+                        loading={tableLoading}
+                        pagination={{ pageSize: 50 }}
+                        bordered
+                        size="small"
+                        className={styles.customTable}
+                        scroll={{ x: "max-content", y: tableHeight }}
+                        summary={(pageData) => {
+                            let totalPcs = 0;
+                            let totalAmount = 0;
+                            pageData.forEach(({ pcs, amount }) => {
+                                totalPcs += Number(pcs) || 0;
+                                totalAmount += Number(amount) || 0;
+                            });
+                            return (
+                                <Table.Summary fixed>
+                                    <Table.Summary.Row className={styles.summaryRow}>
+                                        <Table.Summary.Cell index={0} colSpan={4}>
+                                            <Text strong>Total</Text>
+                                        </Table.Summary.Cell>
+                                        <Table.Summary.Cell index={1} align="center">
+                                            <Text strong>{totalPcs}</Text>
+                                        </Table.Summary.Cell>
+                                        <Table.Summary.Cell index={2} colSpan={3} />
+                                        <Table.Summary.Cell index={3} align="right">
+                                            <Text strong>{totalAmount.toFixed(2)}</Text>
+                                        </Table.Summary.Cell>
+                                        <Table.Summary.Cell index={4} colSpan={2} />
+                                    </Table.Summary.Row>
+                                </Table.Summary>
+                            );
+                        }}
+                    />
                 </div>
             </Card>
         </div>

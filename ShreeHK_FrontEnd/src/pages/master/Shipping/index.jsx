@@ -23,13 +23,13 @@ const ShippingPage = () => {
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [modalLoading, setModalLoading] = useState(false);
     const [editingRecordName, setEditingRecordName] = useState("");
-
+    const [search, setSearch] = useState("");
     const addModal = useModal();
     const editModal = useModal();
     const deleteModal = useModal();
     const [deleteTarget, setDeleteTarget] = useState(null);
 
-    const { data, isLoading } = useEntityList(QUERY_KEYS.shipping, fetchShipping, { limit: PAGE_LIMIT });
+    const { data, isLoading } = useEntityList(QUERY_KEYS.shipping, fetchShipping, { limit: PAGE_LIMIT, searchInput: search, });
 
     const { mutate: saveShippingMutation } = useEntityPostMutation(saveShipping, QUERY_KEYS.shipping);
     const { mutate: deleteShippingMutation, isPending: isDeleting } = useEntityDeleteMutation(
@@ -38,6 +38,10 @@ const ShippingPage = () => {
     );
 
     const columns = getShippingColumns();
+
+    const handleSearch = (value) => {
+        setSearch(value);
+    };
 
     const openDelete = (record) => {
         setDeleteTarget(record);
@@ -104,6 +108,8 @@ const ShippingPage = () => {
                 onAdd={handleAddClick}
                 onEdit={handleEditClick}
                 onDelete={openDelete}
+                searchValue={search}
+                onSearchChange={handleSearch}
             />
 
             <MasterFormAddModal
