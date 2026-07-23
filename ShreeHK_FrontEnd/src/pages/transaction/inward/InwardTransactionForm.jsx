@@ -418,16 +418,17 @@ const InwardTransactionForm = ({
   return (
     <div className={styles.purchaseContainer}>
       {useModernLayout ? (
-        <PageHeroHeader
-          breadcrumb="TRANSACTION / INWARD"
-          title={title}
-          icon={<PageIcon />}
-          actions={(
-            <Button className={pageHeroHeaderStyles.actionBtn} icon={<RefreshCcw size={16} />} onClick={handlePartialReset}>
-              Reset
-            </Button>
-          )}
-        />
+        // <PageHeroHeader
+        //   breadcrumb="TRANSACTION / INWARD"
+        //   title={title}
+        //   icon={<PageIcon />}
+        //   actions={(
+        //     <Button className={pageHeroHeaderStyles.actionBtn} icon={<RefreshCcw size={16} />} onClick={handlePartialReset}>
+        //       Reset
+        //     </Button>
+        //   )}
+        // />
+        <></>
       ) : (
         <div className={styles.headerRow}>
           <h4>{title}</h4>

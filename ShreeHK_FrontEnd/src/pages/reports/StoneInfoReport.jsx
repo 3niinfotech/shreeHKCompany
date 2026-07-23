@@ -60,7 +60,8 @@ const StoneInfoReport = () => {
     return (
         <div className={styles.pageContainer}>
             <AdvancedFilterPanel
-                title="Filter Stone Info"
+                // title="Filter Stone Info"
+                title="Stone Info"
                 subtitle="Enter stone ID or SKU to load stone details and history."
                 activeCount={activeCount}
                 onClear={handleClear}

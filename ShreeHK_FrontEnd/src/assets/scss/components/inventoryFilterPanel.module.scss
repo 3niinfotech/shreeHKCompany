@@ -26,19 +26,29 @@ $compact-accent-hover: var(--color-primary-dark);
 }
 
 .headerMain {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: "title compact actions";
-  gap: 10px 12px;
+  // display: grid;
+  // grid-template-columns: auto minmax(0, 1fr) auto;
+  // grid-template-areas: "title compact actions";
+  // gap: 10px 12px;
+  // align-items: center;
+  display: flex;
   align-items: center;
+  gap: 12px;
+  width: 100%;
+  flex-wrap: nowrap;
 }
 
 .headerLeft {
+  // display: flex;
+  // align-items: center;
+  // gap: 10px;
+  // flex-shrink: 0;
+  // grid-area: title;
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-shrink: 0;
-  grid-area: title;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .sectionTitle {
@@ -67,19 +77,41 @@ $compact-accent-hover: var(--color-primary-dark);
 }
 
 .compactRow {
+  // display: flex;
+  // align-items: center;
+  // grid-area: compact;
+  // flex-wrap: wrap;
+  // gap: 8px;
+  // min-width: 0;
+  // min-height: 36px;
+  // padding: 0;
+  // overflow: visible;
   display: flex;
   align-items: center;
-  grid-area: compact;
-  flex-wrap: wrap;
   gap: 8px;
+
+  flex: 1;
   min-width: 0;
-  min-height: 36px;
-  padding: 0;
-  overflow: visible;
+
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  scrollbar-width: thin;
+
+  &::-webkit-scrollbar {
+    height: 5px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #c8c8c8;
+    border-radius: 10px;
+  }
 }
 
 .searchSlot {
-  flex: 0 1 220px;
+  // flex: 0 1 220px;
+  flex: 0 0 220px;
   width: 200px;
   min-width: 160px;
   max-width: 220px;
@@ -96,21 +128,28 @@ $compact-accent-hover: var(--color-primary-dark);
 }
 
 .caratSlot {
-  flex-shrink: 0;
+  // flex-shrink: 0;
+  flex: 0 0 auto;
 }
 
 .searchButtonSlot {
-  flex-shrink: 0;
+  // flex-shrink: 0;
+  flex: 0 0 auto;
 }
 
 .compactFilters {
+  // display: flex;
+  // align-items: center;
+  // flex: 1 1 auto;
+  // flex-wrap: wrap;
+  // gap: 6px;
+  // min-width: 0;
+  overflow: visible;
   display: flex;
   align-items: center;
-  flex: 1 1 auto;
-  flex-wrap: wrap;
   gap: 6px;
-  min-width: 0;
-  overflow: visible;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
 
   :global(.filter-form-container) {
     gap: 6px;
@@ -122,12 +161,16 @@ $compact-accent-hover: var(--color-primary-dark);
 }
 
 .compactFilterForm {
+  // display: flex;
+  // align-items: center;
+  // flex-wrap: wrap;
+  // gap: 6px;
+  // width: 100%;
+  // min-width: 0;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 6px;
-  width: 100%;
-  min-width: 0;
+  flex-wrap: nowrap;
 }
 
 .caratGroup {
@@ -235,14 +278,20 @@ $compact-accent-hover: var(--color-primary-dark);
 }
 
 .headerRight {
+  // display: flex;
+  // align-items: center;
+  // flex-wrap: wrap;
+  // justify-content: flex-end;
+  // gap: 8px;
+  // flex-shrink: 0;
+  // grid-area: actions;
+  // justify-self: end;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
   gap: 8px;
-  flex-shrink: 0;
-  grid-area: actions;
-  justify-self: end;
+  margin-left: auto;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 .toggleBtn {
@@ -270,12 +319,17 @@ $compact-accent-hover: var(--color-primary-dark);
 }
 
 .headerActions {
+  // display: flex;
+  // align-items: center;
+  // justify-content: flex-end;
+  // gap: 8px;
+  // position: relative;
+  // min-width: 0;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   gap: 8px;
-  position: relative;
-  min-width: 0;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 
   :global(.ant-btn) {
     height: 29px !important;
@@ -537,16 +591,21 @@ $compact-accent-hover: var(--color-primary-dark);
 }
 
 .toolbarRow {
+  // display: flex;
+  // flex: 1 1 auto;
+  // align-items: center;
+  // justify-content: flex-end;
+  // flex-wrap: wrap;
+  // gap: 8px;
+  // grid-column: 1 / -1;
+  // padding: 8px 0 0;
+  // border-top: 1px solid $panel-border;
+  // background: transparent;
   display: flex;
-  flex: 1 1 auto;
   align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
   gap: 8px;
-  grid-column: 1 / -1;
-  padding: 8px 0 0;
-  border-top: 1px solid $panel-border;
-  background: transparent;
+  flex: 0 0 auto;
+  white-space: nowrap;
 
   :global(.ant-btn) {
     height: 29px !important;

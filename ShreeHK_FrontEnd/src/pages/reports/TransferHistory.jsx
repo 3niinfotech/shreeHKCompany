@@ -106,7 +106,7 @@ const TransferHistory = () => {
 
     return (
         <div className={styles.erpContainer}>
-            <PageHeroHeader
+            {/* <PageHeroHeader
                 breadcrumb="REPORTS"
                 title="Stone Transfer History"
                 icon={<SwapOutlined />}
@@ -115,7 +115,7 @@ const TransferHistory = () => {
                         Export to Excel
                     </Button>
                 )}
-            />
+            /> */}
 
             <AdvancedFilterPanel
                 title="Filter Transfer History"
@@ -125,6 +125,11 @@ const TransferHistory = () => {
                 clearDisabled={!activeCount}
                 onSearch={handleSearch}
                 searchLoading={loading}
+                extraActions={(
+                    <Button type="primary" icon={<FileUp size={16} />} loading={exporting} onClick={handleExport} disabled={!data.length}>
+                        Export to Excel
+                    </Button>
+                )}
             >
                 <div className={`${filterPanelStyles.filterInlineRow} ${styles.transferFilterForm}`}>
                     <Form form={form}>
@@ -151,7 +156,7 @@ const TransferHistory = () => {
 
             <Card className={styles.tableCard}>
                 <div ref={tableRef} className="erp-table-container">
-                <Table columns={columns} dataSource={data} loading={loading} pagination={{ pageSize: 50 }} size="small" bordered scroll={{ x: "max-content", y: tableHeight }} />
+                    <Table columns={columns} dataSource={data} loading={loading} pagination={{ pageSize: 50 }} size="small" bordered scroll={{ x: "max-content", y: tableHeight }} />
                 </div>
             </Card>
         </div>

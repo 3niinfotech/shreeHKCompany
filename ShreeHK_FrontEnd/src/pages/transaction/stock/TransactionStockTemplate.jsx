@@ -605,7 +605,7 @@ const TransactionStockTemplate = ({
 
   return (
     <div className={styles.outwardContainer}>
-      <PageHeroHeader
+      {/* <PageHeroHeader
         breadcrumb="TRANSACTION / STOCK"
         title={title}
         icon={<FileTextOutlined />}
@@ -621,15 +621,37 @@ const TransactionStockTemplate = ({
             </Button>
           </Space>
         )}
-      />
+      /> */}
 
       <AdvancedFilterPanel
-        title={`Filter ${title}`}
+        title={`${title}`}
         subtitle="Filter records by company and invoice number."
         activeCount={[party, invoice].filter(Boolean).length}
         onClear={() => { setParty(''); setInvoice(''); resetList(); }}
         clearDisabled={!party && !invoice}
         showSearch={false}
+        extraActions={
+          <Space>
+            {entryPath && (
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => navigate(entryPath)}
+              >
+                New Entry
+              </Button>
+            )}
+
+            <Button
+              type="primary"
+              icon={<ReloadOutlined />}
+              loading={isFetching && (!infiniteScroll || offset === 0)}
+              onClick={refreshList}
+            >
+              Refresh
+            </Button>
+          </Space>
+        }
       >
         <FilterField label="Company" icon={<TeamOutlined />}>
           <Select
@@ -641,6 +663,7 @@ const TransactionStockTemplate = ({
             value={party || undefined}
             onChange={(v) => { setParty(v || ''); resetList(); }}
             options={partyOptions}
+            style={{ padding: "6px 11px" }}
           />
         </FilterField>
         <FilterField label="Invoice">

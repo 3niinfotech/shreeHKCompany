@@ -297,11 +297,11 @@ const OnHandStock = () => {
         <>
             <InventorySummaryToolbar totals={summaryTotals} />
             <div className="inventory-page-toolbar-wrap">
-                <InventoryFilterPresets
+                {/* <InventoryFilterPresets
                     pageKey="on-hand-stock"
                     compactForm={filterForm}
                     onApply={() => refresh()}
-                />
+                /> */}
                 <InventoryPageToolbar
                     tableCount={totalItems || tableData.length}
                     activeType={activeType}
@@ -315,24 +315,24 @@ const OnHandStock = () => {
                     onTypeAction={onTypeAction}
                     onLabelClick={handleLabelClick}
                     onToolbarAction={handleToolbarAction}
-                    extraToolbarActions={
-                        <Button
-                            icon={<Sparkles size={16} />}
-                            onClick={runStockAlert}
-                            loading={aiAlertLoading}
-                        >
-                            AI Alert Check
-                        </Button>
-                    }
+                    // extraToolbarActions={
+                    //     <Button
+                    //         icon={<Sparkles size={16} />}
+                    //         onClick={runStockAlert}
+                    //         loading={aiAlertLoading}
+                    //     >
+                    //         AI Alert Check
+                    //     </Button>
+                    // }
                 />
-                <AIResultPanel
+                {/* <AIResultPanel
                     title="AI Stock Alerts"
                     loading={aiAlertLoading}
                     result={aiAlertResult}
                     error={aiAlertError}
                     open={aiPanelOpen}
                     onOpenChange={setAiPanelOpen}
-                />
+                /> */}
             </div>
             <InventoryBulkActionModal
                 open={holdActionState.open}

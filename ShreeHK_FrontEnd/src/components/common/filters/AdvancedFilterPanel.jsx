@@ -59,25 +59,25 @@ const AdvancedFilterPanel = ({
             </div>
             {(showClear || showSearch || extraActions) && (
                 <FilterActions>
+                    {showSearch && onSearch ? (
+                        <Button
+                        type="primary"
+                        icon={<SearchOutlined />}
+                        loading={searchLoading}
+                        onClick={onSearch}
+                        className={styles.btnSearch}
+                        >
+                            {searchLabel}
+                        </Button>
+                    ) : null}
                     {extraActions}
                     {showClear && onClear ? (
                         <Button
-                            onClick={onClear}
-                            className={styles.btnClear}
-                            disabled={clearDisabled}
+                        onClick={onClear}
+                        className={styles.btnClear}
+                        disabled={clearDisabled}
                         >
                             {clearLabel}
-                        </Button>
-                    ) : null}
-                    {showSearch && onSearch ? (
-                        <Button
-                            type="primary"
-                            icon={<SearchOutlined />}
-                            loading={searchLoading}
-                            onClick={onSearch}
-                            className={styles.btnSearch}
-                        >
-                            {searchLabel}
                         </Button>
                     ) : null}
                 </FilterActions>

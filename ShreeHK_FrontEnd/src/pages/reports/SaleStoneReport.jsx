@@ -100,7 +100,7 @@ const SaleStoneReport = () => {
 
     return (
         <div className={styles.pageContainer}>
-            <PageHeroHeader
+            {/* <PageHeroHeader
                 breadcrumb="REPORTS"
                 title="Sale Stock Report"
                 icon={<BarChartOutlined />}
@@ -109,16 +109,22 @@ const SaleStoneReport = () => {
                         Export to Excel
                     </Button>
                 )}
-            />
+            /> */}
 
             <AdvancedFilterPanel
-                title="Filter Sale Stock Report"
+                // title="Filter Sale Stock Report"
+                title="Sale Stock Report"
                 subtitle="Filter by party, invoice number, and date range."
                 activeCount={activeCount}
                 onClear={handleClear}
                 clearDisabled={!activeCount}
                 onSearch={handleSearch}
                 searchLoading={tableLoading}
+                extraActions={(
+                    <Button type="primary" icon={<FileUp size={16} />} loading={exporting} onClick={handleExport} disabled={!tableData.length}>
+                        Export to Excel
+                    </Button>
+                )}
             >
                 <div className={`${filterPanelStyles.filterInlineRow} ${styles.saleStockFilterForm}`}>
                     <Form form={form}>
@@ -155,7 +161,17 @@ const SaleStoneReport = () => {
 
             <Card className={styles.tableCard}>
                 <div ref={tableRef} className="erp-table-container">
-                <Table columns={columns} dataSource={tableData} loading={tableLoading} pagination={{ pageSize: 50 }} bordered size="small" scroll={{ x: "max-content", y: tableHeight }} />
+                    <Table
+                        columns={columns}
+                        dataSource={tableData}
+                        loading={tableLoading}
+                        pagination={{ pageSize: 50 }}
+                        bordered size="small"
+                        scroll={{
+                            x: "max-content",
+                            y: tableHeight
+                        }}
+                    />
                 </div>
             </Card>
         </div>

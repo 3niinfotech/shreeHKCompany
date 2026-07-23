@@ -129,6 +129,9 @@ const Header = ({
   const previousOnlineRef = useRef(navigator.onLine);
   const offlineTimerRef = useRef(null);
   const reconnectTimerRef = useRef(null);
+  const authStorage = JSON.parse(localStorage.getItem("auth-storage") || "{}");
+  const companyName =
+    authStorage?.state?.companyName || "Smart DIA";
 
   const checkServerHealth = async () => {
     if (!navigator.onLine) {
@@ -286,7 +289,8 @@ const Header = ({
               <span className={styles.logoIcon}>
                 <Gem size={20} strokeWidth={2.2} />
               </span>
-              <span className={styles.logoText}>Smart DIA</span>
+              {/* <span className={styles.logoText}>Smart DIA</span> */}
+              <span className={styles.logoText}>{companyName}</span>
             </Link>
           )}
 

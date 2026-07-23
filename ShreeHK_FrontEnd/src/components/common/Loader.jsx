@@ -19,7 +19,7 @@ const Loader = ({ text = "Loading" }) => {
           </span>
         </div>
 
-        <span className={styles.brandMark}>ShreeHK</span>
+        <span className={styles.brandMark}>Smart DIA</span>
 
         <div className={styles.track}>
           <div className={styles.beam} />

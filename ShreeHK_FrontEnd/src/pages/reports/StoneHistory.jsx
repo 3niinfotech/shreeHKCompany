@@ -235,7 +235,8 @@ const StoneHistory = () => {
     return (
         <div className={styles.pageContainer}>
             <AdvancedFilterPanel
-                title="Filter Stone History"
+                // title="Filter Stone History"
+                title="Stone History"
                 subtitle="Enter stone ID or SKU to load detail and transaction history."
                 activeCount={searchSku ? 1 : 0}
                 onClear={handleReset}
