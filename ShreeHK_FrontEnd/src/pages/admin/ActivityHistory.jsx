@@ -152,7 +152,7 @@ const ActivityHistory = () => {
 
   return (
     <div className={styles.erpContainer}>
-      <PageHeroHeader
+      {/* <PageHeroHeader
         breadcrumb="ADMIN"
         title="Activity History"
         icon={<HistoryOutlined />}
@@ -187,7 +187,7 @@ const ActivityHistory = () => {
             )}
           </div>
         )}
-      />
+      /> */}
 
       <AdvancedFilterPanel
         title="Filter Activity Log"
@@ -196,6 +196,40 @@ const ActivityHistory = () => {
         onClear={handleClear}
         clearDisabled={!activeCount && !total}
         onSearch={handleSearch}
+        extraActions={(
+          <div className={styles.exportActions}>
+            <Button
+              icon={<FileExcelOutlined />}
+              loading={exporting === "xlsx"}
+              disabled={!total || !!exporting}
+              onClick={() => handleExport("xlsx")}
+              style={{ padding: "19px 15px" }}
+            >
+              Excel
+            </Button>
+            <Button
+              icon={<FilePdfOutlined />}
+              loading={exporting === "pdf"}
+              disabled={!total || !!exporting}
+              onClick={() => handleExport("pdf")}
+              style={{ padding: "19px 15px" }}
+            >
+              PDF
+            </Button>
+            {canDelete && (
+              <Button
+                danger
+                icon={<DeleteOutlined />}
+                disabled={!total || deletingAll || !!exporting}
+                loading={deletingAll}
+                onClick={() => setDeleteAllOpen(true)}
+                style={{ padding: "19px 15px" }}
+              >
+                Delete All
+              </Button>
+            )}
+          </div>
+        )}
       >
         <div className={`${filterPanelStyles.filterInlineRow} ${styles.filterForm}`}>
           <Form form={form} layout="vertical" className={styles.filterFieldsFlex}>

@@ -23,6 +23,8 @@ const MasterListTable = ({
     onAdd,
     onEdit,
     onDelete,
+    onTableScroll,
+    totalItems,
     loading,
     hideCrudActions = false,
 }) => {
@@ -107,13 +109,15 @@ const MasterListTable = ({
                         scroll={{ y: tableHeight, x: "max-content" }}
                         size="small"
                         loading={loading}
+                        onScroll={onTableScroll}
                         className="custom-ant-table"
                     />
                 </div>
 
                 <div className={styles.totalItemsFooter}>
                     <Text className={styles.totalText}>
-                        Total Items: {safeDataSource.length}
+                        Total Items: {totalItems ?? safeDataSource.length}
+                        {totalItems != null && ` | Loaded: ${safeDataSource.length}`}
                     </Text>
                 </div>
             </Card>

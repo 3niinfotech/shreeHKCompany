@@ -295,6 +295,10 @@ const OutStandingReport = () => {
                     open={open}
                     data={selectedRow}
                     onClose={closeModal}
+                    onSaved={() => {
+                        closeModal();
+                        handleSearch(form.getFieldsValue(), false);
+                    }}
                 />
             </Card>
         </div>

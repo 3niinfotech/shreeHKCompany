@@ -317,4 +317,83 @@ reportRouter.post("/report/outstandingRecords", authenticateToken, async (req, r
   }
 });
 
+const reportQuery = (sql, values = []) => new Promise((resolve, reject) => {
+  connection.query(sql, values, (error, rows) => (error ? reject(error) : resolve(rows)));
+});
+
+const getOutstandingTable = (type) => {
+  if (["sale", "export"].includes(String(type).toLowerCase())) {
+    return { table: "dai_outward", linkColumn: "sale_id", paymentType: "dr" };
+  }
+  if (["purchase", "import"].includes(String(type).toLowerCase())) {
+    return { table: "dai_inward", linkColumn: "purchase_id", paymentType: "cr" };
+  }
+  return null;
+};
+
+// Update only the header discount/charge values for one outstanding entry.
+reportRouter.post("/report/outstanding/charge", authenticateToken, async (req, res) => {
+  const { id, type } = req.body || {};
+  const target = getOutstandingTable(type);
+  if (!id || !target) return res.status(400).json({ status: false, message: "Invalid entry" });
+
+  try {
+    const rows = await reportQuery(`SELECT * FROM ${target.table} WHERE id = ?`, [id]);
+    if (!rows.length) return res.status(404).json({ status: false, message: "Entry not found" });
+
+    const row = rows[0];
+    // Recover the pre-discount amount so changing a charge does not compound it.
+    const baseAmount = (Number(row.final_amount) || 0) - (Number(row.charge) || 0)
+      + (Number(row.less_amount) || 0) + (Number(row.other_less_amount) || 0);
+    const lessPercent = Number(req.body.lessPercent) || 0;
+    const otherLessPercent = Number(req.body.otherLessPercent) || 0;
+    const extraCharge = Number(req.body.extraCharge) || 0;
+    const lessAmount = baseAmount * lessPercent / 100;
+    const afterLess = baseAmount - lessAmount;
+    const otherLessAmount = afterLess * otherLessPercent / 100;
+    const finalAmount = afterLess - otherLessAmount + extraCharge;
+    const paidAmount = Number(row.paid_amount) || 0;
+    const dueAmount = finalAmount - paidAmount;
+
+    await reportQuery(
+      `UPDATE ${target.table}
+       SET less_percent = ?, less_amount = ?, other_less_percent = ?, other_less_amount = ?,
+           charge = ?, final_amount = ?, due_amount = ?
+       WHERE id = ?`,
+      [lessPercent, lessAmount, otherLessPercent, otherLessAmount, extraCharge, finalAmount, dueAmount, id],
+    );
+    return res.json({ status: true, message: "Charge updated successfully", data: { finalAmount, paidAmount, dueAmount } });
+  } catch (error) {
+    return res.status(500).json({ status: false, message: error.message });
+  }
+});
+
+// Add one payment installment and keep the outstanding header totals in sync.
+reportRouter.post("/report/outstanding/installment", authenticateToken, async (req, res) => {
+  const { id, type, date, book = "", cheque = "", description = "" } = req.body || {};
+  const amount = Number(req.body?.amount) || 0;
+  const target = getOutstandingTable(type);
+  if (!id || !target || amount <= 0) return res.status(400).json({ status: false, message: "Valid entry and amount are required" });
+
+  try {
+    const rows = await reportQuery(`SELECT * FROM ${target.table} WHERE id = ?`, [id]);
+    if (!rows.length) return res.status(404).json({ status: false, message: "Entry not found" });
+    const row = rows[0];
+    const dueAmount = Number(row.due_amount) || 0;
+    if (amount > dueAmount) return res.status(400).json({ status: false, message: "Payment cannot exceed due amount" });
+
+    await reportQuery(
+      `INSERT INTO acc_transaction (party, date, type, book, cheque, amount, description, ${target.linkColumn})
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [row.party, date || new Date().toISOString().slice(0, 10), target.paymentType, book, cheque, amount, description, id],
+    );
+    const paidAmount = (Number(row.paid_amount) || 0) + amount;
+    const remainingDue = (Number(row.final_amount) || 0) - paidAmount;
+    await reportQuery(`UPDATE ${target.table} SET paid_amount = ?, due_amount = ? WHERE id = ?`, [paidAmount, remainingDue, id]);
+    return res.json({ status: true, message: "Installment saved successfully", data: { paidAmount, dueAmount: remainingDue } });
+  } catch (error) {
+    return res.status(500).json({ status: false, message: error.message });
+  }
+});
+
 module.exports = reportRouter;

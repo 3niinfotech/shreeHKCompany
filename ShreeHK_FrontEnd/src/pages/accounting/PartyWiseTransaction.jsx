@@ -229,13 +229,13 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
             width: 150,
             render: (_, record) => (
                 <Space size="middle">
-                    <Tooltip title="AI Suggest">
+                    {/* <Tooltip title="AI Suggest">
                         <Sparkles
                             size={16}
                             style={{ color: record.id === selectedRowKey ? cssVar('color-text-inverse') : cssVar('color-chart-violet'), cursor: 'pointer' }}
                             onClick={() => setAiSuggestTarget(record)}
                         />
-                    </Tooltip>
+                    </Tooltip> */}
                     <EyeOutlined
                         style={{ color: record.id === selectedRowKey ? cssVar('color-text-inverse') : cssVar('color-info'), cursor: 'pointer' }}
                         onClick={() => setSelectedRowKey(record.id === selectedRowKey ? null : record.id)}
@@ -322,12 +322,12 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
                 onConfirm={handleDelete}
             />
 
-            <AICustomerSuggestModal
+            {/* <AICustomerSuggestModal
                 open={!!aiSuggestTarget}
                 onClose={() => setAiSuggestTarget(null)}
                 customerId={aiSuggestTarget?.id}
                 customerName={aiSuggestTarget?.name}
-            />
+            /> */}
         </div>
     );
 };

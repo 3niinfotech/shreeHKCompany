@@ -529,7 +529,7 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
         />
       ) : null}
     </div>
-  );
+  );                          
 };
 
 export default OutwardEntryForm;

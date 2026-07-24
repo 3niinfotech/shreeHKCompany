@@ -19,19 +19,23 @@ companyRouter.get("/master/company", authenticateToken, (req, res) => {
   const paginationOffset = offset * limit;
 
   let query = `SELECT * FROM dai_party WHERE company = ? `;
-  const countQuery = `SELECT COUNT(*) as totalItems FROM dai_party WHERE company = ? `;
-  const baseParams = [companyId];
+  let countQuery = `SELECT COUNT(*) as totalItems FROM dai_party WHERE company = ? `;
+  const params = [companyId];
+  const countParams = [companyId];
 
-  connection.query(countQuery, baseParams, (countError, countResult) => {
+  if (id === 0 && searchInput) {
+    const term = `%${searchInput}%`;
+    const searchClause = `AND (name LIKE ? OR country LIKE ? OR contact_number LIKE ? OR contact_person LIKE ?) `;
+    query += searchClause;
+    countQuery += searchClause;
+    params.push(term, term, term, term);
+    countParams.push(term, term, term, term);
+  }
+
+  connection.query(countQuery, countParams, (countError, countResult) => {
     if (countError) return res.status(500).json({ error: countError.message });
 
-    const params = [...baseParams];
     if (id == 0) {
-      if (searchInput) {
-        const term = `%${searchInput}%`;
-        query += `AND (name LIKE ? OR country LIKE ? OR contact_number LIKE ? OR contact_person LIKE ?) `;
-        params.push(term, term, term, term);
-      }
       query += ` ORDER BY id DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(paginationOffset)}`;
     } else {
       query += ` AND id=?`;

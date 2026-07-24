@@ -130,6 +130,8 @@ export const ENDPOINTS = {
     report: {
         outstanding: "/report/outstanding",
         outstandingRecords: "/report/outstandingRecords",
+        outstandingCharge: "/report/outstanding/charge",
+        outstandingInstallment: "/report/outstanding/installment",
         group: "/report/group",
         saleStock: "/report/sale-stock",
         stoneDetail: "/report/stone-detail",

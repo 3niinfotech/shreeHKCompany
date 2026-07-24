@@ -159,7 +159,7 @@ const TransactionReport = () => {
                         >
                             Generate AI Report
                         </Button> */}
-                        <Button type="primary" icon={<FileUp />} className={styles.exportBtn} loading={exporting} onClick={handleExport} disabled={!tableData.length}>
+                        <Button type="primary" icon={<FileUp />} className={styles.exportBtn} loading={exporting} onClick={handleExport} disabled={!tableData.length} style={{padding:"18px"}}>
                             Export to Excel
                         </Button>
                     </>

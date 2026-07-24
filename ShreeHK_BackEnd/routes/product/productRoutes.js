@@ -84,21 +84,21 @@ productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
 
   let pair =
     (location =
-    sku =
-    carat =
-    type =
-    package =
-    shape =
-    color =
-    intensity =
-    overtone =
-    clarity =
-    f_intensity =
-    memo =
-    symmentry =
-    cut =
-    polish =
-    lab =
+      sku =
+      carat =
+      type =
+      package =
+      shape =
+      color =
+      intensity =
+      overtone =
+      clarity =
+      f_intensity =
+      memo =
+      symmentry =
+      cut =
+      polish =
+      lab =
       "");
   let category = "";
 
@@ -499,9 +499,6 @@ productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
   query = `SELECT ${columnName} ${queryConditions} ${filter} ${sortQuery} ${limitQuery} `;
 
   const countQuery = `SELECT COUNT(id) as totalProducts, SUM(p.amount) as totalAmount ${queryConditions} ${filter}`;
-
-  // console.log("----------");
-  // console.log(query);
 
   connection.query(countQuery, (countError, countResult) => {
     if (countError) {
@@ -951,7 +948,7 @@ productRouter.post("/product/package/assign", authenticateToken, async (req, res
     connection.query(
       trackSql,
       [productIds.join(","), `Add To Package: ${packageName}`, userId, req.user?.companyId || 1],
-      () => {}
+      () => { }
     );
     return res.json({ status: true, message: `${productIds.length} stone(s) assigned to package ${packageName}` });
   } catch (error) {
