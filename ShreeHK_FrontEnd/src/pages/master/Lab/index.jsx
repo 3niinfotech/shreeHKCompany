@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { Form } from "antd";
 import { toast } from "sonner";
 import { labFields } from "../Data";
-import Loader from "../../../components/common/Loader";
 import { ConfirmDeleteModal } from "../../../components/common/modals";
 import { MasterListTable } from "../../../components/common/table";
 import MasterFormAddModal from "../../../components/common/masterCommon/MasterFormAddModal";
@@ -20,7 +19,6 @@ const LabPage = () => {
     const [form] = Form.useForm();
     const [dataSource, setDataSource] = useState([]);
     const [editRecord, setEditRecord] = useState(null);
-    const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [modalLoading, setModalLoading] = useState(false);
     const [editingRecordName, setEditingRecordName] = useState("");
 
@@ -88,15 +86,8 @@ const LabPage = () => {
     useEffect(() => {
         if (data?.Data) {
             setDataSource(data.Data);
-            if (isInitialLoading) setIsInitialLoading(false);
-        } else if (!isLoading && isInitialLoading) {
-            setIsInitialLoading(false);
         }
-    }, [data, isLoading, isInitialLoading]);
-
-    if (isInitialLoading && isLoading) {
-        return <Loader />;
-    }
+    }, [data]);
 
     return (
         <>

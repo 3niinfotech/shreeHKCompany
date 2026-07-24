@@ -119,16 +119,16 @@ const AccPartyReport = () => {
 
   return (
     <div className={styles.pageContainer}>
-      <PageHeroHeader
-        breadcrumb="ACCOUNTING / REPORTS"
-        title="Accounting Party Report"
-        icon={<TeamOutlined />}
-        actions={(
-          <Button type="primary" icon={<FileUp size={16} />} loading={exporting} onClick={handleExport} disabled={!dataSource.length}>
-            Export to Excel
-          </Button>
-        )}
-      />
+        {/* <PageHeroHeader
+          breadcrumb="ACCOUNTING / REPORTS"
+          title="Accounting Party Report"
+          icon={<TeamOutlined />}
+          actions={(
+            <Button type="primary" icon={<FileUp size={16} />} loading={exporting} onClick={handleExport} disabled={!dataSource.length}>
+              Export to Excel
+            </Button>
+          )}
+        /> */}
 
       <AdvancedFilterPanel
         title="Filter Party Report"
@@ -138,6 +138,11 @@ const AccPartyReport = () => {
         clearDisabled={!activeFilterCount}
         onSearch={handleSearch}
         searchLoading={isLoading}
+        extraActions={(
+          <Button type="primary" icon={<FileUp size={16} />} loading={exporting} onClick={handleExport} disabled={!dataSource.length}>
+            Export to Excel
+          </Button>
+        )}
       >
         <FilterField label="Party" icon={<TeamOutlined />}>
           <Select
@@ -149,6 +154,7 @@ const AccPartyReport = () => {
             value={partyId || undefined}
             onChange={(v) => setPartyId(v || '')}
             options={partyOptions}
+            style={{ padding: "7px" }}
           />
         </FilterField>
         <FilterField label="Book" icon={<BookOutlined />}>
@@ -159,6 +165,7 @@ const AccPartyReport = () => {
             value={selectedBook || undefined}
             onChange={(v) => setSelectedBook(v || '')}
             options={bookOptions}
+            style={{ padding: "7px" }}
           />
         </FilterField>
         <FilterField label="From" icon={<CalendarOutlined />}>

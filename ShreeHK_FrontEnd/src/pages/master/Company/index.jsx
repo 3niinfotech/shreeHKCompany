@@ -219,10 +219,9 @@
 // export default CompanyPage;
 
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Button, Form } from "antd";
 import { companyFields } from "../Data";
-import Loader from "../../../components/common/Loader";
 import { ConfirmDeleteModal } from "../../../components/common/modals";
 import { MasterListTable } from "../../../components/common/table";
 import MasterFormAddModal from "../../../components/common/masterCommon/MasterFormAddModal";
@@ -248,18 +247,18 @@ const CompanyPage = () => {
     const [offset, setOffset] = useState(0);
     const [combinedData, setCombinedData] = useState([]);
     const [editRecord, setEditRecord] = useState(null);
-    const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [modalLoading, setModalLoading] = useState(false);
     const [selectedRowKeys, setSelectedRowKeys] = useState([]);
     const [editingRecordName, setEditingRecordName] = useState("");
     const [aiSuggestTarget, setAiSuggestTarget] = useState(null);
     const [search, setSearch] = useState("");
+    const isLoadingNextPage = useRef(false);
     const addModal = useModal();
     const editModal = useModal();
     const deleteModal = useModal();
     const [deleteTarget, setDeleteTarget] = useState(null);
 
-    const { data, isLoading, isFetching } = useEntityList(
+    const { data, isFetching, isPlaceholderData } = useEntityList(
         QUERY_KEYS.companies,
         fetchCompanies,
         {
@@ -277,7 +276,7 @@ const CompanyPage = () => {
     );
 
     const columns = [
-        ...getCompanyColumns(offset),
+        ...getCompanyColumns(0),
         // {
         //     title: "AI Suggest",
         //     key: "aiSuggest",
@@ -297,6 +296,7 @@ const CompanyPage = () => {
     ];
 
     const handleSearchChange = (value) => {
+        isLoadingNextPage.current = false;
         setSearch(value);
         setOffset(0);
         setCombinedData([]);
@@ -354,37 +354,37 @@ const CompanyPage = () => {
     };
 
     useEffect(() => {
-        if (data?.Data) {
+        // Do not append React Query's previous-page placeholder while the next
+        // page request is still in progress.
+        if (data?.Data && !isPlaceholderData) {
             setCombinedData((prev) => (offset === 0 ? data.Data : [...prev, ...data.Data]));
-            if (isInitialLoading) setIsInitialLoading(false);
+            isLoadingNextPage.current = false;
         }
-    }, [data, offset, isInitialLoading]);
+    }, [data, offset, isPlaceholderData]);
 
-    // FIXED: listener is now actually attached (was commented out before)
     useEffect(() => {
-        const handleScroll = () => {
-            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-            const windowHeight = window.innerHeight;
-            const fullHeight = document.documentElement.scrollHeight;
+        if (!isFetching) isLoadingNextPage.current = false;
+    }, [isFetching]);
 
-            if (fullHeight - (scrollTop + windowHeight) < 200) {
-                if (!isFetching && combinedData.length < (data?.TotalItems || 0)) {
-                    setOffset((prev) => prev + 1);
-                }
-            }
-        };
+    const handleTableScroll = (event) => {
+        const { scrollTop, scrollHeight, clientHeight } = event.target;
+        const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
 
-        window.addEventListener("scroll", handleScroll);
-        return () => window.removeEventListener("scroll", handleScroll);
-    }, [isFetching, combinedData.length, data?.TotalItems]);
+        if (
+            isNearBottom &&
+            !isFetching &&
+            !isLoadingNextPage.current &&
+            combinedData.length < (data?.TotalItems || 0)
+        ) {
+            // `offset` is a page number in companyRoutes.js (OFFSET = offset * limit).
+            isLoadingNextPage.current = true;
+            setOffset((prev) => prev + 1);
+        }
+    };
 
     useEffect(() => {
         setSelectedRowKeys((prev) => prev.filter((key) => combinedData.some((row) => row.id === key)));
     }, [combinedData]);
-
-    if (isInitialLoading) {
-        return <Loader />;
-    }
 
     return (
         <>
@@ -392,10 +392,12 @@ const CompanyPage = () => {
                 title="Company Management"
                 columns={columns}
                 dataSource={combinedData}
-                loading={isLoading && offset === 0}
+                loading={isFetching}
                 onAdd={handleAddClick}
                 onEdit={handleEditClick}
                 onDelete={openDelete}
+                onTableScroll={handleTableScroll}
+                totalItems={data?.TotalItems}
                 searchValue={search}
                 onSearchChange={handleSearchChange}
                 rowSelection={{
@@ -408,12 +410,6 @@ const CompanyPage = () => {
                     </Button>
                 }
             />
-
-            {isFetching && offset > 0 && (
-                <div style={{ textAlign: "center", padding: 12 }}>
-                    <Loader />
-                </div>
-            )}
 
             <MasterFormAddModal
                 isOpen={addModal.open}

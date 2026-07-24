@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { Form } from "antd";
 import { toast } from "sonner";
 import { shippingFields } from "../Data";
-import Loader from "../../../components/common/Loader";
 import { ConfirmDeleteModal } from "../../../components/common/modals";
 import { MasterListTable } from "../../../components/common/table";
 import MasterFormAddModal from "../../../components/common/masterCommon/MasterFormAddModal";
@@ -20,7 +19,6 @@ const ShippingPage = () => {
     const [form] = Form.useForm();
     const [dataSource, setDataSource] = useState([]);
     const [editRecord, setEditRecord] = useState(null);
-    const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [modalLoading, setModalLoading] = useState(false);
     const [editingRecordName, setEditingRecordName] = useState("");
     const [search, setSearch] = useState("");
@@ -90,13 +88,8 @@ const ShippingPage = () => {
     useEffect(() => {
         if (data?.Data) {
             setDataSource(data.Data);
-            if (isInitialLoading) setIsInitialLoading(false);
         }
-    }, [data, isInitialLoading]);
-
-    if (isInitialLoading && isLoading) {
-        return <Loader />;
-    }
+    }, [data]);
 
     return (
         <>

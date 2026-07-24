@@ -3,7 +3,6 @@ import { Alert, Button, Typography } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
 import { toastApiSuccess, toastApiError, getApiErrorMessage } from '../../utils/apiToast';
 import { MasterListTable } from '../../components/common/table';
-import Loader from '../../components/common/Loader';
 import { useFetchApi } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../constants/endpoints';
 
@@ -11,7 +10,6 @@ const { Text } = Typography;
 
 const RapNetPriceList = () => {
     const [dataSource, setDataSource] = useState([]);
-    const [isInitialLoading, setIsInitialLoading] = useState(true);
     const queryClient = useQueryClient();
     const { data, isLoading, isError, error, refetch } = useFetchApi('rapnetPrices', ENDPOINTS.rapnet.prices, {});
 
@@ -76,11 +74,8 @@ const RapNetPriceList = () => {
     useEffect(() => {
         if (Array.isArray(data?.Data)) {
             setDataSource(data.Data);
-            setIsInitialLoading(false);
-        } else if (!isLoading) {
-            setIsInitialLoading(false);
         }
-    }, [data, isLoading]);
+    }, [data]);
 
     const handleUpdateRapnet = async () => {
         try {
@@ -97,10 +92,6 @@ const RapNetPriceList = () => {
             toastApiError(error);
         }
     };
-
-    if (isInitialLoading && isLoading) {
-        return <Loader />;
-    }
 
     const loadError = isError ? getApiErrorMessage(error) : null;
     const isEmpty = !isLoading && !loadError && dataSource.length === 0;

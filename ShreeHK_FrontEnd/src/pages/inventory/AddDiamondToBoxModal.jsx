@@ -71,7 +71,7 @@ const AddDiamondToBoxModal = ({
                 </Button>,
             ]}
         >
-            <div style={{ textAlign: "center", marginBottom: 24 }}>
+            <div style={{ textAlign: "center", marginBottom: 24 ,marginTop:24}}>
                 <Radio.Group value={mode} onChange={(e) => setMode(e.target.value)} buttonStyle="solid">
                     <Radio.Button value="existing">Use Existing {label}</Radio.Button>
                     <Radio.Button value="new">Create New {label}</Radio.Button>
@@ -80,11 +80,11 @@ const AddDiamondToBoxModal = ({
 
             {mode === "existing" ? (
                 <Row gutter={16} align="middle" style={{ marginBottom: 20 }}>
-                    <Col span={6}><Text strong>Select {label}</Text></Col>
+                    <Col span={3}><Text strong>Select {label}</Text></Col>
                     <Col span={18}>
                         <Select
                             placeholder={`Choose ${label.toLowerCase()}...`}
-                            style={{ width: "100%" }}
+                            style={{ width: "50%" }}
                             value={boxId}
                             onChange={setBoxId}
                             options={containerOptions}

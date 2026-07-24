@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Form } from "antd";
 import { attributeFields } from "./Data";
-import Loader from "../../components/common/Loader";
 import { ConfirmDeleteModal } from "../../components/common/modals";
 import { MasterListTable } from "../../components/common/table";
 import MasterFormAddModal from "../../components/common/masterCommon/MasterFormAddModal";
@@ -103,17 +102,15 @@ const Attribute = () => {
 
   return (
     <>
-      {isLoading && !dataSource.length ? <Loader /> : (
-        <MasterListTable
-          title="Attribute Management"
-          columns={columns}
-          dataSource={dataSource}
-          loading={isLoading}
-          onAdd={handleAddClick}
-          onEdit={handleEditClick}
-          onDelete={openDelete}
-        />
-      )}
+      <MasterListTable
+        title="Attribute Management"
+        columns={columns}
+        dataSource={dataSource}
+        loading={isLoading}
+        onAdd={handleAddClick}
+        onEdit={handleEditClick}
+        onDelete={openDelete}
+      />
       <MasterFormAddModal
         isOpen={addModal.open}
         onClose={closeAdd}
