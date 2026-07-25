@@ -226,12 +226,7 @@ import { ConfirmDeleteModal } from "../../../components/common/modals";
 import { MasterListTable } from "../../../components/common/table";
 import MasterFormAddModal from "../../../components/common/masterCommon/MasterFormAddModal";
 import MasterFormEditModal from "../../../components/common/masterCommon/MasterFormEditModal";
-import {
-    getCompanyColumns,
-    mapApiToForm,
-    mapFormToApi,
-    exportCompanyExcel,
-} from "../../../components/pages/Company";
+import { getCompanyColumns, mapApiToForm, mapFormToApi, exportCompanyExcel } from "../../../components/pages/Company";
 import { fetchCompanies, saveCompany, deleteCompany } from "../../../api/services/companyService";
 import { QUERY_KEYS } from "../../../api/endpoints";
 import useEntityList from "../../../hooks/api/useEntityList";

@@ -31,7 +31,7 @@ const Login = () => {
       onError: (err) => {
         toastApiError(err);
       }
-    }); 
+    });
   };
 
   return (
@@ -85,7 +85,7 @@ const Login = () => {
           </Form>
 
           <footer className={styles.footerText}>
-            <Text type="secondary">2026 © Your Smart DIA</Text>
+            <Text type="secondary">2026 © Smart DIA. All rights reserved. Developed by 3ni Infotech.</Text>
           </footer>
         </div>
       </div>

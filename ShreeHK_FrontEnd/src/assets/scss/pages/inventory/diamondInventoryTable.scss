@@ -103,7 +103,7 @@ $finance-empty: var(--color-chart-muted);
         // Ant Design 6: th/td use .ant-table-cell — align header + body together
         .ant-table-thead > tr > th.ant-table-cell,
         .ant-table-tbody > tr > td.ant-table-cell {
-          padding: 8px 10px !important;
+          padding: 4px !important;
           vertical-align: middle !important;
           line-height: 1.35;
           box-sizing: border-box;
