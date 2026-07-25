@@ -658,9 +658,9 @@ const DiamondInventoryTable = () => {
 
   const columns = [
     { title: "No", key: "no", dataIndex: "no", width: 52, fixed: "left", align: "center" },
-    { title: "MFG Code", key: "mfgCode", dataIndex: "mfgCode", width: 96, fixed: "left", ellipsis: true },
+    { title: "MFG Code", key: "mfgCode", dataIndex: "mfgCode", width: 96, fixed: "left", align: "center", ellipsis: true },
     {
-      title: "SKU", key: "sku", dataIndex: "sku", width: 102, ellipsis: true,
+      title: "SKU", key: "sku", dataIndex: "sku", width: 102, ellipsis: true, align: "center",
       render: (text, record) => (
         <a
           className="inventory-sku-link"
@@ -682,9 +682,9 @@ const DiamondInventoryTable = () => {
         return <Tag color={colorMap[lab] || "default"} className="inventory-lab-tag">{lab}</Tag>;
       }
     },
-    { title: "Cert #", key: "certificate", dataIndex: "certificate", width: 118, ellipsis: true },
+    { title: "Cert #", key: "certificate", dataIndex: "certificate", width: 118, ellipsis: true, align: "center" },
     {
-      title: "Shape", key: "shape", dataIndex: "shape", width: 84, ellipsis: true,
+      title: "Shape", key: "shape", dataIndex: "shape", width: 84, ellipsis: true, align: "center",
       filters: [
         { text: 'Round', value: 'Round' }, { text: 'Cushion', value: 'Cushion' },
         { text: 'Oval', value: 'Oval' }, { text: 'Heart', value: 'Heart' },
@@ -731,7 +731,7 @@ const DiamondInventoryTable = () => {
       key: "rapPrice",
       dataIndex: "rapPrice",
       width: 92,
-      align: "right",
+      align: "center",
       className: "inventory-finance-col inventory-rap-col",
       render: (v) =>
         v ? (
@@ -745,7 +745,7 @@ const DiamondInventoryTable = () => {
       key: "cost",
       dataIndex: "cost",
       width: 88,
-      align: "right",
+      align: "center",
       className: "inventory-finance-col inventory-cost-col",
       render: (v) =>
         v ? (
@@ -759,7 +759,7 @@ const DiamondInventoryTable = () => {
       key: "price",
       dataIndex: "price",
       width: 92,
-      align: "right",
+      align: "center",
       className: "inventory-finance-col inventory-price-col",
       render: (v) => (
         <span className="inventory-finance-value inventory-price-value">${Number(v || 0).toLocaleString()}</span>
@@ -776,19 +776,19 @@ const DiamondInventoryTable = () => {
         <span className="inventory-finance-value inventory-amount-value">${Number(v || 0).toLocaleString()}</span>
       ),
     },
-    { title: "Size", key: "size", dataIndex: "size", width: 68, ellipsis: true },
-    { title: "Flour.", key: "fluorescence", dataIndex: "fluorescence", width: 68, ellipsis: true },
-    { title: "Cut", key: "cut", dataIndex: "cut", width: 56, ellipsis: true },
-    { title: "Pol.", key: "polish", dataIndex: "polish", width: 52, ellipsis: true },
-    { title: "Sym.", key: "symmetry", dataIndex: "symmetry", width: 52, ellipsis: true },
-    { title: "Table%", key: "table", dataIndex: "table", width: 68, align: "right" },
-    { title: "Depth%", key: "depth", dataIndex: "depth", width: 68, align: "right" },
-    { title: "Meas.", key: "measurement", dataIndex: "measurement", width: 112, ellipsis: true },
-    { title: "Girdle", key: "girdle", dataIndex: "girdle", width: 76, ellipsis: true },
-    { title: "Mining", key: "mining", dataIndex: "mining", width: 76, ellipsis: true },
-    { title: "Origin", key: "origin", dataIndex: "origin", width: 76, ellipsis: true },
+    { title: "Size", key: "size", dataIndex: "size", width: 68, ellipsis: true, align: "center" },
+    { title: "Flour.", key: "fluorescence", dataIndex: "fluorescence", width: 68, ellipsis: true, align: "center" },
+    { title: "Cut", key: "cut", dataIndex: "cut", width: 56, ellipsis: true, align: "center" },
+    { title: "Pol.", key: "polish", dataIndex: "polish", width: 52, ellipsis: true, align: "center" },
+    { title: "Sym.", key: "symmetry", dataIndex: "symmetry", width: 52, ellipsis: true, align: "center" },
+    { title: "Table%", key: "table", dataIndex: "table", width: 68, align: "center" },
+    { title: "Depth%", key: "depth", dataIndex: "depth", width: 68, align: "center" },
+    { title: "Meas.", key: "measurement", dataIndex: "measurement", width: 112, ellipsis: true, align: "center" },
+    { title: "Girdle", key: "girdle", dataIndex: "girdle", width: 76, ellipsis: true, align: "center" },
+    { title: "Mining", key: "mining", dataIndex: "mining", width: 76, ellipsis: true, align: "center" },
+    { title: "Origin", key: "origin", dataIndex: "origin", width: 76, ellipsis: true, align: "center" },
     {
-      title: "Intensity", key: "intensity", dataIndex: "intensity", width: 98, ellipsis: true,
+      title: "Intensity", key: "intensity", dataIndex: "intensity", width: 98, ellipsis: true, align: "center",
       filters: [
         { text: 'Faint', value: 'Faint' }, { text: 'Very Light', value: 'Very Light' },
         { text: 'Light', value: 'Light' }, { text: 'Fancy Light', value: 'Fancy Light' },
@@ -799,7 +799,7 @@ const DiamondInventoryTable = () => {
       onFilter: (value, record) => record.intensity === value,
     },
     {
-      title: "Overtone", key: "overTone", dataIndex: "overTone", width: 90, ellipsis: true,
+      title: "Overtone", key: "overTone", dataIndex: "overTone", width: 90, ellipsis: true, align: "center",
       filters: [
         { text: 'Bluish', value: 'Bluish' }, { text: 'Brownish', value: 'Brownish' },
         { text: 'Grayish', value: 'Grayish' }, { text: 'Greenish', value: 'Greenish' },
@@ -809,9 +809,9 @@ const DiamondInventoryTable = () => {
       ],
       onFilter: (value, record) => record.overTone === value,
     },
-    { title: "Location", key: "location", dataIndex: "location", width: 112, ellipsis: true, render: renderLocationWithFlag },
+    { title: "Location", key: "location", dataIndex: "location", width: 112, ellipsis: true, render: renderLocationWithFlag, align: "center" },
     {
-      title: "Package", key: "package", dataIndex: "package", width: 88, ellipsis: true,
+      title: "Package", key: "package", dataIndex: "package", width: 88, ellipsis: true, align: "center",
       filters: [
         { text: 'SB', value: 'SB' }, { text: 'BAGS', value: 'BAGS' },
         { text: 'JEWEL', value: 'JEWEL' }, { text: 'BIG SB', value: 'BIG SB' },
@@ -820,10 +820,10 @@ const DiamondInventoryTable = () => {
       ],
       onFilter: (value, record) => record.package === value,
     },
-    { title: "BGM", key: "bgm", dataIndex: "bgm", width: 56, ellipsis: true },
-    { title: "Eye Clean", key: "eyeClean", dataIndex: "eyeClean", width: 86, ellipsis: true },
+    { title: "BGM", key: "bgm", dataIndex: "bgm", width: 56, ellipsis: true, align: "center" }, ,
+    { title: "Eye Clean", key: "eyeClean", dataIndex: "eyeClean", width: 86, ellipsis: true, align: "center" }, ,
     {
-      title: "Main Group", key: "group", dataIndex: "group", width: 114, ellipsis: true,
+      title: "Main Group", key: "group", dataIndex: "group", width: 114, ellipsis: true, align: "center",
       filters: [
         { text: 'A+', value: 'A+' }, { text: 'BA', value: 'BA' },
         { text: 'YELLOW', value: 'YELLOW' }, { text: 'PINK', value: 'PINK' },
@@ -833,9 +833,9 @@ const DiamondInventoryTable = () => {
       ],
       onFilter: (value, record) => record.group === value,
     },
-    { title: "Sub Group", key: "subGroup", dataIndex: "subGroup", width: 96, ellipsis: true },
+    { title: "Sub Group", key: "subGroup", dataIndex: "subGroup", width: 96, ellipsis: true, align: "center" },
     {
-      title: "Remark", key: "remark", dataIndex: "remark", width: 200, ellipsis: true,
+      title: "Remark", key: "remark", dataIndex: "remark", width: 200, ellipsis: true, align: "center",
       render: (t) => <div className="inventory-remark-cell">{t}</div>
     },
     {

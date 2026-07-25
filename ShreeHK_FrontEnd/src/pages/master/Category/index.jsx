@@ -18,13 +18,12 @@ const CategoryPage = () => {
     const [form] = Form.useForm();
     const [dataSource, setDataSource] = useState([]);
     const [editRecord, setEditRecord] = useState(null);
+    const [deleteTarget, setDeleteTarget] = useState(null);
     const [modalLoading, setModalLoading] = useState(false);
     const [editingRecordName, setEditingRecordName] = useState("");
-
     const addModal = useModal();
     const editModal = useModal();
     const deleteModal = useModal();
-    const [deleteTarget, setDeleteTarget] = useState(null);
 
     const { data, isLoading } = useEntityList(QUERY_KEYS.categories, fetchCategories, { limit: PAGE_LIMIT });
 

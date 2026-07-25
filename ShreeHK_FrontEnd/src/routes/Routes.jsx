@@ -199,10 +199,10 @@ const allProtectedRoutes = [
       { path: "/master/origin", name: "Origin", element: <Origin />, permissionKey: "master.origin" },
       { path: "/master/lab", name: "Lab", element: <Lab />, permissionKey: "master.lab" },
       { path: "/master/category", name: "Category", element: <Category />, permissionKey: "master.category" },
-      { path: "/master/rapnet-pricelist", name: "RapNetPriceList", element: <RapNetPriceList />, permissionKey: "master.rapnet" },
-      { path: "/master/bulk-update", name: "BulkUpdate", element: <BulkUpdate />, permissionKey: "master.bulk_update" },
+      { path: "/master/rapnet-pricelist", name: "RapNet PriceList", element: <RapNetPriceList />, permissionKey: "master.rapnet" },
+      { path: "/master/bulk-update", name: "Bulk Update", element: <BulkUpdate />, permissionKey: "master.bulk_update" },
       { path: "/master/import-format", name: "Import Format", element: <ImportFormat />, permissionKey: "master.import_format" },
-      { path: "/master/attribute", name: "Attribute", element: <Attribute />, permissionKey: "master.attribute" },
+      // { path: "/master/attribute", name: "Attribute", element: <Attribute />, permissionKey: "master.attribute" },
       { path: "/master/refresh-stock", name: "Refresh Stock", element: <RefreshStock />, permissionKey: "master.refresh_stock" },
       { path: "/master/integrations", name: "Integrations", element: <Integrations />, permissionKey: "master.integrations" },
     ]

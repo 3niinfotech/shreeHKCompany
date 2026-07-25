@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Layout, Modal } from "antd";
+import { Button, Layout, Modal } from "antd";
 import TopbarSearch from "../sub_component/TopBarSearch";
 import ProfileDropdown from "../sub_component/ProfileDropdown";
 import NotificationDropdown from "../sub_component/NotificationDropdown";
@@ -34,7 +34,6 @@ const ConnectionStatusPill = ({ isOnline }) => (
 
 const NetworkStatusModal = ({ open, type, onRetry, onDismiss, autoCloseMs }) => {
   const isOnline = type === "online";
-
   return (
     <Modal
       open={open}
@@ -301,6 +300,9 @@ const Header = ({
               onInventoryFilter={handleInventoryFilterFromSearch}
             />
           </div>
+          <Button onClick={() => navigate('/inventory/my-inventory')}>
+            My Inventory
+          </Button>
         </div>
 
         <div className={styles.headerRight}>

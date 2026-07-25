@@ -220,6 +220,7 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
       { name: 'invoicedate', label: 'Invoice Date', span: 6, type: 'date' },
       { name: 'other_party', label: 'Other Party', span: 6, type: 'select', options: companyOptions },
     ];
+
     if (config.showSaleFields) {
       base.push(
         { name: 'terms', label: 'Terms (Days)', span: 6, type: 'number' },
@@ -227,10 +228,24 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
         { name: 'lessPercent', label: 'Less %', span: 6, type: 'number' },
         { name: 'otherLessPercent', label: 'Other Less %', span: 6, type: 'number' },
         { name: 'extraCharge', label: 'Extra Charge', span: 6, type: 'number' },
+        { name: 'narration', label: 'Narration', span: 6, type: 'text' },
       );
+      return base;
     }
     base.push({ name: 'narration', label: 'Narration', span: 24, type: 'textarea' });
     return base;
+
+    // if (config.showSaleFields) {
+    //   base.push(
+    //     { name: 'terms', label: 'Terms (Days)', span: 6, type: 'number' },
+    //     { name: 'duedate', label: 'Due Date', span: 6, type: 'date' },
+    //     { name: 'lessPercent', label: 'Less %', span: 6, type: 'number' },
+    //     { name: 'otherLessPercent', label: 'Other Less %', span: 6, type: 'number' },
+    //     { name: 'extraCharge', label: 'Extra Charge', span: 6, type: 'number' },
+    //   );
+    // }
+    // base.push({ name: 'narration', label: 'Narration', span: 24, type: 'textarea' });
+    // return base;
   }, [config, companyOptions, isCompanyLoading]);
 
   const lookupSku = useCallback(async (sku, rowKey) => {
@@ -310,6 +325,7 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
       });
     }
   };
+  
 
   const buildPayload = useCallback(() => {
     const values = form.getFieldsValue();
@@ -529,7 +545,7 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
         />
       ) : null}
     </div>
-  );                          
+  );
 };
 
 export default OutwardEntryForm;
