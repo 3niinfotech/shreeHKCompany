@@ -53,51 +53,51 @@ const InventoryQuickLinks = ({
   };
 
   return (
-    <Space wrap size={8} className="inventory-quick-links">
+    <Space wrap size={10} className="inventory-quick-links">
       {sku ? (
-        <Button size="small" icon={<EditOutlined />}>
+        <Button icon={<EditOutlined />}>
           <Link to={buildStoneUpdateUrl(sku)}>Stone Update</Link>
         </Button>
       ) : null}
-      <Button size="small" icon={<HistoryOutlined />}>
+      <Button icon={<HistoryOutlined />}>
         <Link to={sku ? buildStoneHistoryUrl(sku) : "/report/stone-history"}>
           History
         </Link>
       </Button>
       <Dropdown menu={reportMenu} trigger={["click"]}>
-        <Button size="small" icon={<BarChartOutlined />}>Reports</Button>
+        <Button icon={<BarChartOutlined />}>Reports</Button>
       </Dropdown>
-      <Button size="small" icon={<SwapOutlined />}>
+      <Button icon={<SwapOutlined />}>
         <Link to={sku ? buildTransferHistoryUrl(sku) : "/report/stone-tranfer-history"}>
           Transfer
         </Link>
       </Button>
-      <Button size="small" icon={<DiffOutlined />} disabled={selectedCount < 2} onClick={onCompare}>
+      <Button icon={<DiffOutlined />} disabled={selectedCount < 2} onClick={onCompare}>
         Compare ({selectedCount})
       </Button>
-      <Button size="small">
+      <Button icon={<EditOutlined />}>
         <Link to="/master/bulk-update">Bulk Update</Link>
       </Button>
-      <Button size="small">
+      <Button icon={<BarChartOutlined />}>
         <Link to="/master/rapnet-pricelist">RapNet</Link>
       </Button>
       <Button
-        size="small"
         icon={<CloudSyncOutlined />}
         loading={syncLoading}
         onClick={onRefreshRapnet}
+        disabled={true}
       >
         Refresh RapNet Flags
       </Button>
-      <Button size="small" loading={syncLoading} onClick={onWebsiteSync}>
+      <Button icon={<CloudSyncOutlined />} loading={syncLoading} onClick={onWebsiteSync}>
         Mark Website Sync
       </Button>
-      <Button size="small" icon={<ScanOutlined />}>
+      <Button icon={<ScanOutlined />}>
         <Link to="/inventory/cycle-count">Cycle Count</Link>
       </Button>
       {sku ? (
         <Button
-          size="small"
+          icon={<ScanOutlined />}
           onClick={() => openLegacyPdf("print/stone-label.php", { sku })}
         >
           Print Label (Legacy)

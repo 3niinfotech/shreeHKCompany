@@ -76,7 +76,7 @@ const ActivityLogFlatTable = ({
       render: (val) => (
         val ? (
           <div className={styles.whenCell}>
-            <span>{dayjs(val).format("DD-MM-YY")}</span>
+            <span>{dayjs(val).format("DD-MM-YYYY")}</span>
             <span className={styles.whenTime}>{dayjs(val).format("hh:mm A")}</span>
           </div>
         ) : "—"

@@ -106,7 +106,7 @@ const ExpanseTableData = () => {
 
     const columns = [
         { title: 'No.', key: 'index', width: 70, render: (_, __, i) => i + 1 },
-        { title: 'Date', dataIndex: 'date', key: 'date', render: (d) => d?.split('T')[0] },
+        { title: 'Date', dataIndex: 'date', key: 'date', render: (d) => (d && dayjs(d).isValid() ? dayjs(d).format('DD-MM-YYYY') : (d?.split('T')[0] || '-')) },
         { title: 'Party', dataIndex: 'party', key: 'party' },
         { title: 'Amount', dataIndex: 'amount', key: 'amount', align: 'right' },
         { title: 'Book Type', dataIndex: 'type', key: 'type' },

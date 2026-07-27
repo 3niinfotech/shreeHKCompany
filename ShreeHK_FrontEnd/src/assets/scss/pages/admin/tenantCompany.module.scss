@@ -364,8 +364,6 @@
 
   :global(.ant-modal-body) {
     padding: 20px 22px 22px;
-    max-height: min(72vh, 720px);
-    overflow-y: auto;
   }
 }
 

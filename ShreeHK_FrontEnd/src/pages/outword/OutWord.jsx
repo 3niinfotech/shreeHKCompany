@@ -281,7 +281,7 @@ const OutWord = () => {
         },
         { title: 'Invoice', dataIndex: 'invoiceno', key: 'invoiceno' },
         { title: 'Party', dataIndex: 'party', key: 'party', ellipsis: true },
-        { title: 'Date', dataIndex: 'date', key: 'date' },
+        { title: 'Date', dataIndex: 'date', key: 'date', render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
         {
             title: 'Amount',
             dataIndex: 'finalAmount',

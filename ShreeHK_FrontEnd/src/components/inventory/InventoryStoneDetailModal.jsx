@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import dayjs from "dayjs";
 import { Modal, Tag, Spin, Table } from "antd";
 import { DollarCircleOutlined, ExperimentOutlined, InfoCircleOutlined, HistoryOutlined } from "@ant-design/icons";
 import { useFetchApi } from "../../api/ApiFunction";
@@ -251,7 +252,7 @@ const InventoryStoneDetailModal = ({ open, onClose, stone }) => {
               rowKey={(r) => r.id}
               dataSource={historyRows}
               columns={[
-                { title: "Date", dataIndex: "date", width: 96 },
+                { title: "Date", dataIndex: "date", width: 96, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format("DD-MM-YYYY") : (v || "-")) },
                 { title: "Action", dataIndex: "action", width: 88 },
                 { title: "Description", dataIndex: "description", ellipsis: true },
                 { title: "Carat", dataIndex: "carat", width: 62, align: "right" },

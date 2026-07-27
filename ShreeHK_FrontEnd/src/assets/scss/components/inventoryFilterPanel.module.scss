@@ -1,5 +1,29 @@
 @use "../variables" as *;
 
+// Status button color mapping variables
+$row-blue-bg: #e0f2fe;
+$row-blue-text: #0369a1;
+$row-blue-hover: #bae6fd;
+
+$row-red-bg: #fee2e2;
+$row-red-text: #991b1b;
+$row-red-hover: #fecaca;
+
+$row-grey-bg: #f1f5f9;
+$row-grey-text: #334155;
+$row-grey-hover: #e2e8f0;
+
+$row-white-bg: #ffffff;
+$row-white-hover: #f8fafc;
+
+$row-selected-bg: #fce7f3;
+$row-selected-text: #9d174d;
+$row-selected-border: #ec4899;
+
+$row-green-bg: #dcfce7;
+$row-green-text: #14532d;
+$row-green-hover: #bbf7d0;
+
 $panel-bg: var(--color-bg-card);
 $panel-border: var(--color-border);
 $header-accent: var(--color-entity-product-text);
@@ -369,13 +393,19 @@ $compact-accent-hover: var(--color-primary-dark);
 
 .actionPanelTriggerActive {
   cursor: pointer;
-  color: $header-accent;
-  background: var(--color-bg-card);
-  border-color: var(--color-badge-info-border);
+  color: $row-selected-text !important;
+  background: $row-selected-bg !important;
+  border-color: $row-selected-border !important;
   box-shadow: var(--shadow-md);
 
+  :global(.ant-badge-count) {
+    background: $row-selected-border !important;
+    color: #ffffff !important;
+  }
+
   &:hover {
-    border-color: $header-accent;
+    background: $row-selected-bg !important;
+    border-color: $row-selected-border !important;
     box-shadow: var(--shadow-lg);
   }
 }
@@ -421,7 +451,7 @@ $compact-accent-hover: var(--color-primary-dark);
 }
 
 .actionPanelBody {
-  width: min(700px, calc(100vw - 32px));
+  width: min(735px, calc(100vw - 32px));
   padding: 14px 14px 12px;
   background: var(--color-bg-card);
 }
@@ -497,62 +527,111 @@ $compact-accent-hover: var(--color-primary-dark);
   line-height: 1.2;
 }
 
-.actionTile_onMemo {
-  background: var(--color-warning-light);
-  border-color: var(--color-badge-warning-border);
-}
+.actionTile_onMemo,
+.actionTile_consignment {
+  background: $row-red-bg !important;
+  border-color: color-mix(in srgb, $row-red-bg 70%, $row-red-text) !important;
+  color: $row-red-text !important;
 
-.actionTile_unHold {
-  background: var(--color-entity-customer-bg);
-  border-color: var(--color-badge-success-border);
+  .actionTileIcon,
+  .actionTileLabel,
+  svg {
+    color: $row-red-text !important;
+  }
+
+  &:hover {
+    background: $row-red-hover !important;
+    border-color: $row-red-text !important;
+  }
 }
 
 .actionTile_sale {
-  background: var(--color-success-light);
-  border-color: var(--color-badge-success-border);
+  background: $row-green-bg !important;
+  border-color: color-mix(in srgb, $row-green-bg 70%, $row-green-text) !important;
+  color: $row-green-text !important;
+
+  .actionTileIcon,
+  .actionTileLabel,
+  svg {
+    color: $row-green-text !important;
+  }
+
+  &:hover {
+    background: $row-green-hover !important;
+    border-color: $row-green-text !important;
+  }
 }
 
-.actionTile_changePrice {
-  background: var(--color-info-light);
-  border-color: var(--color-info-light);
+.actionTile_hold,
+.actionTile_unHold,
+.actionTile_reservation {
+  background: $row-grey-bg !important;
+  border-color: color-mix(in srgb, $row-grey-bg 70%, $row-grey-text) !important;
+  color: $row-grey-text !important;
+
+  .actionTileIcon,
+  .actionTileLabel,
+  svg {
+    color: $row-grey-text !important;
+  }
+
+  &:hover {
+    background: $row-grey-hover !important;
+    border-color: $row-grey-text !important;
+  }
 }
 
-.actionTile_labelA4 {
-  background: var(--color-info-light);
-  border-color: var(--color-badge-info-border);
-}
-
-.actionTile_iExport {
-  background: var(--color-primary-pale);
-  border-color: var(--color-primary-medium);
-}
-
-.actionTile_label {
-  background: var(--color-entity-other-bg);
-  border-color: var(--color-entity-other-text);
-}
-
-.actionTile_export {
-  background: var(--color-info-light);
-  border-color: var(--color-badge-info-border);
-}
-
-.actionTile_hold {
-  background: var(--color-entity-order-bg);
-  border-color: var(--color-badge-warning-border);
-}
-
+.actionTile_changePrice,
+.actionTile_export,
+.actionTile_iExport,
 .actionTile_mail {
-  background: var(--color-error-light);
-  border-color: var(--color-badge-error-border);
+  background: $row-blue-bg !important;
+  border-color: color-mix(in srgb, $row-blue-bg 70%, $row-blue-text) !important;
+  color: $row-blue-text !important;
+
+  .actionTileIcon,
+  .actionTileLabel,
+  svg {
+    color: $row-blue-text !important;
+  }
+
+  &:hover {
+    background: $row-blue-hover !important;
+    border-color: $row-blue-text !important;
+  }
 }
 
-.actionTile_reset {
-  background: var(--color-badge-neutral-bg);
-  border-color: var(--color-border);
+.actionTile_label,
+.actionTile_labelA4 {
+  background: $row-green-bg !important;
+  border-color: color-mix(in srgb, $row-green-bg 70%, $row-green-text) !important;
+  color: $row-green-text !important;
 
-  .actionTileLabel {
-    color: var(--color-text-muted);
+  .actionTileIcon,
+  .actionTileLabel,
+  svg {
+    color: $row-green-text !important;
+  }
+
+  &:hover {
+    background: $row-green-hover !important;
+    border-color: $row-green-text !important;
+  }
+}
+
+.actionTile_addPackage,
+.actionTile_reset {
+  background: $row-white-bg !important;
+  border: 1px solid var(--color-border) !important;
+
+  .actionTileIcon,
+  .actionTileLabel,
+  svg {
+    color: var(--color-text-body) !important;
+  }
+
+  &:hover {
+    background: $row-white-hover !important;
   }
 }
 
@@ -731,21 +810,5 @@ $compact-accent-hover: var(--color-primary-dark);
 .stoneTypeItem {
   margin-bottom: 0 !important;
 
-  :global(.ant-checkbox-wrapper) {
-    font-size: 12px;
-    white-space: nowrap;
-  }
-}
-
-@media (max-width: 1280px) {
-  .headerMain {
-    grid-template-columns: 1fr auto;
-    grid-template-areas:
-      "title actions"
-      "compact compact";
-  }
-
-  .headerRight {
-    justify-self: end;
-  }
+  :global(.ant-checkbox-wrapper) {}
 }

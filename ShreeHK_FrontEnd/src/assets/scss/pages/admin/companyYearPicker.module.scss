@@ -39,8 +39,6 @@
   :global(.ant-modal-body) {
     padding: 18px 20px 22px;
     background: var(--color-page-bg);
-    max-height: min(72vh, 640px);
-    overflow-y: auto;
   }
 }
 

@@ -52,7 +52,8 @@ const Login = () => {
           </div>
           <Title level={3} className={styles.loginTitle}>Sign In</Title>
           <Text className={styles.loginSubtitle}>
-            Login with <b>admin@erp.com</b> / <b>admin123</b>
+            {/* Login with <b>admin@erp.com</b> / <b>admin123</b> */}
+            Login with <b>Email or UserName</b>
           </Text>
 
           <Form layout="vertical" onFinish={onFinish} requiredMark={false}>

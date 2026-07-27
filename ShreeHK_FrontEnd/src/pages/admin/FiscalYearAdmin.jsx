@@ -15,7 +15,7 @@ import styles from "../../assets/scss/pages/admin/fiscalYearAdmin.module.scss";
 
 const { Title, Text } = Typography;
 
-const formatDate = (value) => (value ? dayjs(value).format("YYYY-MM-DD") : "—");
+const formatDate = (value) => (value && dayjs(value).isValid() ? dayjs(value).format("DD-MM-YYYY") : "—");
 
 const FiscalYearAdmin = () => {
   const [form] = Form.useForm();

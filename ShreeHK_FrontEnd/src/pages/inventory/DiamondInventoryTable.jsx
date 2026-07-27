@@ -658,7 +658,8 @@ const DiamondInventoryTable = () => {
 
   const columns = [
     { title: "No", key: "no", dataIndex: "no", width: 52, fixed: "left", align: "center" },
-    { title: "MFG Code", key: "mfgCode", dataIndex: "mfgCode", width: 96, fixed: "left", align: "center", ellipsis: true },
+    { title: "Type", key: "Type", dataIndex: "type", width: 96, fixed: "left", align: "center", ellipsis: true },
+    // { title: "MFG Code", key: "mfgCode", dataIndex: "mfgCode", width: 96, fixed: "left", align: "center", ellipsis: true },
     {
       title: "SKU", key: "sku", dataIndex: "sku", width: 102, ellipsis: true, align: "center",
       render: (text, record) => (
@@ -695,6 +696,7 @@ const DiamondInventoryTable = () => {
       ],
       onFilter: (value, record) => record.shape === value,
     },
+    { title: "PCS", key: "pcs", dataIndex: "pcs", width: 84, ellipsis: true, align: "center", },
     {
       title: "Crt.",
       key: "polishCarat",
@@ -711,7 +713,7 @@ const DiamondInventoryTable = () => {
         />
       ),
     },
-    { title: "Color", key: "color", dataIndex: "color", width: 58, ellipsis: true },
+    { title: "Color", key: "color", dataIndex: "color", width: 58, ellipsis: true, },
     { title: "Argyle Color", key: "argyleColor", dataIndex: "argyleColor", width: 102, ellipsis: true },
     { title: "In-House Clarity", key: "mainClarity", dataIndex: "mainClarity", width: 124, ellipsis: true },
     {
@@ -809,6 +811,7 @@ const DiamondInventoryTable = () => {
       ],
       onFilter: (value, record) => record.overTone === value,
     },
+    { title: "Color", key: "color", dataIndex: "color", width: 90, ellipsis: true, align: "center", },
     { title: "Location", key: "location", dataIndex: "location", width: 112, ellipsis: true, render: renderLocationWithFlag, align: "center" },
     {
       title: "Package", key: "package", dataIndex: "package", width: 88, ellipsis: true, align: "center",
@@ -838,22 +841,22 @@ const DiamondInventoryTable = () => {
       title: "Remark", key: "remark", dataIndex: "remark", width: 200, ellipsis: true, align: "center",
       render: (t) => <div className="inventory-remark-cell">{t}</div>
     },
-    {
-      title: "RapNet",
-      key: "rapnetUpload",
-      dataIndex: "rapnetUpload",
-      width: 68,
-      align: "center",
-      render: (v) => (Number(v) === 1 ? <Tag color="green">Yes</Tag> : <Tag>No</Tag>),
-    },
-    {
-      title: "Website",
-      key: "siteUpload",
-      dataIndex: "siteUpload",
-      width: 76,
-      align: "center",
-      render: (v) => (Number(v) === 1 ? <Tag color="blue">Yes</Tag> : <Tag>No</Tag>),
-    },
+    // {
+    //   title: "RapNet",
+    //   key: "rapnetUpload",
+    //   dataIndex: "rapnetUpload",
+    //   width: 68,
+    //   align: "center",
+    //   render: (v) => (Number(v) === 1 ? <Tag color="green">Yes</Tag> : <Tag>No</Tag>),
+    // },
+    // {
+    //   title: "Website",
+    //   key: "siteUpload",
+    //   dataIndex: "siteUpload",
+    //   width: 76,
+    //   align: "center",
+    //   render: (v) => (Number(v) === 1 ? <Tag color="blue">Yes</Tag> : <Tag>No</Tag>),
+    // },
   ];
 
   const ACTION_KEY_MAP = {

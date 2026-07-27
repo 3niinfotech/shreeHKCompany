@@ -95,6 +95,38 @@
       }
     }
 
+    .myInventoryBtn {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      height: 32px !important;
+      padding: 0 14px !important;
+      border-radius: 6px !important;
+      font-size: 12px !important;
+      font-weight: 600 !important;
+      background: var(--color-primary, #0f172a) !important;
+      border-color: var(--color-primary-dark, #0f172a) !important;
+      color: #ffffff !important;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+      outline: none !important;
+
+      &,
+      &:hover,
+      &:focus,
+      &:active,
+      &:focus-visible,
+      :global(.ant-btn-primary):not(:disabled):active,
+      :global(.ant-btn-primary):not(:disabled):focus,
+      :global(.ant-btn-primary):not(:disabled):focus-visible {
+        background: var(--color-primary, #0f172a) !important;
+        border-color: var(--color-primary-dark, #0f172a) !important;
+        color: #ffffff !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+        transform: none !important;
+        outline: none !important;
+      }
+    }
+
     .headerRight {
       display: flex;
       align-items: center;

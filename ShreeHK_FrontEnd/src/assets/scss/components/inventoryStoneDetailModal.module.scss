@@ -14,8 +14,6 @@
 
   :global(.ant-modal-body) {
     padding: 10px 16px 14px;
-    max-height: min(78vh, 720px);
-    overflow-y: auto;
   }
 
   :global(.ant-modal-close) {

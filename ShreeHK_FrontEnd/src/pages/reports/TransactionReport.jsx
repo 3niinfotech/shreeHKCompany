@@ -82,14 +82,14 @@ const TransactionReport = () => {
     const columns = [
         { title: 'No', dataIndex: 'no', key: 'no', width: 60, align: 'center' },
         { title: 'Invoice', dataIndex: 'invoice', key: 'invoice' },
-        { title: 'Date', dataIndex: 'date', key: 'date' },
+        { title: 'Date', dataIndex: 'date', key: 'date', render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
         { title: 'Company', dataIndex: 'company', key: 'company' },
         { title: 'Pcs', dataIndex: 'pcs', key: 'pcs', align: 'center' },
         { title: 'Carat', dataIndex: 'carat', key: 'carat', align: 'right' },
         { title: 'Price', dataIndex: 'price', key: 'price', align: 'right' },
         { title: 'Amount', dataIndex: 'amount', key: 'amount', align: 'right' },
         { title: 'Term', dataIndex: 'term', key: 'term', align: 'center' },
-        { title: 'Due Date', dataIndex: 'dueDate', key: 'dueDate' },
+        { title: 'Due Date', dataIndex: 'dueDate', key: 'dueDate', render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
         { title: 'Reference', dataIndex: 'reference', key: 'reference' },
     ];
 
