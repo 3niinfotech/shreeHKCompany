@@ -2,7 +2,7 @@
 
 $border-soft: var(--color-border);
 $border-cell: var(--color-table-border);
-$header-bg: var(--color-table-inventory-header-bg);
+$header-bg: var(--color-table-header-bg);
 $header-text: var(--color-table-header-text);
 $body-text: var(--color-text-body);
 $accent-muted: var(--color-text-muted);
@@ -14,6 +14,30 @@ $selected-row: var(--color-table-row-selected);
 $selected-row-border: var(--color-chart-muted);
 $shadow-soft: var(--shadow-inventory-table);
 $row-height: 36px;
+
+// Inventory Row Status Color Variables (Certified Stone = Blue, Hold = Gray, Selected = Pink, Memo = Red, Non-GIA = White, Send to Lab = Green)
+$row-green-bg: #dcfce7;
+$row-green-text: #14532d;
+$row-green-hover: #bbf7d0;
+
+$row-blue-bg: #e0f2fe;
+$row-blue-text: #0369a1;
+$row-blue-hover: #bae6fd;
+
+$row-red-bg: #fee2e2;
+$row-red-text: #991b1b;
+$row-red-hover: #fecaca;
+
+$row-grey-bg: #f1f5f9;
+$row-grey-text: #334155;
+$row-grey-hover: #e2e8f0;
+
+$row-white-bg: #ffffff;
+$row-white-hover: #f8fafc;
+
+$row-selected-bg: #fce7f3;
+$row-selected-text: #9d174d;
+$row-selected-border: #ec4899;
 
 // Finance column accents — subtle, readable
 $rap-value: var(--color-entity-product-text);
@@ -204,20 +228,20 @@ $finance-empty: var(--color-chart-muted);
           transition: background 0.14s ease;
         }
 
-        // Zebra + hover for neutral rows
+        // Zebra + hover for neutral rows (Non-GIA -> White)
         .ant-table-tbody > tr:not(.inventory-row-green):not(.inventory-row-blue):not(.inventory-row-red):not(.inventory-row-grey) {
-          &:nth-child(even) > td {
-            background-color: $zebra-even;
+          > td {
+            background-color: $row-white-bg !important;
           }
 
           &:hover > td {
-            background-color: $hover-row !important;
-            box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--color-text-body) 1.5%, transparent);
+            background-color: $row-white-hover !important;
           }
 
           &.ant-table-row-selected > td {
-            background-color: $selected-row !important;
-            box-shadow: inset 3px 0 0 0 $selected-row-border;
+            background-color: $row-selected-bg !important;
+            color: $row-selected-text !important;
+            box-shadow: inset 3px 0 0 0 $row-selected-border;
           }
         }
 
@@ -295,16 +319,6 @@ $finance-empty: var(--color-chart-muted);
           color: var(--color-text-body) !important;
         }
 
-        // Row status tones
-        $row-green-bg: var(--color-success-light);
-        $row-green-text: var(--color-success-dark);
-        $row-blue-bg: var(--color-info-light);
-        $row-blue-text: var(--color-info-dark);
-        $row-red-bg: var(--color-error-light);
-        $row-red-text: var(--color-error-dark);
-        $row-grey-bg: var(--color-bg-muted);
-        $row-grey-text: var(--color-badge-neutral-text);
-
         @mixin inventory-row-tone($bg, $text, $bg-hover) {
           > td {
             background-color: $bg !important;
@@ -332,25 +346,32 @@ $finance-empty: var(--color-chart-muted);
           }
 
           &.ant-table-row-selected > td {
-            background-color: $bg-hover !important;
-            box-shadow: inset 3px 0 0 0 color-mix(in srgb, var(--color-chart-muted) 55%, transparent);
+            background-color: $row-selected-bg !important;
+            color: $row-selected-text !important;
+            box-shadow: inset 3px 0 0 0 $row-selected-border;
           }
         }
 
         .ant-table-tbody > tr.inventory-row-green {
-          @include inventory-row-tone($row-green-bg, $row-green-text, var(--color-success-light));
+          @include inventory-row-tone($row-green-bg, $row-green-text, $row-green-hover);
         }
 
         .ant-table-tbody > tr.inventory-row-blue {
-          @include inventory-row-tone($row-blue-bg, $row-blue-text, var(--color-info-light));
+          @include inventory-row-tone($row-blue-bg, $row-blue-text, $row-blue-hover);
         }
 
         .ant-table-tbody > tr.inventory-row-red {
-          @include inventory-row-tone($row-red-bg, $row-red-text, var(--color-error-light));
+          @include inventory-row-tone($row-red-bg, $row-red-text, $row-red-hover);
         }
 
         .ant-table-tbody > tr.inventory-row-grey {
-          @include inventory-row-tone($row-grey-bg, $row-grey-text, var(--color-border));
+          @include inventory-row-tone($row-grey-bg, $row-grey-text, $row-grey-hover);
+        }
+
+        .ant-table-tbody > tr.ant-table-row-selected > td {
+          background-color: $row-selected-bg !important;
+          color: $row-selected-text !important;
+          box-shadow: inset 3px 0 0 0 $row-selected-border;
         }
 
         // Scroll — smooth; height driven by JS scroll.y (no fixed max-height override)

@@ -119,7 +119,7 @@ const OutStandingReport = () => {
         },
         { title: 'Company', dataIndex: 'name', key: 'name', width: 250 },
         { title: 'Invoice', dataIndex: 'invoiceno', key: 'invoiceno' },
-        { title: 'Date', dataIndex: 'invoicedate', key: 'invoicedate', align: 'center' },
+        { title: 'Date', dataIndex: 'invoicedate', key: 'invoicedate', align: 'center', render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
         {
             title: 'Paid Amount',
             dataIndex: 'paid_amount',
@@ -134,7 +134,7 @@ const OutStandingReport = () => {
             align: 'center',
             render: (val) => <Tag color="blue">{val || 0} Days</Tag>
         },
-        { title: 'Due Date', dataIndex: 'due_date', key: 'due_date', align: 'center' },
+        { title: 'Due Date', dataIndex: 'due_date', key: 'due_date', align: 'center', render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
         { title: 'Reference', dataIndex: 'reference', key: 'reference' },
         {
             title: 'Due Amount',

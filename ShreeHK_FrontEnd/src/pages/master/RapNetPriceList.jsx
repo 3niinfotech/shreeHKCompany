@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import dayjs from 'dayjs';
 import { Alert, Button, Typography } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
 import { toastApiSuccess, toastApiError, getApiErrorMessage } from '../../utils/apiToast';
@@ -68,6 +69,7 @@ const RapNetPriceList = () => {
             title: 'Date',
             dataIndex: 'date',
             key: 'date',
+            render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')),
         },
     ];
 

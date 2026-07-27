@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import dayjs from 'dayjs';
 import { Card, Form, Input, Table, Tag, Typography } from 'antd';
 import { api } from '../../api/axiosInstance';
 import { ENDPOINTS } from '../../constants/endpoints';
@@ -10,7 +11,7 @@ const { Title } = Typography;
 
 const historyColumns = [
     { title: 'Action', dataIndex: 'action', key: 'action', width: 120 },
-    { title: 'Date', dataIndex: 'date', key: 'date', width: 110 },
+    { title: 'Date', dataIndex: 'date', key: 'date', width: 110, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
     { title: 'Invoice', dataIndex: 'invoice', key: 'invoice', width: 100 },
     { title: 'Description', dataIndex: 'description', key: 'description', ellipsis: true },
     { title: 'Pcs', dataIndex: 'pcs', key: 'pcs', width: 70 },

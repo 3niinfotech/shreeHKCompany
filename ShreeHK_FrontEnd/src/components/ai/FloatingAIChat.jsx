@@ -103,7 +103,7 @@ const FloatingAIChat = () => {
         <Button
           type="primary"
           shape="circle"
-          size="large"
+          size="small"
           className={styles.chatFab}
           icon={<Sparkles size={24} strokeWidth={1.75} />}
           onClick={() => setOpen(true)}

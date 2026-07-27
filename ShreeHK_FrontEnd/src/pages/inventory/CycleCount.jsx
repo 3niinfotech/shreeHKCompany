@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef } from "react";
+import dayjs from "dayjs";
 import { Card, Input, Button, Table, Tag, Space, Typography, message } from "antd";
 import { ScanOutlined, CheckOutlined, CloseOutlined } from "@ant-design/icons";
 import PageHeroHeader from "../../components/common/PageHeroHeader";
@@ -65,7 +66,7 @@ const CycleCount = () => {
           <Tag icon={<CloseOutlined />} color="error">Not in stock</Tag>
         ),
     },
-    { title: "Scanned At", dataIndex: "scannedAt", key: "scannedAt" },
+    { title: "Scanned At", dataIndex: "scannedAt", key: "scannedAt", render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format("DD-MM-YYYY") : (v || "-")) },
   ];
 
   return (

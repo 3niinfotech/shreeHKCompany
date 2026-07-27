@@ -35,7 +35,7 @@ const Transaction = () => {
 
     const columns = [
         { title: 'No', dataIndex: 'no', key: 'no', width: 50, align: 'center' },
-        { title: 'Date', dataIndex: 'date', key: 'date', width: 100 },
+        { title: 'Date', dataIndex: 'date', key: 'date', width: 100, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
         { title: 'Account', dataIndex: 'account', key: 'account', width: 120 },
         { title: 'Party', dataIndex: 'party', key: 'party', width: 130 },
         { title: 'Other Party', dataIndex: 'otherParty', key: 'otherParty', width: 130 },

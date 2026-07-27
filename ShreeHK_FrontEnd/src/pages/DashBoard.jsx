@@ -236,7 +236,7 @@ const Dashboard = () => {
             ),
         [purchaseDuePayments]
     );
-    
+
     // const purchaseDueTotals = useMemo(
     //     () =>
     //         purchaseDuePayments.reduce(

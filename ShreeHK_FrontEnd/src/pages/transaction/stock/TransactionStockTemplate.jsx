@@ -549,7 +549,7 @@ const TransactionStockTemplate = ({
       dataIndex: 'date',
       key: 'date',
       width: 110,
-      render: (v) => (v ? String(v).slice(0, 10) : '-'),
+      render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')),
     },
     {
       title: 'Stones',

@@ -49,27 +49,18 @@ const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
             onCancel={onClose}
             footer={null}
             centered
-            width={480}
+            width={360}
             className="sku-action-modal"
             destroyOnClose={true} // Taaki har baar animation fresh chale
         >
-            {/* <div className="sku-action-modal__header">
-        <Text className="subtitle">Operations Center</Text>
-        <div className="sku-title">{skuData.sku}</div>
-        <Tag color="blue" style={{ borderRadius: '6px', fontWeight: 'bold' }}>
-          AVAILABLE
-        </Tag>
-      </div> */}
-
             <div className="sku-action-modal__header">
-                {/* Aapka bataya hua text yahan add kar diya hai */}
-                <Text type="secondary" style={{ fontSize: '14px', display: 'block', marginBottom: '4px' }}>
+                <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '2px' }}>
                     What you want to do with
                 </Text>
 
                 <div className="sku-title" style={{ margin: '0' }}>{skuData.sku}</div>
 
-                <Tag color="blue" style={{ borderRadius: '6px', fontWeight: 'bold', marginTop: '10px' }}>
+                <Tag color="blue" style={{ borderRadius: '4px', fontWeight: 'bold', marginTop: '6px' }}>
                     AVAILABLE
                 </Tag>
             </div>

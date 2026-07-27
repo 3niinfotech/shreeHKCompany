@@ -73,7 +73,7 @@ const GroupReport = () => {
     const columns = [
         { title: 'No', dataIndex: 'no', key: 'no', width: 60, align: 'center', fixed: 'left' },
         { title: 'Company', dataIndex: 'company', key: 'company', width: 240, fixed: 'left' },
-        { title: 'Date', dataIndex: 'date', key: 'date', width: 100 },
+        { title: 'Date', dataIndex: 'date', key: 'date', width: 100, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
         { title: 'Invoice', dataIndex: 'invoice', key: 'invoice', width: 120 },
         { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 100 },
         { title: 'Lab', dataIndex: 'lab', key: 'lab', width: 120 },

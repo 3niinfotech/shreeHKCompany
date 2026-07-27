@@ -7,7 +7,7 @@ import NavBar from "./NavBar";
 import SkuActionModal from "../../hooks/useSkuModalAction";
 import styles from "../../assets/scss/layout/header.module.scss";
 import { Link, useNavigate } from "react-router-dom";
-import { Gem, Menu, Wifi, WifiOff, RefreshCw, CheckCircle2 } from "lucide-react";
+import { Gem, Menu, Wifi, WifiOff, RefreshCw, CheckCircle2, Database } from "lucide-react";
 
 const { Header: AntHeader } = Layout;
 
@@ -300,7 +300,12 @@ const Header = ({
               onInventoryFilter={handleInventoryFilterFromSearch}
             />
           </div>
-          <Button onClick={() => navigate('/inventory/my-inventory')}>
+          <Button
+            type="primary"
+            icon={<Database size={15} />}
+            className={styles.myInventoryBtn}
+            onClick={() => navigate('/inventory/my-inventory')}
+          >
             My Inventory
           </Button>
         </div>

@@ -56,10 +56,10 @@ const SaleStoneReport = () => {
         { title: 'Color', dataIndex: 'color', width: 80 },
         { title: 'Clarity', dataIndex: 'clarity', width: 90 },
         { title: 'Party', dataIndex: 'party', width: 140 },
-        { title: 'Date', dataIndex: 'out_date', width: 100 },
+        { title: 'Date', dataIndex: 'out_date', width: 100, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
         { title: 'Invoice', dataIndex: 'invoiceno', width: 110 },
         { title: 'Terms', dataIndex: 'terms', width: 70 },
-        { title: 'Due Date', dataIndex: 'due_date', width: 100 },
+        { title: 'Due Date', dataIndex: 'due_date', width: 100, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
         { title: 'Paid', dataIndex: 'paid_amount', width: 90, align: 'right' },
     ];
 

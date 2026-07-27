@@ -20,8 +20,6 @@
 
   :global(.ant-modal-body) {
     padding: 0;
-    max-height: min(82vh, 780px);
-    overflow-y: auto;
     background: var(--color-page-bg);
   }
 
