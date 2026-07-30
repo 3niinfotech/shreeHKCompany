@@ -1,4 +1,4 @@
-import { Card, Row, Col, Table, Typography, Tooltip, Spin, Tabs } from 'antd';
+import { Card, Row, Col, Table, Typography, Tooltip, Spin, Tabs, Skeleton } from 'antd';
 import {
     Diamond,
     Tag,
@@ -15,18 +15,211 @@ import {
     CalendarDays,
     Wallet,
     Activity,
+    NotebookPen,
+    Edit2,
+    Trash2,
+    Check,
+    X,
 } from 'lucide-react';
-const { Text, Title } = Typography;
 import { toast } from 'sonner';
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/Auth.Store';
 import dayjs from 'dayjs';
-import AIInsightCard from "../components/ai/AIInsightCard";
 import { useFetchApi } from '../api/ApiFunction';
 import { ENDPOINTS } from '../constants/endpoints';
 import useThemeColors from '../hooks/useThemeColors';
 import "../assets/scss/pages/dashboard.scss";
+
+const QuickNotesCard = () => {
+    const [notes, setNotes] = useState(() => {
+        try {
+            const saved = localStorage.getItem('shree_hk_dashboard_notes');
+            return saved ? JSON.parse(saved) : [
+                { id: 1, text: 'Follow up with party for pending invoice payment', completed: false, date: dayjs().format('DD MMM YYYY, hh:mm A') },
+                { id: 2, text: 'Verify GIA lab report certificates before shipment', completed: true, date: dayjs().subtract(1, 'day').format('DD MMM YYYY, hh:mm A') },
+            ];
+        } catch {
+            return [];
+        }
+    });
+
+    const [inputText, setInputText] = useState('');
+    const [editingId, setEditingId] = useState(null);
+    const [editText, setEditText] = useState('');
+
+    const saveNotesToStorage = (updatedNotes) => {
+        setNotes(updatedNotes);
+        try {
+            localStorage.setItem('shree_hk_dashboard_notes', JSON.stringify(updatedNotes));
+        } catch (e) {
+            console.error('Failed to save notes:', e);
+        }
+    };
+
+    const handleAdd = () => {
+        if (!inputText.trim()) {
+            toast.error('Please enter a note before adding');
+            return;
+        }
+        const newNote = {
+            id: Date.now(),
+            text: inputText.trim(),
+            completed: false,
+            date: dayjs().format('DD MMM YYYY, hh:mm A'),
+        };
+        const updated = [newNote, ...notes];
+        saveNotesToStorage(updated);
+        setInputText('');
+        toast.success('Note added successfully');
+    };
+
+    const handleDelete = (id) => {
+        const updated = notes.filter((n) => n.id !== id);
+        saveNotesToStorage(updated);
+        toast.success('Note deleted');
+    };
+
+    const handleToggleComplete = (id) => {
+        const updated = notes.map((n) => n.id === id ? { ...n, completed: !n.completed } : n);
+        saveNotesToStorage(updated);
+    };
+
+    const startEditing = (note) => {
+        setEditingId(note.id);
+        setEditText(note.text);
+    };
+
+    const cancelEditing = () => {
+        setEditingId(null);
+        setEditText('');
+    };
+
+    const saveEditing = (id) => {
+        if (!editText.trim()) {
+            toast.error('Note text cannot be empty');
+            return;
+        }
+        const updated = notes.map((n) => n.id === id ? { ...n, text: editText.trim() } : n);
+        saveNotesToStorage(updated);
+        setEditingId(null);
+        setEditText('');
+        toast.success('Note updated');
+    };
+
+    return (
+        <Card bordered={false} className="dashboard-card dashboard-card--luxury quick-notes-card">
+            <div className="card-header">
+                <div className="card-title-group">
+                    <span className="card-icon-badge card-icon-badge--primary">
+                        <NotebookPen size={18} />
+                    </span>
+                    <div>
+                        <span className="card-title-text">Quick Notes & Tasks</span>
+                        <span className="card-subtitle-text">Manage reminders, follow-ups & daily notes</span>
+                    </div>
+                </div>
+                <div className="notes-counter-badge">
+                    {notes.filter(n => !n.completed).length} Pending
+                </div>
+            </div>
+
+            <div className="notes-input-bar">
+                <input
+                    type="text"
+                    className="notes-input"
+                    placeholder="Add a new quick note or task..."
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+                />
+                <button type="button" className="notes-add-btn" onClick={handleAdd}>
+                    <Plus size={16} /> Add Note
+                </button>
+            </div>
+
+            <div className="table-wrapper notes-table-wrapper" style={{ marginTop: 14 }}>
+                <table className="inventory-table notes-table">
+                    <thead>
+                        <tr>
+                            <th style={{ width: 50, textAlign: 'center' }}>Status</th>
+                            <th>Note / Task Description</th>
+                            <th style={{ width: 170, textAlign: 'center' }}>Created Date</th>
+                            <th style={{ width: 100, textAlign: 'center' }}>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {notes.length > 0 ? (
+                            notes.map((note) => (
+                                <tr key={note.id} className={note.completed ? 'completed-note-row' : ''}>
+                                    <td style={{ textAlign: 'center' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={note.completed}
+                                            onChange={() => handleToggleComplete(note.id)}
+                                            className="note-checkbox"
+                                        />
+                                    </td>
+                                    <td>
+                                        {editingId === note.id ? (
+                                            <input
+                                                type="text"
+                                                className="edit-note-input"
+                                                value={editText}
+                                                onChange={(e) => setEditText(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') saveEditing(note.id);
+                                                    if (e.key === 'Escape') cancelEditing();
+                                                }}
+                                                autoFocus
+                                            />
+                                        ) : (
+                                            <span className={`note-text ${note.completed ? 'text-strikethrough' : ''}`}>
+                                                {note.text}
+                                            </span>
+                                        )}
+                                    </td>
+                                    <td style={{ textAlign: 'center', color: '#64748b', fontSize: '0.76rem' }}>
+                                        {note.date}
+                                    </td>
+                                    <td style={{ textAlign: 'center' }}>
+                                        <div className="note-actions">
+                                            {editingId === note.id ? (
+                                                <>
+                                                    <button type="button" className="action-btn action-btn--save" onClick={() => saveEditing(note.id)} title="Save Note">
+                                                        <Check size={14} />
+                                                    </button>
+                                                    <button type="button" className="action-btn action-btn--cancel" onClick={cancelEditing} title="Cancel">
+                                                        <X size={14} />
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <button type="button" className="action-btn action-btn--edit" onClick={() => startEditing(note)} title="Edit Note">
+                                                        <Edit2 size={14} />
+                                                    </button>
+                                                    <button type="button" className="action-btn action-btn--delete" onClick={() => handleDelete(note.id)} title="Delete Note">
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))
+                        ) : (
+                            <tr>
+                                <td colSpan={4} style={{ textAlign: 'center', padding: '20px 16px', color: '#94a3b8' }}>
+                                    No notes found. Enter a note above and click "Add Note".
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </Card>
+    );
+};
 
 const fmtMoney = (value) =>
     `$${Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
@@ -48,7 +241,7 @@ const StatSummaryCard = ({ title, subtitle, value, icon, footerText, link, isLoa
         <div className="stat-card-body">
             <div className="stat-card-top">
                 <div className="stat-icon">{icon}</div>
-                <h3 className="stat-value">{isLoading ? <Spin size="small" /> : value}</h3>
+                <h3 className="stat-value">{isLoading ? <Skeleton.Button active size="small" shape="round" /> : value}</h3>
             </div>
             <div className="stat-info">
                 <p className="stat-title">{title}</p>
@@ -327,8 +520,8 @@ const Dashboard = () => {
                                     onNavigate={navigate}
                                 />
                             ) : (
-                                <Card bordered={false} className="stat-card stat-card--loading" styles={{ body: { padding: 24, textAlign: 'center' } }}>
-                                    <Spin />
+                                <Card bordered={false} className="stat-card stat-card--loading" styles={{ body: { padding: 24 } }}>
+                                    <Skeleton active title={{ width: '50%' }} paragraph={{ rows: 1, width: '100%' }} />
                                 </Card>
                             )}
                         </Col>
@@ -406,8 +599,8 @@ const Dashboard = () => {
                                     children: (
                                         <div className="table-wrapper">
                                             {isLoading ? (
-                                                <div style={{ padding: 24, textAlign: "center" }}>
-                                                    <Spin />
+                                                <div style={{ padding: 24 }}>
+                                                    <Skeleton active title={false} paragraph={{ rows: 5, width: '100%' }} />
                                                 </div>
                                             ) : duePayments.length > 0 ? (
                                                 <table className="inventory-table">
@@ -457,8 +650,8 @@ const Dashboard = () => {
                                     children: (
                                         <div className="table-wrapper">
                                             {isLoading ? (
-                                                <div style={{ padding: 24, textAlign: "center" }}>
-                                                    <Spin />
+                                                <div style={{ padding: 24 }}>
+                                                    <Skeleton active title={false} paragraph={{ rows: 5, width: '100%' }} />
                                                 </div>
                                             ) : purchaseDuePayments.length > 0 ? (
                                                 <table className="inventory-table">
@@ -528,7 +721,9 @@ const Dashboard = () => {
                         </div>
                         <div className="transactions-list">
                             {isLoading ? (
-                                <div style={{ padding: 24, textAlign: 'center' }}><Spin /></div>
+                                <div style={{ padding: 24 }}>
+                                    <Skeleton active avatar title={false} paragraph={{ rows: 4, width: '100%' }} />
+                                </div>
                             ) : recentTransactions.length > 0 ? (
                                 recentTransactions.map((txn, i) => (
                                     <div key={i} className="transaction-item">
@@ -554,20 +749,13 @@ const Dashboard = () => {
                                 <div style={{ padding: 16, color: theme.textMuted }}>No recent transactions found.</div>
                             )}
                         </div>
-                        <div className="input-container">
-                            <Tooltip title="Click to add task" placement="top">
-                                <Plus className='add-task' color={theme.primary} size={'18px'} onClick={taskHandler} />
-                            </Tooltip>
-                            <input
-                                type="text"
-                                name="taskData"
-                                value={taskInput}
-                                onChange={(e) => setTaskInput(e.target.value)}
-                                onKeyDown={keyPressTaskHandler}
-                                placeholder="Add a quick note..."
-                            />
-                        </div>
                     </Card>
+                </Col>
+            </Row>
+
+            <Row gutter={[20, 20]} className="notes-section dashboard-grid" align="stretch">
+                <Col span={24}>
+                    <QuickNotesCard />
                 </Col>
             </Row>
 

@@ -19,7 +19,7 @@ const DeleteConfirmModal = ({
             keyboard={false}
             centered
             footer={[
-                <Button key="close" onClick={onCancel}>
+                <Button key="close" onClick={onCancel} danger>
                     Close
                 </Button>,
                 <Button

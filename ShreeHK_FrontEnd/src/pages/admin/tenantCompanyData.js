@@ -1,5 +1,6 @@
 export const tenantCompanyFields = [
-  { type: "input", label: "Company Name", name: "name", span: 24, required: true },
+  { type: "input", label: "Company Name", name: "name", span: 18, required: true },
+  { type: "input", label: "Shortcut Name", name: "shortcutName", span: 6 },
   { type: "input", label: "Type", name: "type", span: 12 },
   { type: "input", label: "Phone Number", name: "number", span: 12, required: true },
   { type: "textarea", label: "Name of Partner", name: "partner", span: 24 },

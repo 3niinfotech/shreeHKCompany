@@ -462,8 +462,19 @@ $toast-brand-dark: var(--color-primary-dark);
   align-items: center !important;
 }
 
-.ant-notification-notice-with-icon .ant-notification-notice-message {
-  margin-inline-start: 0 !important;
+.ant-notification-notice-with-icon {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+
+  .ant-notification-notice-message {
+    margin-inline-start: 0 !important;
+    margin-bottom: 0 !important;
+  }
+}
+
+.ant-notification-notice-title{
+  margin: 0px !important;
 }
 
 .ant-notification-notice-icon {

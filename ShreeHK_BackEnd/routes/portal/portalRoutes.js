@@ -27,7 +27,7 @@ portalRouter.get("/portal/company-years", authenticateToken, async (req, res) =>
     const yearsRaw = await metaQuery(
       `SELECT id, year, fromDate, toDate, db_name FROM company_year ORDER BY id DESC`
     );
-    const companiesRaw = await metaQuery("SELECT id, name, address, number FROM company ORDER BY name ASC");
+    const companiesRaw = await metaQuery("SELECT id, name, shortcutName, address, number FROM company ORDER BY name ASC");
     const allowedIds = await getRollCompanyIds(req.user.roll);
 
     // Remove duplicate fiscal-year labels (keep latest id due to ORDER BY id DESC)
@@ -64,6 +64,7 @@ portalRouter.get("/portal/company-years", authenticateToken, async (req, res) =>
         combos.push({
           companyId: c.id,
           companyName: c.name,
+          companyShortcutName: c.shortcutName || null,
           companyAddress: c.address,
           companyNumber: c.number,
           yearId: y.id,

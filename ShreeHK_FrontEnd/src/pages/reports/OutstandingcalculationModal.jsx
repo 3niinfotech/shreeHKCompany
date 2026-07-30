@@ -8,6 +8,10 @@ import styles from "../../assets/scss/pages/report/outstandingCalculationModal.m
 
 const money = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+const InputLabel = ({ children }) => <label className={styles.inputLabel}>{children}</label>;
+const InfoItem = ({ icon: IconComponent, label, value, alert }) => <div className={styles.infoItem}><span className={styles.infoIcon}><IconComponent size={17} /></span><div><span>{label}</span><strong className={alert ? styles.alertValue : ""}>{value}</strong></div></div>;
+const Stat = ({ icon: IconComponent, label, value, tone }) => <div className={`${styles.stat} ${styles[tone]}`}><span><IconComponent size={19} /></span><div><label>{label}</label><strong>{value}</strong></div></div>;
+
 const OutstandingCalculationModal = ({ open, onClose, data, onSaved }) => {
     const [lessPercent, setLessPercent] = useState(0);
     const [otherLessPercent, setOtherLessPercent] = useState(0);
@@ -21,43 +25,76 @@ const OutstandingCalculationModal = ({ open, onClose, data, onSaved }) => {
 
     useEffect(() => {
         if (!open || !data) return;
-        setLessPercent(0);
-        setOtherLessPercent(0);
-        setExtraCharge(0);
+        setLessPercent(Number(data.less_percent || data.lessPercent || 0));
+        setOtherLessPercent(Number(data.other_less_percent || data.otherLessPercent || 0));
+        setExtraCharge(Number(data.extra_charge || data.extraCharge || 0));
         setPaymentDate(dayjs());
         setBook("");
         setCheque("");
-        setPaymentAmount(Number(data.due_amount) || 0);
     }, [open, data]);
 
     const calculation = useMemo(() => {
-        const originalAmount = Number(data?.final_amount) || 0;
-        const lessAmount = originalAmount * (Number(lessPercent) || 0) / 100;
-        const afterLess = originalAmount - lessAmount;
-        const otherLessAmount = afterLess * (Number(otherLessPercent) || 0) / 100;
+        // Use base amount if available, otherwise fallback to final_amount
+        const baseAmount = Number(data?.amount || data?.sub_total || data?.total_amount || data?.final_amount) || 0;
+        
+        const lessAmount = (baseAmount * (Number(lessPercent) || 0)) / 100;
+        const afterLess = baseAmount - lessAmount;
+        
+        const otherLessAmount = (afterLess * (Number(otherLessPercent) || 0)) / 100;
+        
         const finalAmount = afterLess - otherLessAmount + (Number(extraCharge) || 0);
         const paidAmount = Number(data?.paid_amount) || 0;
-        return { lessAmount, afterLess, otherLessAmount, finalAmount, dueAmount: finalAmount - paidAmount };
+        const dueAmount = finalAmount - paidAmount;
+        
+        return { 
+            baseAmount,
+            lessAmount, 
+            afterLess, 
+            otherLessAmount, 
+            finalAmount, 
+            dueAmount: dueAmount > 0 ? dueAmount : 0 
+        };
     }, [data, lessPercent, otherLessPercent, extraCharge]);
 
+    useEffect(() => {
+        setPaymentAmount(calculation.dueAmount);
+    }, [calculation.dueAmount]);
+
     const entryType = data?.type === "purchase" || data?.type === "import" ? data.type : "sale";
+    
     const resetCharges = () => {
-        setLessPercent(0);
-        setOtherLessPercent(0);
-        setExtraCharge(0);
+        setLessPercent(Number(data?.less_percent || data?.lessPercent || 0));
+        setOtherLessPercent(Number(data?.other_less_percent || data?.otherLessPercent || 0));
+        setExtraCharge(Number(data?.extra_charge || data?.extraCharge || 0));
     };
+    
     const resetInstallment = () => {
         setPaymentDate(dayjs());
         setBook("");
         setCheque("");
         setPaymentAmount(calculation.dueAmount);
     };
+    
     const handleSaveCharge = () => {
         if (!data?.id) return;
-        saveCharge({ id: data.id, type: entryType, lessPercent, otherLessPercent, extraCharge }, {
-            onSuccess: () => onSaved?.(),
+        saveCharge({ 
+            id: data.id, 
+            type: entryType, 
+            lessPercent, 
+            otherLessPercent, 
+            extraCharge,
+            lessAmount: calculation.lessAmount,
+            otherLessAmount: calculation.otherLessAmount,
+            finalAmount: calculation.finalAmount,
+            dueAmount: calculation.dueAmount
+        }, {
+            onSuccess: () => {
+                onSaved?.();
+                onClose?.();
+            }
         });
     };
+    
     const handleSaveInstallment = () => {
         if (!data?.id) return;
         saveInstallment({
@@ -68,14 +105,16 @@ const OutstandingCalculationModal = ({ open, onClose, data, onSaved }) => {
             cheque,
             amount: paymentAmount,
             description: `Payment paid of Invoice No:${data?.invoiceno || ""}`,
-        }, { onSuccess: () => onSaved?.() });
+        }, { 
+            onSuccess: () => {
+                onSaved?.();
+                onClose?.();
+            } 
+        });
     };
 
-    const InputLabel = ({ children }) => <label className={styles.inputLabel}>{children}</label>;
-    const InfoItem = ({ icon: Icon, label, value, alert }) => <div className={styles.infoItem}><span className={styles.infoIcon}><Icon size={17} /></span><div><span>{label}</span><strong className={alert ? styles.alertValue : ""}>{value}</strong></div></div>;
-    const Stat = ({ icon: Icon, label, value, tone }) => <div className={`${styles.stat} ${styles[tone]}`}><span><Icon size={19} /></span><div><label>{label}</label><strong>{value}</strong></div></div>;
 
-    return <Modal className={styles.modal} open={open} onCancel={onClose} footer={null} width={1240} centered destroyOnClose closeIcon={<X size={19} />}>
+    return <Modal className={styles.modal} open={open} onCancel={onClose} footer={null} width={920} centered destroyOnClose closeIcon={<X size={19} />}>
         {data && <div className={styles.content}>
             <header className={styles.modalHeader}><span className={styles.headerIcon}><CircleDollarSign size={25} /></span><h2>Outstanding Details</h2><span className={styles.entryBadge}>{data.entryno}</span></header>
             <section className={styles.infoCard}>
@@ -102,7 +141,20 @@ const OutstandingCalculationModal = ({ open, onClose, data, onSaved }) => {
                     <div><InputLabel>Other Less Amount</InputLabel><InputNumber value={calculation.otherLessAmount} controls={false} readOnly prefix="$" /></div>
                     <div><InputLabel>Extra Charges</InputLabel><InputNumber value={extraCharge} min={0} controls={false} prefix="$" onChange={(v) => setExtraCharge(v || 0)} /></div>
                 </div>
-                <div className={styles.actionRow}><Button type="primary" icon={<Check size={17} />} loading={isSavingCharge} onClick={handleSaveCharge}>Save Change</Button><Button icon={<RotateCcw size={17} />} onClick={resetCharges}>Reset</Button></div>
+                <div className={styles.actionRow}><Button type="primary" icon={<Check size={17} />} loading={isSavingCharge} onClick={handleSaveCharge} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)" }}>Save Change</Button>
+                  <Button
+  className={styles.blackBtn}
+  style={{
+    background: "#000",
+    borderColor: "#000",
+    color: "#fff",
+  }}
+  icon={<RotateCcw size={17} color="#fff" />}
+  onClick={resetCharges}
+>
+  Reset
+</Button>
+                </div>
                 <div className={styles.statsRow}>
                     <Stat icon={WalletCards} label="Final Amount" value={money(calculation.finalAmount)} tone="purple" />
                     <Stat icon={CreditCard} label="Paid Amount" value={money(data.paid_amount)} tone="green" />
@@ -118,9 +170,17 @@ const OutstandingCalculationModal = ({ open, onClose, data, onSaved }) => {
                     <div><InputLabel>Amount</InputLabel><InputNumber value={paymentAmount} min={0} max={calculation.dueAmount} controls={false} prefix="$" onChange={(v) => setPaymentAmount(v || 0)} /></div>
                     <div><InputLabel>Cheque#</InputLabel><Input value={cheque} prefix={<Hash size={16} />} placeholder="Enter cheque no" onChange={(e) => setCheque(e.target.value)} /></div>
                 </div>
-                <div className={styles.actionRow}><Button type="primary" icon={<Check size={17} />} loading={isSavingInstallment} onClick={handleSaveInstallment}>Save Installment</Button><Button icon={<RotateCcw size={17} />} onClick={resetInstallment}>Reset</Button></div>
+                <div className={styles.actionRow}><Button type="primary" icon={<Check size={17} />} loading={isSavingInstallment} onClick={handleSaveInstallment} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)" }}>Save Installment</Button><Button
+                    className={styles.blackBtn}
+                    icon={<RotateCcw size={17} />}
+                    onClick={resetInstallment}
+                >
+                    Reset
+                </Button></div>
             </section>
-            <footer className={styles.footer}><span><ShieldCheck size={25} /><span><b>All changes are secure and logged</b><small>Your data is protected with enterprise-grade security.</small></span></span><Button icon={<X size={17} />} onClick={onClose}>Close</Button></footer>
+            <footer className={styles.footer}><span><ShieldCheck size={25} /><span><b>All changes are secure and logged</b><small>Your data is protected with enterprise-grade security.</small></span></span><Button
+                //  icon={<X size={17} />} 
+                onClick={onClose} danger>Close</Button></footer>
         </div>}
     </Modal>;
 };

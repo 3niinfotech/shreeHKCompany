@@ -47,6 +47,7 @@
   background: var(--color-card-bg, #ffffff) !important;
   border-top: 0.5px solid var(--color-border, #e0e5ea) !important;
   margin-top: 0 !important;
+  padding: 10px !important;
 }
 
 .ant-modal-title {
@@ -108,4 +109,53 @@
 .ant-modal-confirm .ant-modal-container,
 .ant-modal-confirm .ant-modal-content {
   border-radius: 5px !important;
+}
+
+// ---------------------------------------------------------------------------
+// Global Modal Buttons Styling (Save = Success Green, Cancel = Danger Red)
+// ---------------------------------------------------------------------------
+.ant-modal {
+  .ant-btn-primary:not(.ant-btn-danger):not(:disabled) {
+    background: var(--color-success, #38a169) !important;
+    background-color: var(--color-success, #38a169) !important;
+    border-color: var(--color-success, #38a169) !important;
+    color: var(--color-text-inverse, #ffffff) !important;
+
+    &:hover:not(:disabled) {
+      background: var(--color-success-dark, #2f855a) !important;
+      background-color: var(--color-success-dark, #2f855a) !important;
+      border-color: var(--color-success-dark, #2f855a) !important;
+      color: var(--color-text-inverse, #ffffff) !important;
+    }
+  }
+
+  .ant-btn-default:not(:disabled):not(.btnReset) {
+    background: var(--color-danger, #e53e3e) !important;
+    background-color: var(--color-danger, #e53e3e) !important;
+    border-color: var(--color-danger, #e53e3e) !important;
+    color: #ffffff !important;
+
+    &:hover:not(:disabled) {
+      background: var(--color-error-dark, #c0392b) !important;
+      background-color: var(--color-error-dark, #c0392b) !important;
+      border-color: var(--color-error-dark, #c0392b) !important;
+      color: #ffffff !important;
+    }
+  }
+
+  [class*="btnSave"],
+  [class*="btn-save"] {
+    background: var(--color-success, #38a169) !important;
+    background-color: var(--color-success, #38a169) !important;
+    border-color: var(--color-success, #38a169) !important;
+    color: var(--color-text-inverse, #ffffff) !important;
+  }
+
+  [class*="btnCancel"],
+  [class*="btn-cancel"] {
+    background: var(--color-danger, #e53e3e) !important;
+    background-color: var(--color-danger, #e53e3e) !important;
+    border-color: var(--color-danger, #e53e3e) !important;
+    color: #ffffff !important;
+  }
 }

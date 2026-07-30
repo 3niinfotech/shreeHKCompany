@@ -203,7 +203,8 @@ const ActivityHistory = () => {
               loading={exporting === "xlsx"}
               disabled={!total || !!exporting}
               onClick={() => handleExport("xlsx")}
-              style={{ padding: "19px 15px" }}
+              // style={{ padding: "19px 15px" }}
+              className={styles.excelBtn}
             >
               Excel
             </Button>

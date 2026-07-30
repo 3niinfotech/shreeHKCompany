@@ -126,7 +126,7 @@ const TransferHistory = () => {
                 onSearch={handleSearch}
                 searchLoading={loading}
                 extraActions={(
-                    <Button type="primary" icon={<FileUp size={16} />} loading={exporting} onClick={handleExport} disabled={!data.length}>
+                    <Button type="primary" icon={<FileUp size={16} />} loading={exporting} onClick={handleExport} disabled={!data.length} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff" }}>
                         Export to Excel
                     </Button>
                 )}

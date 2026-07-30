@@ -10,7 +10,9 @@ import useInventoryIExportActions from "../../hooks/useInventoryIExportActions";
 import useInventoryExportActions from "../../hooks/useInventoryExportActions";
 import useInventoryMailActions from "../../hooks/useInventoryMailActions";
 import { resolveDiaPair } from "../../utils/resolveDiaPair";
+import { LinkOutlined } from "@ant-design/icons";
 import InventoryBulkActionModal from "../../components/inventory/InventoryBulkActionModal";
+import PairManagementModal from "../../components/inventory/PairManagementModal";
 import { renderLocationWithFlag } from "../../components/inventory/LocationWithFlag";
 import InventoryPageToolbar from "../../components/inventory/InventoryPageToolbar";
 import {
@@ -87,7 +89,9 @@ const numCol = (dataIndex, title, w = 88) => ({
 
 const OnHandStock = () => {
     const [activeType, setActiveType] = useState("label");
+    const [selectedRows, setSelectedRows] = useState([]);
     const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+    const [pairModalOpen, setPairModalOpen] = useState(false);
     const [bulkActionModal, setBulkActionModal] = useState({ open: false, actionKey: null });
     const [searchText, setSearchText] = useState("");
     const [stoneDetailModal, setStoneDetailModal] = useState({ open: false, data: null });
@@ -244,7 +248,8 @@ const OnHandStock = () => {
         [bulkActionModal.actionKey, selectedRowKeys, submitChangePrice, submitMail]
     );
 
-    const onSelectedRowsChange = useCallback((_rows, keys) => {
+    const onSelectedRowsChange = useCallback((rows, keys) => {
+        setSelectedRows(rows || []);
         setSelectedRowKeys(keys || []);
     }, []);
 
@@ -315,15 +320,15 @@ const OnHandStock = () => {
                     onTypeAction={onTypeAction}
                     onLabelClick={handleLabelClick}
                     onToolbarAction={handleToolbarAction}
-                    // extraToolbarActions={
-                    //     <Button
-                    //         icon={<Sparkles size={16} />}
-                    //         onClick={runStockAlert}
-                    //         loading={aiAlertLoading}
-                    //     >
-                    //         AI Alert Check
-                    //     </Button>
-                    // }
+                    extraToolbarActions={
+                        <Button
+                            icon={<LinkOutlined />}
+                            onClick={() => setPairModalOpen(true)}
+                            style={{ color: cssVar("color-primary"), borderColor: cssVar("color-primary") }}
+                        >
+                            Manage Pairs
+                        </Button>
+                    }
                 />
                 {/* <AIResultPanel
                     title="AI Stock Alerts"
@@ -349,6 +354,16 @@ const OnHandStock = () => {
                 loading={changePriceLoading || mailLoading || exportLoading}
                 onClose={() => setBulkActionModal({ open: false, actionKey: null })}
                 onSubmit={handleBulkActionSubmit}
+            />
+            <PairManagementModal
+                open={pairModalOpen}
+                selectedRows={selectedRows}
+                onClose={() => setPairModalOpen(false)}
+                onSuccess={() => {
+                    setSelectedRowKeys([]);
+                    setSelectedRows([]);
+                    refresh();
+                }}
             />
             <MasterTableTemplate
                 title="OnHand Stock"

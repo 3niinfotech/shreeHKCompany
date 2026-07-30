@@ -105,7 +105,7 @@ const FloatingAIChat = () => {
           shape="circle"
           size="small"
           className={styles.chatFab}
-          icon={<Sparkles size={24} strokeWidth={1.75} />}
+          icon={<Sparkles size={20} strokeWidth={1.75} />}
           onClick={() => setOpen(true)}
           aria-label="Open Diamond Inventory AI"
         />
@@ -241,7 +241,7 @@ const FloatingAIChat = () => {
               <textarea
                 ref={textareaRef}
                 className={styles.chatTextarea}
-                placeholder="Enter YOur Question... inventory, stock, price..."
+                placeholder="Enter Your Question... inventory, stock, price..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {

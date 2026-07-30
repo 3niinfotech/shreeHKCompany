@@ -77,7 +77,6 @@ const FIELD_LABELS = {
   cost: "Cost",
   pair: "Pair",
   category: "Category",
-  sale_type: "Sale Type",
   skus: "SKUs",
 };
 
@@ -169,7 +168,7 @@ export function formatFieldValue(value) {
   return String(value);
 }
 
-function omitNoise(obj) {
+export function omitNoise(obj) {
   if (!obj || typeof obj !== "object" || Array.isArray(obj)) return obj;
   const out = {};
   Object.entries(obj).forEach(([k, v]) => {
@@ -477,7 +476,7 @@ export function getActionTone(actionType) {
 /** Changes to show in detail — only what changed, or snapshot for add/delete */
 export function getDisplayChanges(record) {
   const changed = Array.isArray(record?.changedFields) ? record.changedFields : [];
-  const { before, after, actionType } = extractBusinessData(record);
+  const { before, after } = extractBusinessData(record);
   const diff = getChangedFieldRows(before, after, changed);
 
   if (diff.length) {

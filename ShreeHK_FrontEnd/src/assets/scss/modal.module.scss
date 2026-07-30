@@ -13,8 +13,8 @@
 }
 
 .btnCancel {
-  background-color: var(--color-neutral) !important;
-  border-color: var(--color-neutral) !important;
+  background-color: var(--color-danger) !important;
+  border-color: var(--color-danger) !important;
   color: var(--color-text-inverse) !important;
   height: 38px;
   padding: 0 20px;
@@ -22,8 +22,8 @@
   border-radius: var(--radius-control);
 
   &:hover {
-    background-color: var(--color-btn-cancel-hover) !important;
-    border-color: var(--color-btn-cancel-hover) !important;
+    background-color: var(--color-error-dark, #c0392b) !important;
+    border-color: var(--color-error-dark, #c0392b) !important;
   }
 }
 

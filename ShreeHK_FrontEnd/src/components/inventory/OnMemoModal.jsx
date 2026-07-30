@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { Modal, Table, Input, InputNumber, Select, DatePicker, Button, Form, Checkbox, Typography, message } from "antd";
+import { toast } from "sonner";
 import { DeleteOutlined, SendOutlined } from "@ant-design/icons";
 import { BarChart3, Diamond, DollarSign, Tag } from "lucide-react";
 import dayjs from "dayjs";
@@ -233,7 +234,10 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
       setSubmitting(true);
       await onSubmit?.(payload);
     } catch (err) {
-      if (err?.message && err.message !== "validation failed") {
+      if (err?.errorFields && err.errorFields.length > 0) {
+        const firstMsg = err.errorFields[0]?.errors?.[0];
+        toast.error(firstMsg || "Please fill all required fields.");
+      } else if (err?.message && err.message !== "validation failed") {
         message.error(err.message);
       }
     } finally {
@@ -523,7 +527,7 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
         </div>
 
         <div className="memo-footer-actions">
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={onClose} danger>Cancel</Button>
           <Button
             type="primary"
             loading={submitting}

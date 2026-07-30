@@ -3,6 +3,7 @@ import { Modal, Form, Input, DatePicker, Alert, Space, Button } from "antd";
 import dayjs from "dayjs";
 import { postProductHold } from "../../api/services/holdService";
 import { toastApiSuccess, toastApiError } from "../../utils/apiToast";
+import { toast } from "sonner";
 
 /**
  * Reservation / quotation — hold stone for a party with optional expiry (extends hold).
@@ -43,7 +44,12 @@ const ReservationModal = ({ open, selectedIds = [], partyHint = "", onClose, onS
         toastApiError({ response: { data: result } });
       }
     } catch (err) {
-      toastApiError(err);
+      if (err?.errorFields && err.errorFields.length > 0) {
+        const firstMsg = err.errorFields[0]?.errors?.[0];
+        toast.error(firstMsg || "Please fill all required fields.");
+      } else {
+        toastApiError(err);
+      }
     } finally {
       setLoading(false);
     }
@@ -54,7 +60,12 @@ const ReservationModal = ({ open, selectedIds = [], partyHint = "", onClose, onS
       title="Reservation / Quotation Hold"
       open={open}
       onCancel={onClose}
-      footer={null}
+      footer={[
+        <Button key="cancel" onClick={onClose} danger>Cancel</Button>,
+        <Button key="save" type="primary" loading={loading} onClick={() => form.submit()} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff" }}>
+          Reserve Stones
+        </Button>,
+      ]}
       centered
       destroyOnClose
     >
@@ -86,12 +97,6 @@ const ReservationModal = ({ open, selectedIds = [], partyHint = "", onClose, onS
         <Form.Item name="remarks" label="Notes">
           <Input.TextArea rows={2} />
         </Form.Item>
-        <Space>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button type="primary" htmlType="submit" loading={loading}>
-            Reserve Stones
-          </Button>
-        </Space>
       </Form>
     </Modal>
   );

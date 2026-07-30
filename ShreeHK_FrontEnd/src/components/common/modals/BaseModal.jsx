@@ -23,7 +23,13 @@ const BaseModal = ({
             destroyOnClose
             maskClosable={false}
             footer={[
-                <Button key="cancel" className={styles.btnCancel} onClick={onClose}>
+                <Button
+                    key="cancel"
+                    danger
+                    className={styles.btnCancel}
+                    onClick={onClose}
+                    style={{ backgroundColor: "var(--color-danger, #e53e3e)", borderColor: "var(--color-danger, #e53e3e)", color: "#fff" }}
+                >
                     {cancelBtnText}
                 </Button>,
                 <Button
@@ -32,6 +38,7 @@ const BaseModal = ({
                     className={styles.btnSave}
                     loading={loading}
                     onClick={onSave}
+                    style={{ backgroundColor: "var(--color-success, #38a169)", borderColor: "var(--color-success, #38a169)", color: "#fff" }}
                 >
                     {saveBtnText}
                 </Button>,

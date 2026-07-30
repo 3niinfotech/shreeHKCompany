@@ -56,7 +56,8 @@ api.interceptors.response.use(
             const skipRedirect =
                 requestUrl.includes("/admin/activity-log/track") ||
                 requestUrl.includes("/admin/activity-log/track-ui") ||
-                requestUrl.includes("/dashboard/summary");
+                requestUrl.includes("/dashboard/summary") ||
+                requestUrl.includes("/master/category");
             if (!skipRedirect && !window.location.pathname.startsWith("/forbidden")) {
                 window.location.href = "/forbidden";
             }

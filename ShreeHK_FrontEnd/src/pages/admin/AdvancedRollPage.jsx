@@ -179,7 +179,12 @@ const AdvancedRollPage = () => {
       setMasterToggle(false);
       setCompanyIds([]);
     }
-    notification.info({ message: 'Changes discarded' });
+    notification.info({
+      message: 'Changes discarded',
+      style: {
+        margin: '0px'
+      }
+    });
   };
 
   const handleCreateRole = (values) => {
@@ -206,9 +211,15 @@ const AdvancedRollPage = () => {
   const handleDeleteRole = () => {
     if (!selectedRoleId) return;
     confirm({
-      title: `Delete role "${selectedRole?.name}"?`,
       icon: <ExclamationCircleOutlined />,
-      content: 'This action cannot be undone.',
+      content: (
+        <div>
+          <div style={{ fontSize: '16px', fontWeight: 500, color: 'var(--color-text-heading, rgba(0, 0, 0, 0.85))', marginBottom: '8px' }}>
+            Delete role "{selectedRole?.name}"?
+          </div>
+          <div>This action cannot be undone.</div>
+        </div>
+      ),
       okText: 'Delete',
       okType: 'danger',
       cancelText: 'Cancel',
@@ -353,7 +364,7 @@ const AdvancedRollPage = () => {
                   className={styles.roleSearch}
                 />
 
-                <Spin spinning={isRolesLoading}>
+                <Spin spinning={isRolesLoading} wrapperClassName={styles.spinWrap}>
                   <div className={styles.roleList}>
                     {filteredRoles.length === 0 ? (
                       <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No roles found" />
@@ -441,7 +452,7 @@ const AdvancedRollPage = () => {
                       <ClusterOutlined className={styles.infoIcon} />
                       <div>
                         <Text strong className={styles.infoTitle}>
-                          Configure access for <Tag color="processing">{selectedRole.name}</Tag>
+                          Configure access for <Tag color="processing">{selectedRole?.name}</Tag>
                         </Text>
                         <Text type="secondary" className={styles.infoSubtitle}>
                           Checked permissions grant access. Unchecked permissions deny access for this role.
@@ -495,7 +506,21 @@ const AdvancedRollPage = () => {
         title={createModalTitle}
         open={isCreateModalOpen}
         onCancel={() => { setIsCreateModalOpen(false); newRoleForm.resetFields(); }}
-        footer={null}
+        footer={[
+          <Button key="cancel" onClick={() => { setIsCreateModalOpen(false); newRoleForm.resetFields(); }} danger>
+            Cancel
+          </Button>,
+          <Button
+            key="create"
+            type="primary"
+            loading={isCreating}
+            icon={<PlusOutlined />}
+            onClick={() => newRoleForm.submit()}
+            style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff" }}
+          >
+            Create Role
+          </Button>,
+        ]}
         destroyOnClose
         centered
         className={styles.createModal}
@@ -524,15 +549,6 @@ const AdvancedRollPage = () => {
               ))}
             </Checkbox.Group>
           </Form.Item>
-
-          <Space className={styles.modalActions}>
-            <Button onClick={() => { setIsCreateModalOpen(false); newRoleForm.resetFields(); }}>
-              Cancel
-            </Button>
-            <Button type="primary" htmlType="submit" loading={isCreating} icon={<PlusOutlined />}>
-              Create Role
-            </Button>
-          </Space>
         </Form>
       </Modal>
     </Layout>

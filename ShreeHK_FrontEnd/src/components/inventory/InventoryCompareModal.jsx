@@ -235,7 +235,7 @@ const InventoryCompareModal = ({ open, rows = [], onClose }) => {
       centered
       destroyOnClose
       footer={(
-        <Button type="primary" className={styles.footerBtn} onClick={onClose}>
+        <Button danger className={styles.footerBtn} onClick={onClose}>
           Close
         </Button>
       )}

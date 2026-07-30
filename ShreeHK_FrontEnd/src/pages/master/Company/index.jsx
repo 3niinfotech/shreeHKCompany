@@ -233,6 +233,7 @@ import useEntityList from "../../../hooks/api/useEntityList";
 import { useEntityPostMutation, useEntityDeleteMutation } from "../../../hooks/api/useEntityMutation";
 import useModal from "../../../hooks/common/useModal";
 import AICustomerSuggestModal from "../../../components/ai/AICustomerSuggestModal";
+import { toast } from "sonner";
 import { Sparkles } from "lucide-react";
 
 const PAGE_LIMIT = 100;
@@ -339,6 +340,10 @@ const CompanyPage = () => {
             });
         } catch (error) {
             console.error("Save Failed:", error);
+            if (error?.errorFields && error.errorFields.length > 0) {
+                const firstMsg = error.errorFields[0]?.errors?.[0];
+                toast.error(firstMsg || "Please fill all required fields.");
+            }
             setModalLoading(false);
         }
     };
@@ -384,7 +389,7 @@ const CompanyPage = () => {
     return (
         <>
             <MasterListTable
-                title="Company Management"
+                title="Company"
                 columns={columns}
                 dataSource={combinedData}
                 loading={isFetching}
@@ -400,7 +405,7 @@ const CompanyPage = () => {
                     onChange: (keys) => setSelectedRowKeys(keys),
                 }}
                 extraHeaderActions={
-                    <Button onClick={handleDownloadExcel} disabled={selectedRowKeys.length === 0}>
+                    <Button type="primary" onClick={handleDownloadExcel} disabled={selectedRowKeys.length === 0} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff" }}>
                         Download Excel
                     </Button>
                 }
@@ -413,7 +418,7 @@ const CompanyPage = () => {
                 loading={modalLoading}
                 form={form}
                 formFields={companyFields}
-                title="Add Company Management"
+                title="Add Company"
                 width={800}
             />
 
@@ -425,7 +430,7 @@ const CompanyPage = () => {
                 form={form}
                 formFields={companyFields}
                 initialValues={editRecord}
-                title={`Edit Company Management: ${editingRecordName}`}
+                title={`Edit Company: ${editingRecordName}`}
                 width={800}
             />
 

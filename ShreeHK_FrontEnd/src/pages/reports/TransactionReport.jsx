@@ -54,7 +54,6 @@ const TransactionReport = () => {
         error: aiReportError,
         panelOpen: aiPanelOpen,
         setPanelOpen: setAiPanelOpen,
-        runSalesReport,
     } = useAiSalesReport();
 
     const handleSearch = () => {
@@ -159,7 +158,7 @@ const TransactionReport = () => {
                         >
                             Generate AI Report
                         </Button> */}
-                        <Button type="primary" icon={<FileUp />} className={styles.exportBtn} loading={exporting} onClick={handleExport} disabled={!tableData.length} style={{padding:"18px"}}>
+                        <Button type="primary" icon={<FileUp />} className={styles.exportBtn} loading={exporting} onClick={handleExport} disabled={!tableData.length} style={{padding:"18px", background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff"}}>
                             Export to Excel
                         </Button>
                     </>
