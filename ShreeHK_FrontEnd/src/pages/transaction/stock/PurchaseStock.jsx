@@ -3,7 +3,7 @@ import TransactionStockTemplate from './TransactionStockTemplate';
 import { TRANSACTION_STOCK_KEYS } from '../../../api/services/transactionStockService';
 import { ENDPOINTS } from '../../../constants/endpoints';
 
-const purchaseProductColumns = [
+const _purchaseProductColumns = [
   { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 120 },
   { title: 'D. No.', dataIndex: 'diamond_no', key: 'diamond_no', width: 100 },
   { title: 'Mfg. Code', dataIndex: 'mfg_code', key: 'mfg_code', width: 110 },

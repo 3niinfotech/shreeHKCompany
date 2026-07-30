@@ -121,7 +121,7 @@ const SaleStoneReport = () => {
                 onSearch={handleSearch}
                 searchLoading={tableLoading}
                 extraActions={(
-                    <Button type="primary" icon={<FileUp size={16} />} loading={exporting} onClick={handleExport} disabled={!tableData.length}>
+                    <Button type="primary" icon={<FileUp size={16} />} loading={exporting} onClick={handleExport} disabled={!tableData.length} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff" }}>
                         Export to Excel
                     </Button>
                 )}

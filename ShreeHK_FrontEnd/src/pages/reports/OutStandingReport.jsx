@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Table, Button, Card, Form, Tag, message } from 'antd';
 import dayjs from 'dayjs';
 import { cssVar } from '../../theme';
@@ -33,7 +33,6 @@ const OutStandingReport = () => {
         error: aiReportError,
         panelOpen: aiPanelOpen,
         setPanelOpen: setAiPanelOpen,
-        runSalesReport,
     } = useAiSalesReport();
 
     const companyOptions = useMemo(() => {
@@ -87,7 +86,7 @@ const OutStandingReport = () => {
     useEffect(() => () => debouncedSearch.cancel(), [debouncedSearch]);
 
     const onFilterChange = (changed, all) => {
-        if (changed.hasOwnProperty('invoiceNo')) {
+        if ('invoiceNo' in changed) {
             const invoiceVal = all.invoiceNo || '';
             if (invoiceVal.length > 2 || invoiceVal.length === 0) debouncedSearch(all);
         } else {
@@ -215,24 +214,6 @@ const OutStandingReport = () => {
 
     return (
         <div className={styles.pageContainer}>
-            {/* <PageHeroHeader
-                breadcrumb="REPORTS"
-                title="Outstanding Report"
-                icon={<BarChartOutlined />}
-                actions={(
-                    <>
-                        <Button
-                            icon={<Sparkles size={16} />}
-                            onClick={() => runSalesReport(tableData)}
-                            loading={aiReportLoading}
-                        >
-                            Generate AI Report
-                        </Button>
-                        <Button type="primary" icon={<FileUp />} className={styles.exportBtn} loading={exporting} onClick={handleExport} disabled={!tableData.length}>Export to Excel</Button>
-                    </>
-                )}
-            /> */}
-
             <AdvancedFilterPanel
                 title="Outstanding Report"
                 subtitle="Filter by type, party, invoice, and date range."
@@ -240,15 +221,27 @@ const OutStandingReport = () => {
                 onSearch={() => handleSearch(form.getFieldsValue(), true)}
                 searchLoading={isSubmitting}
                 extraActions={(
-                    <Button
-                        type="default"
-                        icon={<ReloadOutlined />}
-                        className={filterPanelStyles.btnClear}
-                        onClick={() => handleSearch(form.getFieldsValue(), true)}
-                        loading={isSubmitting}
-                    >
-                        Reload
-                    </Button>
+                    <>
+                        <Button
+                            type="default"
+                            icon={<ReloadOutlined />}
+                            className={filterPanelStyles.btnClear}
+                            onClick={() => handleSearch(form.getFieldsValue(), true)}
+                            loading={isSubmitting}
+                        >
+                            Reload
+                        </Button>
+                        <Button
+                            type="primary"
+                            icon={<FileUp size={16} />}
+                            className={styles.exportBtn}
+                            loading={exporting}
+                            onClick={handleExport}
+                            disabled={!tableData.length}
+                        >
+                            Export to Excel
+                        </Button>
+                    </>
                 )}
             >
                 <div className={filterPanelStyles.filterInlineRow}>
@@ -278,7 +271,6 @@ const OutStandingReport = () => {
                             onChange: (p) => {
                                 setPage(p);
                                 const values = form.getFieldsValue();
-                                const payload = { ...values, page: p };
                                 handleSearch(values, false);
                             },
                             showTotal: (total) => `Total ${total} items`

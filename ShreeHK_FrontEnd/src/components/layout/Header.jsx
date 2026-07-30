@@ -8,6 +8,7 @@ import SkuActionModal from "../../hooks/useSkuModalAction";
 import styles from "../../assets/scss/layout/header.module.scss";
 import { Link, useNavigate } from "react-router-dom";
 import { Gem, Menu, Wifi, WifiOff, RefreshCw, CheckCircle2, Database } from "lucide-react";
+import useAuthStore from "../../store/Auth.Store";
 
 const { Header: AntHeader } = Layout;
 
@@ -128,9 +129,9 @@ const Header = ({
   const previousOnlineRef = useRef(navigator.onLine);
   const offlineTimerRef = useRef(null);
   const reconnectTimerRef = useRef(null);
-  const authStorage = JSON.parse(localStorage.getItem("auth-storage") || "{}");
-  const companyName =
-    authStorage?.state?.companyName || "Smart DIA";
+  const authCompanyName = useAuthStore((s) => s.companyName);
+  const authCompanyShortcutName = useAuthStore((s) => s.companyShortcutName);
+  const companyName = authCompanyShortcutName || authCompanyName || "Smart DIA";
 
   const checkServerHealth = async () => {
     if (!navigator.onLine) {

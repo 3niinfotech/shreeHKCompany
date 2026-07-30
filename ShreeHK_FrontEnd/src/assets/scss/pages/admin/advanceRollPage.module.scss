@@ -245,6 +245,21 @@
   border-radius: 8px;
 }
 
+.spinWrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  :global(.ant-spin-container) {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+}
+
 .roleList {
   display: flex;
   flex-direction: column;

@@ -13,7 +13,7 @@ const WarningActionModal = ({ isVisible, onClose, onSave, saveLoading = false, c
             open={isVisible}
             onCancel={onClose}
             footer={[
-                <Button key="close" onClick={onClose} style={{ backgroundColor: cssVar("color-btn-cancel-bg"), color: cssVar("color-text-inverse") }}>
+                <Button key="close" onClick={onClose} style={{ backgroundColor: cssVar("color-danger"), borderColor: cssVar("color-danger"), color: cssVar("color-text-inverse") }}>
                     Close
                 </Button>,
                 <Button

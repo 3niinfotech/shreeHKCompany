@@ -4,7 +4,6 @@ import { Form, Button, Divider, Row, Col, Empty, Spin, Input } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { Save, Box } from "lucide-react";
 import AIPriceSuggestBlock from '../../components/ai/AIPriceSuggestBlock';
-import { toast } from 'sonner';
 import { toastApiSuccess, toastApiError } from '../../utils/apiToast';
 
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
@@ -189,7 +188,7 @@ const StoneUpdate = () => {
                                     </Form.Item>
                                 ))}
                             </div>
-                            <AIPriceSuggestBlock getFormValues={() => form.getFieldsValue()} />
+                            {/* <AIPriceSuggestBlock getFormValues={() => form.getFieldsValue()} /> */}
                             <Button type="primary" htmlType="submit" className={styles.saveBtn}
                                 icon={<Save size={18} />} loading={saveMutation.isPending}>
                                 Save Stone Data
@@ -220,7 +219,7 @@ const Section = ({ title, fields }) => (
     </>
 );
 
-const SelectField = ({ name, label, options, isCategory }) => (
+const SelectField = ({ name, label, options }) => (
     <Col span={6}>
         <Form.Item name={name} label={label}>
             <select className="form-control">

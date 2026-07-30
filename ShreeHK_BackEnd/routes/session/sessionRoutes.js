@@ -124,7 +124,7 @@ sessionRouter.post("/session/context", authenticateToken, async (req, res) => {
     }
 
     const companies = await metaQuery(
-      "SELECT id, name FROM company WHERE id = ? LIMIT 1",
+      "SELECT id, name, shortcutName FROM company WHERE id = ? LIMIT 1",
       [companyId]
     );
     if (!companies.length) {
@@ -154,6 +154,7 @@ sessionRouter.post("/session/context", authenticateToken, async (req, res) => {
         yearId: yearId || null,
         dbName,
         companyName: companies[0].name,
+        companyShortcutName: companies[0].shortcutName || null,
       },
     });
   } catch (err) {

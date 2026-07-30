@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import {
   Layout, Typography, Button, Spin, Modal, Form, Space, Input, Tag, Empty, Alert,
 } from "antd";
+import { toast } from "sonner";
 import {
   PlusOutlined,
   EditOutlined,
@@ -333,21 +334,31 @@ const TenantCompanyList = () => {
           title={modalTitle}
           open={modalOpen}
           onCancel={() => { setModalOpen(false); form.resetFields(); }}
-          footer={null}
+          footer={[
+            <Button key="cancel" onClick={() => setModalOpen(false)} danger>Cancel</Button>,
+            <Button key="save" type="primary" loading={isSaving} onClick={() => form.submit()} style={{ backgroundColor: "var(--color-success, #38a169)", borderColor: "var(--color-success, #38a169)", color: "#fff" }}>
+              Save Company
+            </Button>
+          ]}
           width="min(900px, calc(100vw - 32px))"
           centered
+          closable={false} 
           destroyOnClose
           className={styles.companyModal}
         >
-          <Form form={form} layout="vertical" onFinish={handleSave} className={styles.companyForm}>
+          <Form 
+            form={form} 
+            layout="vertical" 
+            onFinish={handleSave} 
+            onFinishFailed={(errorInfo) => {
+              if (errorInfo.errorFields && errorInfo.errorFields.length > 0) {
+                toast.error(errorInfo.errorFields[0].errors[0]);
+              }
+            }}
+            className={styles.companyForm}
+          >
             <Form.Item name="id" hidden><input type="hidden" /></Form.Item>
             <DynamicForm fields={tenantCompanyFields} />
-            <Space className={styles.modalActions}>
-              <Button onClick={() => setModalOpen(false)}>Cancel</Button>
-              <Button type="primary" htmlType="submit" loading={isSaving}>
-                Save Company
-              </Button>
-            </Space>
           </Form>
         </Modal>
 
@@ -355,9 +366,13 @@ const TenantCompanyList = () => {
           title="Delete Company"
           open={deleteModalOpen}
           onCancel={closeDelete}
-          footer={null}
+          footer={[
+            <Button key="cancel" onClick={closeDelete}>Cancel</Button>,
+            <Button key="delete" type="primary" danger loading={isDeleting} onClick={() => deleteForm.submit()}>
+              Delete Company
+            </Button>
+          ]}
           centered
-          destroyOnClose
           className={styles.deleteModal}
         >
           <Alert
@@ -384,12 +399,6 @@ const TenantCompanyList = () => {
             >
               <Input.Password placeholder="Enter your admin password" autoComplete="current-password" />
             </Form.Item>
-            <Space className={styles.modalActions}>
-              <Button onClick={closeDelete}>Cancel</Button>
-              <Button type="primary" danger htmlType="submit" loading={isDeleting}>
-                Delete Company
-              </Button>
-            </Space>
           </Form>
         </Modal>
       </Content>

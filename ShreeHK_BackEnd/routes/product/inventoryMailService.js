@@ -103,7 +103,7 @@ const sendInventoryStoneMail = async ({ ids, email, subject, content }) => {
   const html = buildMailHtml({ content, products });
   const attachmentBuffer = buildAttachmentBuffer(products);
 
-  await sendInventoryMail({
+  const mailResult = await sendInventoryMail({
     to: email,
     subject,
     html,
@@ -117,9 +117,16 @@ const sendInventoryStoneMail = async ({ ids, email, subject, content }) => {
     ],
   });
 
+  if (mailResult?.simulated) {
+    return {
+      ok: true,
+      message: `Mail server is not configured in backend/.env. Simulated sending email to ${email}`,
+    };
+  }
+
   return {
     ok: true,
-    message: "Mail sent successfully",
+    message: `Mail sent successfully to ${email}`,
   };
 };
 

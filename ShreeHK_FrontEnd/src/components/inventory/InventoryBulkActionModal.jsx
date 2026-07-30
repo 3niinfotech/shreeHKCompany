@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { Modal, Form, Input, InputNumber, Select, DatePicker, Row, Col, Button, Typography } from "antd";
 import dayjs from "dayjs";
+import { toast } from "sonner";
 import { getActionTheme, getActionFields } from "./inventoryActionConfig";
 import styles from "../../assets/scss/components/inventoryBulkActionModal.module.scss";
 
@@ -34,8 +35,11 @@ const InventoryBulkActionModal = ({
         }
       });
       onSubmit?.(normalized, actionKey);
-    } catch {
-      /* validation */
+    } catch (err) {
+      if (err?.errorFields && err.errorFields.length > 0) {
+        const firstMsg = err.errorFields[0]?.errors?.[0];
+        toast.error(firstMsg || "Please fill all required fields.");
+      }
     }
   };
 
@@ -86,7 +90,7 @@ const InventoryBulkActionModal = ({
         </div>
       }
       footer={[
-        <Button key="cancel" onClick={onClose}>
+        <Button key="cancel" onClick={onClose} danger>
           Cancel
         </Button>,
         <Button
@@ -96,8 +100,8 @@ const InventoryBulkActionModal = ({
           loading={loading}
           onClick={handleOk}
           style={{
-            background: theme.accent,
-            borderColor: theme.accent,
+            background: "var(--color-btn-save-bg)",
+            borderColor: "var(--color-btn-save-bg)",
           }}
         >
           OK

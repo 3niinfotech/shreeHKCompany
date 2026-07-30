@@ -10,8 +10,6 @@ import { BaseModal } from "../../components/common/modals";
 import DynamicForm from '../../hooks/DynamicFormField';
 import { ConfirmDeleteModal } from "../../components/common/modals";
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
-import PageHeroHeader from '../../components/common/PageHeroHeader';
-import { FileTextOutlined } from '@ant-design/icons';
 import styles from "../../assets/scss/pages/outward.module.scss";
 import useTableBodyScrollHeight from "../../hooks/useTableBodyScrollHeight";
 import { cssVar } from '../../theme';
@@ -275,7 +273,7 @@ const OutWord = () => {
             dataIndex: 'type',
             key: 'type',
             render: (type) => {
-                const colors = { sale: 'success', memo: 'warning', export: 'processing', consign: 'magenta' };
+                const colors = { sale: 'success', memo: 'red', export: '#8B5CF6', consign: '#F59E0B' };
                 return <Tag color={colors[type]} style={{ textTransform: 'uppercase', fontWeight: 600 }}>{type}</Tag>;
             }
         },
@@ -313,7 +311,7 @@ const OutWord = () => {
 
     return (
         <div className={styles.outwardContainer}>
-            <PageHeroHeader
+            {/* <PageHeroHeader
                 breadcrumb="TRANSACTION / OUTWARD"
                 title="Memo Transactions"
                 icon={<FileTextOutlined />}
@@ -322,24 +320,29 @@ const OutWord = () => {
                         Refresh Data
                     </Button>
                 )}
-            />
+            /> */}
 
             <AdvancedFilterPanel
-                title="Filter Memo Transactions"
+                title="Memo Transactions"
                 subtitle="Filter by type, party, invoice, and date range."
                 activeCount={isFilterSelected ? [payload.party, payload.invoiceno, payload.type, payload.from, payload.to].filter(Boolean).length : 0}
                 showSearch={false}
                 showClear={false}
                 extraActions={(
-                    <Button
-                        danger
-                        onClick={() => {
-                            handleClear();
-                            setPayload({ party: "", invoiceno: "", type: "", page: 1, from: "", to: "" });
-                        }}
-                    >
-                        Clear Filters
-                    </Button>
+                    <Space>
+                        <Button type="primary" icon={<ReloadOutlined />} onClick={() => { isFilterSelected && refetch(); }}>
+                            Refresh Data
+                        </Button>
+                        <Button
+                            danger
+                            onClick={() => {
+                                handleClear();
+                                setPayload({ party: "", invoiceno: "", type: "", page: 1, from: "", to: "" });
+                            }}
+                        >
+                            Clear Filters
+                        </Button>
+                    </Space>
                 )}
             >
                 <div className={filterPanelStyles.filterInlineRow}>
@@ -369,9 +372,9 @@ const OutWord = () => {
                         <Badge color="#f5222d" text="Send To Lab" />
                     </Space> */}
                     <Space size="small" style={{ marginLeft: '15px' }}>
-                        <Tag color="green">GIA Certified</Tag>
-                        <Tag color="orange">On Memo</Tag>
-                        <Tag color="red">Send To Lab</Tag>
+                        <Tag color="blue">GIA Certified</Tag>
+                        <Tag color="red">On Memo</Tag>
+                        <Tag color="green">Send To Lab</Tag>
                     </Space>
                     <Checkbox style={{ marginLeft: '15px' }}>Non-GIA Only</Checkbox>
                 </div>
@@ -395,24 +398,24 @@ const OutWord = () => {
 
             <Card variant="none" className={styles.cardContainer}>
                 <div ref={tableRef} className="erp-table-container">
-                <Table
-                    columns={columns}
-                    dataSource={mainTableData}
-                    loading={outwardLoading}
-                    rowKey="id"
-                    className={styles.tableWrapper}
-                    scroll={{ x: "max-content", y: tableHeight }}
-                    expandable={{
-                        expandedRowRender: (record) => <ExpandedRowContent rowId={record.id} />,
-                        expandedRowClassName: () => styles.expandedRow,
-                    }}
-                    pagination={{
-                        total: outwardData?.total || mainTableData.length || 0,
-                        pageSize: 10,
-                        onChange: (page) => setPayload(prev => ({ ...prev, page }))
-                    }}
-                    rowSelection={{ selectedRowKeys, onChange: (keys) => setSelectedRowKeys(keys) }}
-                />
+                    <Table
+                        columns={columns}
+                        dataSource={mainTableData}
+                        loading={outwardLoading}
+                        rowKey="id"
+                        className={styles.tableWrapper}
+                        scroll={{ x: "max-content", y: tableHeight }}
+                        expandable={{
+                            expandedRowRender: (record) => <ExpandedRowContent rowId={record.id} />,
+                            expandedRowClassName: () => styles.expandedRow,
+                        }}
+                        pagination={{
+                            total: outwardData?.total || mainTableData.length || 0,
+                            pageSize: 10,
+                            onChange: (page) => setPayload(prev => ({ ...prev, page }))
+                        }}
+                        rowSelection={{ selectedRowKeys, onChange: (keys) => setSelectedRowKeys(keys) }}
+                    />
                 </div>
             </Card>
 

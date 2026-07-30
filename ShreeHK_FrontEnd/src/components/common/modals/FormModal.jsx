@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Form } from "antd";
+import { toast } from "sonner";
 import DynamicFormField from "../../../hooks/DynamicFormField";
 import BaseModal from "./BaseModal";
 
@@ -26,11 +27,36 @@ const FormModal = ({
         if (!isOpen) return;
 
         if (initialValues && Object.keys(initialValues).length > 0) {
-            form.setFieldsValue(initialValues);
+            form?.setFieldsValue(initialValues);
         } else {
-            form.resetFields();
+            form?.resetFields();
         }
     }, [isOpen, initialValues, form]);
+
+    const handleSaveWithToast = async () => {
+        if (form) {
+            try {
+                await form.validateFields();
+                if (onSave) await onSave();
+            } catch (error) {
+                if (error?.errorFields && error.errorFields.length > 0) {
+                    const firstMsg = error.errorFields[0]?.errors?.[0];
+                    toast.error(firstMsg || "Please fill all required fields.");
+                } else if (onSave) {
+                    try {
+                        await onSave();
+                    } catch (err) {
+                        if (err?.errorFields && err.errorFields.length > 0) {
+                            const firstMsg = err.errorFields[0]?.errors?.[0];
+                            toast.error(firstMsg || "Please fill all required fields.");
+                        }
+                    }
+                }
+            }
+        } else {
+            if (onSave) await onSave();
+        }
+    };
 
     const resolvedFormKey =
         formKey ?? (initialValues?.id != null ? initialValues.id : initialValues ? "edit" : "add");
@@ -51,7 +77,7 @@ const FormModal = ({
             title={title}
             isOpen={isOpen}
             onClose={onClose}
-            onSave={onSave}
+            onSave={handleSaveWithToast}
             loading={loading}
             width={width}
             saveBtnText={saveBtnText}
@@ -62,3 +88,4 @@ const FormModal = ({
 };
 
 export default FormModal;
+

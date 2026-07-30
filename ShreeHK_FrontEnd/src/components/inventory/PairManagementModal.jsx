@@ -97,13 +97,13 @@ const PairManagementModal = ({ open, selectedRows = [], onClose, onSuccess }) =>
           <Input placeholder="pair" />
         </Form.Item>
         <Space>
-          <Button type="primary" htmlType="submit" loading={loading} disabled={selectedRows.length !== 2}>
+          <Button type="primary" htmlType="submit" loading={loading} disabled={selectedRows.length !== 2} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "white" }}>
             Create Pair
           </Button>
           <Button danger loading={loading} disabled={!selectedRows.length} onClick={handleUnpair}>
             Unpair Selected
           </Button>
-          <Button onClick={onClose}>Close</Button>
+          <Button onClick={onClose} danger>Close</Button>
         </Space>
       </Form>
     </Modal>

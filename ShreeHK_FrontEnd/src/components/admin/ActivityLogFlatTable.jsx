@@ -120,7 +120,7 @@ const ActivityLogFlatTable = ({
       title: "SKU / Ref",
       dataIndex: "recordReference",
       key: "recordReference",
-      width: 100,
+      width: 260,
       render: (val) => (
         val ? <Tag className={styles.refTagCompact}>{val}</Tag> : "—"
       ),

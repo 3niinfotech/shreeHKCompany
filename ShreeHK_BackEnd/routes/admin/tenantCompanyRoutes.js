@@ -13,7 +13,7 @@ const COMPANY_COLUMNS = [
   "name", "address", "number", "date", "type", "partner", "city", "state",
   "pincode", "country", "email", "website", "panno", "tinno", "iecno",
   "vatno", "vwef", "cstno", "cwef", "period", "startdate", "enddate",
-  "rapnet_id", "rapnet_password",
+  "rapnet_id", "rapnet_password", "shortcutName"
 ];
 
 const seedIncrementId = (companyId, pool, cb) => {

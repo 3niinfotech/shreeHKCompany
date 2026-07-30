@@ -229,7 +229,18 @@ const FiscalYearAdmin = () => {
           setEditing(null);
           editForm.resetFields();
         }}
-        footer={null}
+        footer={[
+          <Button key="cancel" onClick={() => setEditOpen(false)} danger>Cancel</Button>,
+          <Button
+            key="save"
+            type="primary"
+            loading={isUpdating}
+            onClick={() => editForm.submit()}
+            style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff" }}
+          >
+            Save Changes
+          </Button>,
+        ]}
         destroyOnClose
         centered
         className={styles.editModal}
@@ -247,12 +258,6 @@ const FiscalYearAdmin = () => {
           <Form.Item name="dbName" label="Database Name (optional)">
             <Input prefix={<DatabaseOutlined />} />
           </Form.Item>
-          <Space className={styles.modalActions}>
-            <Button onClick={() => setEditOpen(false)}>Cancel</Button>
-            <Button type="primary" htmlType="submit" loading={isUpdating}>
-              Save Changes
-            </Button>
-          </Space>
         </Form>
       </Modal>
     </div>

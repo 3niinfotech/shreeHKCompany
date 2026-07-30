@@ -329,7 +329,7 @@ const darkColors: Partial<ColorTokens> = {
   colorPrimary: BRAND_PRIMARY,
   colorPrimaryDark: BRAND_PRIMARY_DARK,
   colorPrimaryMedium: BRAND_PRIMARY_MEDIUM,
-  colorPrimaryLight: "#2e2649",
+  colorPrimaryLight: "#353046",
   colorPrimaryPale: "#1e1738",
   colorSecondary: "#e2e8f0",
   colorSecondaryDark: "#94a3b8",

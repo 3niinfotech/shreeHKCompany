@@ -13,11 +13,13 @@ const getMailConfig = () => ({
 const sendInventoryMail = async ({ to, subject, html, attachments = [] }) => {
   const config = getMailConfig();
   if (!config.host || !config.user || !config.pass) {
-    const error = new Error(
-      "Mail server is not configured. Set SMTP_HOST, SMTP_USER, and SMTP_PASS in backend/.env"
+    console.warn(
+      `[MailSender] SMTP server is not configured in backend/.env (SMTP_HOST, SMTP_USER, or SMTP_PASS missing). Simulating mail delivery to: ${to}`
     );
-    error.statusCode = 500;
-    throw error;
+    return {
+      simulated: true,
+      message: `Mail server is not configured in .env. Simulated mail delivery to ${to}`,
+    };
   }
 
   const transporter = nodemailer.createTransport({
@@ -37,6 +39,8 @@ const sendInventoryMail = async ({ to, subject, html, attachments = [] }) => {
     html,
     attachments,
   });
+
+  return { simulated: false };
 };
 
 module.exports = {
