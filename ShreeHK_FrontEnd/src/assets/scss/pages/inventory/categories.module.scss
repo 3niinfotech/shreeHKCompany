@@ -125,6 +125,11 @@
     font-weight: 700;
     color: var(--color-text-heading);
     padding: 10px 0;
+
+    span,
+    :global(.ant-typography) {
+      font-size: 14px;
+    }
   }
 
   :global(.ant-card-extra) {
@@ -234,7 +239,7 @@
 
   :global(.ant-table-tbody > tr > td) {
     padding: 6px 8px !important;
-    font-size: 13px;
+    font-size: 14px;
   }
 
   :global(.ant-table-tbody > tr:hover > td) {

@@ -40,11 +40,9 @@
   gap: 12px;
   padding: 14px 16px;
   border-bottom: var(--border-width-thin) solid var(--color-border);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--color-primary-pale) 55%, var(--color-card-bg)) 0%,
-    var(--color-card-bg) 100%
-  );
+  background: linear-gradient(180deg,
+      color-mix(in srgb, var(--color-primary-pale) 55%, var(--color-card-bg)) 0%,
+      var(--color-card-bg) 100%);
 }
 
 .panelHeaderMain {
@@ -159,7 +157,7 @@
   background: var(--color-card-bg);
   transition: background 0.2s ease, border-color 0.2s ease;
 
-  & + .item {
+  &+.item {
     margin-top: 8px;
   }
 
@@ -251,7 +249,7 @@
   line-height: 1.45;
   word-break: break-word;
 
-  & + .itemMessage {
+  &+.itemMessage {
     margin-top: 2px;
   }
 }
@@ -297,11 +295,9 @@
 
 :global([data-theme="dark"]) {
   .panelHeader {
-    background: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--color-primary) 12%, var(--color-card-bg)) 0%,
-      var(--color-card-bg) 100%
-    );
+    background: linear-gradient(180deg,
+        color-mix(in srgb, var(--color-primary) 12%, var(--color-card-bg)) 0%,
+        var(--color-card-bg) 100%);
   }
 
   .itemUnread {

@@ -183,7 +183,7 @@ const CategorizeInventory = () => {
 
             <Row gutter={16} className={styles.contentRow}>
                 <Col span={8} className={styles.treeCol}>
-                    <Card className={styles.treeCard} title={<Text strong>Inventory Hierarchy</Text>}>
+                    <Card className={styles.treeCard} title={<Text strong style={{ fontSize: "14px" , fontWeight:"800"}}>Inventory Hierarchy</Text>}>
                         <Input
                             placeholder="Quick search folders..."
                             prefix={<Search size={16} style={{ color: cssVar("color-text-muted") }} />}

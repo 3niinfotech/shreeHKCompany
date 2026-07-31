@@ -210,7 +210,7 @@ const NotificationDropdown = ({ buttonClassName, badgeClassName }) => {
   const maybeRequestNotificationPermission = useCallback(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
     if (Notification.permission !== "default") return;
-    Notification.requestPermission().catch(() => {});
+    Notification.requestPermission().catch(() => { });
   }, []);
 
   const fetchNotifications = useCallback(async ({ offset = 0, append = false, force = false } = {}) => {
