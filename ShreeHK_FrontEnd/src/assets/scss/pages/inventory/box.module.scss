@@ -54,59 +54,55 @@
   }
 }
 
-.tableContainer {
-  :global {
-    .custom-ant-table {
-      height: 100%;
-      display: flex;
-      flex-direction: column;
+:global(.custom-ant-table) {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 
-      .ant-spin-nested-loading,
-      .ant-spin-container,
-      .ant-table,
-      .ant-table-container {
-        height: 100% !important;
-        display: flex;
-        flex-direction: column;
-      }
+  .ant-spin-nested-loading,
+  .ant-spin-container,
+  .ant-table,
+  .ant-table-container {
+    height: 100% !important;
+    display: flex;
+    flex-direction: column;
+  }
 
-      .ant-table-thead>tr>th {
-        background-color: var(--color-bg-muted) !important;
-        font-size: 11px !important;
-        font-weight: 700 !important;
-        color: var(--color-badge-neutral-text) !important;
-        text-transform: uppercase;
-        padding: 12px 8px !important;
-        border-bottom: 1px solid var(--color-table-border) !important;
+  .ant-table-thead>tr>th {
+    background-color: var(--color-bg-muted) !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    color: var(--color-badge-neutral-text) !important;
+    text-transform: uppercase;
+    padding: 12px 8px !important;
+    border-bottom: 1px solid var(--color-table-border) !important;
 
-        &::before {
-          display: none;
-        }
-      }
+    &::before {
+      display: none;
+    }
+  }
 
-      .ant-table-tbody>tr>td {
-        font-size: 12px !important;
-        padding: 10px 8px !important;
-      }
+  .ant-table-tbody>tr>td {
+    font-size: 14px !important;
+    padding: 10px 8px !important;
+  }
 
-      .ant-table-body {
-        flex: 1 !important;
-        overflow-y: auto !important;
-        overflow-x: auto !important;
+  .ant-table-body {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    overflow-x: auto !important;
 
-        &::-webkit-scrollbar {
-          height: 6px;
-          width: 6px;
-        }
+    &::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
 
-        &::-webkit-scrollbar-thumb {
-          background: var(--color-border);
-          border-radius: 10px;
+    &::-webkit-scrollbar-thumb {
+      background: var(--color-border);
+      border-radius: 10px;
 
-          &:hover {
-            background: var(--color-chart-muted);
-          }
-        }
+      &:hover {
+        background: var(--color-chart-muted);
       }
     }
   }

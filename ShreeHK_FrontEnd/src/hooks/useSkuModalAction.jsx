@@ -49,9 +49,12 @@ const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
             onCancel={onClose}
             footer={null}
             centered
-            width={360}
+            width={505}
+            closable={false}
             className="sku-action-modal"
-            destroyOnClose={true} // Taaki har baar animation fresh chale
+            destroyOnClose={true}
+            transitionName=""
+            maskTransitionName=""
         >
             <div className="sku-action-modal__header">
                 <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '2px' }}>
@@ -88,6 +91,7 @@ const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
                     icon={<CloseOutlined />}
                     className="cancel-btn"
                     onClick={onClose}
+                    style={{ background: "red", color: "white" }}
                 >
                     Cancel & Return
                 </Button>

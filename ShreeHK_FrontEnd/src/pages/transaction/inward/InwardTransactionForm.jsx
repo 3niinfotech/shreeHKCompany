@@ -16,7 +16,7 @@ const INWARD_PAGE_ICONS = {
   memo: FileTextOutlined,
   consign: InboxOutlined,
 };
-import { RefreshCcw, PlusCircle, Trash2, CheckCircle, FileSpreadsheet } from 'lucide-react';
+import { RefreshCcw, PlusCircle, Trash2, CheckCircle, FileSpreadsheet, Sparkles } from 'lucide-react';
 import dayjs from 'dayjs';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -26,7 +26,9 @@ import { useFetchApi, usePostApiRequest } from '../../../api/ApiFunction';
 import { ENDPOINTS } from '../../../constants/endpoints';
 import useFormHandleChange from '../../../hooks/useFormHandleChange';
 import ValidationTableModal from '../../../hooks/ValidationTableModal';
+import AICertificateScannerModal from '../../../components/ai/AICertificateScannerModal';
 import { parseInwardImportExcel } from './inwardExcelImport';
+
 import defaultStyles from "../../../assets/scss/pages/transaction/inwardpurchase.module.scss";
 import PageHeroHeader, { pageHeroHeaderStyles } from '../../../components/common/PageHeroHeader';
 
@@ -152,9 +154,38 @@ const InwardTransactionForm = ({
   const styles = stylesModule || defaultStyles;
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [aiOcrModalOpen, setAiOcrModalOpen] = useState(false);
   const [existData, setExistData] = useState([]);
   const [excelLoading, setExcelLoading] = useState(false);
   const [excelFileName, setExcelFileName] = useState('');
+
+  const handleApplyScanData = (scanData) => {
+    setItems(prevItems => {
+      const emptyIndex = prevItems.findIndex(i => !i.sku && (!i.pCarat || i.pCarat === 0));
+      const targetIndex = emptyIndex >= 0 ? emptyIndex : prevItems.length;
+      const updated = [...prevItems];
+      const targetItem = updated[targetIndex] || { ...INITIAL_ITEM_STATE, key: Date.now() };
+
+      updated[targetIndex] = {
+        ...targetItem,
+        reportNo: scanData.reportNo || targetItem.reportNo,
+        lab: scanData.lab || targetItem.lab,
+        shape: scanData.shape || targetItem.shape,
+        pCarat: scanData.pCarat || targetItem.pCarat,
+        color: scanData.color || targetItem.color,
+        clarity: scanData.clarity || targetItem.clarity,
+        cut: scanData.cut || targetItem.cut,
+        polish: scanData.polish || targetItem.polish,
+        symm: scanData.symm || targetItem.symm,
+        floIntensity: scanData.floIntensity || targetItem.floIntensity,
+        depthPer: scanData.depthPer || targetItem.depthPer,
+        tablePer: scanData.tablePer || targetItem.tablePer,
+        measurements: scanData.measurements || targetItem.measurements,
+      };
+      return updated;
+    });
+  };
+
 
   const {
     form,
@@ -514,6 +545,13 @@ const InwardTransactionForm = ({
           </div>
           <div className={styles.footerStatsActions}>
             {scrollableTable ? addLineItemButton(true) : null}
+            <Button
+              icon={<Sparkles size={16} className="text-emerald-500 inline mr-1" />}
+              onClick={() => setAiOcrModalOpen(true)}
+              style={{ borderColor: '#10b981', color: '#10b981' }}
+            >
+              AI Scan Certificate
+            </Button>
             <Button type="primary" icon={<CheckCircle size={18} />} className={styles.submitBtn} onClick={handleCheckAndSubmit}>
               Check & Submit
             </Button>
@@ -521,12 +559,19 @@ const InwardTransactionForm = ({
         </div>
       </div>
 
+      <AICertificateScannerModal
+        open={aiOcrModalOpen}
+        onClose={() => setAiOcrModalOpen(false)}
+        onApplyScanData={handleApplyScanData}
+      />
+
       <ValidationTableModal
         isVisible={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
           setExistData([]);
         }}
+
         onSave={onFinalSave}
         existData={existData}
         loading={isSaving}

@@ -221,9 +221,14 @@ export const ENDPOINTS = {
         salesReport: "/ai/sales-report",
         customerInsight: "/ai/customer-insight",
         chat: "/ai/chat",
+        agentQuery: "/ai/agent/query",
+        threads: "/ai/threads",
+        threadDetail: (id) => `/ai/threads/${id}`,
+        ocrCertificate: "/ai/ocr/certificate",
         barcodeLookup: "/ai/barcode-lookup",
     },
 };
+
 
 export const QUERY_KEYS = {
     companies: "companies",

@@ -49,4 +49,4 @@ const InventoryCaratCell = ({ polishCarat, memoCarat = 0, memoItems = [], memoHi
   );
 };
 
-export default InventoryCaratCell;
+export default React.memo(InventoryCaratCell);

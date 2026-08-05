@@ -34,6 +34,12 @@
   min-height: 0;
   width: 100%;
   overflow: hidden;
+
+  :global(.custom-ant-table) {
+    :global(.ant-table-tbody > tr > td) {
+      font-size: 14px !important;
+    }
+  }
 }
 
 .headerSection {

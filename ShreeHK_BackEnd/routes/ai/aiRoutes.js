@@ -204,4 +204,79 @@ aiRouter.post("/barcode-lookup", authenticateToken, async (req, res) => {
   }
 });
 
+// Phase 1: AI Agent Gateway & Orchestrator Core Endpoint
+const { executeAgentQuery } = require("../../services/ai/orchestrator/agentOrchestrator.js");
+
+aiRouter.post("/agent/query", authenticateToken, async (req, res) => {
+  const { message, threadId = "default" } = req.body || {};
+  if (!message || !String(message).trim()) {
+    return res.status(400).json({ success: false, message: "message is required" });
+  }
+
+  try {
+    const outcome = await executeAgentQuery(req, message, threadId);
+    res.json(outcome);
+  } catch (err) {
+    handleAiError(res, err, "AgentOrchestration");
+  }
+});
+
+// Phase 4: GIA / IGI / HRD Certificate OCR Reader Endpoint
+const { parseCertificateImage } = require("../../services/ai/ocr/certificateOcrService.js");
+
+aiRouter.post("/ocr/certificate", authenticateToken, async (req, res) => {
+  const { imageBase64, mimeType = "image/jpeg" } = req.body || {};
+  if (!imageBase64) {
+    return res.status(400).json({ success: false, message: "imageBase64 is required" });
+  }
+
+  try {
+    const outcome = await parseCertificateImage(imageBase64, mimeType);
+    res.json(outcome);
+  } catch (err) {
+    handleAiError(res, err, "CertificateOCR");
+  }
+});
+
+// Phase 5: DB-Backed Conversation Thread Management Endpoints
+const conversationDbManager = require("../../services/ai/memory/conversationDbManager.js");
+
+aiRouter.get("/threads", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user?.user_id || 0;
+    const companyId = req.user?.companyId || req.companyId || 1;
+    const threads = await conversationDbManager.getUserThreads(userId, companyId);
+    res.json({ success: true, threads });
+  } catch (err) {
+    handleAiError(res, err, "ThreadList");
+  }
+});
+
+aiRouter.get("/threads/:threadId", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user?.user_id || 0;
+    const companyId = req.user?.companyId || req.companyId || 1;
+    const threadId = req.params.threadId;
+    const history = await conversationDbManager.getConversationHistory(userId, companyId, threadId);
+    res.json({ success: true, threadId, history });
+  } catch (err) {
+    handleAiError(res, err, "ThreadGet");
+  }
+});
+
+aiRouter.delete("/threads/:threadId", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user?.user_id || 0;
+    const companyId = req.user?.companyId || req.companyId || 1;
+    const threadId = req.params.threadId;
+    const deleted = await conversationDbManager.deleteThread(userId, companyId, threadId);
+    res.json({ success: deleted });
+  } catch (err) {
+    handleAiError(res, err, "ThreadDelete");
+  }
+});
+
 module.exports = aiRouter;
+
+
+
