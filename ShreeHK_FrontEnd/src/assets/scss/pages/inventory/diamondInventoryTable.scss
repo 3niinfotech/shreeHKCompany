@@ -276,6 +276,57 @@ $finance-empty: var(--color-chart-muted);
           overflow: visible !important;
           text-overflow: clip !important;
 
+          .inventory-custom-checkbox {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 15px;
+            height: 15px;
+            border: 1.5px solid var(--color-border-dark, #cbd5e1);
+            border-radius: 4px;
+            background-color: var(--color-bg-card, #ffffff);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            vertical-align: middle;
+            margin: 0;
+            outline: none;
+            box-shadow: none;
+
+            &:checked {
+              background-color: #0284c7;
+              border-color: #0284c7;
+
+              &::after {
+                content: "";
+                width: 3px;
+                height: 7px;
+                border: solid #ffffff;
+                border-width: 0 2px 2px 0;
+                transform: rotate(45deg) translate(-0.5px, -0.5px);
+                display: block;
+              }
+            }
+
+            &:indeterminate {
+              background-color: #0284c7;
+              border-color: #0284c7;
+
+              &::after {
+                content: "";
+                width: 7px;
+                height: 2px;
+                background-color: #ffffff;
+                display: block;
+              }
+            }
+
+            &:hover {
+              border-color: #0284c7;
+            }
+          }
+
           .ant-checkbox-wrapper {
             display: inline-flex;
             align-items: center;
@@ -287,7 +338,7 @@ $finance-empty: var(--color-chart-muted);
             height: 15px;
             border-radius: 4px;
             border-color: var(--color-chart-muted);
-            transition: border-color 0.15s ease, background 0.15s ease;
+            transition: none;
           }
 
           .ant-checkbox-checked .ant-checkbox-inner {

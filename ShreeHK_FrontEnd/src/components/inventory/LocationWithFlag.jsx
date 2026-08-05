@@ -1,5 +1,5 @@
 import ReactCountryFlag from "react-country-flag";
-
+import React from "react";
 const LOCATION_TO_COUNTRY = {
   hk: "HK",
   "hong kong": "HK",
@@ -69,7 +69,9 @@ const LocationWithFlag = ({ location }) => {
 };
 
 export const renderLocationWithFlag = (location) => (
-  <LocationWithFlag location={location} />
+  <MemoizedLocationWithFlag location={location} />
 );
 
-export default LocationWithFlag;
+const MemoizedLocationWithFlag = React.memo(LocationWithFlag);
+
+export default MemoizedLocationWithFlag;

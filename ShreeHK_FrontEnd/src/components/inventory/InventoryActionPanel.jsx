@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Popover, Badge } from "antd";
 import {
   Undo2,
@@ -47,20 +47,18 @@ const InventoryActionPanel = ({
   triggerLabel = "Actions",
 }) => {
   const theme = useThemeColors();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = React.useState(false);
   const hasSelection = selectedCount > 0;
 
-  useEffect(() => {
-    if (hasSelection) {
-      setOpen(true);
-    } else {
+  React.useEffect(() => {
+    if (!hasSelection) {
       setOpen(false);
     }
-  }, [hasSelection, selectedCount]);
+  }, [hasSelection]);
 
   const handleClick = (key) => {
-    onAction?.(key);
     setOpen(false);
+    onAction?.(key);
   };
 
   const panelContent = (
@@ -98,11 +96,11 @@ const InventoryActionPanel = ({
       <Popover
         content={panelContent}
         title={null}
-        trigger="click"
-        open={hasSelection && open}
-        onOpenChange={(next) => {
-          if (hasSelection) setOpen(next);
+        open={open && hasSelection}
+        onOpenChange={(newOpen) => {
+          if (hasSelection) setOpen(newOpen);
         }}
+        trigger="click"
         placement="bottomRight"
         overlayClassName={styles.actionPanelOverlay}
         arrow={{ pointAtCenter: true }}
@@ -111,7 +109,7 @@ const InventoryActionPanel = ({
           type="button"
           className={`${styles.actionPanelTrigger} ${hasSelection ? styles.actionPanelTriggerActive : ""}`}
           disabled={!hasSelection}
-          aria-expanded={hasSelection && open}
+          aria-expanded={open && hasSelection}
           aria-haspopup="dialog"
         >
           <span className={styles.actionPanelTriggerText}>
@@ -130,4 +128,5 @@ const InventoryActionPanel = ({
   );
 };
 
-export default InventoryActionPanel;
+export default React.memo(InventoryActionPanel);
+

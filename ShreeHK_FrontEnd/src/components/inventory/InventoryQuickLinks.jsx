@@ -55,9 +55,9 @@ const InventoryQuickLinks = ({
   return (
     <Space wrap size={10} className="inventory-quick-links">
       {/* {sku ? ( */}
-        <Button icon={<EditOutlined />}>
-          <Link to={buildStoneUpdateUrl(sku)}>Stone Update</Link>
-        </Button>
+      <Button icon={<EditOutlined />}>
+        <Link to={buildStoneUpdateUrl(sku)}>Stone Update</Link>
+      </Button>
       {/* ) : null} */}
       <Button icon={<HistoryOutlined />}>
         <Link to={sku ? buildStoneHistoryUrl(sku) : "/report/stone-history"}>
@@ -96,14 +96,14 @@ const InventoryQuickLinks = ({
         <Link to="/inventory/cycle-count">Cycle Count</Link>
       </Button> */}
       {/* {sku ? ( */}
-        <Button
-          icon={<ScanOutlined />}
-          onClick={() => openLegacyPdf("print/stone-label.php", { sku })}
-        >
-          Print Label
-           {/* (Legacy) */}
-        </Button>
-       {/* ) : null} */}
+      <Button
+        icon={<ScanOutlined />}
+        onClick={() => openLegacyPdf("print/stone-label.php", { sku })}
+      >
+        Print Label
+        {/* (Legacy) */}
+      </Button>
+      {/* ) : null} */}
     </Space>
   );
 };

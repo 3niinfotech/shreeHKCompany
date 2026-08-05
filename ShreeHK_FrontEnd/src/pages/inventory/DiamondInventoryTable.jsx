@@ -37,9 +37,11 @@
 // import { Sparkles } from "lucide-react";
 // import InventoryCaratCell from "../../components/inventory/InventoryCaratCell";
 // import { buildInventoryApiFilters } from "../../utils/inventoryApiFilters";
+// import { StoneActionSuccessModal } from "./components/ShopTopActionFilter";
 // import "../../assets/scss/pages/inventory/onHand_module.scss";
 // import "../../assets/scss/pages/inventory/diamondInventoryTable.scss";
-// import { StoneActionSuccessModal } from "./components/ShopTopActionFilter";
+
+// const EMPTY_ARRAY = [];
 
 // const getInventoryRowClass = (record) => {
 //   let className = "";
@@ -64,22 +66,37 @@
 
 // function computeSelectedStockCalculationStats(selectedRows) {
 //   const rows = Array.isArray(selectedRows) ? selectedRows : [];
-//   const totals = rows.reduce(
-//     (acc, row) => {
-//       const carat = Number(row.carat ?? row.Carat ?? 0);
-//       const rapRate = Number(row.rap ?? row.Rap ?? 0);
-//       const askRate = Number(row.price ?? row.Asking ?? row.Rate ?? 0);
-//       const amount = Number(row.amount ?? row.Amount ?? 0);
+//   if (rows.length === 0) {
+//     return {
+//       totalPcs: 0,
+//       totalCts: "0.00",
+//       aRap: "0.00",
+//       askDisc: "0.00",
+//       askRate: "0.00",
+//       askAmt: "0.00",
+//     };
+//   }
 
-//       acc.count += 1;
-//       acc.carat += carat;
-//       acc.rapTotal += rapRate * carat;
-//       acc.askingTotal += askRate * carat;
-//       acc.amount += amount;
-//       return acc;
-//     },
-//     { count: 0, carat: 0, rapTotal: 0, askingTotal: 0, amount: 0 },
-//   );
+//   let count = 0;
+//   let carat = 0;
+//   let rapTotal = 0;
+//   let askingTotal = 0;
+//   let amount = 0;
+
+//   for (let i = 0; i < rows.length; i++) {
+//     const row = rows[i];
+//     if (!row) continue;
+//     const c = Number(row.polishCarat ?? row.carat ?? row.Carat ?? 0);
+//     const r = Number(row.rapPrice ?? row.rap ?? row.Rap ?? 0);
+//     const p = Number(row.price ?? row.Asking ?? row.Rate ?? 0);
+//     const a = Number(row.amount ?? row.Amount ?? 0);
+
+//     count += 1;
+//     carat += c;
+//     rapTotal += r * c;
+//     askingTotal += p * c;
+//     amount += a;
+//   }
 
 //   const safeAvg = (total, divisor) =>
 //     divisor ? (total / divisor).toFixed(2) : "0.00";
@@ -88,12 +105,12 @@
 //     rapTotal ? (((askingTotal * 100) / rapTotal) - 100).toFixed(2) : "0.00";
 
 //   return {
-//     totalPcs: totals.count,
-//     totalCts: totals.carat.toFixed(2),
-//     aRap: safeAvg(totals.rapTotal, totals.carat),
-//     askDisc: calAvgDisc(totals.askingTotal, totals.rapTotal),
-//     askRate: safeAvg(totals.askingTotal, totals.carat),
-//     askAmt: totals.amount.toFixed(2),
+//     totalPcs: count,
+//     totalCts: carat.toFixed(2),
+//     aRap: safeAvg(rapTotal, carat),
+//     askDisc: calAvgDisc(askingTotal, rapTotal),
+//     askRate: safeAvg(askingTotal, carat),
+//     askAmt: amount.toFixed(2),
 //   };
 // }
 
@@ -182,7 +199,6 @@
 //   const [appliedFilters, setAppliedFilters] = useState({});
 //   const [tableData, setTableData] = useState([]);
 //   const [isFetching, setIsFetching] = useState(false);
-//   const isFetchingRef = useRef(false);
 //   const [tableHeight, setTableHeight] = useState(600);
 //   const [modalConfig, setModalConfig] = useState({ visible: false, data: null });
 //   const [stoneDetailModal, setStoneDetailModal] = useState({ open: false, data: null });
@@ -270,8 +286,6 @@
 //     onSuccess: () => {
 //       setSelectedRowKeys([]);
 //       setOffset(1);
-//       isFetchingRef.current = false;
-//       setTableData([]);
 //       queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
 //     },
 //   });
@@ -279,8 +293,6 @@
 //     onSuccess: () => {
 //       setSelectedRowKeys([]);
 //       setOffset(1);
-//       isFetchingRef.current = false;
-//       setTableData([]);
 //       queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
 //     },
 //   });
@@ -315,7 +327,7 @@
 //     ENDPOINTS.product.inventory,
 //     inventoryQueryParams,
 //     'GET',
-//     { placeholderData: (previousData) => previousData, refetchOnMount: 'always' }
+//     { placeholderData: undefined, refetchOnMount: 'always' }
 //   );
 
 //   const { data: categoryData } = useFetchApi(
@@ -453,8 +465,6 @@
 //     setMemoModalOpen(false);
 //     setSelectedRowKeys([]);
 //     setOffset(1);
-//     isFetchingRef.current = false;
-//     setTableData([]);
 //     queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
 //     queryClient.invalidateQueries({ queryKey: ["OutwardList"] });
 //     queryClient.invalidateQueries({ queryKey: ["getIncrement"] });
@@ -470,8 +480,6 @@
 //     setSellModalOpen(false);
 //     setSelectedRowKeys([]);
 //     setOffset(1);
-//     isFetchingRef.current = false;
-//     setTableData([]);
 //     queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
 //     queryClient.invalidateQueries({ queryKey: ["OutwardList"] });
 //     queryClient.invalidateQueries({ queryKey: ["getIncrement"] });
@@ -488,8 +496,6 @@
 //     setConsignModalOpen(false);
 //     setSelectedRowKeys([]);
 //     setOffset(1);
-//     isFetchingRef.current = false;
-//     setTableData([]);
 //     queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
 //     queryClient.invalidateQueries({ queryKey: ["OutwardList"] });
 //     queryClient.invalidateQueries({ queryKey: ["getIncrement"] });
@@ -568,7 +574,7 @@
 //   useEffect(() => {
 //     if (productData?.Data?.length > 0) {
 //       const mapped = productData.Data.map((item, index) => ({
-//         id: item.id, no: (offset - 1) * 100 + index + 1, mfgCode: item.mfg_code,
+//         id: String(item.id), no: (offset - 1) * 100 + index + 1, mfgCode: item.mfg_code,
 //         groupType: item.group_type, sku: item.sku, lab: item.lab,
 //         outward: item.outward ?? "",
 //         hold: item.hold === 1 || item.hold === true || item.hold === "1",
@@ -645,40 +651,48 @@
 //     } else if (offset === 1) {
 //       setTableData([]);
 //     }
-//     isFetchingRef.current = false;
 //     setIsFetching(false);
 //   }, [productData, offset]);
 
 //   useEffect(() => {
-//     const tableBody = tableRef.current?.querySelector(".ant-table-body");
-//     if (!tableBody) return;
+//     const scrollContainer = tableRef.current?.querySelector('.ant-table-body') || tableRef.current;
+//     if (!scrollContainer) return;
+//     let ticking = false;
 //     const onScroll = () => {
-//       const { scrollTop, scrollHeight, clientHeight } = tableBody;
-//       const totalItems = productData?.TotalData?.TotalItems || Infinity;
-//       if (
-//         scrollTop + clientHeight >= scrollHeight - 50 &&
-//         !isFetchingRef.current &&
-//         tableData.length < totalItems
-//       ) {
-//         isFetchingRef.current = true;
-//         setIsFetching(true);
-//         setOffset((prev) => prev + 1);
+//       if (!ticking) {
+//         window.requestAnimationFrame(() => {
+//           const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+//           if (scrollTop + clientHeight >= scrollHeight - 50 && !isFetching && tableData.length < (productData?.TotalData?.TotalItems || Infinity)) {
+//             setIsFetching(true);
+//             setOffset(prev => prev + 1);
+//           }
+//           ticking = false;
+//         });
+//         ticking = true;
 //       }
 //     };
-//     tableBody.addEventListener("scroll", onScroll);
-//     return () => tableBody.removeEventListener("scroll", onScroll);
-//   }, [tableData.length, productData]);
+//     scrollContainer.addEventListener("scroll", onScroll, { passive: true });
+//     return () => scrollContainer.removeEventListener("scroll", onScroll);
+//   }, [tableData, isFetching, productData]);
 
-//   const columns = [
-//     { title: "No", key: "no", dataIndex: "no", width: 52, fixed: "left", align: "center" },
-//     { title: "Type", key: "Type", dataIndex: "type", width: 96, fixed: "left", align: "center", ellipsis: true },
-//     // { title: "MFG Code", key: "mfgCode", dataIndex: "mfgCode", width: 96, fixed: "left", align: "center", ellipsis: true },
+//   const handleOpenSkuModal = useCallback((record) => {
+//     setModalConfig({ visible: true, data: record });
+//   }, []);
+
+//   const columns = useMemo(() => [
+//     { title: "No", key: "no", dataIndex: "no", width: 52, align: "center", fixed: "left" },
+//     {
+//       title: "Type", key: "groupType", dataIndex: "groupType", width: 96, align: "center", ellipsis: true, fixed: "left"
+//     },
 //     {
 //       title: "SKU", key: "sku", dataIndex: "sku", width: 102, ellipsis: true, align: "center",
 //       render: (text, record) => (
 //         <a
 //           className="inventory-sku-link"
-//           onClick={() => setModalConfig({ visible: true, data: record })}
+//           onClick={(e) => {
+//             e.stopPropagation();
+//             handleOpenSkuModal(record);
+//           }}
 //         >
 //           {text}
 //         </a>
@@ -696,7 +710,14 @@
 //         return <Tag color={colorMap[lab] || "default"} className="inventory-lab-tag">{lab}</Tag>;
 //       }
 //     },
-//     { title: "Cert #", key: "certificate", dataIndex: "certificate", width: 118, ellipsis: true, align: "center" },
+//     {
+//       title: "Cert #", key: "certificate", dataIndex: "certificate", width: 118, ellipsis: true, align: "center",
+//       render: (text) => text ? (
+//         <a href={`https://www.gia.edu/report-check?reportno=${text}`} target="_blank" rel="noopener noreferrer">
+//           {text}
+//         </a>
+//       ) : null
+//     },
 //     {
 //       title: "Shape", key: "shape", dataIndex: "shape", width: 84, ellipsis: true, align: "center",
 //       filters: [
@@ -709,14 +730,14 @@
 //       ],
 //       onFilter: (value, record) => record.shape === value,
 //     },
-//     { title: "PCS", key: "pcs", dataIndex: "pcs", width: 84, ellipsis: true, align: "center", },
+//     { title: "PCS", key: "polishPcs", dataIndex: "polishPcs", width: 84, ellipsis: true, align: "center" },
 //     {
 //       title: "Crt.",
 //       key: "polishCarat",
 //       dataIndex: "polishCarat",
 //       width: 72,
 //       align: "right",
-//       sorter: (a, b) => a.polishCarat - b.polishCarat,
+//       sorter: (a, b) => (Number(a.polishCarat) || 0) - (Number(b.polishCarat) || 0),
 //       render: (value, record) => (
 //         <InventoryCaratCell
 //           polishCarat={value}
@@ -726,11 +747,11 @@
 //         />
 //       ),
 //     },
-//     { title: "Color", key: "color", dataIndex: "color", width: 58, ellipsis: true, },
-//     { title: "Argyle Color", key: "argyleColor", dataIndex: "argyleColor", width: 102, ellipsis: true },
-//     { title: "In-House Clarity", key: "mainClarity", dataIndex: "mainClarity", width: 124, ellipsis: true },
+//     { title: "Color", key: "color", dataIndex: "color", width: 58, ellipsis: true, align: "center" },
+//     { title: "Argyle Color", key: "argyleColor", dataIndex: "argyleColor", width: 109, ellipsis: true, align: "center" },
+//     { title: "In-House Clarity", key: "mainClarity", dataIndex: "mainClarity", width: 130, ellipsis: true, align: "center" },
 //     {
-//       title: "Clarity", key: "clarity", dataIndex: "clarity", width: 90, ellipsis: true,
+//       title: "Clarity", key: "clarity", dataIndex: "clarity", width: 92, ellipsis: true, align: "center",
 //       filters: [
 //         { text: 'FL', value: 'FL' }, { text: 'IF', value: 'IF' },
 //         { text: 'VVS1', value: 'VVS1' }, { text: 'VVS2', value: 'VVS2' },
@@ -754,6 +775,7 @@
 //         ) : (
 //           <span className="inventory-finance-empty">-</span>
 //         ),
+//       sorter: (a, b) => (Number(a.rapPrice) || 0) - (Number(b.rapPrice) || 0),
 //     },
 //     {
 //       title: "Cost",
@@ -768,6 +790,7 @@
 //         ) : (
 //           <span className="inventory-finance-empty">-</span>
 //         ),
+//       sorter: (a, b) => (Number(a.cost) || 0) - (Number(b.cost) || 0),
 //     },
 //     {
 //       title: "Price/Crt",
@@ -779,6 +802,7 @@
 //       render: (v) => (
 //         <span className="inventory-finance-value inventory-price-value">${Number(v || 0).toLocaleString()}</span>
 //       ),
+//       sorter: (a, b) => (Number(a.price) || 0) - (Number(b.price) || 0),
 //     },
 //     {
 //       title: "Amount",
@@ -790,14 +814,15 @@
 //       render: (v) => (
 //         <span className="inventory-finance-value inventory-amount-value">${Number(v || 0).toLocaleString()}</span>
 //       ),
+//       sorter: (a, b) => (Number(a.amount) || 0) - (Number(b.amount) || 0),
 //     },
 //     { title: "Size", key: "size", dataIndex: "size", width: 68, ellipsis: true, align: "center" },
 //     { title: "Flour.", key: "fluorescence", dataIndex: "fluorescence", width: 68, ellipsis: true, align: "center" },
 //     { title: "Cut", key: "cut", dataIndex: "cut", width: 56, ellipsis: true, align: "center" },
 //     { title: "Pol.", key: "polish", dataIndex: "polish", width: 52, ellipsis: true, align: "center" },
 //     { title: "Sym.", key: "symmetry", dataIndex: "symmetry", width: 52, ellipsis: true, align: "center" },
-//     { title: "Table%", key: "table", dataIndex: "table", width: 68, align: "center" },
-//     { title: "Depth%", key: "depth", dataIndex: "depth", width: 68, align: "center" },
+//     { title: "Table%", key: "table", dataIndex: "table", width: 68, align: "center", sorter: (a, b) => (Number(a.table) || 0) - (Number(b.table) || 0) },
+//     { title: "Depth%", key: "depth", dataIndex: "depth", width: 68, align: "center", sorter: (a, b) => (Number(a.depth) || 0) - (Number(b.depth) || 0) },
 //     { title: "Meas.", key: "measurement", dataIndex: "measurement", width: 112, ellipsis: true, align: "center" },
 //     { title: "Girdle", key: "girdle", dataIndex: "girdle", width: 76, ellipsis: true, align: "center" },
 //     { title: "Mining", key: "mining", dataIndex: "mining", width: 76, ellipsis: true, align: "center" },
@@ -824,7 +849,7 @@
 //       ],
 //       onFilter: (value, record) => record.overTone === value,
 //     },
-//     { title: "Color", key: "color", dataIndex: "color", width: 90, ellipsis: true, align: "center", },
+//     { title: "Color", key: "color", dataIndex: "color", width: 90, ellipsis: true, align: "center" },
 //     { title: "Location", key: "location", dataIndex: "location", width: 112, ellipsis: true, render: renderLocationWithFlag, align: "center" },
 //     {
 //       title: "Package", key: "package", dataIndex: "package", width: 88, ellipsis: true, align: "center",
@@ -836,8 +861,8 @@
 //       ],
 //       onFilter: (value, record) => record.package === value,
 //     },
-//     { title: "BGM", key: "bgm", dataIndex: "bgm", width: 56, ellipsis: true, align: "center" }, ,
-//     { title: "Eye Clean", key: "eyeClean", dataIndex: "eyeClean", width: 86, ellipsis: true, align: "center" }, ,
+//     { title: "BGM", key: "bgm", dataIndex: "bgm", width: 56, ellipsis: true, align: "center" },
+//     { title: "Eye Clean", key: "eyeClean", dataIndex: "eyeClean", width: 86, ellipsis: true, align: "center" },
 //     {
 //       title: "Main Group", key: "group", dataIndex: "group", width: 114, ellipsis: true, align: "center",
 //       filters: [
@@ -854,23 +879,7 @@
 //       title: "Remark", key: "remark", dataIndex: "remark", width: 200, ellipsis: true, align: "center",
 //       render: (t) => <div className="inventory-remark-cell">{t}</div>
 //     },
-//     // {
-//     //   title: "RapNet",
-//     //   key: "rapnetUpload",
-//     //   dataIndex: "rapnetUpload",
-//     //   width: 68,
-//     //   align: "center",
-//     //   render: (v) => (Number(v) === 1 ? <Tag color="green">Yes</Tag> : <Tag>No</Tag>),
-//     // },
-//     // {
-//     //   title: "Website",
-//     //   key: "siteUpload",
-//     //   dataIndex: "siteUpload",
-//     //   width: 76,
-//     //   align: "center",
-//     //   render: (v) => (Number(v) === 1 ? <Tag color="blue">Yes</Tag> : <Tag>No</Tag>),
-//     // },
-//   ];
+//   ], [handleOpenSkuModal]);
 
 //   const ACTION_KEY_MAP = {
 //     onMemo: "memo",
@@ -880,8 +889,7 @@
 
 //   const openBulkActionModal = (key) => {
 //     const mapped = ACTION_KEY_MAP[key] || key;
-//     if (mapped === "reset" || key === "reset"
-//     ) {
+//     if (mapped === "reset" || key === "reset") {
 //       setSelectedRowKeys([]);
 //       return;
 //     }
@@ -1049,9 +1057,7 @@
 //     });
 
 //     setOffset(1);
-//     isFetchingRef.current = false;
 //     setIsFetching(false);
-//     setTableData([]);
 //     setAppliedFilters(nextFilters);
 //   };
 
@@ -1096,9 +1102,7 @@
 //     setCaratFrom("");
 //     setCaratTo("");
 //     setOffset(1);
-//     isFetchingRef.current = false;
 //     setIsFetching(false);
-//     setTableData([]);
 //     setAppliedFilters({});
 //   };
 
@@ -1114,9 +1118,12 @@
 
 //   const selectedRows = useMemo(() => {
 //     if (!selectedRowKeys.length) return [];
-//     return selectedRowKeys
-//       .map((key) => tableDataById.get(String(key)))
-//       .filter(Boolean);
+//     const rows = [];
+//     for (let i = 0; i < selectedRowKeys.length; i++) {
+//       const row = tableDataById.get(String(selectedRowKeys[i]));
+//       if (row) rows.push(row);
+//     }
+//     return rows;
 //   }, [selectedRowKeys, tableDataById]);
 
 //   const showTotalStats = useMemo(() => {
@@ -1137,10 +1144,7 @@
 //   }, [inventoryRowsForStats, productData]);
 
 //   const selectedStats = useMemo(
-//     () =>
-//       computeSelectedStockCalculationStats(
-//         selectedRows.map(mapInventoryRowForStats),
-//       ),
+//     () => computeSelectedStockCalculationStats(selectedRows),
 //     [selectedRows],
 //   );
 
@@ -1148,16 +1152,72 @@
 //     productData?.TotalData?.TotalItems?.toLocaleString() ??
 //     tableData.length.toLocaleString();
 
-//   const openStoneDetailModal = (record, event) => {
+//   const openStoneDetailModal = useCallback((record, event) => {
 //     const target = event?.target;
-//     if (target && typeof target.closest === "function") {
+//     if (!target) return;
+//     if (typeof target.closest === "function") {
+//       if (target.closest(".ant-table-selection-column, .ant-checkbox-wrapper, .ant-checkbox, input[type='checkbox']")) {
+//         return;
+//       }
 //       const ignoreClick = target.closest(
-//         "a, button, input, textarea, label, .ant-checkbox-wrapper, .ant-checkbox, .ant-btn, .ant-dropdown-trigger, .inventory-memo-carat, .inventory-carat-cell--has-memo, .memo-carat-popover, .memo-carat-popover-overlay, .ant-popover",
+//         "a, button, input, textarea, label, .ant-btn, .ant-dropdown-trigger, .inventory-memo-carat, .inventory-carat-cell--has-memo, .memo-carat-popover, .memo-carat-popover-overlay, .ant-popover",
 //       );
 //       if (ignoreClick) return;
 //     }
 //     setStoneDetailModal({ open: true, data: record });
-//   };
+//   }, []);
+
+//   const handleOnRow = useCallback((record) => ({
+//     onClick: (event) => openStoneDetailModal(record, event),
+//   }), [openStoneDetailModal]);
+
+//   const handleSelectionChange = useCallback((keys) => {
+//     const stringKeys = Array.isArray(keys) ? keys.map(String) : [];
+//     setSelectedRowKeys(stringKeys);
+//   }, []);
+
+//   const rowSelectionConfig = useMemo(() => ({
+//     type: "checkbox",
+//     selectedRowKeys,
+//     onChange: handleSelectionChange,
+//     columnWidth: 36,
+//     fixed: true,
+//     preserveSelectedRowKeys: true,
+//   }), [selectedRowKeys, handleSelectionChange]);
+
+//   const renderFooterNode = useMemo(() => (
+//     <div className="inventory-table-footer-totals">
+//       <div className="inventory-footer-group inventory-footer-group--total">
+//         <span className="inventory-footer-stat">
+//           TOTAL :{" "}
+//           <b>{Number(showTotalStats.totalPcs || 0).toLocaleString()}</b>
+//         </span>
+//         <span className="inventory-footer-stat">
+//           Carat Total : <b>{showTotalStats.totalCts}</b>
+//         </span>
+//         <span className="inventory-footer-stat">
+//           Amount Total : <b>{showTotalStats.askAmt}</b>
+//         </span>
+//       </div>
+//       <div className="inventory-footer-group inventory-footer-group--selected">
+//         <span className="inventory-footer-divider" aria-hidden="true" />
+//         <span className="inventory-footer-stat">
+//           Select Pcs : <b>{selectedStats.totalPcs}</b>
+//         </span>
+//         <span className="inventory-footer-stat">
+//           Select Carats : <b>{selectedStats.totalCts}</b>
+//         </span>
+//         <span className="inventory-footer-stat">
+//           Select Price : <b>{selectedStats.askRate}</b>
+//         </span>
+//         <span className="inventory-footer-stat">
+//           Select Amount : <b>{selectedStats.askAmt}</b>
+//         </span>
+//       </div>
+//     </div>
+//   ), [showTotalStats, selectedStats]);
+
+//   const tableFooterFn = useCallback(() => renderFooterNode, [renderFooterNode]);
 
 //   return (
 //     <div ref={pageRef} className="inventory-page-wrapper page-shell">
@@ -1264,28 +1324,24 @@
 //         />
 //       </div>
 
-//       <div ref={tableRef} className="erp-table-container">
+//       <div
+//         ref={tableRef}
+//         className="erp-table-container"
+//         style={{ height: tableHeight, overflowY: 'hidden', overflowX: 'hidden' }}
+//       >
 //         <Table
 //           className="diamond-inventory-table"
 //           columns={columns}
 //           dataSource={filteredTableData}
-//           rowKey="id"
+//           rowKey={(record) => String(record.id)}
 //           size="small"
 //           tableLayout="fixed"
 //           rowClassName={getInventoryRowClass}
-//           rowSelection={{
-//             selectedRowKeys,
-//             onChange: (keys) => setSelectedRowKeys(keys),
-//             columnWidth: 36,
-//             preserveSelectedRowKeys: true,
-//           }}
-//           onRow={(record) => ({
-//             onClick: (event) => openStoneDetailModal(record, event),
-//           })}
+//           rowSelection={rowSelectionConfig}
+//           onRow={handleOnRow}
 //           loading={isFetching || isLoading}
 //           pagination={false}
 //           bordered
-//           sticky
 //           scroll={{ x: "max-content", y: tableHeight }}
 //           locale={{
 //             emptyText: (
@@ -1297,37 +1353,7 @@
 //               </div>
 //             ),
 //           }}
-//           footer={() => (
-//             <div className="inventory-table-footer-totals">
-//               <div className="inventory-footer-group inventory-footer-group--total">
-//                 <span className="inventory-footer-stat">
-//                   TOTAL :{" "}
-//                   <b>{Number(showTotalStats.totalPcs || 0).toLocaleString()}</b>
-//                 </span>
-//                 <span className="inventory-footer-stat">
-//                   Carat Total : <b>{showTotalStats.totalCts}</b>
-//                 </span>
-//                 <span className="inventory-footer-stat">
-//                   Amount Total : <b>{showTotalStats.askAmt}</b>
-//                 </span>
-//               </div>
-//               <div className="inventory-footer-group inventory-footer-group--selected">
-//                 <span className="inventory-footer-divider" aria-hidden="true" />
-//                 <span className="inventory-footer-stat">
-//                   Select Pcs : <b>{selectedStats.totalPcs}</b>
-//                 </span>
-//                 <span className="inventory-footer-stat">
-//                   Select Carats : <b>{selectedStats.totalCts}</b>
-//                 </span>
-//                 <span className="inventory-footer-stat">
-//                   Select Price : <b>{selectedStats.askRate}</b>
-//                 </span>
-//                 <span className="inventory-footer-stat">
-//                   Select Amount : <b>{selectedStats.askAmt}</b>
-//                 </span>
-//               </div>
-//             </div>
-//           )}
+//           footer={tableFooterFn}
 //         />
 //       </div>
 
@@ -1373,7 +1399,7 @@
 //       <OnMemoModal
 //         open={memoModalOpen}
 //         onClose={() => setMemoModalOpen(false)}
-//         selectedRows={selectedRows}
+//         selectedRows={memoModalOpen ? selectedRows : EMPTY_ARRAY}
 //         actionType="memo"
 //         onSubmit={handleMemoSubmit}
 //       />
@@ -1381,7 +1407,7 @@
 //       <OnMemoModal
 //         open={sellModalOpen}
 //         onClose={() => setSellModalOpen(false)}
-//         selectedRows={selectedRows}
+//         selectedRows={sellModalOpen ? selectedRows : EMPTY_ARRAY}
 //         actionType="sell"
 //         onSubmit={handleSaleSubmit}
 //       />
@@ -1389,20 +1415,20 @@
 //       <OnMemoModal
 //         open={consignModalOpen}
 //         onClose={() => setConsignModalOpen(false)}
-//         selectedRows={selectedRows}
+//         selectedRows={consignModalOpen ? selectedRows : EMPTY_ARRAY}
 //         actionType="consign"
 //         onSubmit={handleConsignSubmit}
 //       />
 
 //       <InventoryCompareModal
 //         open={compareModalOpen}
-//         rows={selectedRows}
+//         rows={compareModalOpen ? selectedRows : EMPTY_ARRAY}
 //         onClose={() => setCompareModalOpen(false)}
 //       />
 
 //       <ReservationModal
 //         open={reservationModalOpen}
-//         selectedIds={selectedRowKeys}
+//         selectedIds={reservationModalOpen ? selectedRowKeys : EMPTY_ARRAY}
 //         onClose={() => setReservationModalOpen(false)}
 //         onSuccess={() => {
 //           setSelectedRowKeys([]);
@@ -1413,7 +1439,7 @@
 //       <AddToPackageModal
 //         open={packageModalOpen}
 //         onClose={() => setPackageModalOpen(false)}
-//         productIds={selectedRowKeys}
+//         productIds={packageModalOpen ? selectedRowKeys : EMPTY_ARRAY}
 //         onSuccess={() => {
 //           queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
 //           setSelectedRowKeys([]);
@@ -1434,7 +1460,7 @@
 // export default DiamondInventoryTable;
 
 
-import React, { useEffect, useState, useRef, useMemo } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import SkuActionModal from "../../hooks/useSkuModalAction";
 import { Table, Button, Dropdown, Tag, Form, message } from "antd";
@@ -1477,6 +1503,63 @@ import { StoneActionSuccessModal } from "./components/ShopTopActionFilter";
 import "../../assets/scss/pages/inventory/onHand_module.scss";
 import "../../assets/scss/pages/inventory/diamondInventoryTable.scss";
 
+const EMPTY_ARRAY = [];
+
+/**
+ * Memoized table row — prevents re-rendering all rows when only
+ * selectedRowKeys changes (checkbox click). Only the row whose own
+ * props actually changed will re-render, making checkbox selection instant.
+ */
+const MemoizedInventoryRow = React.memo(
+  function MemoizedInventoryRow(props) {
+    return <tr {...props} />;
+  },
+  (prevProps, nextProps) => {
+    if (prevProps["data-row-key"] !== nextProps["data-row-key"]) return false;
+    if (prevProps.className !== nextProps.className) return false;
+    if (prevProps.style !== nextProps.style) return false;
+    return true;
+  }
+);
+const SelectionCheckbox = React.memo(function SelectionCheckbox({ id, isChecked, onToggle }) {
+  const handleChange = (e) => {
+    e.stopPropagation();
+    onToggle(id, e.target.checked, e.nativeEvent?.shiftKey || false);
+  };
+
+  return (
+    <input
+      type="checkbox"
+      className="inventory-custom-checkbox"
+      checked={isChecked}
+      onChange={handleChange}
+      onClick={(e) => e.stopPropagation()}
+    />
+  );
+});
+
+const SelectAllCheckbox = React.memo(function SelectAllCheckbox({ allSelected, indeterminate, onToggleAll }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.indeterminate = Boolean(indeterminate);
+    }
+  }, [indeterminate]);
+
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      className="inventory-custom-checkbox"
+      checked={allSelected}
+      onChange={(e) => onToggleAll(e.target.checked)}
+      onClick={(e) => e.stopPropagation()}
+      title={allSelected ? "Deselect All" : "Select All"}
+    />
+  );
+});
+
 const getInventoryRowClass = (record) => {
   let className = "";
   const outward = String(record?.outward ?? "").trim().toLowerCase();
@@ -1500,22 +1583,37 @@ const getInventoryRowClass = (record) => {
 
 function computeSelectedStockCalculationStats(selectedRows) {
   const rows = Array.isArray(selectedRows) ? selectedRows : [];
-  const totals = rows.reduce(
-    (acc, row) => {
-      const carat = Number(row.carat ?? row.Carat ?? 0);
-      const rapRate = Number(row.rap ?? row.Rap ?? 0);
-      const askRate = Number(row.price ?? row.Asking ?? row.Rate ?? 0);
-      const amount = Number(row.amount ?? row.Amount ?? 0);
+  if (rows.length === 0) {
+    return {
+      totalPcs: 0,
+      totalCts: "0.00",
+      aRap: "0.00",
+      askDisc: "0.00",
+      askRate: "0.00",
+      askAmt: "0.00",
+    };
+  }
 
-      acc.count += 1;
-      acc.carat += carat;
-      acc.rapTotal += rapRate * carat;
-      acc.askingTotal += askRate * carat;
-      acc.amount += amount;
-      return acc;
-    },
-    { count: 0, carat: 0, rapTotal: 0, askingTotal: 0, amount: 0 },
-  );
+  let count = 0;
+  let carat = 0;
+  let rapTotal = 0;
+  let askingTotal = 0;
+  let amount = 0;
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row) continue;
+    const c = Number(row.polishCarat ?? row.carat ?? row.Carat ?? 0);
+    const r = Number(row.rapPrice ?? row.rap ?? row.Rap ?? 0);
+    const p = Number(row.price ?? row.Asking ?? row.Rate ?? 0);
+    const a = Number(row.amount ?? row.Amount ?? 0);
+
+    count += 1;
+    carat += c;
+    rapTotal += r * c;
+    askingTotal += p * c;
+    amount += a;
+  }
 
   const safeAvg = (total, divisor) =>
     divisor ? (total / divisor).toFixed(2) : "0.00";
@@ -1524,12 +1622,12 @@ function computeSelectedStockCalculationStats(selectedRows) {
     rapTotal ? (((askingTotal * 100) / rapTotal) - 100).toFixed(2) : "0.00";
 
   return {
-    totalPcs: totals.count,
-    totalCts: totals.carat.toFixed(2),
-    aRap: safeAvg(totals.rapTotal, totals.carat),
-    askDisc: calAvgDisc(totals.askingTotal, totals.rapTotal),
-    askRate: safeAvg(totals.askingTotal, totals.carat),
-    askAmt: totals.amount.toFixed(2),
+    totalPcs: count,
+    totalCts: carat.toFixed(2),
+    aRap: safeAvg(rapTotal, carat),
+    askDisc: calAvgDisc(askingTotal, rapTotal),
+    askRate: safeAvg(askingTotal, carat),
+    askAmt: amount.toFixed(2),
   };
 }
 
@@ -1617,6 +1715,69 @@ const DiamondInventoryTable = () => {
   const [searchText, setSearchText] = useState("");
   const [appliedFilters, setAppliedFilters] = useState({});
   const [tableData, setTableData] = useState([]);
+
+  const selectedRowKeysSet = useMemo(
+    () => new Set(selectedRowKeys.map(String)),
+    [selectedRowKeys]
+  );
+  const lastSelectedRowIdRef = useRef(null);
+
+  const handleToggleRowSelection = useCallback((id, checked, isShiftPressed = false) => {
+    const stringId = String(id);
+    setSelectedRowKeys((prevKeys) => {
+      const prevSet = new Set(prevKeys);
+
+      if (isShiftPressed && lastSelectedRowIdRef.current && prevSet.has(lastSelectedRowIdRef.current)) {
+        const lastIndex = tableData.findIndex((r) => String(r.id) === lastSelectedRowIdRef.current);
+        const currentIndex = tableData.findIndex((r) => String(r.id) === stringId);
+        if (lastIndex !== -1 && currentIndex !== -1) {
+          const start = Math.min(lastIndex, currentIndex);
+          const end = Math.max(lastIndex, currentIndex);
+          const rangeIds = tableData.slice(start, end + 1).map((r) => String(r.id));
+          if (checked) {
+            rangeIds.forEach((rId) => prevSet.add(rId));
+          } else {
+            rangeIds.forEach((rId) => prevSet.delete(rId));
+          }
+          lastSelectedRowIdRef.current = stringId;
+          return Array.from(prevSet);
+        }
+      }
+
+      if (checked) {
+        prevSet.add(stringId);
+      } else {
+        prevSet.delete(stringId);
+      }
+      lastSelectedRowIdRef.current = stringId;
+      return Array.from(prevSet);
+    });
+  }, [tableData]);
+
+  const handleSelectAllToggle = useCallback((checked) => {
+    if (checked) {
+      const allIds = tableData.map((r) => String(r.id));
+      setSelectedRowKeys(allIds);
+    } else {
+      setSelectedRowKeys([]);
+    }
+  }, [tableData]);
+
+  const isAllSelected = useMemo(
+    () => tableData.length > 0 && tableData.every((r) => selectedRowKeysSet.has(String(r.id))),
+    [tableData, selectedRowKeysSet]
+  );
+
+  const isIndeterminate = useMemo(
+    () => !isAllSelected && selectedRowKeys.length > 0,
+    [isAllSelected, selectedRowKeys.length]
+  );
+
+  const getInventoryRowClassWithSelection = useCallback((record) => {
+    const baseClass = getInventoryRowClass(record);
+    const isSelected = selectedRowKeysSet.has(String(record.id));
+    return isSelected ? `${baseClass} ant-table-row-selected` : baseClass;
+  }, [selectedRowKeysSet]);
   const [isFetching, setIsFetching] = useState(false);
   const [tableHeight, setTableHeight] = useState(600);
   const [modalConfig, setModalConfig] = useState({ visible: false, data: null });
@@ -1993,7 +2154,7 @@ const DiamondInventoryTable = () => {
   useEffect(() => {
     if (productData?.Data?.length > 0) {
       const mapped = productData.Data.map((item, index) => ({
-        id: item.id, no: (offset - 1) * 100 + index + 1, mfgCode: item.mfg_code,
+        id: String(item.id), no: (offset - 1) * 100 + index + 1, mfgCode: item.mfg_code,
         groupType: item.group_type, sku: item.sku, lab: item.lab,
         outward: item.outward ?? "",
         hold: item.hold === 1 || item.hold === true || item.hold === "1",
@@ -2094,207 +2255,33 @@ const DiamondInventoryTable = () => {
     return () => scrollContainer.removeEventListener("scroll", onScroll);
   }, [tableData, isFetching, productData]);
 
-  // const columns = [
-  //   { title: "No", key: "no", dataIndex: "no", width: 52, fixed: "left", align: "center" },
-  //   { title: "MFG Code", key: "mfgCode", dataIndex: "mfgCode", width: 96, fixed: "left", ellipsis: true },
-  //   {
-  //     title: "SKU", key: "sku", dataIndex: "sku", width: 102, ellipsis: true,
-  //     render: (text, record) => (
-  //       <a
-  //         className="inventory-sku-link"
-  //         onClick={() => setModalConfig({ visible: true, data: record })}
-  //       >
-  //         {text}
-  //       </a>
-  //     ),
-  //   },
-  //   {
-  //     title: "Lab", key: "lab", dataIndex: "lab", width: 58, align: "center",
-  //     filters: [
-  //       { text: 'GIA', value: 'gia' }, { text: 'IGI', value: 'IGI' },
-  //       { text: 'CGL', value: 'CGL' }, { text: 'AGT', value: 'AGT' },
-  //     ],
-  //     onFilter: (value, record) => record.lab === value,
-  //     render: (lab) => {
-  //       const colorMap = { GIA: "blue", gia: "blue", IGI: "green", CGL: "orange", AGT: "purple" };
-  //       return <Tag color={colorMap[lab] || "default"} className="inventory-lab-tag">{lab}</Tag>;
-  //     }
-  //   },
-  //   { title: "Cert #", key: "certificate", dataIndex: "certificate", width: 118, ellipsis: true },
-  //   {
-  //     title: "Shape", key: "shape", dataIndex: "shape", width: 84, ellipsis: true,
-  //     filters: [
-  //       { text: 'Round', value: 'Round' }, { text: 'Cushion', value: 'Cushion' },
-  //       { text: 'Oval', value: 'Oval' }, { text: 'Heart', value: 'Heart' },
-  //       { text: 'Marquise', value: 'Marquise' }, { text: 'Emerald', value: 'Emerald' },
-  //       { text: 'Radiant', value: 'Radiant' }, { text: 'Pear', value: 'Pear' },
-  //       { text: 'Rose', value: 'Rose' }, { text: 'Princess', value: 'Princess' },
-  //       { text: 'Other', value: 'Other' },
-  //     ],
-  //     onFilter: (value, record) => record.shape === value,
-  //   },
-  //   {
-  //     title: "Crt.",
-  //     key: "polishCarat",
-  //     dataIndex: "polishCarat",
-  //     width: 72,
-  //     align: "right",
-  //     sorter: (a, b) => a.polishCarat - b.polishCarat,
-  //     render: (value, record) => (
-  //       <InventoryCaratCell
-  //         polishCarat={value}
-  //         memoCarat={record.memoCarat}
-  //         memoItems={record.memoItems}
-  //         memoHistory={record.memoHistory}
-  //       />
-  //     ),
-  //   },
-  //   { title: "Color", key: "color", dataIndex: "color", width: 58, ellipsis: true },
-  //   { title: "Argyle Color", key: "argyleColor", dataIndex: "argyleColor", width: 102, ellipsis: true },
-  //   { title: "In-House Clarity", key: "mainClarity", dataIndex: "mainClarity", width: 124, ellipsis: true },
-  //   {
-  //     title: "Clarity", key: "clarity", dataIndex: "clarity", width: 90, ellipsis: true,
-  //     filters: [
-  //       { text: 'FL', value: 'FL' }, { text: 'IF', value: 'IF' },
-  //       { text: 'VVS1', value: 'VVS1' }, { text: 'VVS2', value: 'VVS2' },
-  //       { text: 'VS1', value: 'VS1' }, { text: 'VS2', value: 'VS2' },
-  //       { text: 'SI1', value: 'SI1' }, { text: 'SI2', value: 'SI2' },
-  //       { text: 'SI3', value: 'SI3' }, { text: 'I1', value: 'I1' },
-  //       { text: 'I2', value: 'I2' }, { text: 'I3', value: 'I3' },
-  //     ],
-  //     onFilter: (value, record) => record.clarity === value,
-  //   },
-  //   {
-  //     title: "Rap Price",
-  //     key: "rapPrice",
-  //     dataIndex: "rapPrice",
-  //     width: 92,
-  //     align: "right",
-  //     className: "inventory-finance-col inventory-rap-col",
-  //     render: (v) =>
-  //       v ? (
-  //         <span className="inventory-finance-value inventory-rap-value">${Number(v).toLocaleString()}</span>
-  //       ) : (
-  //         <span className="inventory-finance-empty">-</span>
-  //       ),
-  //   },
-  //   {
-  //     title: "Cost",
-  //     key: "cost",
-  //     dataIndex: "cost",
-  //     width: 88,
-  //     align: "right",
-  //     className: "inventory-finance-col inventory-cost-col",
-  //     render: (v) =>
-  //       v ? (
-  //         <span className="inventory-finance-value inventory-cost-value">${Number(v).toLocaleString()}</span>
-  //       ) : (
-  //         <span className="inventory-finance-empty">-</span>
-  //       ),
-  //   },
-  //   {
-  //     title: "Price/Crt",
-  //     key: "price",
-  //     dataIndex: "price",
-  //     width: 92,
-  //     align: "right",
-  //     className: "inventory-finance-col inventory-price-col",
-  //     render: (v) => (
-  //       <span className="inventory-finance-value inventory-price-value">${Number(v || 0).toLocaleString()}</span>
-  //     ),
-  //   },
-  //   {
-  //     title: "Amount",
-  //     key: "amount",
-  //     dataIndex: "amount",
-  //     width: 100,
-  //     align: "right",
-  //     className: "inventory-finance-col inventory-amount-col",
-  //     render: (v) => (
-  //       <span className="inventory-finance-value inventory-amount-value">${Number(v || 0).toLocaleString()}</span>
-  //     ),
-  //   },
-  //   { title: "Size", key: "size", dataIndex: "size", width: 68, ellipsis: true },
-  //   { title: "Flour.", key: "fluorescence", dataIndex: "fluorescence", width: 68, ellipsis: true },
-  //   { title: "Cut", key: "cut", dataIndex: "cut", width: 56, ellipsis: true },
-  //   { title: "Pol.", key: "polish", dataIndex: "polish", width: 52, ellipsis: true },
-  //   { title: "Sym.", key: "symmetry", dataIndex: "symmetry", width: 52, ellipsis: true },
-  //   { title: "Table%", key: "table", dataIndex: "table", width: 68, align: "right" },
-  //   { title: "Depth%", key: "depth", dataIndex: "depth", width: 68, align: "right" },
-  //   { title: "Meas.", key: "measurement", dataIndex: "measurement", width: 112, ellipsis: true },
-  //   { title: "Girdle", key: "girdle", dataIndex: "girdle", width: 76, ellipsis: true },
-  //   { title: "Mining", key: "mining", dataIndex: "mining", width: 76, ellipsis: true },
-  //   { title: "Origin", key: "origin", dataIndex: "origin", width: 76, ellipsis: true },
-  //   {
-  //     title: "Intensity", key: "intensity", dataIndex: "intensity", width: 98, ellipsis: true,
-  //     filters: [
-  //       { text: 'Faint', value: 'Faint' }, { text: 'Very Light', value: 'Very Light' },
-  //       { text: 'Light', value: 'Light' }, { text: 'Fancy Light', value: 'Fancy Light' },
-  //       { text: 'Fancy', value: 'Fancy' }, { text: 'Fancy Intense', value: 'Fancy Intense' },
-  //       { text: 'Fancy Vivid', value: 'Fancy Vivid' }, { text: 'Fancy Deep', value: 'Fancy Deep' },
-  //       { text: 'Fancy Dark', value: 'Fancy Dark' },
-  //     ],
-  //     onFilter: (value, record) => record.intensity === value,
-  //   },
-  //   {
-  //     title: "Overtone", key: "overTone", dataIndex: "overTone", width: 90, ellipsis: true,
-  //     filters: [
-  //       { text: 'Bluish', value: 'Bluish' }, { text: 'Brownish', value: 'Brownish' },
-  //       { text: 'Grayish', value: 'Grayish' }, { text: 'Greenish', value: 'Greenish' },
-  //       { text: 'None', value: 'None' }, { text: 'Orangey', value: 'Orangey' },
-  //       { text: 'Pinkish', value: 'Pinkish' }, { text: 'Purplish', value: 'Purplish' },
-  //       { text: 'Reddish', value: 'Reddish' }, { text: 'Yellowish', value: 'Yellowish' },
-  //     ],
-  //     onFilter: (value, record) => record.overTone === value,
-  //   },
-  //   { title: "Location", key: "location", dataIndex: "location", width: 112, ellipsis: true, render: renderLocationWithFlag },
-  //   {
-  //     title: "Package", key: "package", dataIndex: "package", width: 88, ellipsis: true,
-  //     filters: [
-  //       { text: 'SB', value: 'SB' }, { text: 'BAGS', value: 'BAGS' },
-  //       { text: 'JEWEL', value: 'JEWEL' }, { text: 'BIG SB', value: 'BIG SB' },
-  //       { text: 'BRC', value: 'BRC' }, { text: 'SMALL BRC', value: 'SMALL BRC' },
-  //       { text: 'BOX', value: 'BOX' }, { text: 'BAGS S BOX', value: 'BAGS S BOX' },
-  //     ],
-  //     onFilter: (value, record) => record.package === value,
-  //   },
-  //   { title: "BGM", key: "bgm", dataIndex: "bgm", width: 56, ellipsis: true },
-  //   { title: "Eye Clean", key: "eyeClean", dataIndex: "eyeClean", width: 86, ellipsis: true },
-  //   {
-  //     title: "Main Group", key: "group", dataIndex: "group", width: 114, ellipsis: true,
-  //     filters: [
-  //       { text: 'A+', value: 'A+' }, { text: 'BA', value: 'BA' },
-  //       { text: 'YELLOW', value: 'YELLOW' }, { text: 'PINK', value: 'PINK' },
-  //       { text: 'LC', value: 'LC' }, { text: 'DC', value: 'DC' },
-  //       { text: 'B-E', value: 'B-E' }, { text: 'ROUGH DIA.', value: 'ROUGH DIA.' },
-  //       { text: 'GH', value: 'GH' },
-  //     ],
-  //     onFilter: (value, record) => record.group === value,
-  //   },
-  //   { title: "Sub Group", key: "subGroup", dataIndex: "subGroup", width: 96, ellipsis: true },
-  //   {
-  //     title: "Remark", key: "remark", dataIndex: "remark", width: 200, ellipsis: true,
-  //     render: (t) => <div className="inventory-remark-cell">{t}</div>
-  //   },
-  //   {
-  //     title: "RapNet",
-  //     key: "rapnetUpload",
-  //     dataIndex: "rapnetUpload",
-  //     width: 68,
-  //     align: "center",
-  //     render: (v) => (Number(v) === 1 ? <Tag color="green">Yes</Tag> : <Tag>No</Tag>),
-  //   },
-  //   {
-  //     title: "Website",
-  //     key: "siteUpload",
-  //     dataIndex: "siteUpload",
-  //     width: 76,
-  //     align: "center",
-  //     render: (v) => (Number(v) === 1 ? <Tag color="blue">Yes</Tag> : <Tag>No</Tag>),
-  //   },
-  // ];
+  const handleOpenSkuModal = useCallback((record) => {
+    setModalConfig({ visible: true, data: record });
+  }, []);
 
-  const columns = [
+  const columns = useMemo(() => [
+    {
+      title: (
+        <SelectAllCheckbox
+          allSelected={isAllSelected}
+          indeterminate={isIndeterminate}
+          onToggleAll={handleSelectAllToggle}
+        />
+      ),
+      key: "selection_custom",
+      dataIndex: "id",
+      width: 36,
+      align: "center",
+      fixed: "left",
+      className: "ant-table-selection-column",
+      render: (id) => (
+        <SelectionCheckbox
+          id={String(id)}
+          isChecked={selectedRowKeysSet.has(String(id))}
+          onToggle={handleToggleRowSelection}
+        />
+      ),
+    },
     { title: "No", key: "no", dataIndex: "no", width: 52, align: "center", fixed: "left" },
     {
       title: "Type", key: "groupType", dataIndex: "groupType", width: 96, align: "center", ellipsis: true, fixed: "left"
@@ -2304,7 +2291,10 @@ const DiamondInventoryTable = () => {
       render: (text, record) => (
         <a
           className="inventory-sku-link"
-          onClick={() => setModalConfig({ visible: true, data: record })}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenSkuModal(record);
+          }}
         >
           {text}
         </a>
@@ -2342,14 +2332,14 @@ const DiamondInventoryTable = () => {
       ],
       onFilter: (value, record) => record.shape === value,
     },
-    { title: "PCS", key: "polishPcs", dataIndex: "polishPcs", width: 84, ellipsis: true, align: "center", },
+    { title: "PCS", key: "polishPcs", dataIndex: "polishPcs", width: 84, ellipsis: true, align: "center" },
     {
       title: "Crt.",
       key: "polishCarat",
       dataIndex: "polishCarat",
       width: 72,
       align: "right",
-      sorter: (a, b) => a.polishCarat - b.polishCarat,
+      sorter: (a, b) => (Number(a.polishCarat) || 0) - (Number(b.polishCarat) || 0),
       render: (value, record) => (
         <InventoryCaratCell
           polishCarat={value}
@@ -2359,11 +2349,11 @@ const DiamondInventoryTable = () => {
         />
       ),
     },
-    { title: "Color", key: "color", dataIndex: "color", width: 58, ellipsis: true, },
-    { title: "Argyle Color", key: "argyleColor", dataIndex: "argyleColor", width: 109, ellipsis: true },
-    { title: "In-House Clarity", key: "mainClarity", dataIndex: "mainClarity", width: 130, ellipsis: true },
+    { title: "Color", key: "color", dataIndex: "color", width: 58, ellipsis: true, align: "center" },
+    { title: "Argyle Color", key: "argyleColor", dataIndex: "argyleColor", width: 109, ellipsis: true, align: "center" },
+    { title: "In-House Clarity", key: "mainClarity", dataIndex: "mainClarity", width: 130, ellipsis: true, align: "center" },
     {
-      title: "Clarity", key: "clarity", dataIndex: "clarity", width: 92, ellipsis: true,
+      title: "Clarity", key: "clarity", dataIndex: "clarity", width: 92, ellipsis: true, align: "center",
       filters: [
         { text: 'FL', value: 'FL' }, { text: 'IF', value: 'IF' },
         { text: 'VVS1', value: 'VVS1' }, { text: 'VVS2', value: 'VVS2' },
@@ -2387,6 +2377,7 @@ const DiamondInventoryTable = () => {
         ) : (
           <span className="inventory-finance-empty">-</span>
         ),
+      sorter: (a, b) => (Number(a.rapPrice) || 0) - (Number(b.rapPrice) || 0),
     },
     {
       title: "Cost",
@@ -2401,6 +2392,7 @@ const DiamondInventoryTable = () => {
         ) : (
           <span className="inventory-finance-empty">-</span>
         ),
+      sorter: (a, b) => (Number(a.cost) || 0) - (Number(b.cost) || 0),
     },
     {
       title: "Price/Crt",
@@ -2412,6 +2404,7 @@ const DiamondInventoryTable = () => {
       render: (v) => (
         <span className="inventory-finance-value inventory-price-value">${Number(v || 0).toLocaleString()}</span>
       ),
+      sorter: (a, b) => (Number(a.price) || 0) - (Number(b.price) || 0),
     },
     {
       title: "Amount",
@@ -2423,14 +2416,15 @@ const DiamondInventoryTable = () => {
       render: (v) => (
         <span className="inventory-finance-value inventory-amount-value">${Number(v || 0).toLocaleString()}</span>
       ),
+      sorter: (a, b) => (Number(a.amount) || 0) - (Number(b.amount) || 0),
     },
     { title: "Size", key: "size", dataIndex: "size", width: 68, ellipsis: true, align: "center" },
     { title: "Flour.", key: "fluorescence", dataIndex: "fluorescence", width: 68, ellipsis: true, align: "center" },
     { title: "Cut", key: "cut", dataIndex: "cut", width: 56, ellipsis: true, align: "center" },
     { title: "Pol.", key: "polish", dataIndex: "polish", width: 52, ellipsis: true, align: "center" },
     { title: "Sym.", key: "symmetry", dataIndex: "symmetry", width: 52, ellipsis: true, align: "center" },
-    { title: "Table%", key: "table", dataIndex: "table", width: 68, align: "center" },
-    { title: "Depth%", key: "depth", dataIndex: "depth", width: 68, align: "center" },
+    { title: "Table%", key: "table", dataIndex: "table", width: 68, align: "center", sorter: (a, b) => (Number(a.table) || 0) - (Number(b.table) || 0) },
+    { title: "Depth%", key: "depth", dataIndex: "depth", width: 68, align: "center", sorter: (a, b) => (Number(a.depth) || 0) - (Number(b.depth) || 0) },
     { title: "Meas.", key: "measurement", dataIndex: "measurement", width: 112, ellipsis: true, align: "center" },
     { title: "Girdle", key: "girdle", dataIndex: "girdle", width: 76, ellipsis: true, align: "center" },
     { title: "Mining", key: "mining", dataIndex: "mining", width: 76, ellipsis: true, align: "center" },
@@ -2457,7 +2451,7 @@ const DiamondInventoryTable = () => {
       ],
       onFilter: (value, record) => record.overTone === value,
     },
-    { title: "Color", key: "color", dataIndex: "color", width: 90, ellipsis: true, align: "center", },
+    { title: "Color", key: "color", dataIndex: "color", width: 90, ellipsis: true, align: "center" },
     { title: "Location", key: "location", dataIndex: "location", width: 112, ellipsis: true, render: renderLocationWithFlag, align: "center" },
     {
       title: "Package", key: "package", dataIndex: "package", width: 88, ellipsis: true, align: "center",
@@ -2469,8 +2463,8 @@ const DiamondInventoryTable = () => {
       ],
       onFilter: (value, record) => record.package === value,
     },
-    { title: "BGM", key: "bgm", dataIndex: "bgm", width: 56, ellipsis: true, align: "center" }, ,
-    { title: "Eye Clean", key: "eyeClean", dataIndex: "eyeClean", width: 86, ellipsis: true, align: "center" }, ,
+    { title: "BGM", key: "bgm", dataIndex: "bgm", width: 56, ellipsis: true, align: "center" },
+    { title: "Eye Clean", key: "eyeClean", dataIndex: "eyeClean", width: 86, ellipsis: true, align: "center" },
     {
       title: "Main Group", key: "group", dataIndex: "group", width: 114, ellipsis: true, align: "center",
       filters: [
@@ -2487,23 +2481,7 @@ const DiamondInventoryTable = () => {
       title: "Remark", key: "remark", dataIndex: "remark", width: 200, ellipsis: true, align: "center",
       render: (t) => <div className="inventory-remark-cell">{t}</div>
     },
-    // {
-    //   title: "RapNet",
-    //   key: "rapnetUpload",
-    //   dataIndex: "rapnetUpload",
-    //   width: 68,
-    //   align: "center",
-    //   render: (v) => (Number(v) === 1 ? <Tag color="green">Yes</Tag> : <Tag>No</Tag>),
-    // },
-    // {
-    //   title: "Website",
-    //   key: "siteUpload",
-    //   dataIndex: "siteUpload",
-    //   width: 76,
-    //   align: "center",
-    //   render: (v) => (Number(v) === 1 ? <Tag color="blue">Yes</Tag> : <Tag>No</Tag>),
-    // },
-  ];
+  ], [handleOpenSkuModal, isAllSelected, isIndeterminate, handleSelectAllToggle, selectedRowKeysSet, handleToggleRowSelection]);
 
   const ACTION_KEY_MAP = {
     onMemo: "memo",
@@ -2513,8 +2491,7 @@ const DiamondInventoryTable = () => {
 
   const openBulkActionModal = (key) => {
     const mapped = ACTION_KEY_MAP[key] || key;
-    if (mapped === "reset" || key === "reset"
-    ) {
+    if (mapped === "reset" || key === "reset") {
       setSelectedRowKeys([]);
       return;
     }
@@ -2743,9 +2720,12 @@ const DiamondInventoryTable = () => {
 
   const selectedRows = useMemo(() => {
     if (!selectedRowKeys.length) return [];
-    return selectedRowKeys
-      .map((key) => tableDataById.get(String(key)))
-      .filter(Boolean);
+    const rows = [];
+    for (let i = 0; i < selectedRowKeys.length; i++) {
+      const row = tableDataById.get(String(selectedRowKeys[i]));
+      if (row) rows.push(row);
+    }
+    return rows;
   }, [selectedRowKeys, tableDataById]);
 
   const showTotalStats = useMemo(() => {
@@ -2766,10 +2746,7 @@ const DiamondInventoryTable = () => {
   }, [inventoryRowsForStats, productData]);
 
   const selectedStats = useMemo(
-    () =>
-      computeSelectedStockCalculationStats(
-        selectedRows.map(mapInventoryRowForStats),
-      ),
+    () => computeSelectedStockCalculationStats(selectedRows),
     [selectedRows],
   );
 
@@ -2777,16 +2754,68 @@ const DiamondInventoryTable = () => {
     productData?.TotalData?.TotalItems?.toLocaleString() ??
     tableData.length.toLocaleString();
 
-  const openStoneDetailModal = (record, event) => {
+  const openStoneDetailModal = useCallback((record, event) => {
     const target = event?.target;
-    if (target && typeof target.closest === "function") {
+    if (!target) return;
+    if (typeof target.closest === "function") {
+      if (target.closest(".ant-table-selection-column, .ant-checkbox-wrapper, .ant-checkbox, input[type='checkbox']")) {
+        return;
+      }
       const ignoreClick = target.closest(
-        "a, button, input, textarea, label, .ant-checkbox-wrapper, .ant-checkbox, .ant-btn, .ant-dropdown-trigger, .inventory-memo-carat, .inventory-carat-cell--has-memo, .memo-carat-popover, .memo-carat-popover-overlay, .ant-popover",
+        "a, button, input, textarea, label, .ant-btn, .ant-dropdown-trigger, .inventory-memo-carat, .inventory-carat-cell--has-memo, .memo-carat-popover, .memo-carat-popover-overlay, .ant-popover",
       );
       if (ignoreClick) return;
     }
     setStoneDetailModal({ open: true, data: record });
-  };
+  }, []);
+
+  const handleOnRow = useCallback((record) => ({
+    onClick: (event) => openStoneDetailModal(record, event),
+  }), [openStoneDetailModal]);
+
+
+
+
+
+  const tableComponents = useMemo(() => ({
+    body: {
+      row: MemoizedInventoryRow,
+    },
+  }), []);
+
+  const renderFooterNode = useMemo(() => (
+    <div className="inventory-table-footer-totals">
+      <div className="inventory-footer-group inventory-footer-group--total">
+        <span className="inventory-footer-stat">
+          TOTAL :{" "}
+          <b>{Number(showTotalStats.totalPcs || 0).toLocaleString()}</b>
+        </span>
+        <span className="inventory-footer-stat">
+          Carat Total : <b>{showTotalStats.totalCts}</b>
+        </span>
+        <span className="inventory-footer-stat">
+          Amount Total : <b>{showTotalStats.askAmt}</b>
+        </span>
+      </div>
+      <div className="inventory-footer-group inventory-footer-group--selected">
+        <span className="inventory-footer-divider" aria-hidden="true" />
+        <span className="inventory-footer-stat">
+          Select Pcs : <b>{selectedStats.totalPcs}</b>
+        </span>
+        <span className="inventory-footer-stat">
+          Select Carats : <b>{selectedStats.totalCts}</b>
+        </span>
+        <span className="inventory-footer-stat">
+          Select Price : <b>{selectedStats.askRate}</b>
+        </span>
+        <span className="inventory-footer-stat">
+          Select Amount : <b>{selectedStats.askAmt}</b>
+        </span>
+      </div>
+    </div>
+  ), [showTotalStats, selectedStats]);
+
+  const tableFooterFn = useCallback(() => renderFooterNode, [renderFooterNode]);
 
   return (
     <div ref={pageRef} className="inventory-page-wrapper page-shell">
@@ -2900,42 +2929,18 @@ const DiamondInventoryTable = () => {
       >
         <Table
           className="diamond-inventory-table"
-          columns={columns.map(col => {
-            const isAmountOrCarat = /amount|carat/i.test(String(col.dataIndex || col.key));
-            return {
-              ...col,
-              align: isAmountOrCarat ? (col.align || "right") : "center",
-              sorter: col.sorter !== undefined ? col.sorter : (a, b) => {
-                let valA = a[col.dataIndex] ?? "";
-                let valB = b[col.dataIndex] ?? "";
-                const numA = Number(valA);
-                const numB = Number(valB);
-                if (!isNaN(numA) && !isNaN(numB) && valA !== "" && valB !== "") {
-                  return numA - numB;
-                }
-                return String(valA).localeCompare(String(valB));
-              }
-            };
-          })}
+          columns={columns}
           dataSource={filteredTableData}
-          rowKey="id"
+          rowKey={(record) => String(record.id)}
           size="small"
           tableLayout="fixed"
-          rowClassName={getInventoryRowClass}
-          rowSelection={{
-            selectedRowKeys,
-            onChange: (keys) => setSelectedRowKeys(keys),
-            columnWidth: 36,
-            preserveSelectedRowKeys: true,
-            fixed: true,
-          }}
-          onRow={(record) => ({
-            onClick: (event) => openStoneDetailModal(record, event),
-          })}
+          rowClassName={getInventoryRowClassWithSelection}
+          onRow={handleOnRow}
           loading={isFetching || isLoading}
           pagination={false}
           bordered
           scroll={{ x: "max-content", y: tableHeight }}
+          components={tableComponents}
           locale={{
             emptyText: (
               <div className="inventory-table-empty">
@@ -2946,37 +2951,7 @@ const DiamondInventoryTable = () => {
               </div>
             ),
           }}
-          footer={() => (
-            <div className="inventory-table-footer-totals">
-              <div className="inventory-footer-group inventory-footer-group--total">
-                <span className="inventory-footer-stat">
-                  TOTAL :{" "}
-                  <b>{Number(showTotalStats.totalPcs || 0).toLocaleString()}</b>
-                </span>
-                <span className="inventory-footer-stat">
-                  Carat Total : <b>{showTotalStats.totalCts}</b>
-                </span>
-                <span className="inventory-footer-stat">
-                  Amount Total : <b>{showTotalStats.askAmt}</b>
-                </span>
-              </div>
-              <div className="inventory-footer-group inventory-footer-group--selected">
-                <span className="inventory-footer-divider" aria-hidden="true" />
-                <span className="inventory-footer-stat">
-                  Select Pcs : <b>{selectedStats.totalPcs}</b>
-                </span>
-                <span className="inventory-footer-stat">
-                  Select Carats : <b>{selectedStats.totalCts}</b>
-                </span>
-                <span className="inventory-footer-stat">
-                  Select Price : <b>{selectedStats.askRate}</b>
-                </span>
-                <span className="inventory-footer-stat">
-                  Select Amount : <b>{selectedStats.askAmt}</b>
-                </span>
-              </div>
-            </div>
-          )}
+          footer={tableFooterFn}
         />
       </div>
 
@@ -3022,7 +2997,7 @@ const DiamondInventoryTable = () => {
       <OnMemoModal
         open={memoModalOpen}
         onClose={() => setMemoModalOpen(false)}
-        selectedRows={selectedRows}
+        selectedRows={memoModalOpen ? selectedRows : EMPTY_ARRAY}
         actionType="memo"
         onSubmit={handleMemoSubmit}
       />
@@ -3030,7 +3005,7 @@ const DiamondInventoryTable = () => {
       <OnMemoModal
         open={sellModalOpen}
         onClose={() => setSellModalOpen(false)}
-        selectedRows={selectedRows}
+        selectedRows={sellModalOpen ? selectedRows : EMPTY_ARRAY}
         actionType="sell"
         onSubmit={handleSaleSubmit}
       />
@@ -3038,20 +3013,20 @@ const DiamondInventoryTable = () => {
       <OnMemoModal
         open={consignModalOpen}
         onClose={() => setConsignModalOpen(false)}
-        selectedRows={selectedRows}
+        selectedRows={consignModalOpen ? selectedRows : EMPTY_ARRAY}
         actionType="consign"
         onSubmit={handleConsignSubmit}
       />
 
       <InventoryCompareModal
         open={compareModalOpen}
-        rows={selectedRows}
+        rows={compareModalOpen ? selectedRows : EMPTY_ARRAY}
         onClose={() => setCompareModalOpen(false)}
       />
 
       <ReservationModal
         open={reservationModalOpen}
-        selectedIds={selectedRowKeys}
+        selectedIds={reservationModalOpen ? selectedRowKeys : EMPTY_ARRAY}
         onClose={() => setReservationModalOpen(false)}
         onSuccess={() => {
           setSelectedRowKeys([]);
@@ -3062,7 +3037,7 @@ const DiamondInventoryTable = () => {
       <AddToPackageModal
         open={packageModalOpen}
         onClose={() => setPackageModalOpen(false)}
-        productIds={selectedRowKeys}
+        productIds={packageModalOpen ? selectedRowKeys : EMPTY_ARRAY}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
           setSelectedRowKeys([]);
