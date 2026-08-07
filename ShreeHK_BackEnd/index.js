@@ -33,6 +33,7 @@ const aiRouter = require("./routes/ai/aiRoutes.js");
 const transactionStockRouter = require("./routes/transaction/transactionStockRoutes.js");
 const sessionRouter = require("./routes/session/sessionRoutes.js");
 const dashboardRouter = require("./routes/dashboard/dashboardRoutes.js");
+const quickNotesRouter = require("./routes/dashboard/quickNotesRoutes.js");
 const attributeRouter = require("./routes/master/attributeRoutes.js");
 const accGroupRouter = require("./routes/accounting/accGroupRoutes.js");
 const accSubgroupRouter = require("./routes/accounting/accSubgroupRoutes.js");
@@ -76,17 +77,16 @@ const corsOptions = isProduction
       origin: true,
     };
 
-// Rate limiting — uncomment for production
-// const loginLimiter = rateLimit ? rateLimit({
-//   windowMs: 15 * 60 * 1000,
-//   max: 50,
-//   message: { status: false, message: "Too many login attempts. Please try again later." },
-// }) : null;
-// const apiLimiter = rateLimit ? rateLimit({
-//   windowMs: 1 * 60 * 1000,
-//   max: 200,
-//   message: { status: false, message: "Too many requests. Please slow down." },
-// }) : null;
+const loginLimiter = rateLimit ? rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 50,
+  message: { status: false, message: "Too many login attempts. Please try again later." },
+}) : null;
+const apiLimiter = rateLimit ? rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 300,
+  message: { status: false, message: "Too many requests. Please slow down." },
+}) : null;
 
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
@@ -97,8 +97,8 @@ app.use(attachAuditContext);
 app.use(auditPreSnapshot);
 app.use(auditHttpLogger);
 app.use('/uploads', express.static('uploads'));
-// if (apiLimiter) app.use(apiLimiter);
-// if (loginLimiter) app.use("/user/login", loginLimiter);
+if (apiLimiter) app.use(apiLimiter);
+if (loginLimiter) app.use("/user/login", loginLimiter);
 
 app.use(enforceApiPermission);
 
@@ -120,6 +120,7 @@ app.use("/", inwardRouter);
 app.use("/", userRouter);
 app.use("/", sessionRouter);
 app.use("/", dashboardRouter);
+app.use("/", quickNotesRouter);
 app.use("/", outwardRouter);
 app.use("/", transactionStockRouter);
 app.use("/", commonRouter);

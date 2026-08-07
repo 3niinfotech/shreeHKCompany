@@ -116,9 +116,22 @@ const AdvancedRollPage = () => {
     setMasterToggle(checked);
     const newValues = { all: checked };
     allFieldNames.forEach((name) => {
-      if (name !== 'all') newValues[name] = checked;
+      newValues[name] = checked;
     });
     form.setFieldsValue(newValues);
+  };
+
+  const handleValuesChange = (changedValues, allValues) => {
+    if ('all' in changedValues) {
+      handleMasterToggle(Boolean(changedValues.all));
+    } else {
+      const nonAllNames = allFieldNames.filter((name) => name !== 'all');
+      const isEveryChecked = nonAllNames.length > 0 && nonAllNames.every((name) => Boolean(allValues[name]));
+      if (allValues.all !== isEveryChecked) {
+        form.setFieldValue('all', isEveryChecked);
+        setMasterToggle(isEveryChecked);
+      }
+    }
   };
 
   const onFinish = (values) => {
@@ -275,7 +288,7 @@ const AdvancedRollPage = () => {
 
   return (
     <Layout className={styles.advancedRollPage}>
-      <Form form={form} layout="vertical" onFinish={onFinish}>
+      <Form form={form} layout="vertical" onFinish={onFinish} onValuesChange={handleValuesChange}>
         <Content className={styles.pageContent}>
           <PageHeroHeader
             as="section"

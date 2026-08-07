@@ -7,6 +7,13 @@ export const ENDPOINTS = {
         keepalive: "/session/keepalive",
         context: "/session/context",
     },
+    quickNotes: {
+        list: "/dashboard/quick-notes",
+        todayReminders: "/dashboard/quick-notes/today-reminders",
+        create: "/dashboard/quick-notes",
+        update: "/dashboard/quick-notes",
+        delete: "/dashboard/quick-notes",
+    },
     company: {
         list: "/master/company",
         save: "/company/save",

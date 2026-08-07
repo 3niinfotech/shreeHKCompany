@@ -41,12 +41,12 @@ const useAuthStore = create(
           token,
           permissions,
           isAuthenticated: true,
-      companyId: context.companyId ?? get().companyId ?? null,
-      yearId: context.yearId ?? get().yearId ?? null,
-      companyName: context.companyName ?? user?.company_name ?? get().companyName ?? null,
-      companyShortcutName: context.companyShortcutName ?? get().companyShortcutName ?? null,
-      dbName: context.dbName ?? get().dbName ?? null,
-      showContextPicker: context.showContextPicker ?? get().showContextPicker ?? false,
+          companyId: context.companyId ?? get().companyId ?? null,
+          yearId: context.yearId ?? get().yearId ?? null,
+          companyName: context.companyName ?? user?.company_name ?? get().companyName ?? null,
+          companyShortcutName: context.companyShortcutName ?? get().companyShortcutName ?? null,
+          dbName: context.dbName ?? get().dbName ?? null,
+          showContextPicker: context.showContextPicker ?? get().showContextPicker ?? false,
         });
       },
 

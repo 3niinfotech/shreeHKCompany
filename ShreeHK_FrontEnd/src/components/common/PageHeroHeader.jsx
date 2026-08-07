@@ -18,7 +18,7 @@ const PageHeroHeader = ({
             <div className={styles.heroMain}>
                 <span className={styles.heroIcon}>{icon ?? <FileTextOutlined />}</span>
                 <div className={styles.heroText}>
-                    {/* {breadcrumb ? <span className={styles.breadcrumbText}>{breadcrumb}</span> : null} */}
+                    {breadcrumb ? <span className={styles.breadcrumbText}>{breadcrumb}</span> : null}
                     <h4 className={styles.pageTitle}>{title}</h4>
                     {subtitle ? <p className={styles.pagesubtitle}>{subtitle}</p> : null}
                 </div>

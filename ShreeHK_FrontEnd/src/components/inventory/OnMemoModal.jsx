@@ -14,28 +14,51 @@ const { Text } = Typography;
 const recalcFromDisc = (row) => {
   const carat = Number(row.polishCarat) || 0;
   const rapPrice = Number(row.rapPrice) || 0;
+  const basePrice = Number(row.basePrice) || Number(row.price) || 0;
+  const refPrice = rapPrice > 0 ? rapPrice : basePrice;
   const disc = Number(row.disc) || 0;
-  const price = rapPrice > 0 ? rapPrice * (1 + disc / 100) : 0;
+  const price = refPrice > 0 ? refPrice * (1 + disc / 100) : (Number(row.price) || 0);
   const amount = price * carat;
-  return { ...row, price: +price.toFixed(2), amount: +amount.toFixed(2) };
+  return {
+    ...row,
+    price: +price.toFixed(2),
+    amount: +amount.toFixed(2),
+    basePrice: basePrice || +price.toFixed(2),
+  };
 };
 
 const recalcFromAmount = (row) => {
   const carat = Number(row.polishCarat) || 0;
   const rapPrice = Number(row.rapPrice) || 0;
+  let basePrice = Number(row.basePrice) || 0;
   const amount = Number(row.amount) || 0;
   const price = carat > 0 ? amount / carat : 0;
-  const disc = rapPrice > 0 ? ((price * 100) / rapPrice - 100) : 0;
-  return { ...row, price: +price.toFixed(2), disc: +disc.toFixed(2) };
+  if (!basePrice && price > 0) basePrice = price;
+  const refPrice = rapPrice > 0 ? rapPrice : basePrice;
+  const disc = refPrice > 0 ? ((price * 100) / refPrice - 100) : (Number(row.disc) || 0);
+  return {
+    ...row,
+    price: +price.toFixed(2),
+    disc: +disc.toFixed(2),
+    basePrice,
+  };
 };
 
 const recalcFromPrice = (row) => {
   const carat = Number(row.polishCarat) || 0;
   const rapPrice = Number(row.rapPrice) || 0;
   const price = Number(row.price) || 0;
+  let basePrice = Number(row.basePrice) || 0;
+  if (!basePrice && price > 0) basePrice = price;
+  const refPrice = rapPrice > 0 ? rapPrice : basePrice;
   const amount = price * carat;
-  const disc = rapPrice > 0 ? ((price * 100) / rapPrice - 100) : 0;
-  return { ...row, amount: +amount.toFixed(2), disc: +disc.toFixed(2) };
+  const disc = refPrice > 0 ? ((price * 100) / refPrice - 100) : (Number(row.disc) || 0);
+  return {
+    ...row,
+    amount: +amount.toFixed(2),
+    disc: +disc.toFixed(2),
+    basePrice,
+  };
 };
 
 const recalcFromCarat = (row, caratValue) => {
@@ -100,9 +123,10 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
         const carat = Number(row.polishCarat) || 0;
         const rapPrice = Number(row.rapPrice) || 0;
         const price = Number(row.price) || 0;
-        const amount = Number(row.amount) || 0;
+        const amount = Number(row.amount) || price * carat;
+        const basePrice = rapPrice > 0 ? rapPrice : price;
         const disc = rapPrice > 0 ? ((price * 100) / rapPrice - 100) : 0;
-        return { ...row, disc: +disc.toFixed(2), price, amount, carat };
+        return { ...row, disc: +disc.toFixed(2), price, amount, carat, basePrice };
       });
       setMemoRows(rows);
       setNarration("");

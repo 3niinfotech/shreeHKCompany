@@ -4,6 +4,7 @@
 
 export const PAGE_ENTRIES = [
   { key: "core.dashboard", label: "Dashboard", path: "/", moduleKey: "core", alwaysAllow: true },
+  { key: "core.task_manager", label: "Task Manager", path: "/task-manager", moduleKey: "core" },
   { key: "core.my_account", label: "My Account", path: "/my-account", moduleKey: "core", alwaysAllow: true },
   { key: "core.settings", label: "Settings", path: "/settings", moduleKey: "core", alwaysAllow: true },
   { key: "core.forbidden", label: "Forbidden", path: "/forbidden", moduleKey: "core", alwaysAllow: true },
@@ -152,8 +153,8 @@ export const buildPermissionTreeData = () =>
 export const getAllConfigurablePageKeys = () =>
   PAGE_ENTRIES.filter(
     (p) =>
-      (p.moduleKey !== "core" || p.key === "core.dashboard") &&
-      !(p.alwaysAllow && p.key !== "core.dashboard")
+      (p.moduleKey !== "core" || p.key === "core.dashboard" || p.key === "core.task_manager") &&
+      !(p.alwaysAllow && p.key !== "core.dashboard" && p.key !== "core.task_manager")
   ).map((p) => p.key);
 
 const toCheckboxField = (page) => ({
@@ -175,6 +176,7 @@ export const PERMISSION_FORM_GROUPS = [
     items: [
       { name: "all", label: "All Permissions", type: "checkbox", required: false, span: 6 },
       { name: "core.dashboard", label: "Dashboard", type: "checkbox", span: 6 },
+      { name: "core.task_manager", label: "Task Manager", type: "checkbox", span: 6 },
       { name: "master.company", label: "Company Profile", type: "checkbox", span: 6 },
       ...masterExceptCompany.map(toCheckboxField),
     ],

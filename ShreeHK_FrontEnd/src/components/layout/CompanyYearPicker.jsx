@@ -120,7 +120,7 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
       toastApiSuccess(res.data);
       setShowContextPicker(false);
       onClose?.();
-      window.location.reload();
+      // window.location.reload();
       return;
     } catch (err) {
       toastApiError(err);

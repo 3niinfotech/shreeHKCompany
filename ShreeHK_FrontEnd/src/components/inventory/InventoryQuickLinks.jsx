@@ -89,7 +89,7 @@ const InventoryQuickLinks = ({
       >
         Refresh RapNet Flags
       </Button>
-      <Button icon={<CloudSyncOutlined />} loading={syncLoading} onClick={onWebsiteSync}>
+      <Button icon={<CloudSyncOutlined />} loading={syncLoading} onClick={onWebsiteSync} disabled={true}>
         Mark Website Sync
       </Button>
       {/* <Button icon={<ScanOutlined />}>

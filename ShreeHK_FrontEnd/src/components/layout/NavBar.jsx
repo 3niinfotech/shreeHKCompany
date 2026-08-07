@@ -109,7 +109,7 @@
 import React, { useState, useMemo } from 'react';
 import { Menu, ConfigProvider, Drawer, Button } from 'antd';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Menu as MenuIcon, X, House, Settings, Package, Repeat, Book, BarChart, ExternalLink, User, Users, Shield } from 'lucide-react';
+import { Menu as MenuIcon, X, House, Settings, Package, Repeat, Book, BarChart, ExternalLink, User, Users, Shield, NotebookPen, CheckSquare, ClipboardList } from 'lucide-react';
 import { getAuthorizedRouteMeta } from '../../routes/Routes';
 import useAuthStore from '../../store/Auth.Store';
 import useThemeColors from '../../hooks/useThemeColors';
@@ -121,7 +121,7 @@ const preventNavTextCaret = (event) => {
     }
 };
 
-const ICON_MAP = { House, Settings, Package, Repeat, Book, BarChart, ExternalLink, User, Users, Shield };
+const ICON_MAP = { House, Settings, Package, Repeat, Book, BarChart, ExternalLink, User, Users, Shield, NotebookPen, CheckSquare, ClipboardList };
 
 /** Highlight top-level nav when pathname matches a child route */
 const resolveNavSelectedKeys = (pathname, routes = []) => {

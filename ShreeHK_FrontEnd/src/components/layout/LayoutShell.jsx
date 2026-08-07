@@ -9,6 +9,7 @@ import FloatingRapaportPanel from "../rapaport/FloatingRapaportPanel";
 import CompanyYearPicker from "./CompanyYearPicker";
 import AuditUiTracker from "./AuditUiTracker";
 import useCopyableTableIdentifiers from "../../hooks/useCopyableTableIdentifiers";
+import TaskReminderModal from "../dashboard/TaskReminderModal";
 
 const LayoutShell = () => {
   const viewMode = useUIStore((state) => state.viewMode) ?? "web";
@@ -31,6 +32,7 @@ const LayoutShell = () => {
       {viewMode === "dashboard" ? <DashboardLayout /> : <MainLayout />}
       {/* <FloatingRapaportPanel /> */}
       <FloatingAIChat />
+      <TaskReminderModal />
       <CompanyYearPicker
         open={showContextPicker}
         onClose={() => setShowContextPicker(false)}
