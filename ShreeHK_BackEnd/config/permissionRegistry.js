@@ -7,6 +7,7 @@
 const PAGE_ENTRIES = [
   // Core — UI always visible; APIs mostly profile/common
   { key: "core.dashboard", label: "Dashboard", path: "/", moduleKey: "core", apiPrefixes: ["/ai/chat", "/session/", "/dashboard/"], alwaysAllow: true },
+  { key: "core.task_manager", label: "Task Manager", path: "/task-manager", moduleKey: "core", apiPrefixes: ["/dashboard/quick-notes"] },
   { key: "core.my_account", label: "My Account", path: "/my-account", moduleKey: "core", apiPrefixes: ["/api/profile"], alwaysAllow: true },
   { key: "core.settings", label: "Settings", path: "/settings", moduleKey: "core", apiPrefixes: [], alwaysAllow: true },
   { key: "core.forbidden", label: "Forbidden", path: "/forbidden", moduleKey: "core", apiPrefixes: [], alwaysAllow: true },
@@ -151,8 +152,8 @@ const SUPER_ADMIN_ROLL_ID = 1;
 const getConfigurablePageEntries = () =>
   PAGE_ENTRIES.filter(
     (p) =>
-      (p.moduleKey !== "core" || p.key === "core.dashboard") &&
-      !(p.alwaysAllow && p.key !== "core.dashboard")
+      (p.moduleKey !== "core" || p.key === "core.dashboard" || p.key === "core.task_manager") &&
+      !(p.alwaysAllow && p.key !== "core.dashboard" && p.key !== "core.task_manager")
   );
 
 const CONFIGURABLE_PAGE_KEYS = getConfigurablePageEntries().map((p) => p.key);
@@ -168,7 +169,7 @@ const buildPagesCatalog = () => ({
     {
       key: "core",
       label: "Core",
-      children: PAGE_ENTRIES.filter((p) => p.key === "core.dashboard").map(mapPageForCatalog),
+      children: PAGE_ENTRIES.filter((p) => p.key === "core.dashboard" || p.key === "core.task_manager").map(mapPageForCatalog),
     },
     ...MODULE_TREE.map((mod) => ({
       key: mod.key,

@@ -144,9 +144,9 @@ const MyAccount = () => {
                                 <Input prefix={<PhoneOutlined />} placeholder="+91 98765 43210" />
                             </Form.Item>
                         </Col>
-                        <Col xs={24} sm={12}>
+                        <Col xs={24} sm={24}>
                             <Form.Item label="Address" name="address">
-                                <Input placeholder="Enter address" />
+                                <Input.TextArea placeholder="Enter address" rows={3} />
                             </Form.Item>
                         </Col>
                     </Row>

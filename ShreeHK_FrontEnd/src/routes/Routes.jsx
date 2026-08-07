@@ -7,6 +7,7 @@ const Login = React.lazy(() => import("../pages/auth/Login"));
 
 // --- 1. COMMON COMPONENT ---
 const Dashboard = React.lazy(() => import("../pages/DashBoard"));
+const TaskManager = React.lazy(() => import("../pages/TaskManager"));
 
 // --- 2. MASTER DROPDOWN PAGE ---
 const Company = React.lazy(() => import("../pages/master/Company"));
@@ -188,7 +189,6 @@ const filterRoutesByAccess = (routes, user) =>
 
 const allProtectedRoutes = [
   { path: "/", name: "Dashboard", icon: "House", element: <Dashboard />, permissionKey: "core.dashboard" },
-
   {
     name: "Master",
     path: "/master",
@@ -291,7 +291,7 @@ const allProtectedRoutes = [
         element: <OutMemoEntry />,
         permissionKey: "transaction.out_memo",
         hideFromNav: true
-      },  
+      },
       {
         path: "/transaction/sale",
         name: "Sale",
@@ -300,7 +300,7 @@ const allProtectedRoutes = [
       },
       {
         path: "/transaction/sale/entry",
-        name: "Sale Entry", 
+        name: "Sale Entry",
         element: <SaleEntry />,
         permissionKey: "transaction.sale_stock",
         hideFromNav: true
@@ -367,6 +367,7 @@ const allProtectedRoutes = [
     ]
   },
   { path: "/outward", name: "Outward", icon: "ExternalLink", element: <Outward />, permissionKey: "outward.main" },
+  { path: "/task-manager", name: "Task Manager", icon: "NotebookPen", element: <TaskManager />, permissionKey: "core.task_manager" },
   { path: "/my-account", element: <MyAccount />, alwaysAllow: true, hideFromNav: true },
   { path: "/settings", element: <Setting />, alwaysAllow: true, hideFromNav: true },
   // { path: "/contact-support", element: <ContactSupport />, alwaysAllow: true, hideFromNav: true },

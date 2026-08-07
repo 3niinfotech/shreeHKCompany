@@ -119,7 +119,7 @@ const AccPartyReport = () => {
 
   return (
     <div className={styles.pageContainer}>
-        {/* <PageHeroHeader
+      {/* <PageHeroHeader
           breadcrumb="ACCOUNTING / REPORTS"
           title="Accounting Party Report"
           icon={<TeamOutlined />}
@@ -139,7 +139,7 @@ const AccPartyReport = () => {
         onSearch={handleSearch}
         searchLoading={isLoading}
         extraActions={(
-          <Button type="primary" icon={<FileUp size={16} />} loading={exporting} onClick={handleExport} disabled={!dataSource.length} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff" }}>
+          <Button type="primary" icon={<FileUp size={16} />} loading={exporting} onClick={handleExport} disabled={!dataSource.length} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff", padding: "18px" }}>
             Export to Excel
           </Button>
         )}
@@ -191,10 +191,10 @@ const AccPartyReport = () => {
           columns={columns}
           dataSource={dataSource}
           loading={isLoading}
+          scroll={{ x: 1100, y: tableHeight }}
           pagination={{ pageSize: 50, showSizeChanger: true }}
           size="small"
           bordered
-          scroll={{ x: 1100, y: tableHeight }}
         />
       </div>
     </div>
