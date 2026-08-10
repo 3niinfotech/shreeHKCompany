@@ -293,12 +293,43 @@ export default function TaskManager() {
             render: (priority) => renderPriorityTag(priority),
         },
         {
-            title: 'Created At',
-            dataIndex: 'created_at',
-            key: 'created_at',
-            width: 150,
+            title: 'Assign Time & Date',
+            key: 'assigned_at',
+            width: 160,
             align: 'center',
-            render: (cDate) => <span style={{ color: '#64748b', fontSize: '0.78rem' }}>{cDate ? dayjs(cDate).format('DD MMM, hh:mm A') : '-'}</span>,
+            render: (_, record) => {
+                const timeStr = record.assigned_at || record.created_at;
+                return (
+                    <span style={{ color: '#475569', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
+                        {timeStr ? dayjs(timeStr).format('DD MMM YYYY, hh:mm A') : '-'}
+                    </span>
+                );
+            },
+        },
+        {
+            title: 'Done Info',
+            key: 'completed_info',
+            width: 190,
+            align: 'left',
+            render: (_, record) => {
+                if (!record.completed) {
+                    return <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>-</span>;
+                }
+                const doneBy = record.completed_by_name?.trim() || record.assigned_to_name?.trim() || 'User';
+                const doneTime = record.completed_at ? dayjs(record.completed_at).format('DD MMM YYYY, hh:mm A') : null;
+                return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <Tag color="green" style={{ borderRadius: 6, fontWeight: 600, margin: 0, width: 'fit-content', fontSize: '0.74rem' }}>
+                            Done by: {doneBy}
+                        </Tag>
+                        {doneTime && (
+                            <span style={{ color: '#059669', fontSize: '0.74rem', fontWeight: 500 }}>
+                                {doneTime}
+                            </span>
+                        )}
+                    </div>
+                );
+            },
         },
         ...(isSuperAdmin ? [
             {
@@ -582,10 +613,26 @@ export default function TaskManager() {
                                                             onChange={() => handleToggleComplete(task)}
                                                         />
                                                     </div>
-                                                    <div style={{ fontWeight: 600, fontSize: '0.86rem', color: task.completed ? '#94a3b8' : '#0f172a', textDecoration: task.completed ? 'line-through' : 'none' }}>
-                                                        {task.text}
-                                                    </div>
-                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4, borderTop: '1px solid #f1f5f9' }}>
+                                                     <div style={{ fontWeight: 600, fontSize: '0.86rem', color: task.completed ? '#94a3b8' : '#0f172a', textDecoration: task.completed ? 'line-through' : 'none' }}>
+                                                         {task.text}
+                                                     </div>
+                                                     <div style={{ fontSize: '0.72rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                         <Clock size={12} />
+                                                         <span>Assign: {(task.assigned_at || task.created_at) ? dayjs(task.assigned_at || task.created_at).format('DD MMM, hh:mm A') : '-'}</span>
+                                                     </div>
+                                                     {task.completed && (
+                                                         <div style={{ background: '#ecfdf5', borderRadius: 6, padding: '4px 8px', border: '1px solid #a7f3d0' }}>
+                                                             <div style={{ color: '#047857', fontWeight: 600, fontSize: '0.72rem' }}>
+                                                                 Done by: {task.completed_by_name?.trim() || task.assigned_to_name?.trim() || 'User'}
+                                                             </div>
+                                                             {task.completed_at && (
+                                                                 <div style={{ color: '#059669', fontSize: '0.7rem' }}>
+                                                                     Done: {dayjs(task.completed_at).format('DD MMM YYYY, hh:mm A')}
+                                                                 </div>
+                                                             )}
+                                                         </div>
+                                                     )}
+                                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4, borderTop: '1px solid #f1f5f9' }}>
                                                         {renderTargetDateTag(task.target_date, task.completed)}
                                                         {isSuperAdmin && (
                                                             <Space size={4}>

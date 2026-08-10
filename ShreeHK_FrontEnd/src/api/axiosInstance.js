@@ -51,18 +51,10 @@ api.interceptors.response.use(
         const forbiddenCode = error.response?.data?.code;
 
         if (status === 403 && forbiddenCode === "FORBIDDEN_PAGE" && !isLoginRequest) {
-            const skipRedirect =
-                requestUrl.includes("/admin/activity-log/track") ||
-                requestUrl.includes("/admin/activity-log/track-ui") ||
-                requestUrl.includes("/dashboard/summary") ||
-                requestUrl.includes("/master/category");
-            if (!skipRedirect && !window.location.pathname.startsWith("/forbidden")) {
-                window.location.href = "/forbidden";
-            }
             return Promise.reject(error);
         }
 
-        if ((status === 401 || status === 403) && !isLoginRequest) {
+        if (status === 401 && !isLoginRequest) {
             localStorage.removeItem("auth-storage");
             cachedAuthStorageRaw = null;
             cachedToken = null;

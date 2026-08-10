@@ -99,7 +99,7 @@ const ROLE_ACCESS = {
 };
 
 const getUserPermissions = (user) => {
-  const perms = user?.permissions;
+  const perms = user?.permissions ?? user?.perms;
   return Array.isArray(perms) ? perms : [];
 };
 
@@ -147,7 +147,11 @@ const getPostLoginPath = (user) => {
   const first = flat.find(
     (r) => r.path && r.element && !r.hideFromNav && r.path !== "/forbidden" && !String(r.path).includes(":")
   );
-  return first?.path || "/forbidden";
+  if (first?.path) return first.path;
+  const anyPermissible = flat.find(
+    (r) => r.path && r.element && r.path !== "/forbidden" && !String(r.path).includes(":")
+  );
+  return anyPermissible?.path || "/forbidden";
 };
 
 const canAccessRoute = (route, user) => {

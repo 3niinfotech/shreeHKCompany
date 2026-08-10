@@ -3,6 +3,7 @@ import { Button, Layout, Modal } from "antd";
 import TopbarSearch from "../sub_component/TopBarSearch";
 import ProfileDropdown from "../sub_component/ProfileDropdown";
 import NotificationDropdown from "../sub_component/NotificationDropdown";
+import TaskHeaderButton from "../sub_component/TaskHeaderButton";
 import NavBar from "./NavBar";
 import SkuActionModal from "../../hooks/useSkuModalAction";
 import styles from "../../assets/scss/layout/header.module.scss";
@@ -313,6 +314,10 @@ const Header = ({
 
         <div className={styles.headerRight}>
           {/* <ConnectionStatusPill isOnline={isOnline} /> */}
+          <TaskHeaderButton
+            buttonClassName={styles.notificationBtn}
+            badgeClassName={styles.notificationBadge}
+          />
           <NotificationDropdown
             buttonClassName={styles.notificationBtn}
             badgeClassName={styles.notificationBadge}

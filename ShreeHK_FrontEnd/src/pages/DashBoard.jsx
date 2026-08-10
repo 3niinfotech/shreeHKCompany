@@ -1,4 +1,4 @@
-import { Card, Row, Col, Table, Typography, Tooltip, Spin, Tabs, Skeleton, Tag, Select } from 'antd';
+import { Card, Row, Col, Table, Typography, Tooltip, Spin, Tabs, Skeleton, Select, Tag } from 'antd';
 import {
     Diamond,
     ChevronRight,
@@ -19,6 +19,7 @@ import {
     Trash2,
     Check,
     X,
+    Tag as TagIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import React, { useState, useMemo } from 'react';
@@ -203,7 +204,7 @@ const QuickNotesCard = () => {
                             e.stopPropagation();
                             navigate('/task-manager');
                         }}
-                        style={{ cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, color: '#0284c7', textDecoration: 'none' }}
+                        style={{ cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, color: '#6655DD', textDecoration: 'none' }}
                     >
                         View All
                     </a>
@@ -223,14 +224,19 @@ const QuickNotesCard = () => {
                     </div>
                     <div className="notes-meta-bar">
                         <div className="notes-meta-fields">
-                            <div className="input-group-assignee" style={{ minWidth: 150 }}>
-                                <label className="input-label-mini">Assign To</label>
+                            <div className="input-group-assignee" style={{
+                                minWidth: 150,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '4px'
+                            }}>
+                                <label className="input-label-mini" style={{ color: '#64748B' }}>Assign To</label>
                                 <Select
                                     value={assignedTo}
                                     onChange={(val) => setAssignedTo(val)}
-                                    placeholder="Assign User"
+                                    placeholder="Assign User"   
                                     size="small"
-                                    style={{ width: '100%' }}
+                                    style={{ width: '100%', padding: '4px 10px', borderRadius: '8px' }}
                                     options={userOptions}
                                     allowClear
                                 />
@@ -269,7 +275,8 @@ const QuickNotesCard = () => {
                         </button>
                     </div>
                 </div>
-            )}
+            )
+            }
 
             <div className="table-wrapper notes-table-wrapper" style={{ marginTop: 14 }}>
                 {isLoading ? (
@@ -427,7 +434,7 @@ const QuickNotesCard = () => {
                     </table>
                 )}
             </div>
-        </Card>
+        </Card >
     );
 };
 
@@ -603,7 +610,7 @@ const Dashboard = () => {
                 title: 'Total Sale / Export',
                 subtitle: 'Sale and export stock',
                 value: fmtCompact(widgets.saleExport?.amount || widgets.saleExport?.carat),
-                icon: <Tag size={22} strokeWidth={2} />,
+                icon: <TagIcon size={22} strokeWidth={2} />,
                 footerText: 'View Sales',
                 link: '/transaction/sale',
             },

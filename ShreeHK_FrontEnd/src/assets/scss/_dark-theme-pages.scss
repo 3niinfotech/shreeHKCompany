@@ -1,10 +1,12 @@
 // Dark mode — inventory, transaction, reports, and other page chrome
 [data-theme="dark"] {
+
   // ── Shared page headers & toolbars (inside routed content) ──
   .app-page-root,
   .inventory-page-wrapper,
   .inventory-filter-wrapper,
   .inventory-page-toolbar-wrap {
+
     [class*="headerSection"],
     [class*="headerRow"],
     [class*="sectionHeader"],
@@ -36,6 +38,7 @@
 
     [class*="statsBar"],
     [class*="footerStats"] {
+
       [class*="statItem"] label,
       label {
         color: var(--color-neutral) !important;
@@ -100,7 +103,7 @@
       box-shadow: var(--shadow-card);
     }
 
-    [class*="panel"] > [class*="header"] {
+    [class*="panel"]>[class*="header"] {
       border-bottom-color: var(--color-border);
     }
 
@@ -179,7 +182,7 @@
     }
 
     .diamond-inventory-table {
-      .ant-table-thead > tr > th.ant-table-cell {
+      .ant-table-thead>tr>th.ant-table-cell {
         background: var(--color-table-inventory-header-bg) !important;
         color: var(--color-table-header-text) !important;
         border-color: var(--color-border) !important;
@@ -189,17 +192,17 @@
         }
       }
 
-      .ant-table-tbody > tr > td.ant-table-cell {
+      .ant-table-tbody>tr>td.ant-table-cell {
         color: var(--color-navy) !important;
         border-color: var(--color-border) !important;
         background: var(--color-card-bg) !important;
       }
 
-      .ant-table-tbody > tr:nth-child(even) > td.ant-table-cell {
+      .ant-table-tbody>tr:nth-child(even)>td.ant-table-cell {
         background: var(--table-row-zebra) !important;
       }
 
-      .ant-table-tbody > tr:hover > td.ant-table-cell {
+      .ant-table-tbody>tr:hover>td.ant-table-cell {
         background: var(--table-row-hover) !important;
       }
 
@@ -261,6 +264,7 @@
 
   // ── Transaction inward forms ──
   [class*="purchaseContainer"] {
+
     [class*="headerRow"],
     [class*="formSection"],
     [class*="footerStats"] {
@@ -365,6 +369,7 @@
   [class*="partyWise"],
   [class*="advanceTransaction"],
   [class*="transactionModule"] {
+
     [class*="headerRow"],
     [class*="filterPanel"],
     [class*="summaryCard"] {

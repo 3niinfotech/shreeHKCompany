@@ -4,7 +4,9 @@ export const normalizeAuthUser = (userData) => {
   if (!userData) return null;
   const roll =
     userData.roll != null && Number(userData.roll) > 0 ? Number(userData.roll) : null;
-  const permissions = Array.isArray(userData.permissions) ? userData.permissions : [];
+  const permissions = Array.isArray(userData.permissions)
+    ? userData.permissions
+    : (Array.isArray(userData.perms) ? userData.perms : []);
   return {
     ...userData,
     roll,
