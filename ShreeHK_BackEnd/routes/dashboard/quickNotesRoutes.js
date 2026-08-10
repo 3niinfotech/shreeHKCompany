@@ -87,6 +87,19 @@ quickNotesRouter.post("/dashboard/quick-notes", authenticateToken, async (req, r
       assigned_to,
     });
 
+    if (newNote && assigned_to) {
+      try {
+        await helper.addNotification({
+          title: "New Task Assigned",
+          message: `Admin assigned a new task: ${text.trim().slice(0, 100)}`,
+          user: Number(assigned_to),
+          company: companyId,
+        });
+      } catch (notiErr) {
+        console.error("Task notification creation error:", notiErr);
+      }
+    }
+
     res.status(201).json({
       status: true,
       Message: "Task / Note created successfully",
@@ -133,6 +146,19 @@ const handleUpdate = async (req, res) => {
         status: false,
         Message: "Note not found or permission denied",
       });
+    }
+
+    if (updatedNote && assigned_to) {
+      try {
+        await helper.addNotification({
+          title: "Task Assigned / Updated",
+          message: `Task details updated: ${(updatedNote.text || "").slice(0, 100)}`,
+          user: Number(assigned_to),
+          company: companyId,
+        });
+      } catch (notiErr) {
+        console.error("Task notification update error:", notiErr);
+      }
     }
 
     res.status(200).json({

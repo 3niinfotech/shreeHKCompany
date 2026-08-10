@@ -1,3 +1,4 @@
+import { useEffect, useMemo } from "react";
 import { Button, Result, Space } from "antd";
 import { useNavigate } from "react-router-dom";
 import useAuthStore from "../../store/Auth.Store";
@@ -5,6 +6,7 @@ import {
   userLacksRoleAccess,
   userHasAssignedRole,
   getUserPermissions,
+  getPostLoginPath,
 } from "../../routes/Routes";
 import styles from "../../assets/scss/pages/errors/forbidden.module.scss";
 
@@ -14,14 +16,26 @@ const Forbidden = () => {
   const storePermissions = useAuthStore((state) => state.permissions);
   const logout = useAuthStore((state) => state.logout);
 
-  const userWithPerms = {
-    ...user,
-    permissions: user?.permissions ?? storePermissions ?? [],
-  };
+  const userWithPerms = useMemo(
+    () => ({
+      ...user,
+      permissions: user?.permissions ?? storePermissions ?? [],
+    }),
+    [user, storePermissions]
+  );
 
   const blockedFromApp = userLacksRoleAccess(userWithPerms);
   const hasRole = userHasAssignedRole(userWithPerms);
   const hasPermissions = getUserPermissions(userWithPerms).length > 0;
+
+  useEffect(() => {
+    if (!blockedFromApp && window.location.pathname === "/forbidden") {
+      const permissiblePath = getPostLoginPath(userWithPerms);
+      if (permissiblePath && permissiblePath !== "/forbidden") {
+        navigate(permissiblePath, { replace: true });
+      }
+    }
+  }, [blockedFromApp, userWithPerms, navigate]);
 
   const getSubTitle = () => {
     if (!hasRole) {

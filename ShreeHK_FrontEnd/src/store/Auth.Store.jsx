@@ -73,10 +73,18 @@ const useAuthStore = create(
           return;
         }
 
-        const user = normalizeAuthUser(current);
+        const currentPerms =
+          Array.isArray(current.permissions) && current.permissions.length
+            ? current.permissions
+            : (get().permissions || []);
+
+        const user = normalizeAuthUser({
+          ...current,
+          permissions: currentPerms,
+        });
         set({
           user,
-          permissions: user?.permissions ?? [],
+          permissions: user?.permissions ?? currentPerms,
         });
       },
 

@@ -50,12 +50,6 @@ const InventoryActionPanel = ({
   const [open, setOpen] = React.useState(false);
   const hasSelection = selectedCount > 0;
 
-  React.useEffect(() => {
-    if (!hasSelection) {
-      setOpen(false);
-    }
-  }, [hasSelection]);
-
   const handleClick = (key) => {
     setOpen(false);
     onAction?.(key);
@@ -96,9 +90,9 @@ const InventoryActionPanel = ({
       <Popover
         content={panelContent}
         title={null}
-        open={open && hasSelection}
+        open={open}
         onOpenChange={(newOpen) => {
-          if (hasSelection) setOpen(newOpen);
+          setOpen(newOpen);
         }}
         trigger="click"
         placement="bottomRight"
@@ -107,20 +101,17 @@ const InventoryActionPanel = ({
       >
         <button
           type="button"
-          className={`${styles.actionPanelTrigger} ${hasSelection ? styles.actionPanelTriggerActive : ""}`}
-          disabled={!hasSelection}
-          aria-expanded={open && hasSelection}
+          className={`${styles.actionPanelTrigger} ${styles.actionPanelTriggerActive}`}
+          disabled={false}
+          aria-expanded={open}
           aria-haspopup="dialog"
         >
           <span className={styles.actionPanelTriggerText}>
             {triggerLabel}
-            {hasSelection ? (
-              <Badge count={selectedCount} size="small" className={styles.actionPanelTriggerBadge} />
-            ) : null}
           </span>
           <ChevronDown
             size={16}
-            className={`${styles.actionPanelChevron} ${open && hasSelection ? styles.actionPanelChevronOpen : ""}`}
+            className={`${styles.actionPanelChevron} ${open ? styles.actionPanelChevronOpen : ""}`}
           />
         </button>
       </Popover>
