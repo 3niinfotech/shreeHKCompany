@@ -12,11 +12,18 @@ export function measureTableBodyScrollHeight(containerEl) {
   const tableHeader = containerEl.querySelector(".ant-table-header");
   const tableFooter = containerEl.querySelector(".ant-table-footer");
   const stickyScroll = containerEl.querySelector(".ant-table-sticky-scroll");
+  const pagination = containerEl.querySelector(".ant-pagination");
 
   let reserved = 0;
   if (tableHeader instanceof HTMLElement) reserved += tableHeader.offsetHeight;
   if (tableFooter instanceof HTMLElement) reserved += tableFooter.offsetHeight;
   if (stickyScroll instanceof HTMLElement) reserved += stickyScroll.offsetHeight;
+  if (pagination instanceof HTMLElement && pagination.offsetParent !== null) {
+    const pagStyle = window.getComputedStyle(pagination);
+    reserved += pagination.offsetHeight
+      + (parseFloat(pagStyle.marginTop) || 0)
+      + (parseFloat(pagStyle.marginBottom) || 0);
+  }
 
   const bodyHeight = Math.floor(containerHeight - reserved);
   return bodyHeight > TABLE_BODY_MIN_HEIGHT ? bodyHeight : TABLE_BODY_MIN_HEIGHT;

@@ -45,7 +45,7 @@ const InventoryQuickLinks = ({
         label: sku ? (
           <Link to={buildTransferHistoryUrl(sku)}>Transfer History — {sku}</Link>
         ) : (
-          <Link to="/report/stone-tranfer-history">Transfer History</Link>
+          <Link to="/report/stone-transfer-history">Transfer History</Link>
         ),
       },
       { key: "group-report", label: <Link to="/report/group-report">Group Report</Link> },
@@ -68,7 +68,9 @@ const InventoryQuickLinks = ({
         <Button icon={<BarChartOutlined />}>Reports</Button>
       </Dropdown>
       <Button icon={<SwapOutlined />}>
-        <Link to={sku ? buildTransferHistoryUrl(sku) : "/report/stone-tranfer-history"}>
+        <Link
+          to={sku ? buildTransferHistoryUrl(sku) : "/report/stone-transfer-history"}
+        >
           Transfer
         </Link>
       </Button>
@@ -157,7 +159,7 @@ export default InventoryQuickLinks;
 //         label: sku ? (
 //           <Link to={buildTransferHistoryUrl(sku)}>Transfer History — {sku}</Link>
 //         ) : (
-//           <Link to="/report/stone-tranfer-history">Transfer History</Link>
+//           <Link to="/report/stone-transfer-history">Transfer History</Link>
 //         ),
 //       },
 //       { key: "group-report", label: <Link to="/report/group-report">Group Report</Link> },
@@ -178,7 +180,7 @@ export default InventoryQuickLinks;
 //         <Button icon={<BarChartOutlined />}>Reports</Button>
 //       </Dropdown>
 //       <Button icon={<SwapOutlined />}>
-//         <Link to={sku ? buildTransferHistoryUrl(sku) : "/report/stone-tranfer-history"}>
+//         <Link to={sku ? buildTransferHistoryUrl(sku) : "/report/stone-transfer-history"}>
 //           Transfer
 //         </Link>
 //       </Button>

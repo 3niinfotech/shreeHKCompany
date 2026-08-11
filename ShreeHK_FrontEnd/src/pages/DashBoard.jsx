@@ -778,7 +778,7 @@ const Dashboard = () => {
                                     key: "sale",
                                     label: "Sale Due Payments",
                                     children: (
-                                        <div className="table-wrapper">
+                                        <div className="table-wrapper due-payments-table-wrapper" style={{ height: 260, maxHeight: 260, overflowY: 'auto' }}>
                                             {isLoading ? (
                                                 <div style={{ padding: 24 }}>
                                                     <Skeleton active title={false} paragraph={{ rows: 5, width: '100%' }} />
@@ -829,7 +829,7 @@ const Dashboard = () => {
                                     key: "purchase",
                                     label: "Purchase Due Payments",
                                     children: (
-                                        <div className="table-wrapper">
+                                        <div className="table-wrapper due-payments-table-wrapper" style={{ height: 260, maxHeight: 260, overflowY: 'auto' }}>
                                             {isLoading ? (
                                                 <div style={{ padding: 24 }}>
                                                     <Skeleton active title={false} paragraph={{ rows: 5, width: '100%' }} />

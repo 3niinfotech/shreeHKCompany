@@ -5,7 +5,7 @@ export const buildStoneHistoryUrl = (sku) =>
   `/report/stone-history?sku=${encodeURIComponent(sku || "")}`;
 
 export const buildTransferHistoryUrl = (sku) =>
-  `/report/stone-tranfer-history?sku=${encodeURIComponent(sku || "")}`;
+  `/report/stone-transfer-history?sku=${encodeURIComponent(sku || "")}`;
 
 export const buildStoneUpdateUrl = (sku) =>
   `/transaction/stone-update?skuupdate=${encodeURIComponent(sku || "")}`;

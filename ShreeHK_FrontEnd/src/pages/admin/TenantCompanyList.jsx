@@ -14,6 +14,7 @@ import {
   TeamOutlined,
   GlobalOutlined,
   CheckCircleFilled,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import { useFetchApi, usePostApiRequest } from "../../api/ApiFunction";
 import { ENDPOINTS } from "../../constants/endpoints";
@@ -191,9 +192,14 @@ const TenantCompanyList = () => {
           title="Company List"
           icon={<BankOutlined />}
           actions={(
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-              ADD NEW COMPANY
-            </Button>
+            <Space wrap>
+              <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>
+                Refresh
+              </Button>
+              <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+                ADD NEW COMPANY
+              </Button>
+            </Space>
           )}
         />
 

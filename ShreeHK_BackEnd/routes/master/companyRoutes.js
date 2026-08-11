@@ -36,7 +36,7 @@ companyRouter.get("/master/company", authenticateToken, (req, res) => {
     if (countError) return res.status(500).json({ error: countError.message });
 
     if (id == 0) {
-      query += ` ORDER BY id DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(paginationOffset)}`;
+      query += ` ORDER BY name ASC LIMIT ${parseInt(limit)} OFFSET ${parseInt(paginationOffset)}`;
     } else {
       query += ` AND id=?`;
       params.push(parseInt(id));

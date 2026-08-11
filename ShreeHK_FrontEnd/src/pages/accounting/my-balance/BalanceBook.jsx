@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Input, Space, Spin } from 'antd';
-import { BookOpen, Plus, Save, Check, Pencil, Trash2 } from 'lucide-react';
+import { BookOpen, Plus, Save, Check, Pencil, Trash2, RefreshCcw } from 'lucide-react';
 import { useFetchApi, usePostApiRequest, useDeleteApiRequest } from '../../../api/ApiFunction';
 import { ENDPOINTS } from '../../../constants/endpoints';
 import { ConfirmDeleteModal } from '../../../components/common/modals';
@@ -100,6 +100,9 @@ const BalanceBook = () => {
                         </div>
                     </div>
                     <div className={styles.cardActions}>
+                        <button className={styles.btnAdd} onClick={() => refetch()} disabled={isFetching}>
+                            <RefreshCcw size={14} /> Refresh
+                        </button>
                         <button className={styles.btnAdd} onClick={handleAdd}>
                             <Plus size={14} /> Add New
                         </button>

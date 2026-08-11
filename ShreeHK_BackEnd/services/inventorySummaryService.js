@@ -215,7 +215,6 @@ async function getOnHandBreakdowns(companyId) {
 }
 
 async function getDueSalePayments(companyId, userId, isAdmin) {
-  const date = new Date().toISOString().slice(0, 10);
   const end = new Date();
   end.setDate(end.getDate() + 7);
   const ndate = end.toISOString().slice(0, 10);
@@ -224,14 +223,15 @@ async function getDueSalePayments(companyId, userId, isAdmin) {
     SELECT o.id, o.entryno, o.party, o.final_amount, o.paid_amount, o.due_amount, o.products, p.name AS party_name
     FROM dai_outward o
     LEFT JOIN dai_party p ON o.party = p.id
-    WHERE o.duedate BETWEEN ? AND ?
+    WHERE o.duedate IS NOT NULL
+      AND o.duedate <= ?
       AND o.due_amount <> 0
       AND (o.type = 'sale' OR o.type = 'export')
       AND (o.status = 'on_sale' OR o.status = 'on_export')
       AND o.products <> ''
       AND o.company = ?
   `;
-  const params = [date, ndate, companyId];
+  const params = [ndate, companyId];
 
   if (!isAdmin && userId) {
     sql += " AND o.user = ?";
@@ -239,6 +239,62 @@ async function getDueSalePayments(companyId, userId, isAdmin) {
   }
 
   sql += " ORDER BY o.entryno LIMIT 20";
+
+  const rows = await helper.query(sql, params);
+  const result = [];
+
+  for (const row of rows) {
+    let total = Number(row.final_amount) || 0;
+    if (row.products) {
+      const ids = String(row.products)
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean);
+      if (ids.length) {
+        const placeholders = ids.map(() => "?").join(",");
+        const sumRows = await helper.query(
+          `SELECT COALESCE(SUM(amount), 0) AS amount FROM dai_product WHERE id IN (${placeholders})`,
+          ids
+        );
+        total = Number(sumRows[0]?.amount) || total;
+      }
+    }
+    result.push({
+      party: row.party_name || row.party,
+      entry: row.entryno,
+      total,
+      paid: Number(row.paid_amount) || 0,
+      balance: Number(row.due_amount) || 0,
+    });
+  }
+
+  return result;
+}
+
+async function getDuePurchasePayments(companyId, userId, isAdmin) {
+  const end = new Date();
+  end.setDate(end.getDate() + 7);
+  const ndate = end.toISOString().slice(0, 10);
+
+  let sql = `
+    SELECT i.id, i.entryno, i.party, i.final_amount, i.paid_amount, i.due_amount, i.products, p.name AS party_name
+    FROM dai_inward i
+    LEFT JOIN dai_party p ON i.party = p.id
+    WHERE i.duedate IS NOT NULL
+      AND i.duedate <= ?
+      AND i.due_amount <> 0
+      AND (LOWER(i.inward_type) = 'purchase')
+      AND (i.deleted = 0 OR i.deleted IS NULL)
+      AND i.company = ?
+  `;
+  const params = [ndate, companyId];
+
+  if (!isAdmin && userId) {
+    sql += " AND i.user = ?";
+    params.push(userId);
+  }
+
+  sql += " ORDER BY i.entryno DESC LIMIT 20";
 
   const rows = await helper.query(sql, params);
   const result = [];
@@ -326,11 +382,12 @@ async function getDashboardSummary(req) {
   const userId = req.user?.user_id;
   const isAdmin = Number(req.user?.roll) === 1;
 
-  const [widgets, breakdowns, duePayments, recentTransactions, topParties] =
+  const [widgets, breakdowns, duePayments, purchaseDuePayments, recentTransactions, topParties] =
     await Promise.all([
       getWidgetCounts(companyId),
       getOnHandBreakdowns(companyId),
       getDueSalePayments(companyId, userId, isAdmin),
+      getDuePurchasePayments(companyId, userId, isAdmin),
       getRecentTransactions(companyId, 5),
       getTopParties(companyId, 5),
     ]);
@@ -345,6 +402,7 @@ async function getDashboardSummary(req) {
     memoPercent,
     breakdowns,
     duePayments,
+    purchaseDuePayments,
     recentTransactions,
     topParties,
   };

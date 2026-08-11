@@ -88,42 +88,100 @@
     .headerSearch {
       flex: 1;
       min-width: 0;
-      max-width: 560px;
+      max-width: 350px;
 
       :global(.topbar-smart-search) {
         width: 100%;
       }
     }
 
-    .myInventoryBtn {
+    .topQuickActions {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: 6px;
+    }
+
+    .topQuickBtn {
       display: inline-flex !important;
       align-items: center !important;
-      gap: 6px !important;
+      gap: 5px !important;
       height: 32px !important;
-      padding: 0 14px !important;
+      padding: 0 12px !important;
       border-radius: 6px !important;
       font-size: 12px !important;
       font-weight: 600 !important;
-      background: var(--color-primary, #0f172a) !important;
-      border-color: var(--color-primary-dark, #0f172a) !important;
-      color: #ffffff !important;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
-      outline: none !important;
+      white-space: nowrap !important;
+      transition: all 0.18s ease !important;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06) !important;
+    }
+
+    .myInventoryBtn {
+      background: #f5f3ff !important;
+      border: 1px solid #ddd6fe !important;
+      color: #6d28d9 !important;
 
       &,
-      &:hover,
       &:focus,
-      &:active,
-      &:focus-visible,
-      :global(.ant-btn-primary):not(:disabled):active,
-      :global(.ant-btn-primary):not(:disabled):focus,
-      :global(.ant-btn-primary):not(:disabled):focus-visible {
-        background: var(--color-primary, #0f172a) !important;
-        border-color: var(--color-primary-dark, #0f172a) !important;
-        color: #ffffff !important;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
-        transform: none !important;
-        outline: none !important;
+      &:focus-visible {
+        background: #f5f3ff !important;
+        border-color: #ddd6fe !important;
+        color: #6d28d9 !important;
+      }
+
+      &:hover,
+      &:active {
+        background: #ede9fe !important;
+        border-color: #c4b5fd !important;
+        color: #5b21b6 !important;
+      }
+    }
+
+    .inMemoBtn {
+      background: #eff6ff !important;
+      border: 1px solid #bfdbfe !important;
+      color: #1d4ed8 !important;
+
+      &:hover {
+        background: #dbeafe !important;
+        border-color: #93c5fd !important;
+        color: #1e40af !important;
+      }
+    }
+
+    .outMemoBtn {
+      background: #fffbeb !important;
+      border: 1px solid #fde68a !important;
+      color: #b45309 !important;
+
+      &:hover {
+        background: #fef3c7 !important;
+        border-color: #fcd34d !important;
+        color: #92400e !important;
+      }
+    }
+
+    .saleBtn {
+      background: #ecfdf5 !important;
+      border: 1px solid #a7f3d0 !important;
+      color: #047857 !important;
+
+      &:hover {
+        background: #d1fae5 !important;
+        border-color: #6ee7b7 !important;
+        color: #065f46 !important;
+      }
+    }
+
+    .purchaseBtn {
+      background: #fef2f2 !important;
+      border: 1px solid #fecaca !important;
+      color: #b91c1c !important;
+
+      &:hover {
+        background: #fee2e2 !important;
+        border-color: #fca5a5 !important;
+        color: #991b1b !important;
       }
     }
 

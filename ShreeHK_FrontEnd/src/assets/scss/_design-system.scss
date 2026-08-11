@@ -171,7 +171,16 @@ h6,
 .ant-select-focused .ant-select-selector,
 .ant-picker-focused {
   border-color: var(--color-input-focus-border) !important;
-  // box-shadow: 0 0 0 2px var(--color-input-focus-ring) !important;
+  box-shadow: 0 0 0 3px var(--color-input-focus-ring) !important;
+}
+
+// Validation error — red border on all field types
+.ant-form-item-has-error .ant-input,
+.ant-form-item-has-error .ant-input-affix-wrapper,
+.ant-form-item-has-error .ant-input-number,
+.ant-form-item-has-error .ant-select:not(.ant-select-disabled) .ant-select-selector,
+.ant-form-item-has-error .ant-picker {
+  border-color: var(--color-error) !important;
 }
 
 // Remove inner input border when nested inside a wrapper (prevents double border)

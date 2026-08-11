@@ -1,5 +1,6 @@
 import React from "react";
 import { hasPagePermission } from "../config/permissionRegistry";
+import { Navigate, useLocation } from "react-router-dom";
 import ContactSupport from "../pages/contactSupport/ContactSupport";
 
 // ----**** Login/SignIn Page ****----
@@ -98,6 +99,12 @@ const ROLE_ACCESS = {
   SUPER_ADMIN: "super_admin",
 };
 
+// Alias route to preserve old (typo) URLs and keep query params (e.g. ?sku=...).
+const TransferHistoryAlias = () => {
+  const location = useLocation();
+  return <Navigate to={`/report/stone-transfer-history${location.search}`} replace />;
+};
+
 const getUserPermissions = (user) => {
   const perms = user?.permissions ?? user?.perms;
   return Array.isArray(perms) ? perms : [];
@@ -142,7 +149,7 @@ const userHasAssignedRole = (user) => getAssignedRollId(user) !== null;
 
 const getPostLoginPath = (user) => {
   if (userLacksRoleAccess(user)) return "/forbidden";
-  if (canAccessRoute({ path: "/", permissionKey: "core.dashboard" }, user)) return "/";
+  if (canAccessRoute({ path: "/dashboard", permissionKey: "core.dashboard" }, user)) return "/dashboard";
   const flat = flattenRoutes(filterRoutesByAccess(allProtectedRoutes, user));
   const first = flat.find(
     (r) => r.path && r.element && !r.hideFromNav && r.path !== "/forbidden" && !String(r.path).includes(":")
@@ -192,7 +199,8 @@ const filterRoutesByAccess = (routes, user) =>
     .filter(Boolean);
 
 const allProtectedRoutes = [
-  { path: "/", name: "Dashboard", icon: "House", element: <Dashboard />, permissionKey: "core.dashboard" },
+  { path: "/dashboard", name: "Dashboard", icon: "House", element: <Dashboard />, permissionKey: "core.dashboard" },
+  { path: "/", element: <Navigate to="/dashboard" replace />, alwaysAllow: true, hideFromNav: true },
   {
     name: "Master",
     path: "/master",
@@ -352,7 +360,14 @@ const allProtectedRoutes = [
       { path: "/report/outstanding", name: "Outstanding", element: <OutStandingReport />, permissionKey: "reports.outstanding" },
       { path: "/report/group-report", name: "Group Report", element: <GroupReport />, permissionKey: "reports.group_report" },
       { path: "/report/stone-history", name: "Stone History", element: <StoneHistory />, permissionKey: "reports.stone_history" },
-      { path: "/report/stone-tranfer-history", name: "Transfer History", element: <TransferHistory />, permissionKey: "reports.transfer_history" },
+      { path: "/report/stone-transfer-history", name: "Transfer History", element: <TransferHistory />, permissionKey: "reports.transfer_history" },
+      {
+        path: "/report/stone-tranfer-history",
+        name: "Transfer History",
+        element: <TransferHistoryAlias />,
+        permissionKey: "reports.transfer_history",
+        hideFromNav: true,
+      },
       { path: "/report/sale-stock", name: "Sale Stock Report", element: <SaleStoneReport />, permissionKey: "reports.sale_stock" },
       { path: "/report/stone-info", name: "Party Stone Info", element: <StoneInfoReport />, permissionKey: "reports.stone_info" },
     ]

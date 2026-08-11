@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
-import { message } from "antd";
+import { Button, message } from "antd";
+import { ReloadOutlined } from "@ant-design/icons";
 import {
   BadgeDollarSign,
   Download,
@@ -116,7 +117,14 @@ const InventoryToolbarListPage = ({
           onTypeAction={toolbar.onTypeAction}
           onLabelClick={toolbar.handleLabelClick}
           onToolbarAction={toolbar.handleToolbarAction}
-          extraToolbarActions={extraToolbarActions}
+          extraToolbarActions={(
+            <>
+              <Button icon={<ReloadOutlined />} onClick={() => toolbar.refresh?.()} loading={toolbar.isLoading || toolbar.isFetchingMore}>
+                Refresh
+              </Button>
+              {extraToolbarActions}
+            </>
+          )}
         />
       </div>
       {footerExtras}

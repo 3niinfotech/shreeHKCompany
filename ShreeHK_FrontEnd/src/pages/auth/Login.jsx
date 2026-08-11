@@ -1,6 +1,7 @@
 import { Form, Input, Button, Typography } from 'antd';
 // import loginImage from "../../assets/signin_logo.jpg";
 import loginImage from "../../assets/Gemini_Generated_Image.png";
+import loginFormImage from "../../assets/Brand_Logo/logo.png";
 import styles from '../../assets/scss/pages/login.module.scss';
 import { toastApiError } from '../../utils/apiToast';
 import { useNavigate } from 'react-router-dom';
@@ -48,7 +49,7 @@ const Login = () => {
       <div className={styles.authFluidFormBox}>
         <div className={styles.formInner}>
           <div className={styles.logoWrapper}>
-            <img src={loginImage} alt="Logo" className={styles.logoIcon} />
+            <img src={loginFormImage} alt="Logo" className={styles.logoIcon} />
           </div>
           <Title level={3} className={styles.loginTitle}>Sign In</Title>
           <Text className={styles.loginSubtitle}>

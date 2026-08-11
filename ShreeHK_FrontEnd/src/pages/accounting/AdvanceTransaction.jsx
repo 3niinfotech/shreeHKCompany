@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useRef } from 'react';
-import { Select, DatePicker, Table, Typography } from 'antd';
-import { TeamOutlined, CalendarOutlined } from '@ant-design/icons';
+import { Select, DatePicker, Table, Typography, Button } from 'antd';
+import { TeamOutlined, CalendarOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../constants/endpoints';
@@ -80,6 +80,11 @@ const AdvanceTransaction = () => {
                 clearDisabled={!activeFilterCount}
                 onSearch={handleSearch}
                 searchLoading={isLoading}
+                extraActions={(
+                    <Button type="default" icon={<ReloadOutlined />} className={filterPanelStyles.btnClear} onClick={handleSearch} loading={isLoading}>
+                        Reload
+                    </Button>
+                )}
             >
                 <FilterField label="Party" icon={<TeamOutlined />}>
                     <Select

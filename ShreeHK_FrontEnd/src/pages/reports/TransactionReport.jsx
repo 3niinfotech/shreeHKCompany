@@ -1,8 +1,8 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import {
     Table, Button, Card, Typography, Checkbox, Form, Select, Input, DatePicker, message,
 } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
+import { SearchOutlined, BarChartOutlined, ReloadOutlined } from '@ant-design/icons';
 import { FileUp, Sparkles } from 'lucide-react';
 import dayjs from 'dayjs';
 import AIResultPanel from '../../components/ai/AIResultPanel';
@@ -12,7 +12,6 @@ import { ENDPOINTS } from '../../constants/endpoints';
 import useFormHandleChange from '../../hooks/useFormHandleChange';
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
 import PageHeroHeader from '../../components/common/PageHeroHeader';
-import { BarChartOutlined } from '@ant-design/icons';
 import { exportReportToExcel } from '../../utils/reportExcelExport';
 import styles from '../../assets/scss/pages/report/TransactionReport.module.scss';
 import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
@@ -77,6 +76,11 @@ const TransactionReport = () => {
             },
         });
     };
+
+    useEffect(() => {
+        handleSearch();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const columns = [
         { title: 'No', dataIndex: 'no', key: 'no', width: 60, align: 'center' },
@@ -144,7 +148,7 @@ const TransactionReport = () => {
             <AdvancedFilterPanel
                 // title="Filter Transaction Report"
                 title="Transaction Report"
-                subtitle="Refine by sale status, company, location, invoice, and dates."
+                // subtitle="Refine by sale status, company, location, invoice, and dates."
                 showClear={false}
                 onSearch={handleSearch}
                 searchLoading={tableLoading}
@@ -158,6 +162,9 @@ const TransactionReport = () => {
                         >
                             Generate AI Report
                         </Button> */}
+                        <Button type="default" icon={<ReloadOutlined />} className={filterPanelStyles.btnClear} onClick={handleSearch} loading={tableLoading}>
+                            Reload
+                        </Button>
                         <Button type="primary" icon={<FileUp />} className={styles.exportBtn} loading={exporting} onClick={handleExport} disabled={!tableData.length} style={{padding:"18px", background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff"}}>
                             Export to Excel
                         </Button>

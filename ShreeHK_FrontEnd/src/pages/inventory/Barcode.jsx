@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { message, Input, Button } from "antd";
+import { ReloadOutlined } from "@ant-design/icons";
 import MasterTableTemplate from "./MasterTableTemplate";
 import useFiltersFormFields from "../../hooks/useFiltersFormFields";
 import useInventoryList from "../../hooks/useInventoryList";
@@ -308,6 +309,11 @@ const Barcode = () => {
           onTypeAction={onTypeAction}
           onLabelClick={handleLabelClick}
           onToolbarAction={handleToolbarAction}
+          extraToolbarActions={
+            <Button icon={<ReloadOutlined />} onClick={refresh} loading={isLoading || isFetchingMore}>
+              Refresh
+            </Button>
+          }
         />
       </div>
       <InventoryBulkActionModal

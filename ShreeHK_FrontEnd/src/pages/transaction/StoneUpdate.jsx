@@ -19,7 +19,7 @@ import {
     stoneTypeOptions,
 } from './Data';
 import { mapApiToForm, mapFormToApi } from './stoneUpdateMappers';
-import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
+import AdvancedFilterPanel, { FilterField, filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
 import styles from '../../assets/scss/pages/transaction/stoneupdate.module.scss';
 
 const StoneUpdate = () => {
@@ -127,32 +127,12 @@ const StoneUpdate = () => {
         <div className={styles.erpContainer}>
             <AdvancedFilterPanel
                 title="Search Stone"
-                subtitle="Enter stone ID or SKU to load and update stone details."
+                // subtitle="Enter stone ID or SKU to load and update stone details."
                 activeCount={searchValue ? 1 : 0}
                 showClear={false}
                 showSearch={false}
-                bodyClassName={styles.searchPanelBody}
-            >
-                <div className={styles.stoneSearchRow}>
-                    <div className={styles.stoneSearchLeft}>
-                        <label className={styles.stoneSearchLabel} htmlFor="stone-sku-input">
-                            Stone Id / SKU
-                        </label>
-                        <Input
-                            id="stone-sku-input"
-                            allowClear
-                            prefix={<SearchOutlined className={styles.stoneSearchIcon} />}
-                            className={`${filterPanelStyles.filterControl} ${styles.stoneSearchInput}`}
-                            placeholder="e.g. DKG-010"
-                            value={searchValue}
-                            onChange={(e) => setSearchValue(e.target.value)}
-                            onPressEnter={handleSearch}
-                            disabled={isSearching}
-                            autoComplete="off"
-                            spellCheck={false}
-                        />
-                    </div>
-                    <div className={styles.stoneSearchActions}>
+                extraActions={
+                    <>
                         <Button
                             onClick={handleReload}
                             className={styles.stoneResetBtn}
@@ -169,8 +149,25 @@ const StoneUpdate = () => {
                         >
                             Search
                         </Button>
-                    </div>
-                </div>
+                    </>
+                }
+            >
+                {/* <FilterField label="Stone Id / SKU"> */}
+                <FilterField>
+                    <Input
+                        id="stone-sku-input"
+                        allowClear
+                        prefix={<SearchOutlined className={styles.stoneSearchIcon} />}
+                        className={`${filterPanelStyles.filterControl} ${styles.stoneSearchInput}`}
+                        placeholder="e.g. DKG-010"
+                        value={searchValue}
+                        onChange={(e) => setSearchValue(e.target.value)}
+                        onPressEnter={handleSearch}
+                        disabled={isSearching}
+                        autoComplete="off"
+                        spellCheck={false}
+                    />
+                </FilterField>
             </AdvancedFilterPanel>
 
             {isSearching && !showForm ? renderLoader() :

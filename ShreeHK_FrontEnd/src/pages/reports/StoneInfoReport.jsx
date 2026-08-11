@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import dayjs from 'dayjs';
-import { Card, Form, Input, Table, Tag, Typography } from 'antd';
+import { Card, Form, Input, Table, Tag, Typography, Button } from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
 import { api } from '../../api/axiosInstance';
 import { ENDPOINTS } from '../../constants/endpoints';
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
@@ -63,13 +64,18 @@ const StoneInfoReport = () => {
             <AdvancedFilterPanel
                 // title="Filter Stone Info"
                 title="Stone Info"
-                subtitle="Enter stone ID or SKU to load stone details and history."
+                // subtitle="Enter stone ID or SKU to load stone details and history."
                 activeCount={activeCount}
                 onClear={handleClear}
                 clearDisabled={!activeCount}
                 onSearch={handleSearch}
                 searchLoading={loading}
                 clearLabel="Reset"
+                extraActions={(
+                    <Button type="default" icon={<ReloadOutlined />} className={filterPanelStyles.btnClear} onClick={handleSearch} loading={loading}>
+                        Reload
+                    </Button>
+                )}
             >
                 <div className={styles.stoneSearchRow}>
                     <label className={styles.searchLabel} htmlFor="stone-info-sku">

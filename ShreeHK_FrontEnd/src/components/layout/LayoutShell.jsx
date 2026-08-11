@@ -16,27 +16,34 @@ const LayoutShell = () => {
   const showContextPicker = useAuthStore((state) => state.showContextPicker);
   const setShowContextPicker = useAuthStore((state) => state.setShowContextPicker);
   const companyId = useAuthStore((state) => state.companyId);
+  const yearId = useAuthStore((state) => state.yearId);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   useSessionKeepalive();
   useCopyableTableIdentifiers();
 
+  const contextReady = companyId != null && yearId != null;
+
   useEffect(() => {
-    if (isAuthenticated && companyId == null) {
+    if (isAuthenticated && !contextReady) {
       setShowContextPicker(true);
     }
-  }, [isAuthenticated, companyId, setShowContextPicker]);
+  }, [isAuthenticated, contextReady, setShowContextPicker]);
 
   return (
     <>
       <AuditUiTracker />
-      {viewMode === "dashboard" ? <DashboardLayout /> : <MainLayout />}
-      {/* <FloatingRapaportPanel /> */}
-      <FloatingAIChat />
-      <TaskReminderModal />
+      {contextReady ? (
+        <>
+          {viewMode === "dashboard" ? <DashboardLayout /> : <MainLayout />}
+          {/* <FloatingRapaportPanel /> */}
+          <FloatingAIChat />
+          <TaskReminderModal />
+        </>
+      ) : null}
       <CompanyYearPicker
-        open={showContextPicker}
+        open={showContextPicker || !contextReady}
         onClose={() => setShowContextPicker(false)}
-        force={!companyId}
+        force={!contextReady}
       />
     </>
   );

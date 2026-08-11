@@ -50,9 +50,13 @@ const InventoryFilterPanel = ({
 
   const handleToggleClick = () => {
     clearLeaveTimer();
-    const next = !expanded;
-    setExpanded(next);
-    setPinned(next);
+    if (pinned) {
+      setExpanded(false);
+      setPinned(false);
+    } else {
+      setExpanded(true);
+      setPinned(true);
+    }
   };
 
   const handleAdvancedHoverEnter = () => {

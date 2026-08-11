@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useRef } from "react";
 import { Tree, Input, Button, Card, Row, Col, Space, Typography, Tag, Table, message, Spin } from "antd";
-import { FolderOutlined } from "@ant-design/icons";
+import { FolderOutlined, ReloadOutlined } from "@ant-design/icons";
 import {
     Search,
     Printer,
@@ -137,6 +137,9 @@ const CategorizeInventory = () => {
                 icon={<FolderOutlined />}
                 actions={(
                     <Space size="small" wrap>
+                        <Button icon={<ReloadOutlined />} onClick={refresh} loading={listLoading}>
+                            Refresh
+                        </Button>
                         <Button
                             icon={<Printer size={16} />}
                             danger

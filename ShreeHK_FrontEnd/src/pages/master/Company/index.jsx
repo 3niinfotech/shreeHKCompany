@@ -220,7 +220,8 @@
 
 
 import React, { useEffect, useRef, useState } from "react";
-import { Button, Form } from "antd";
+import { Button, Form, Space } from "antd";
+import { ReloadOutlined } from "@ant-design/icons";
 import { companyFields } from "../Data";
 import { ConfirmDeleteModal } from "../../../components/common/modals";
 import { MasterListTable } from "../../../components/common/table";
@@ -254,7 +255,7 @@ const CompanyPage = () => {
     const deleteModal = useModal();
     const [deleteTarget, setDeleteTarget] = useState(null);
 
-    const { data, isFetching, isPlaceholderData } = useEntityList(
+    const { data, isFetching, isPlaceholderData, refetch } = useEntityList(
         QUERY_KEYS.companies,
         fetchCompanies,
         {
@@ -353,6 +354,19 @@ const CompanyPage = () => {
         exportCompanyExcel(selectedRows);
     };
 
+    const handleRefresh = async () => {
+        isLoadingNextPage.current = false;
+        if (offset !== 0) {
+            setOffset(0);
+            setCombinedData([]);
+            return;
+        }
+        const result = await refetch();
+        if (result?.data?.Data) {
+            setCombinedData(result.data.Data);
+        }
+    };
+
     useEffect(() => {
         // Do not append React Query's previous-page placeholder while the next
         // page request is still in progress.
@@ -405,9 +419,14 @@ const CompanyPage = () => {
                     onChange: (keys) => setSelectedRowKeys(keys),
                 }}
                 extraHeaderActions={
-                    <Button type="primary" onClick={handleDownloadExcel} disabled={selectedRowKeys.length === 0} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff" }}>
-                        Download Excel
-                    </Button>
+                    <Space wrap>
+                        <Button icon={<ReloadOutlined />} loading={isFetching} onClick={handleRefresh}>
+                            Refresh
+                        </Button>
+                        <Button type="primary" onClick={handleDownloadExcel} disabled={selectedRowKeys.length === 0} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff" }}>
+                            Download Excel
+                        </Button>
+                    </Space>
                 }
             />
 

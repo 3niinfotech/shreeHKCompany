@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useRef, useMemo, useCallback, useLayoutEffect } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback, useLayoutEffect, useContext, startTransition } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { SelectionContext } from "./SelectionContext";
 import SkuActionModal from "../../hooks/useSkuModalAction";
 import { Table, Button, Dropdown, Tag, Form, message } from "antd";
-import { DownOutlined, DownloadOutlined } from "@ant-design/icons";
+import { DownOutlined, DownloadOutlined, ReloadOutlined } from "@ant-design/icons";
 import InventorySmartSearch from "../../components/inventory/InventorySmartSearch";
 import { useQueryClient } from "@tanstack/react-query";
 import { useFetchApi } from "../../api/ApiFunction";
@@ -45,12 +46,23 @@ const EMPTY_ARRAY = [];
 const getRowKey = (record) => String(record.id);
 const TABLE_LOCALE = { emptyText: "No data found" };
 
-const SelectionCheckbox = React.memo(function SelectionCheckbox({ id, checked, onToggle }) {
+const SelectionCheckbox = React.memo(function SelectionCheckbox({ id }) {
+  const context = useContext(SelectionContext);
+  const isSelectedInContext = context?.selectedRowKeysSet?.has(String(id)) ?? false;
+  const [checked, setChecked] = useState(isSelectedInContext);
+
+  useLayoutEffect(() => {
+    setChecked(isSelectedInContext);
+  }, [isSelectedInContext]);
+
   const handleChange = (e) => {
     const nextChecked = e.target.checked;
-    requestAnimationFrame(() => {
-      onToggle(id, nextChecked);
-    });
+    setChecked(nextChecked);
+    if (context?.handleToggleRowSelection) {
+      startTransition(() => {
+        context.handleToggleRowSelection(id, nextChecked);
+      });
+    }
   };
 
   return (
@@ -64,8 +76,16 @@ const SelectionCheckbox = React.memo(function SelectionCheckbox({ id, checked, o
   );
 });
 
-const SelectAllCheckbox = React.memo(function SelectAllCheckbox({ isAllSelected, isIndeterminate, onToggleAll }) {
+const SelectAllCheckbox = React.memo(function SelectAllCheckbox() {
+  const context = useContext(SelectionContext);
+  const isAllSelectedInContext = context?.isAllSelected ?? false;
+  const isIndeterminate = context?.isIndeterminate ?? false;
+  const [checked, setChecked] = useState(isAllSelectedInContext);
   const checkboxRef = useRef(null);
+
+  useLayoutEffect(() => {
+    setChecked(isAllSelectedInContext);
+  }, [isAllSelectedInContext]);
 
   useLayoutEffect(() => {
     if (checkboxRef.current) {
@@ -75,9 +95,12 @@ const SelectAllCheckbox = React.memo(function SelectAllCheckbox({ isAllSelected,
 
   const handleChange = (e) => {
     const nextChecked = e.target.checked;
-    requestAnimationFrame(() => {
-      onToggleAll(nextChecked);
-    });
+    setChecked(nextChecked);
+    if (context?.handleSelectAllToggle) {
+      startTransition(() => {
+        context.handleSelectAllToggle(nextChecked);
+      });
+    }
   };
 
   return (
@@ -85,7 +108,7 @@ const SelectAllCheckbox = React.memo(function SelectAllCheckbox({ isAllSelected,
       ref={checkboxRef}
       type="checkbox"
       className="inventory-custom-checkbox"
-      checked={isAllSelected}
+      checked={checked}
       onChange={handleChange}
       onClick={(e) => e.stopPropagation()}
     />
@@ -198,12 +221,7 @@ function computeSelectedStockCalculationStats(selectedRows) {
   };
 }
 
-const mapInventoryRowForStats = (row) => ({
-  carat: row.polishCarat,
-  rap: row.rapPrice,
-  price: row.price,
-  amount: row.amount,
-});
+
 
 const INVENTORY_FILTER_GROUPS = [
   { key: "shape", title: "Shape", start: 0, end: 1 },
@@ -368,8 +386,8 @@ const DiamondInventoryTable = () => {
   const selectedRowKeysSet = useMemo(() => new Set(selectedRowKeys.map(String)), [selectedRowKeys]);
 
   const isAllSelected = useMemo(
-    () => tableData.length > 0 && tableData.every((r) => selectedRowKeysSet.has(String(r.id))),
-    [tableData, selectedRowKeysSet]
+    () => tableData.length > 0 && selectedRowKeys.length === tableData.length && tableData.every((r) => selectedRowKeysSet.has(String(r.id))),
+    [tableData, selectedRowKeysSet, selectedRowKeys.length]
   );
 
   const isIndeterminate = useMemo(
@@ -380,13 +398,13 @@ const DiamondInventoryTable = () => {
   const handleToggleRowSelection = useCallback((id, checked) => {
     const strId = String(id);
     setSelectedRowKeys((prev) => {
-      const prevSet = new Set(prev.map(String));
       if (checked) {
-        prevSet.add(strId);
+        if (prev.includes(strId)) return prev;
+        return [...prev, strId];
       } else {
-        prevSet.delete(strId);
+        if (!prev.includes(strId)) return prev;
+        return prev.filter((item) => String(item) !== strId);
       }
-      return Array.from(prevSet);
     });
   }, []);
 
@@ -497,7 +515,7 @@ const DiamondInventoryTable = () => {
     },
   });
 
-  const { data: productData, isLoading } = useFetchApi(
+  const { data: productData, isLoading, isFetching: isInventoryFetching, refetch: refetchInventory } = useFetchApi(
     "GetProductData",
     ENDPOINTS.product.inventory,
     inventoryQueryParams,
@@ -822,11 +840,11 @@ const DiamondInventoryTable = () => {
         const newItems = mapped.filter(d => !existingIds.has(d.id));
         return offset === 1 ? mapped : [...prev, ...newItems];
       });
-    } else if (offset === 1) {
+    } else if (offset === 1 && !isInventoryFetching && !isLoading) {
       setTableData([]);
     }
     setIsFetching(false);
-  }, [productData, offset]);
+  }, [productData, offset, isInventoryFetching, isLoading]);
 
   useEffect(() => {
     const scrollContainer = tableRef.current?.querySelector('.ant-table-body') || tableRef.current;
@@ -855,13 +873,7 @@ const DiamondInventoryTable = () => {
 
   const columns = useMemo(() => [
     {
-      title: (
-        <SelectAllCheckbox
-          isAllSelected={isAllSelected}
-          isIndeterminate={isIndeterminate}
-          onToggleAll={handleSelectAllToggle}
-        />
-      ),
+      title: <SelectAllCheckbox />,
       key: "selection_custom",
       dataIndex: "id",
       width: 36,
@@ -869,13 +881,7 @@ const DiamondInventoryTable = () => {
       fixed: "left",
       className: "ant-table-selection-column",
       shouldCellUpdate: () => true,
-      render: (id) => (
-        <SelectionCheckbox
-          id={String(id)}
-          checked={selectedRowKeysSet.has(String(id))}
-          onToggle={handleToggleRowSelection}
-        />
-      ),
+      render: (id) => <SelectionCheckbox id={String(id)} />,
     },
     { title: "No", key: "no", dataIndex: "no", width: 52, align: "center", fixed: "left", shouldCellUpdate: () => false },
     { title: "Type", key: "groupType", dataIndex: "groupType", width: 96, align: "center", ellipsis: true, fixed: "left", shouldCellUpdate: () => false },
@@ -1079,7 +1085,7 @@ const DiamondInventoryTable = () => {
       title: "Remark", key: "remark", dataIndex: "remark", width: 200, ellipsis: true, align: "center", shouldCellUpdate: () => false,
       render: (t) => <div className="inventory-remark-cell">{t}</div>
     },
-  ], [handleOpenSkuModal, isAllSelected, isIndeterminate, selectedRowKeysSet, handleSelectAllToggle, handleToggleRowSelection]);
+  ], [handleOpenSkuModal]);
 
   const ACTION_KEY_MAP = {
     onMemo: "memo",
@@ -1313,18 +1319,13 @@ const DiamondInventoryTable = () => {
     () => new Map(tableData.map((row) => [String(row.id), row])),
     [tableData],
   );
-  const inventoryRowsForStats = useMemo(
-    () => tableData.map(mapInventoryRowForStats),
-    [tableData],
-  );
-
   const selectedRows = useMemo(() => {
     if (!selectedRowKeys.length) return EMPTY_ARRAY;
     return selectedRowKeys.map((id) => tableDataById.get(String(id))).filter(Boolean);
   }, [selectedRowKeys, tableDataById]);
 
   const showTotalStats = useMemo(() => {
-    const computed = computeSelectedStockCalculationStats(inventoryRowsForStats);
+    const computed = computeSelectedStockCalculationStats(tableData);
     const td = productData?.TotalData;
     return {
       totalPcs: td?.TotalItems ?? computed.totalPcs,
@@ -1338,7 +1339,7 @@ const DiamondInventoryTable = () => {
           ? Number(td.TotalAmount).toFixed(2)
           : computed.askAmt,
     };
-  }, [inventoryRowsForStats, productData]);
+  }, [tableData, productData]);
 
   const selectedStats = useMemo(
     () => computeSelectedStockCalculationStats(selectedRows),
@@ -1383,220 +1384,248 @@ const DiamondInventoryTable = () => {
     [tableHeight]
   );
 
+  const selectionContextValue = useMemo(() => ({
+    selectedRowKeysSet,
+    handleToggleRowSelection,
+    isAllSelected,
+    isIndeterminate,
+    handleSelectAllToggle,
+  }), [selectedRowKeysSet, handleToggleRowSelection, isAllSelected, isIndeterminate, handleSelectAllToggle]);
+
+  const handleOpenCompareModal = useCallback(() => setCompareModalOpen(true), []);
+
   return (
-    <div ref={pageRef} className="inventory-page-wrapper page-shell">
-      <div className="inventory-filter-wrapper">
-        <InventoryFilterPanel
-          totalLabel={
-            <>
-              Total: <b>{totalItemsDisplay}</b>
-            </>
-          }
-          searchSlot={
-            <InventorySmartSearch
-              className="search-input"
-              value={searchText}
-              onChange={setSearchText}
-              onSearch={applyInventoryFilters}
-              onSuggestionSelect={handleSearchSuggestionSelect}
-              placeholder="SKU · Mfg · Report No (comma for multiple)"
-            />
-          }
-          compactFilters={
-            <InventoryCompactFilterRow
-              form={filterForm}
-              fields={compactFilterFields}
-              caratFrom={caratFrom}
-              caratTo={caratTo}
-              onCaratFromChange={setCaratFrom}
-              onCaratToChange={setCaratTo}
-              onSearch={applyInventoryFilters}
-            />
-          }
-          headerActionsLeft={
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-              <Button size="small" type="primary" onClick={applyInventoryFilters}>
-                Apply
-              </Button>
-              <Button size="small" onClick={resetInventoryFilters}>
-                Reset
-              </Button>
-              <Button
-                size="small"
-                icon={<Sparkles size={14} />}
-                onClick={runStockAlert}
-                loading={aiAlertLoading}
-              >
-                AI Alert Check
-              </Button>
-            </span>
-          }
-          headerActions={
-            <InventoryHeaderActions
-              selectedCount={selectedRowKeys.length}
-              onAction={handleInventoryPanelAction}
-              menuItems={menuItems}
-              handleDownloadMenuClick={handleDownloadMenuClick}
-              exportLoading={exportLoading}
-              iExportLoading={iExportLoading}
-            />
-          }
-          advancedFilters={
-            <Form form={advancedFilterForm} layout="vertical" component={false}>
-              <InventoryFilterPresets
-                pagePageKey="my-inventory"
-                compactForm={filterForm}
-                advancedForm={advancedFilterForm}
-                onApply={applyInventoryFilters}
+    <SelectionContext.Provider value={selectionContextValue}>
+      <div ref={pageRef} className="inventory-page-wrapper page-shell">
+        <div className="inventory-filter-wrapper">
+          <InventoryFilterPanel
+            totalLabel={
+              <>
+                Total: <b>{totalItemsDisplay}</b>
+              </>
+            }
+            searchSlot={
+              <InventorySmartSearch
+                className="search-input"
+                value={searchText}
+                onChange={setSearchText}
+                onSearch={applyInventoryFilters}
+                onSuggestionSelect={handleSearchSuggestionSelect}
+                placeholder="SKU · Mfg · Report No (comma for multiple)"
               />
-              <InventoryFilterGroups
-                groups={INVENTORY_FILTER_GROUPS}
-                allFields={filterFields}
+            }
+            compactFilters={
+              <InventoryCompactFilterRow
+                form={filterForm}
+                fields={compactFilterFields}
+                caratFrom={caratFrom}
+                caratTo={caratTo}
+                onCaratFromChange={setCaratFrom}
+                onCaratToChange={setCaratTo}
+                onSearch={applyInventoryFilters}
               />
-            </Form>
-          }
-        />
-        <InventorySummaryToolbar totals={summaryTotals}>
-          <InventoryQuickLinksWrapper
-            selectedRows={selectedRows}
-            selectedCount={selectedRowKeys.length}
-            onCompare={() => setCompareModalOpen(true)}
-            onRefreshRapnet={handleRefreshRapnetFlags}
-            onWebsiteSync={handleWebsiteSync}
-            syncLoading={syncLoading}
+            }
+            headerActionsLeft={
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <Button size="small" type="primary" onClick={applyInventoryFilters}>
+                  Apply
+                </Button>
+                <Button size="small" onClick={resetInventoryFilters}>
+                  Reset
+                </Button>
+                <Button
+                  size="small"
+                  icon={<ReloadOutlined />}
+                  loading={isLoading || isInventoryFetching}
+                  onClick={async () => {
+                    setOffset(1);
+                    if (offset === 1) {
+                      await refetchInventory();
+                    } else {
+                      queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
+                    }
+                    queryClient.invalidateQueries({ queryKey: ["myInventorySummary"] });
+                  }}
+                >
+                  Refresh
+                </Button>
+                {/* <Button
+                  size="small"
+                  icon={<Sparkles size={14} />}
+                  onClick={runStockAlert}
+                  loading={aiAlertLoading}
+                >
+                  AI Alert Check
+                </Button> */}
+              </span>
+            }
+            headerActions={
+              <InventoryHeaderActions
+                selectedCount={selectedRowKeys.length}
+                onAction={handleInventoryPanelAction}
+                menuItems={menuItems}
+                handleDownloadMenuClick={handleDownloadMenuClick}
+                exportLoading={exportLoading}
+                iExportLoading={iExportLoading}
+              />
+            }
+            advancedFilters={
+              <Form form={advancedFilterForm} layout="vertical" component={false}>
+                <InventoryFilterPresets
+                  pageKey="my-inventory"
+                  compactForm={filterForm}
+                  advancedForm={advancedFilterForm}
+                  onApply={applyInventoryFilters}
+                />
+                <InventoryFilterGroups
+                  groups={INVENTORY_FILTER_GROUPS}
+                  allFields={filterFields}
+                />
+              </Form>
+            }
           />
-        </InventorySummaryToolbar>
-        <AIResultPanel
-          title="AI Stock Alerts"
-          loading={aiAlertLoading}
-          result={aiAlertResult}
-          error={aiAlertError}
-          open={aiPanelOpen}
-          onOpenChange={setAiPanelOpen}
+          <InventorySummaryToolbar totals={summaryTotals}>
+            <InventoryQuickLinksWrapper
+              selectedRows={selectedRows}
+              selectedCount={selectedRowKeys.length}
+              onCompare={handleOpenCompareModal}
+              onRefreshRapnet={handleRefreshRapnetFlags}
+              onWebsiteSync={handleWebsiteSync}
+              syncLoading={syncLoading}
+            />
+          </InventorySummaryToolbar>
+          <AIResultPanel
+            title="AI Stock Alerts"
+            loading={aiAlertLoading}
+            result={aiAlertResult}
+            error={aiAlertError}
+            open={aiPanelOpen}
+            onOpenChange={setAiPanelOpen}
+          />
+        </div>
+
+        <div
+          ref={tableRef}
+          className="erp-table-container"
+          style={{ height: tableHeight, overflowY: 'hidden', overflowX: 'hidden' }}
+        >
+          <Table
+            className="diamond-inventory-table"
+            columns={columns}
+            dataSource={filteredTableData}
+            rowKey={getRowKey}
+            size="small"
+            tableLayout="fixed"
+            rowClassName={getInventoryRowClass}
+            onRow={handleOnRow}
+            loading={isFetching || isLoading}
+            pagination={false}
+            bordered
+            scroll={tableScroll}
+            components={tableComponents}
+            locale={TABLE_LOCALE}
+            footer={renderTableFooter}
+          />
+        </div>
+
+        <SkuActionModal
+          visible={modalConfig.visible}
+          skuData={modalConfig.data}
+          onClose={() => setModalConfig({ visible: false, data: null })}
+          onAction={handleSkuAction}
+        />
+
+        <InventoryStoneDetailModal
+          open={stoneDetailModal.open}
+          stone={stoneDetailModal.data}
+          onClose={() => setStoneDetailModal({ open: false, data: null })}
+        />
+
+        <InventoryBulkActionModal
+          open={bulkActionModal.open || holdActionState.open}
+          actionKey={
+            holdActionState.open ? holdActionState.actionKey : bulkActionModal.actionKey
+          }
+          selectedCount={
+            holdActionState.open
+              ? (holdActionState.selectedIds?.length ?? 0)
+              : selectedRowKeys.length
+          }
+          loading={
+            holdLoading ||
+            changePriceLoading ||
+            labelA4Loading ||
+            labelLoading ||
+            iExportLoading ||
+            exportLoading ||
+            mailLoading
+          }
+          onClose={() => {
+            if (holdActionState.open) closeHoldModal();
+            else closeBulkActionModal();
+          }}
+          onSubmit={handleBulkActionSubmit}
+        />
+
+        <OnMemoModal
+          open={memoModalOpen}
+          onClose={() => setMemoModalOpen(false)}
+          selectedRows={memoModalOpen ? selectedRows : EMPTY_ARRAY}
+          actionType="memo"
+          onSubmit={handleMemoSubmit}
+        />
+
+        <OnMemoModal
+          open={sellModalOpen}
+          onClose={() => setSellModalOpen(false)}
+          selectedRows={sellModalOpen ? selectedRows : EMPTY_ARRAY}
+          actionType="sell"
+          onSubmit={handleSaleSubmit}
+        />
+
+        <OnMemoModal
+          open={consignModalOpen}
+          onClose={() => setConsignModalOpen(false)}
+          selectedRows={consignModalOpen ? selectedRows : EMPTY_ARRAY}
+          actionType="consign"
+          onSubmit={handleConsignSubmit}
+        />
+
+        <InventoryCompareModal
+          open={compareModalOpen}
+          rows={compareModalOpen ? selectedRows : EMPTY_ARRAY}
+          onClose={() => setCompareModalOpen(false)}
+        />
+
+        <ReservationModal
+          open={reservationModalOpen}
+          selectedIds={reservationModalOpen ? selectedRowKeys : EMPTY_ARRAY}
+          onClose={() => setReservationModalOpen(false)}
+          onSuccess={() => {
+            setSelectedRowKeys([]);
+            queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
+          }}
+        />
+
+        <AddToPackageModal
+          open={packageModalOpen}
+          onClose={() => setPackageModalOpen(false)}
+          productIds={packageModalOpen ? selectedRowKeys : EMPTY_ARRAY}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
+            setSelectedRowKeys([]);
+          }}
+        />
+
+        <StoneActionSuccessModal
+          isOpen={successModal.open}
+          onClose={() => setSuccessModal((s) => ({ ...s, open: false }))}
+          actionType={successModal.actionType}
+          stone={successModal.stone}
+          count={successModal.count}
         />
       </div>
-
-      <div
-        ref={tableRef}
-        className="erp-table-container"
-        style={{ height: tableHeight, overflowY: 'hidden', overflowX: 'hidden' }}
-      >
-        <Table
-          className="diamond-inventory-table"
-          columns={columns}
-          dataSource={filteredTableData}
-          rowKey={getRowKey}
-          size="small"
-          tableLayout="fixed"
-          rowClassName={getInventoryRowClass}
-          onRow={handleOnRow}
-          loading={isFetching || isLoading}
-          pagination={false}
-          bordered
-          scroll={tableScroll}
-          components={tableComponents}
-          locale={TABLE_LOCALE}
-          footer={renderTableFooter}
-        />
-      </div>
-
-      <SkuActionModal
-        visible={modalConfig.visible}
-        skuData={modalConfig.data}
-        onClose={() => setModalConfig({ visible: false, data: null })}
-        onAction={handleSkuAction}
-      />
-
-      <InventoryStoneDetailModal
-        open={stoneDetailModal.open}
-        stone={stoneDetailModal.data}
-        onClose={() => setStoneDetailModal({ open: false, data: null })}
-      />
-
-      <InventoryBulkActionModal
-        open={bulkActionModal.open || holdActionState.open}
-        actionKey={
-          holdActionState.open ? holdActionState.actionKey : bulkActionModal.actionKey
-        }
-        selectedCount={
-          holdActionState.open
-            ? (holdActionState.selectedIds?.length ?? 0)
-            : selectedRowKeys.length
-        }
-        loading={
-          holdLoading ||
-          changePriceLoading ||
-          labelA4Loading ||
-          labelLoading ||
-          iExportLoading ||
-          exportLoading ||
-          mailLoading
-        }
-        onClose={() => {
-          if (holdActionState.open) closeHoldModal();
-          else closeBulkActionModal();
-        }}
-        onSubmit={handleBulkActionSubmit}
-      />
-
-      <OnMemoModal
-        open={memoModalOpen}
-        onClose={() => setMemoModalOpen(false)}
-        selectedRows={memoModalOpen ? selectedRows : EMPTY_ARRAY}
-        actionType="memo"
-        onSubmit={handleMemoSubmit}
-      />
-
-      <OnMemoModal
-        open={sellModalOpen}
-        onClose={() => setSellModalOpen(false)}
-        selectedRows={sellModalOpen ? selectedRows : EMPTY_ARRAY}
-        actionType="sell"
-        onSubmit={handleSaleSubmit}
-      />
-
-      <OnMemoModal
-        open={consignModalOpen}
-        onClose={() => setConsignModalOpen(false)}
-        selectedRows={consignModalOpen ? selectedRows : EMPTY_ARRAY}
-        actionType="consign"
-        onSubmit={handleConsignSubmit}
-      />
-
-      <InventoryCompareModal
-        open={compareModalOpen}
-        rows={compareModalOpen ? selectedRows : EMPTY_ARRAY}
-        onClose={() => setCompareModalOpen(false)}
-      />
-
-      <ReservationModal
-        open={reservationModalOpen}
-        selectedIds={reservationModalOpen ? selectedRowKeys : EMPTY_ARRAY}
-        onClose={() => setReservationModalOpen(false)}
-        onSuccess={() => {
-          setSelectedRowKeys([]);
-          queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
-        }}
-      />
-
-      <AddToPackageModal
-        open={packageModalOpen}
-        onClose={() => setPackageModalOpen(false)}
-        productIds={packageModalOpen ? selectedRowKeys : EMPTY_ARRAY}
-        onSuccess={() => {
-          queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
-          setSelectedRowKeys([]);
-        }}
-      />
-
-      <StoneActionSuccessModal
-        isOpen={successModal.open}
-        onClose={() => setSuccessModal((s) => ({ ...s, open: false }))}
-        actionType={successModal.actionType}
-        stone={successModal.stone}
-        count={successModal.count}
-      />
-    </div>
+    </SelectionContext.Provider>
   );
 };
 

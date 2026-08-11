@@ -1,4 +1,3 @@
-import React from 'react';
 import TransactionStockTemplate from './TransactionStockTemplate';
 import { TRANSACTION_STOCK_KEYS } from '../../../api/services/transactionStockService';
 import { ENDPOINTS } from '../../../constants/endpoints';

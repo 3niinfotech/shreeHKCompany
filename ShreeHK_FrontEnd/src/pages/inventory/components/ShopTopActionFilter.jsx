@@ -191,7 +191,9 @@ export function StoneActionSuccessModal({
 
   if (!mounted) return null;
 
-  const detailEntries = Object.entries(stone).filter(([, v]) => v !== undefined && v !== null && v !== "");
+  const detailEntries = Object.entries(stone || {}).filter(
+    ([, v]) => v !== undefined && v !== null && v !== "" && typeof v !== "object"
+  );
 
   return (
     <div

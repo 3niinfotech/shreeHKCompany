@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Card, Form, Input, Table, Tag, Button, message, Typography } from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
 import { ChevronUp, ChevronDown, CircleDot, ScanText, FileUp } from 'lucide-react';
 import useFormHandleChange from '../../hooks/useFormHandleChange';
 import DynamicForm from '../../hooks/DynamicFormField';
@@ -237,17 +238,22 @@ const StoneHistory = () => {
             <AdvancedFilterPanel
                 // title="Filter Stone History"
                 title="Stone History"
-                subtitle="Enter stone ID or SKU to load detail and transaction history."
+                // subtitle="Enter stone ID or SKU to load detail and transaction history."
                 activeCount={searchSku ? 1 : 0}
                 onClear={handleReset}
                 clearLabel="Reset"
                 onSearch={handleSearch}
                 searchLoading={loading}
+                extraActions={(
+                    <Button type="default" icon={<ReloadOutlined />} className={filterPanelStyles.btnClear} onClick={handleSearch} loading={loading}>
+                        Reload
+                    </Button>
+                )}
             >
                 <div className={styles.stoneSearchRow}>
-                    <label className={styles.searchLabel} htmlFor="stone-history-sku">
+                    {/* <label className={styles.searchLabel} htmlFor="stone-history-sku">
                         Stone Id / SKU :
-                    </label>
+                    </label> */}
                     <Form form={searchForm} className={styles.searchForm} layout="inline">
                         <Form.Item name="searchSku" className={styles.searchFieldItem}>
                             <Input

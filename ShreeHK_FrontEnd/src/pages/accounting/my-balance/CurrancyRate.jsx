@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Input, Space, Spin } from 'antd';
-import { Coins, Plus, Save, Check, Pencil, Trash2 } from 'lucide-react';
+import { Coins, Plus, Save, Check, Pencil, Trash2, RefreshCcw } from 'lucide-react';
 import { useFetchApi, usePostApiRequest, useDeleteApiRequest } from '../../../api/ApiFunction';
 import { ENDPOINTS } from '../../../constants/endpoints';
 import { getCurrencyFlag } from './currencyFlags';
@@ -9,7 +9,7 @@ import styles from '../../../assets/scss/pages/accountings/mybalance.module.scss
 const CurrancyRate = () => {
     const [rows, setRows] = useState([]);
 
-    const { data: apiResponse, isLoading: isFetching } = useFetchApi('fetchCurrancyData', ENDPOINTS.currency.list);
+    const { data: apiResponse, isLoading: isFetching, refetch } = useFetchApi('fetchCurrancyData', ENDPOINTS.currency.list);
     const { mutate: createCurrncyRate, isLoading: isSubmitting } = usePostApiRequest(ENDPOINTS.currency.save, 'fetchCurrancyData');
     const { mutate: deleteCurrncyRate, isLoading: isDeleting } = useDeleteApiRequest(ENDPOINTS.currency.delete, 'fetchCurrancyData');
 
@@ -82,6 +82,9 @@ const CurrancyRate = () => {
                     </div>
                 </div>
                 <div className={styles.cardActions}>
+                    <button className={styles.btnAdd} onClick={() => refetch()} disabled={isFetching}>
+                        <RefreshCcw size={14} /> Refresh
+                    </button>
                     <button className={styles.btnAdd} onClick={handleAdd}>
                         <Plus size={14} /> Add New
                     </button>

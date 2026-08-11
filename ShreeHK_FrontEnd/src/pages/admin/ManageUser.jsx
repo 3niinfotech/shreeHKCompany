@@ -1,5 +1,6 @@
 import React, { lazy, useEffect, useMemo, useState } from 'react';
-import { Tag } from 'antd';
+import { Button, Tag } from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
 import { manageUserFromAdmin } from "./Data";
 const MasterTemplate = lazy(() => import('../../components/common/masterCommon/MasterPageTemplate'));
 const ConfirmDeleteModal = lazy(() => import("../../components/common/modals/ConfirmDeleteModal"));
@@ -13,7 +14,7 @@ const ManageUser = () => {
     const [editRecord, setEditRecord] = useState(null);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-    const { data, isLoading, isFetching } = useFetchApi(
+    const { data, isLoading, isFetching, refetch } = useFetchApi(
         'getUsersAdmin',
         ENDPOINTS.admin.users,
         {},
@@ -207,6 +208,21 @@ const ManageUser = () => {
                 onEdit={handleEdit}
                 onSave={handleSave}
                 initialValues={editRecord}
+                extraHeaderActions={(
+                    <Button
+                        icon={<ReloadOutlined />}
+                        loading={isLoading || isFetching}
+                        onClick={async () => {
+                            setOffset(0);
+                            const result = await refetch();
+                            if (result?.data?.Data) {
+                                setCombinedData(result.data.Data);
+                            }
+                        }}
+                    >
+                        Refresh
+                    </Button>
+                )}
             />
 
             <ConfirmDeleteModal

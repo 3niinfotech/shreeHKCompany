@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Table, Button, Card, Form, message } from 'antd';
 import { FileUp } from 'lucide-react';
 import dayjs from 'dayjs';
@@ -8,7 +8,7 @@ import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../constants/endpoints';
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
 import PageHeroHeader from '../../components/common/PageHeroHeader';
-import { BarChartOutlined } from '@ant-design/icons';
+import { BarChartOutlined, ReloadOutlined } from '@ant-design/icons';
 import { exportReportToExcel } from '../../utils/reportExcelExport';
 import styles from '../../assets/scss/pages/report/groupReport.module.scss';
 import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
@@ -58,7 +58,7 @@ const GroupReport = () => {
     const handleSearch = () => {
         const v = form.getFieldsValue();
         const payload = {
-            report: v.reportType,
+            report: v.reportType || 'memo',
             main_group: v.mainGroup || '',
             sub_group: v.subGroup || '',
             party: v.company || '0',
@@ -69,6 +69,11 @@ const GroupReport = () => {
             onSuccess: (res) => setTableData((res?.Data || []).map((r, i) => ({ ...r, key: i }))),
         });
     };
+
+    useEffect(() => {
+        handleSearch();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const columns = [
         { title: 'No', dataIndex: 'no', key: 'no', width: 60, align: 'center', fixed: 'left' },
@@ -141,27 +146,32 @@ const GroupReport = () => {
 
             <AdvancedFilterPanel
                 title="Group Report"
-                subtitle="Choose report type, groups, company, and date range."
+                // subtitle="Choose report type, groups, company, and date range."
                 activeCount={getActiveCount()}
                 onClear={handleClear}
                 clearDisabled={!getActiveCount()}
                 onSearch={handleSearch}
                 searchLoading={tableLoading}
                 extraActions={
-                    <Button
-                        type="primary"
-                        icon={<FileUp size={16} />}
-                        loading={exporting}
-                        onClick={handleExport}
-                        disabled={!tableData.length}
-                        style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff", height:"38px" }}
-                    >
-                        Export to Excel
-                    </Button>
+                    <>
+                        <Button type="default" icon={<ReloadOutlined />} className={filterPanelStyles.btnClear} onClick={handleSearch} loading={tableLoading}>
+                            Reload
+                        </Button>
+                        <Button
+                            type="primary"
+                            icon={<FileUp size={16} />}
+                            loading={exporting}
+                            onClick={handleExport}
+                            disabled={!tableData.length}
+                            style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff", height:"38px" }}
+                        >
+                            Export to Excel
+                        </Button>
+                    </>
                 }
             >
                 <div className={filterPanelStyles.filterFormWide}>
-                    <Form form={form}>
+                    <Form form={form} initialValues={{ reportType: 'memo', company: '0' }}>
                         <DynamicForm fields={filterFields} />
                     </Form>
                 </div>

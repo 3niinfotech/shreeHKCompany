@@ -54,7 +54,7 @@ export default function useInventoryList({
     [offset, appliedFilters],
   );
 
-  const { data: productData, isLoading, isError, error } = useFetchApi(
+  const { data: productData, isLoading, isFetching, isError, error, refetch } = useFetchApi(
     `${queryKey}_${offset}_${baseFiltersKey}_${searchText}_${JSON.stringify(stockChecks)}_${fwRadio}`,
     ENDPOINTS.product.inventory,
     inventoryQueryParams,
@@ -65,12 +65,24 @@ export default function useInventoryList({
   const totalItems = productData?.TotalData?.TotalItems ?? productData?.TotalItems ?? 0;
   const tableScrollY = useTableBodyScrollHeight(tableWrapRef, [tableData.length, totalItems]);
 
-  const refresh = useCallback(() => {
-    setOffset(0);
-    setTableData([]);
-    queryClient.invalidateQueries({ queryKey: [queryKey] });
-    queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
-  }, [queryClient, queryKey]);
+  const refresh = useCallback(async () => {
+    // Do not clear tableData before fetch — that leaves "No data" if API does not re-run.
+    // Real query keys are `${queryKey}_…`, so refetch current page-0 query (or reset offset).
+    if (offset !== 0) {
+      setOffset(0);
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey?.[0];
+          return (
+            typeof key === "string" &&
+            (key.startsWith(`${queryKey}_`) || key === "GetProductData" || key.startsWith("GetProductData"))
+          );
+        },
+      });
+      return;
+    }
+    await refetch();
+  }, [offset, refetch, queryClient, queryKey]);
 
   useEffect(() => {
     setOffset(0);
@@ -87,11 +99,11 @@ export default function useInventoryList({
         const existing = new Set(prev.map((d) => d.id));
         return [...prev, ...mapped.filter((d) => !existing.has(d.id))];
       });
-    } else if (offset === 0) {
+    } else if (offset === 0 && !isFetching && !isLoading) {
       setTableData([]);
     }
     setIsFetchingMore(false);
-  }, [productData, offset, mapRow]);
+  }, [productData, offset, mapRow, isFetching, isLoading]);
 
   useEffect(() => {
     const tableBody = tableWrapRef.current?.querySelector(".ant-table-body");
@@ -116,7 +128,7 @@ export default function useInventoryList({
 
   return {
     tableData,
-    isLoading: isLoading && offset === 0,
+    isLoading: (isLoading || isFetching) && offset === 0,
     isFetchingMore,
     isError,
     error,

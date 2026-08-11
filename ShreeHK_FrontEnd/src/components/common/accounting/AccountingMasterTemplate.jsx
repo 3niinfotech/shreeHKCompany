@@ -4,7 +4,7 @@ import DynamicFormField from '../../../hooks/DynamicFormField';
 import { Edit2, Trash2, Plus, Search } from 'lucide-react';
 import { BaseModal } from '../modals';
 import { Table, Button, Input, Space, Card, Form, Spin } from 'antd';
-import { AccountBookOutlined } from '@ant-design/icons';
+import { AccountBookOutlined, ReloadOutlined } from '@ant-design/icons';
 import PageHeroHeader from '../PageHeroHeader';
 import styles from '../../../assets/scss/pages/master/company.module.scss';
 import useThemeColors from '../../../hooks/useThemeColors';
@@ -28,6 +28,8 @@ const AccountingMasterTemplate = ({
     onLoadMore,
     hasMore = false,
     addPagePath,
+    onRefresh,
+    refreshLoading = false,
 }) => {
     const theme = useThemeColors();
     const tableRef = useRef(null);
@@ -136,6 +138,11 @@ const AccountingMasterTemplate = ({
                                 allowClear
                                 style={{ width: 250 }}
                             />
+                            {onRefresh && (
+                                <Button icon={<ReloadOutlined />} loading={refreshLoading || loading} onClick={onRefresh}>
+                                    Refresh
+                                </Button>
+                            )}
                             <Button type="primary" icon={<Plus size={16} />} onClick={handleAddClick}>
                                 Create {title}
                             </Button>

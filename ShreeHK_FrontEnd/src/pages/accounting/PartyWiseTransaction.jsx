@@ -9,7 +9,8 @@ import {
     EyeOutlined,
     EditOutlined,
     DeleteOutlined,
-    SearchOutlined
+    SearchOutlined,
+    ReloadOutlined,
 } from '@ant-design/icons';
 import DynamicFormField from "../../hooks/DynamicFormField"
 import { BaseModal } from "../../components/common/modals";
@@ -133,11 +134,18 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
         }
     }, [scrollFetching, isRefetching, hasMore]);
 
-    const resetAndRefetch = () => {
-        setOffset(0);
-        setAllData([]);
+    const resetAndRefetch = async () => {
         setHasMore(true);
-        refetch();
+        if (offset !== 0) {
+            setOffset(0);
+            setAllData([]);
+            return;
+        }
+        const result = await refetch();
+        if (result?.data?.Data) {
+            const newRecords = Array.isArray(result.data.Data) ? result.data.Data : [result.data.Data];
+            setAllData(newRecords);
+        }
     };
 
     // Handle Modal Open (Add / Edit)
@@ -262,9 +270,14 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
                 title={pageTitle}
                 icon={<TeamOutlined />}
                 actions={(
-                    <Button type="primary" icon={<PlusOutlined />} onClick={() => showModal()}>
-                        Add New Party
-                    </Button>
+                    <Space wrap>
+                        <Button icon={<ReloadOutlined />} loading={isFetching || isRefetching} onClick={resetAndRefetch}>
+                            Refresh
+                        </Button>
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => showModal()}>
+                            Add New Party
+                        </Button>
+                    </Space>
                 )}
             />
 

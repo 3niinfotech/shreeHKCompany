@@ -75,8 +75,9 @@
 
       .statItem {
         display: flex;
-        flex-direction: column;
-        align-items: flex-end;
+        gap: 10px;
+        flex-direction: row;
+        align-items: center;
 
         label {
           font-size: 11px;
@@ -94,7 +95,91 @@
     }
   }
 
+  // Used by transaction stock pages (table footer) — keeps top .statsBar intact for outward
+  .statsBarFooter {
+    width: 100%;
+
+    .statsBar {
+      border: none;
+      border-radius: 0;
+      padding: 8px 12px;
+      background: transparent;
+      gap: 12px;
+    }
+
+    .legendGroup,
+    .totalsGroup {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .totalsGroup {
+      justify-content: flex-end;
+    }
+
+    .statsBarCenter {
+      flex-shrink: 0;
+      text-align: center;
+      font-size: 12px;
+      color: var(--color-text-muted);
+      white-space: nowrap;
+    }
+  }
+
+  // Keep table body height fixed even with few rows (Ant scroll.y is max-height only)
+  .fixedHeightTable {
+    :global(.ant-table-wrapper),
+    :global(.ant-spin-nested-loading),
+    :global(.ant-spin-container) {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    :global(.ant-table) {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    :global(.ant-table-container) {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    :global(.ant-table-header) {
+      flex-shrink: 0;
+    }
+
+    :global(.ant-table-body) {
+      flex: 1 1 auto;
+      min-height: 0;
+      height: var(--table-scroll-y) !important;
+      max-height: var(--table-scroll-y) !important;
+      overflow-y: auto !important;
+    }
+
+    :global(.ant-table-footer) {
+      flex-shrink: 0;
+    }
+
+    :global(.ant-pagination) {
+      flex-shrink: 0;
+      margin: 8px 0 !important;
+    }
+  }
+
   .tableWrapper {
+    :global(.ant-table-footer) {
+      padding: 0;
+      background: var(--color-bg-card);
+      border-top: 1px solid var(--color-border);
+    }
+
     :global(.ant-table-thead > tr > th) {
       background: var(--color-primary-light) !important;
       color: var(--color-navy) !important;
@@ -103,43 +188,53 @@
       border-bottom: 0.5px solid var(--color-border) !important;
     }
 
+    // Main table only (not expanded child) — padding 50% of Ant defaults
+    :global(.ant-table-header .ant-table-thead > tr > th),
+    :global(.ant-table-body > table > tbody > tr:not(.ant-table-expanded-row):not(.ant-table-measure-row) > td),
+    :global(.ant-table-tbody > tr:not(.ant-table-expanded-row):not(.ant-table-measure-row) > td.ant-table-cell-fix-left),
+    :global(.ant-table-tbody > tr:not(.ant-table-expanded-row):not(.ant-table-measure-row) > td.ant-table-cell-fix-right),
+    :global(.ant-table-header .ant-table-cell-fix-left),
+    :global(.ant-table-header .ant-table-cell-fix-right) {
+      padding: 10px 8px !important;
+    }
+
     :global(.ant-table-tbody > tr:hover > td) {
       background: var(--table-row-hover) !important;
     }
 
     .innerTableWrap {
-      overflow-x: auto;
-      padding: 2px 0;
+      max-height: 360px;
+      overflow: auto;
+      width: 100%;
+      box-sizing: border-box;
     }
 
+    // Shared light styles for OutWord + transaction expanded child tables
     .innerTable {
-      margin: 0;
+      margin: 0 !important;
+      width: 100%;
       background: var(--color-bg-card);
       border: 1px solid var(--color-border);
       border-radius: 6px;
 
-      :global(.ant-table-container) {
-        border-radius: 6px;
-      }
-
-      :global(.ant-table-thead > tr > th) {
+      :global(.ant-table-thead > tr > th),
+      :global(.ant-table-thead > tr > th.ant-table-cell) {
         background: var(--color-bg-muted) !important;
         color: var(--color-text-body) !important;
-        font-size: 12px;
-        font-weight: 600;
-        padding: 8px 10px !important;
+        font-weight: 600 !important;
+        font-size: 12px !important;
       }
 
       :global(.ant-table-tbody > tr > td) {
-        padding: 8px 10px !important;
-        font-size: 12px;
+        font-size: 12px !important;
+        vertical-align: middle !important;
       }
     }
   }
 
   .expandedRow {
-    :global(.ant-table-cell) {
-      padding: 10px 12px !important;
+    :global(> .ant-table-cell) {
+      padding: 4px 8px !important;
       background: var(--color-bg-muted) !important;
       overflow: visible !important;
     }
@@ -148,12 +243,97 @@
   .expandedBlock {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 4px 0 8px;
+    gap: 4px;
+    padding: 0;
+    overflow: visible;
+
+    // Transaction stock nested table only — do not apply to OutWord expand
+    .innerTable {
+      --ant-table-cell-padding-block: 10px;
+      --ant-table-cell-padding-inline: 10px;
+      --ant-table-cell-padding-block-md: 10px;
+      --ant-table-cell-padding-inline-md: 10px;
+      --ant-table-cell-padding-block-sm: 8px;
+      --ant-table-cell-padding-inline-sm: 8px;
+
+      height: auto !important;
+      display: block !important;
+      overflow: visible !important;
+
+      :global(.ant-spin-nested-loading),
+      :global(.ant-spin-container) {
+        display: block !important;
+        flex: none !important;
+        min-height: 0 !important;
+        height: auto !important;
+      }
+
+      :global(.ant-table) {
+        width: 100% !important;
+        height: auto !important;
+        margin: 0 !important;
+        margin-block: 0 !important;
+        margin-inline: 0 !important;
+      }
+
+      :global(.ant-table-container) {
+        border-radius: 6px;
+        overflow: visible !important;
+      }
+
+      :global(.ant-table-content) {
+        overflow-x: auto !important;
+        overflow-y: visible !important;
+      }
+
+      :global(.ant-table-body) {
+        overflow: visible !important;
+      }
+
+      :global(.ant-table-placeholder) {
+        height: auto !important;
+      }
+
+      :global(.ant-table-tbody > tr.ant-table-measure-row),
+      :global(tr.ant-table-measure-row) {
+        height: 0 !important;
+        font-size: 0 !important;
+        line-height: 0 !important;
+      }
+
+      :global(.ant-table-tbody > tr.ant-table-measure-row > td),
+      :global(tr.ant-table-measure-row > td) {
+        padding: 0 !important;
+        border: 0 !important;
+        height: 0 !important;
+        min-height: 0 !important;
+        line-height: 0 !important;
+        font-size: 0 !important;
+        overflow: hidden !important;
+      }
+
+      :global(.ant-table-thead > tr > th.ant-table-cell) {
+        padding: 10px !important;
+        vertical-align: middle !important;
+      }
+
+      :global(.ant-table-tbody > tr:not(.ant-table-measure-row) > td.ant-table-cell) {
+        padding: 10px !important;
+        font-size: 12px !important;
+        line-height: 1.4 !important;
+        vertical-align: middle !important;
+        overflow: visible !important;
+      }
+
+      :global(.ant-table-tbody > tr:not(.ant-table-measure-row):last-child > td) {
+        border-bottom: 1px solid var(--color-border) !important;
+      }
+    }
   }
 
   .expandActionBar {
-    padding: 4px 8px 0;
+    padding: 0;
+    margin: 0;
   }
 
   :global(.ant-table-wrapper .ant-pagination) {
@@ -163,8 +343,11 @@
 
   .actionIcons {
     display: flex;
+    flex-wrap: wrap;
     gap: 12px;
     justify-content: center;
+    align-items: center;
+    font-size: calc(1em + 2px);
 
     .edit {
       color: var(--color-primary);
@@ -200,6 +383,65 @@
       &:hover {
         opacity: 0.85;
       }
+    }
+
+    .actionReturn {
+      color: #fa8c16;
+      cursor: pointer;
+
+      &:hover {
+        opacity: 0.85;
+      }
+    }
+
+    .actionSale {
+      color: #52c41a;
+      cursor: pointer;
+
+      &:hover {
+        opacity: 0.85;
+      }
+    }
+
+    .actionPurchase {
+      color: #722ed1;
+      cursor: pointer;
+
+      &:hover {
+        opacity: 0.85;
+      }
+    }
+
+    .actionConsign {
+      color: #eb2f96;
+      cursor: pointer;
+
+      &:hover {
+        opacity: 0.85;
+      }
+    }
+
+    .actionExport {
+      color: #1677ff;
+      cursor: pointer;
+
+      &:hover {
+        opacity: 0.85;
+      }
+    }
+
+    .actionImport {
+      color: #13c2c2;
+      cursor: pointer;
+
+      &:hover {
+        opacity: 0.85;
+      }
+    }
+
+    .actionDisabled {
+      opacity: 0.4;
+      cursor: not-allowed;
     }
   }
 }

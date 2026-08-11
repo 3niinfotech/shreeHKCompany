@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import {
   Table, Typography, Space, Input, Button, message,
 } from "antd";
-import { GiftOutlined } from "@ant-design/icons";
+import { GiftOutlined, ReloadOutlined } from "@ant-design/icons";
 import { Search, PackagePlus } from "lucide-react";
 import { toastApiSuccess, toastApiError } from "../../utils/apiToast";
 import useInventoryList from "../../hooks/useInventoryList";
@@ -103,14 +103,19 @@ const SingleToParcel = () => {
         title="Singal To Parcel"
         icon={<GiftOutlined />}
         actions={(
-          <Input
-            placeholder="Enter Sku..."
-            prefix={<Search size={16} />}
-            className={styles.searchInput}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            allowClear
-          />
+          <Space wrap>
+            <Input
+              placeholder="Enter Sku..."
+              prefix={<Search size={16} />}
+              className={styles.searchInput}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              allowClear
+            />
+            <Button icon={<ReloadOutlined />} onClick={refresh} loading={isLoading || isFetchingMore}>
+              Refresh
+            </Button>
+          </Space>
         )}
       />
 
