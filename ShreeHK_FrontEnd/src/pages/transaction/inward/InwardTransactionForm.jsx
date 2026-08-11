@@ -280,7 +280,7 @@ const InwardTransactionForm = ({
     return type === "number" ? (
       <InputNumber status={hasError ? "error" : ""} value={record[field]} onChange={(val) => handleUpdateCell(record.key, field, val)} style={{ width: '80px' }} />
     ) : (
-      <Input status={hasError ? "error" : ""} value={record[field]} onChange={(e) => handleUpdateCell(record.key, field, e.target.value)} placeholder={placeholder} style={{ width: '100px' }} />
+      <Input status={hasError ? "error" : ""} value={record[field]} onChange={(e) => handleUpdateCell(record.key, field, e.target.value)} placeholder={placeholder} style={{ width: '90px' }} />
     );
   };
 
@@ -545,13 +545,13 @@ const InwardTransactionForm = ({
           </div>
           <div className={styles.footerStatsActions}>
             {scrollableTable ? addLineItemButton(true) : null}
-            <Button
+            {/* <Button
               icon={<Sparkles size={16} className="text-emerald-500 inline mr-1" />}
               onClick={() => setAiOcrModalOpen(true)}
               style={{ borderColor: '#10b981', color: '#10b981' }}
             >
               AI Scan Certificate
-            </Button>
+            </Button> */}
             <Button type="primary" icon={<CheckCircle size={18} />} className={styles.submitBtn} onClick={handleCheckAndSubmit}>
               Check & Submit
             </Button>

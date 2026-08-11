@@ -54,7 +54,7 @@ const Forbidden = () => {
       navigate("/auth/login", { replace: true });
       return;
     }
-    navigate("/", { replace: true });
+    navigate("/dashboard", { replace: true });
   };
 
   return (

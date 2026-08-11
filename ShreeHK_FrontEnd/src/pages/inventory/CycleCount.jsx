@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from "react";
 import dayjs from "dayjs";
 import { Card, Input, Button, Table, Tag, Space, Typography, message } from "antd";
-import { ScanOutlined, CheckOutlined, CloseOutlined } from "@ant-design/icons";
+import { ScanOutlined, CheckOutlined, CloseOutlined, ReloadOutlined } from "@ant-design/icons";
 import PageHeroHeader from "../../components/common/PageHeroHeader";
 import { api } from "../../api/axiosInstance";
 import { ENDPOINTS } from "../../constants/endpoints";
@@ -75,6 +75,11 @@ const CycleCount = () => {
         breadcrumb="INVENTORY"
         title="Cycle Count / Stock Audit"
         icon={<ScanOutlined />}
+        actions={(
+          <Button icon={<ReloadOutlined />} onClick={loadExpected} loading={loading}>
+            Refresh
+          </Button>
+        )}
       />
       <Card className={styles.scanCard}>
         <Space direction="vertical" style={{ width: "100%" }} size="middle">

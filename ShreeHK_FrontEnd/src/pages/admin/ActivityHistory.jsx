@@ -3,7 +3,7 @@ import {
   Card, Form, Input, Select, DatePicker, Button,
 } from "antd";
 import {
-  HistoryOutlined, FileExcelOutlined, FilePdfOutlined, DeleteOutlined,
+  HistoryOutlined, FileExcelOutlined, FilePdfOutlined, DeleteOutlined, ReloadOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { toastApiSuccess, toastApiError } from "../../utils/apiToast";
@@ -198,6 +198,14 @@ const ActivityHistory = () => {
         onSearch={handleSearch}
         extraActions={(
           <div className={styles.exportActions}>
+            <Button
+              type="default"
+              icon={<ReloadOutlined />}
+              className={filterPanelStyles.btnClear}
+              onClick={handleSearch}
+            >
+              Reload
+            </Button>
             <Button
               icon={<FileExcelOutlined />}
               loading={exporting === "xlsx"}

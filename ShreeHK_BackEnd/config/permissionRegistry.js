@@ -6,7 +6,7 @@
 
 const PAGE_ENTRIES = [
   // Core — UI always visible; APIs mostly profile/common
-  { key: "core.dashboard", label: "Dashboard", path: "/", moduleKey: "core", apiPrefixes: ["/ai/chat", "/session/", "/dashboard/"], alwaysAllow: true },
+  { key: "core.dashboard", label: "Dashboard", path: "/dashboard", moduleKey: "core", apiPrefixes: ["/ai/chat", "/session/", "/dashboard/"], alwaysAllow: true },
   { key: "core.task_manager", label: "Task Manager", path: "/task-manager", moduleKey: "core", apiPrefixes: ["/dashboard/quick-notes"] },
   { key: "core.my_account", label: "My Account", path: "/my-account", moduleKey: "core", apiPrefixes: ["/api/profile"], alwaysAllow: true },
   { key: "core.settings", label: "Settings", path: "/settings", moduleKey: "core", apiPrefixes: [], alwaysAllow: true },
@@ -62,7 +62,7 @@ const PAGE_ENTRIES = [
   { key: "reports.outstanding", label: "Outstanding", path: "/report/outstanding", moduleKey: "reports", apiPrefixes: ["/report/outstanding", "/ai/sales-report"], legacyKeys: ["outstanding", "account_report"] },
   { key: "reports.group_report", label: "Group Report", path: "/report/group-report", moduleKey: "reports", apiPrefixes: ["/report/"], legacyKeys: ["account_report", "stock_report"] },
   { key: "reports.stone_history", label: "Stone History", path: "/report/stone-history", moduleKey: "reports", apiPrefixes: ["/report/", "/product/history"], legacyKeys: ["stone_report", "gia", "account_report"] },
-  { key: "reports.transfer_history", label: "Transfer History", path: "/report/stone-tranfer-history", moduleKey: "reports", apiPrefixes: ["/report/"], legacyKeys: ["stone_report", "account_report"] },
+  { key: "reports.transfer_history", label: "Transfer History", path: "/report/stone-transfer-history", moduleKey: "reports", apiPrefixes: ["/report/"], legacyKeys: ["stone_report", "account_report"] },
   { key: "reports.sale_stock", label: "Sale Stock Report", path: "/report/sale-stock", moduleKey: "reports", apiPrefixes: ["/report/sale-stock"], legacyKeys: ["transaction", "stock_report"] },
   { key: "reports.stone_info", label: "Party Stone Info", path: "/report/stone-info", moduleKey: "reports", apiPrefixes: ["/report/stone-info"], legacyKeys: ["stone_report"] },
 

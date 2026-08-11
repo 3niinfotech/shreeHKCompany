@@ -10,7 +10,7 @@ import useInventoryIExportActions from "../../hooks/useInventoryIExportActions";
 import useInventoryExportActions from "../../hooks/useInventoryExportActions";
 import useInventoryMailActions from "../../hooks/useInventoryMailActions";
 import { resolveDiaPair } from "../../utils/resolveDiaPair";
-import { LinkOutlined } from "@ant-design/icons";
+import { LinkOutlined, ReloadOutlined } from "@ant-design/icons";
 import InventoryBulkActionModal from "../../components/inventory/InventoryBulkActionModal";
 import PairManagementModal from "../../components/inventory/PairManagementModal";
 import { renderLocationWithFlag } from "../../components/inventory/LocationWithFlag";
@@ -321,13 +321,18 @@ const OnHandStock = () => {
                     onLabelClick={handleLabelClick}
                     onToolbarAction={handleToolbarAction}
                     extraToolbarActions={
-                        <Button
-                            icon={<LinkOutlined />}
-                            onClick={() => setPairModalOpen(true)}
-                            style={{ color: cssVar("color-primary"), borderColor: cssVar("color-primary") }}
-                        >
-                            Manage Pairs
-                        </Button>
+                        <>
+                            <Button icon={<ReloadOutlined />} onClick={refresh} loading={isLoading || isFetchingMore}>
+                                Refresh
+                            </Button>
+                            <Button
+                                icon={<LinkOutlined />}
+                                onClick={() => setPairModalOpen(true)}
+                                style={{ color: cssVar("color-primary"), borderColor: cssVar("color-primary") }}
+                            >
+                                Manage Pairs
+                            </Button>
+                        </>
                     }
                 />
                 {/* <AIResultPanel

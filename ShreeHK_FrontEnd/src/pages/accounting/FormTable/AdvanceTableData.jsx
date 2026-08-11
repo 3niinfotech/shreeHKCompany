@@ -136,6 +136,22 @@ const AdvanceTableData = () => {
                 onSave={handleSave}
                 onDelete={openDelete}
                 addPagePath="/accounting/advance"
+                onRefresh={async () => {
+                    setHasMore(true);
+                    if (offset !== 0) {
+                        setOffset(0);
+                        setAllData([]);
+                        return;
+                    }
+                    const result = await refetch();
+                    if (result?.data?.Data) {
+                        const rawRecords = Array.isArray(result.data.Data)
+                            ? result.data.Data
+                            : Object.values(result.data.Data);
+                        setAllData(rawRecords.length > limit ? rawRecords.slice(0, limit) : rawRecords);
+                    }
+                }}
+                refreshLoading={isLoading || isFetching}
             />
 
             <ConfirmDeleteModal

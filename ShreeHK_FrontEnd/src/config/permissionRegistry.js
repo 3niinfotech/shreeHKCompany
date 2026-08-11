@@ -3,7 +3,7 @@
  */
 
 export const PAGE_ENTRIES = [
-  { key: "core.dashboard", label: "Dashboard", path: "/", moduleKey: "core", alwaysAllow: true },
+  { key: "core.dashboard", label: "Dashboard", path: "/dashboard", moduleKey: "core", alwaysAllow: true },
   { key: "core.task_manager", label: "Task Manager", path: "/task-manager", moduleKey: "core" },
   { key: "core.my_account", label: "My Account", path: "/my-account", moduleKey: "core", alwaysAllow: true },
   { key: "core.settings", label: "Settings", path: "/settings", moduleKey: "core", alwaysAllow: true },
@@ -56,7 +56,7 @@ export const PAGE_ENTRIES = [
   { key: "reports.outstanding", label: "Outstanding", path: "/report/outstanding", moduleKey: "reports" },
   { key: "reports.group_report", label: "Group Report", path: "/report/group-report", moduleKey: "reports" },
   { key: "reports.stone_history", label: "Stone History", path: "/report/stone-history", moduleKey: "reports" },
-  { key: "reports.transfer_history", label: "Transfer History", path: "/report/stone-tranfer-history", moduleKey: "reports" },
+  { key: "reports.transfer_history", label: "Transfer History", path: "/report/stone-transfer-history", moduleKey: "reports" },
   { key: "reports.sale_stock", label: "Sale Stock Report", path: "/report/sale-stock", moduleKey: "reports" },
   { key: "reports.stone_info", label: "Party Stone Info", path: "/report/stone-info", moduleKey: "reports" },
 

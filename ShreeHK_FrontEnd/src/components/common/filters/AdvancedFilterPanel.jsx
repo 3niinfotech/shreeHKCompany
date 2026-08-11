@@ -40,23 +40,24 @@ const AdvancedFilterPanel = ({
     bodyClassName = '',
 }) => (
     <section className={`${styles.filterPanel} ${className}`.trim()}>
-        <div className={styles.filterPanelHead}>
+        <div className={`${styles.filterGrid} ${bodyClassName}`.trim()}>
             <div className={styles.filterPanelTitle}>
                 <span className={styles.filterPanelIcon}>{icon}</span>
                 <div>
                     <Title level={5} className={styles.filterTitle}>{title}</Title>
                     {subtitle ? <Text type="secondary" className={styles.filterSub}>{subtitle}</Text> : null}
                 </div>
+                {activeCount > 0 ? (
+                    <span className={styles.activeBadge}>{activeCount} active</span>
+                ) : null}
             </div>
-            {activeCount > 0 ? (
-                <span className={styles.activeBadge}>{activeCount} active</span>
-            ) : null}
-        </div>
 
-        <div className={`${styles.filterGrid} ${bodyClassName}`.trim()}>
-            <div className={styles.filterFieldsRow}>
-                {children}
-            </div>
+            {children ? (
+                <div className={styles.filterFieldsRow}>
+                    {children}
+                </div>
+            ) : null}
+
             {(showClear || showSearch || extraActions) && (
                 <FilterActions>
                     {showSearch && onSearch ? (

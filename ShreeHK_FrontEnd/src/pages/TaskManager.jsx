@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useLayoutEffect } from 'react';
 import {
     Card,
     Row,
@@ -36,6 +36,7 @@ import {
     CheckSquare,
     RotateCcw
 } from 'lucide-react';
+import { ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import { useFetchApi, usePostApiRequest, usePutApiRequest, useDeleteApiRequest } from '../api/ApiFunction';
@@ -50,7 +51,7 @@ export default function TaskManager() {
     const user = useAuthStore((state) => state.user);
     const isSuperAdmin = user?.roll === 1 || Number(user?.roll) === 1;
 
-    const { data: apiResponse, isLoading } = useFetchApi('quickNotes', ENDPOINTS.quickNotes.list);
+    const { data: apiResponse, isLoading, refetch } = useFetchApi('quickNotes', ENDPOINTS.quickNotes.list);
     const { data: usersRes } = useFetchApi('usersList', ENDPOINTS.admin.users, {}, 'GET', { enabled: isSuperAdmin });
 
     const createMutation = usePostApiRequest(ENDPOINTS.quickNotes.create, 'quickNotes');
@@ -81,6 +82,32 @@ export default function TaskManager() {
     const [editingTask, setEditingTask] = useState(null);
     const [form] = Form.useForm();
     const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+
+    // Dynamic content height calculation for internal scroll
+    const [containerHeight, setContainerHeight] = useState(450);
+    const contentContainerRef = useRef(null);
+
+    useLayoutEffect(() => {
+        const updateHeight = () => {
+            if (contentContainerRef.current) {
+                const rect = contentContainerRef.current.getBoundingClientRect();
+                if (rect.height > 100) {
+                    setContainerHeight(rect.height);
+                }
+            }
+        };
+        updateHeight();
+        window.addEventListener('resize', updateHeight);
+        let ro;
+        if (typeof ResizeObserver !== 'undefined' && contentContainerRef.current) {
+            ro = new ResizeObserver(updateHeight);
+            ro.observe(contentContainerRef.current);
+        }
+        return () => {
+            window.removeEventListener('resize', updateHeight);
+            ro?.disconnect();
+        };
+    }, []);
 
     // Stats calculations
     const stats = useMemo(() => {
@@ -376,219 +403,260 @@ export default function TaskManager() {
     }, [filteredTasks]);
 
     return (
-        <div className="task-manager-page">
-            <PageHeroHeader
-                breadcrumb="Task Manager"
-                title="Task & Note Manager"
-                icon={<NotebookPen size={22} />}
-                actions={(
-                    <Space size="small" wrap>
-                        <Button
-                            icon={<ArrowLeft size={16} />}
-                            onClick={() => navigate(-1)}
-                            style={{ borderRadius: 8 }}
-                        >
-                            Back
-                        </Button>
-                        {isSuperAdmin && (
+        <div className="task-manager-page page-shell" style={{ height: '100%', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+            <div className="task-manager-top-section">
+                <PageHeroHeader
+                    breadcrumb="Task Manager"
+                    title="Task & Note Manager"
+                    icon={<NotebookPen size={22} />}
+                    actions={(
+                        <Space size="small" wrap>
                             <Button
-                                type="primary"
-                                icon={<Plus size={16} />}
-                                onClick={() => {
-                                    form.resetFields();
-                                    setEditingTask(null);
-                                    setIsAddModalOpen(true);
-                                }}
-                                style={{
-                                    background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-                                    borderColor: '#059669',
-                                    borderRadius: 10,
-                                    fontWeight: 600,
-                                    height: 38,
-                                    boxShadow: '0 4px 12px rgba(5, 150, 105, 0.25)'
-                                }}
+                                icon={<ReloadOutlined />}
+                                onClick={() => refetch()}
+                                loading={isLoading}
+                                style={{ borderRadius: 8 }}
                             >
-                                Create New Task
+                                Refresh
                             </Button>
-                        )}
-                    </Space>
-                )}
-            />
-
-            {/* KPI Cards Header */}
-            <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
-                <Col xs={12} sm={6} lg={4}>
-                    <Card bordered={false} style={{ borderRadius: 14, background: '#ffffff', boxShadow: '0 4px 14px rgba(15, 23, 42, 0.05)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div style={{ width: 40, height: 40, borderRadius: 10, background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <CheckSquare size={20} />
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Tasks</div>
-                                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>{stats.total}</div>
-                            </div>
-                        </div>
-                    </Card>
-                </Col>
-                <Col xs={12} sm={6} lg={4}>
-                    <Card bordered={false} style={{ borderRadius: 14, background: '#ffffff', boxShadow: '0 4px 14px rgba(15, 23, 42, 0.05)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fffbeb', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <Clock size={20} />
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Pending</div>
-                                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#d97706' }}>{stats.pending}</div>
-                            </div>
-                        </div>
-                    </Card>
-                </Col>
-                <Col xs={12} sm={6} lg={4}>
-                    <Card bordered={false} style={{ borderRadius: 14, background: '#ffffff', boxShadow: '0 4px 14px rgba(15, 23, 42, 0.05)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div style={{ width: 40, height: 40, borderRadius: 10, background: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <CheckCircle2 size={20} />
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Completed</div>
-                                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#059669' }}>{stats.completed}</div>
-                            </div>
-                        </div>
-                    </Card>
-                </Col>
-                <Col xs={12} sm={6} lg={4}>
-                    <Card bordered={false} style={{ borderRadius: 14, background: '#ffffff', boxShadow: '0 4px 14px rgba(15, 23, 42, 0.05)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fef2f2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <AlertCircle size={20} />
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Overdue</div>
-                                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#dc2626' }}>{stats.overdue}</div>
-                            </div>
-                        </div>
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={8}>
-                    <Card bordered={false} style={{ borderRadius: 14, background: '#ffffff', boxShadow: '0 4px 14px rgba(15, 23, 42, 0.05)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <div>
-                                <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Completion Progress</div>
-                                <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>{stats.completed} of {stats.total} Tasks Done</div>
-                            </div>
-                            <Progress type="circle" percent={stats.completionRate} width={42} strokeColor="#059669" />
-                        </div>
-                    </Card>
-                </Col>
-            </Row>
-
-            {/* Toolbar Filter Section */}
-            <Card bordered={false} style={{ borderRadius: 16, marginBottom: 20, boxShadow: '0 4px 16px rgba(15, 23, 42, 0.06)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', flex: 1 }}>
-                        <Input
-                            placeholder="Search tasks..."
-                            prefix={<Search size={16} style={{ color: '#94a3b8' }} />}
-                            value={searchText}
-                            onChange={(e) => setSearchText(e.target.value)}
-                            allowClear
-                            style={{ width: 240, borderRadius: 8 }}
-                        />
-                        <Select
-                            value={statusFilter}
-                            onChange={setStatusFilter}
-                            style={{ width: 140 }}
-                            options={[
-                                { label: 'All Status', value: 'ALL' },
-                                { label: 'Pending Only', value: 'PENDING' },
-                                { label: 'Completed', value: 'COMPLETED' },
-                            ]}
-                        />
-                        <Select
-                            value={priorityFilter}
-                            onChange={setPriorityFilter}
-                            style={{ width: 140 }}
-                            options={[
-                                { label: 'All Priorities', value: 'ALL' },
-                                { label: 'High Priority', value: 'High' },
-                                { label: 'Medium Priority', value: 'Medium' },
-                                { label: 'Low Priority', value: 'Low' },
-                            ]}
-                        />
-                        <Select
-                            value={dateFilter}
-                            onChange={setDateFilter}
-                            style={{ width: 140 }}
-                            options={[
-                                { label: 'All Dates', value: 'ALL' },
-                                { label: 'Due Today', value: 'TODAY' },
-                                { label: 'Overdue', value: 'OVERDUE' },
-                                { label: 'Upcoming', value: 'UPCOMING' },
-                            ]}
-                        />
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        {selectedRowKeys.length > 0 && (
-                            <Space>
-                                <Button size="small" type="primary" onClick={handleBulkMarkDone}>
-                                    Mark ({selectedRowKeys.length}) Done
-                                </Button>
-                                {isSuperAdmin && (
-                                    <Popconfirm title="Delete selected tasks?" onConfirm={handleBulkDelete}>
-                                        <Button size="small" danger>
-                                            Delete ({selectedRowKeys.length})
-                                        </Button>
-                                    </Popconfirm>
-                                )}
-                            </Space>
-                        )}
-                        <Segmented
-                            value={viewMode}
-                            onChange={setViewMode}
-                            options={[
-                                { label: 'Table View', value: 'TABLE', icon: <List size={14} /> },
-                                { label: 'Board View', value: 'BOARD', icon: <Kanban size={14} /> },
-                            ]}
-                        />
-                    </div>
-                </div>
-            </Card>
-
-            {/* Content Area (Table or Board) */}
-            {viewMode === 'TABLE' ? (
-                <Card bordered={false} style={{ borderRadius: 16, boxShadow: '0 4px 16px rgba(15, 23, 42, 0.06)' }}>
-                    <Table
-                        rowKey="id"
-                        columns={columns}
-                        dataSource={filteredTasks}
-                        loading={isLoading}
-                        rowSelection={{
-                            selectedRowKeys,
-                            onChange: setSelectedRowKeys,
-                        }}
-                        pagination={{ pageSize: 10, showSizeChanger: true }}
-                    />
-                </Card>
-            ) : (
-                <Row gutter={[16, 16]}>
-                    {[
-                        { title: 'Overdue', color: '#dc2626', bg: '#fef2f2', items: boardColumns.overdue },
-                        { title: 'Due Today', color: '#0284c7', bg: '#f0f9ff', items: boardColumns.today },
-                        { title: 'Upcoming', color: '#d97706', bg: '#fffbeb', items: boardColumns.upcoming },
-                        { title: 'Completed', color: '#059669', bg: '#ecfdf5', items: boardColumns.completed },
-                    ].map((col, idx) => (
-                        <Col xs={24} sm={12} lg={6} key={idx}>
-                            <Card
-                                bordered={false}
-                                title={
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <span style={{ color: col.color, fontWeight: 700, fontSize: '0.9rem' }}>{col.title}</span>
-                                        <Tag color={col.color} style={{ borderRadius: 10, fontWeight: 700 }}>{col.items.length}</Tag>
-                                    </div>
-                                }
-                                style={{ borderRadius: 16, background: col.bg, minHeight: 450, boxShadow: '0 4px 14px rgba(15, 23, 42, 0.04)' }}
+                            <Button
+                                icon={<ArrowLeft size={16} />}
+                                onClick={() => navigate(-1)}
+                                style={{ borderRadius: 8 }}
                             >
+                                Back
+                            </Button>
+                            {isSuperAdmin && (
+                                <Button
+                                    type="primary"
+                                    icon={<Plus size={16} />}
+                                    onClick={() => {
+                                        form.resetFields();
+                                        setEditingTask(null);
+                                        setIsAddModalOpen(true);
+                                    }}
+                                    style={{
+                                        background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                                        borderColor: '#059669',
+                                        borderRadius: 10,
+                                        fontWeight: 600,
+                                        height: 38,
+                                        boxShadow: '0 4px 12px rgba(5, 150, 105, 0.25)'
+                                    }}
+                                >
+                                    Create New Task
+                                </Button>
+                            )}
+                        </Space>
+                    )}
+                />
+
+                {/* KPI Cards Header */}
+                <Row gutter={[16, 16]} style={{ marginBottom: 12 }}>
+                    <Col xs={12} sm={6} lg={4}>
+                        <Card bordered={false} style={{ borderRadius: 14, background: '#ffffff', boxShadow: '0 4px 14px rgba(15, 23, 42, 0.05)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{ width: 40, height: 40, borderRadius: 10, background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <CheckSquare size={20} />
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Tasks</div>
+                                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>{stats.total}</div>
+                                </div>
+                            </div>
+                        </Card>
+                    </Col>
+                    <Col xs={12} sm={6} lg={4}>
+                        <Card bordered={false} style={{ borderRadius: 14, background: '#ffffff', boxShadow: '0 4px 14px rgba(15, 23, 42, 0.05)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fffbeb', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Clock size={20} />
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Pending</div>
+                                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#d97706' }}>{stats.pending}</div>
+                                </div>
+                            </div>
+                        </Card>
+                    </Col>
+                    <Col xs={12} sm={6} lg={4}>
+                        <Card bordered={false} style={{ borderRadius: 14, background: '#ffffff', boxShadow: '0 4px 14px rgba(15, 23, 42, 0.05)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{ width: 40, height: 40, borderRadius: 10, background: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <CheckCircle2 size={20} />
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Completed</div>
+                                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#059669' }}>{stats.completed}</div>
+                                </div>
+                            </div>
+                        </Card>
+                    </Col>
+                    <Col xs={12} sm={6} lg={4}>
+                        <Card bordered={false} style={{ borderRadius: 14, background: '#ffffff', boxShadow: '0 4px 14px rgba(15, 23, 42, 0.05)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fef2f2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <AlertCircle size={20} />
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Overdue</div>
+                                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#dc2626' }}>{stats.overdue}</div>
+                                </div>
+                            </div>
+                        </Card>
+                    </Col>
+                    <Col xs={24} sm={12} lg={8}>
+                        <Card bordered={false} style={{ borderRadius: 14, background: '#ffffff', boxShadow: '0 4px 14px rgba(15, 23, 42, 0.05)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div>
+                                    <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Completion Progress</div>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>{stats.completed} of {stats.total} Tasks Done</div>
+                                </div>
+                                <Progress type="circle" percent={stats.completionRate} width={42} strokeColor="#059669" />
+                            </div>
+                        </Card>
+                    </Col>
+                </Row>
+
+                {/* Toolbar Filter Section */}
+                <Card bordered={false} style={{ borderRadius: 16, marginBottom: 12, boxShadow: '0 4px 16px rgba(15, 23, 42, 0.06)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', flex: 1 }}>
+                            <Input
+                                placeholder="Search tasks..."
+                                prefix={<Search size={16} style={{ color: '#94a3b8' }} />}
+                                value={searchText}
+                                onChange={(e) => setSearchText(e.target.value)}
+                                allowClear
+                                style={{ width: 240, borderRadius: 8 }}
+                            />
+                            <Select
+                                value={statusFilter}
+                                onChange={setStatusFilter}
+                                style={{ width: 140 }}
+                                options={[
+                                    { label: 'All Status', value: 'ALL' },
+                                    { label: 'Pending Only', value: 'PENDING' },
+                                    { label: 'Completed', value: 'COMPLETED' },
+                                ]}
+                            />
+                            <Select
+                                value={priorityFilter}
+                                onChange={setPriorityFilter}
+                                style={{ width: 140 }}
+                                options={[
+                                    { label: 'All Priorities', value: 'ALL' },
+                                    { label: 'High Priority', value: 'High' },
+                                    { label: 'Medium Priority', value: 'Medium' },
+                                    { label: 'Low Priority', value: 'Low' },
+                                ]}
+                            />
+                            <Select
+                                value={dateFilter}
+                                onChange={setDateFilter}
+                                style={{ width: 140 }}
+                                options={[
+                                    { label: 'All Dates', value: 'ALL' },
+                                    { label: 'Due Today', value: 'TODAY' },
+                                    { label: 'Overdue', value: 'OVERDUE' },
+                                    { label: 'Upcoming', value: 'UPCOMING' },
+                                ]}
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            {selectedRowKeys.length > 0 && (
+                                <Space>
+                                    <Button size="small" type="primary" onClick={handleBulkMarkDone}>
+                                        Mark ({selectedRowKeys.length}) Done
+                                    </Button>
+                                    {isSuperAdmin && (
+                                        <Popconfirm title="Delete selected tasks?" onConfirm={handleBulkDelete}>
+                                            <Button size="small" danger>
+                                                Delete ({selectedRowKeys.length})
+                                            </Button>
+                                        </Popconfirm>
+                                    )}
+                                </Space>
+                            )}
+                            <Segmented
+                                value={viewMode}
+                                onChange={setViewMode}
+                                options={[
+                                    { label: 'Table View', value: 'TABLE', icon: <List size={14} /> },
+                                    { label: 'Board View', value: 'BOARD', icon: <Kanban size={14} /> },
+                                ]}
+                            />
+                        </div>
+                    </div>
+                </Card>
+            </div>
+
+            {/* Content Area (Table or Board) with Internal Scroll */}
+            <div ref={contentContainerRef} className="task-manager-content-area" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                {viewMode === 'TABLE' ? (
+                    <Card
+                        bordered={false}
+                        className="task-manager-table-card"
+                        style={{
+                            flex: 1,
+                            minHeight: 0,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            borderRadius: 16,
+                            boxShadow: '0 4px 16px rgba(15, 23, 42, 0.06)',
+                            overflow: 'hidden'
+                        }}
+                    >
+                        <Table
+                            rowKey="id"
+                            columns={columns}
+                            dataSource={filteredTasks}
+                            loading={isLoading}
+                            rowSelection={{
+                                selectedRowKeys,
+                                onChange: setSelectedRowKeys,
+                            }}
+                            scroll={{ y: Math.max(180, containerHeight - 110), x: 'max-content' }}
+                            pagination={{ pageSize: 15, showSizeChanger: true, style: { marginBottom: 0, marginTop: 8 } }}
+                        />
+                    </Card>
+                ) : (
+                    <Row gutter={[16, 16]} className="task-board-row" style={{ flex: 1, minHeight: 0, overflowX: 'auto', flexWrap: 'nowrap' }}>
+                        {[
+                            { title: 'Overdue', color: '#dc2626', bg: '#fef2f2', items: boardColumns.overdue },
+                            { title: 'Due Today', color: '#0284c7', bg: '#f0f9ff', items: boardColumns.today },
+                            { title: 'Upcoming', color: '#d97706', bg: '#fffbeb', items: boardColumns.upcoming },
+                            { title: 'Completed', color: '#059669', bg: '#ecfdf5', items: boardColumns.completed },
+                        ].map((col, idx) => (
+                            <Col xs={24} sm={12} lg={6} key={idx} className="task-board-col" style={{ height: '100%', display: 'flex', flexDirection: 'column', minWidth: 260 }}>
+                                <Card
+                                    bordered={false}
+                                    className="task-board-card"
+                                    title={
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <span style={{ color: col.color, fontWeight: 700, fontSize: '0.9rem' }}>{col.title}</span>
+                                            <Tag color={col.color} style={{ borderRadius: 10, fontWeight: 700 }}>{col.items.length}</Tag>
+                                        </div>
+                                    }
+                                    style={{
+                                        height: '100%',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        borderRadius: 16,
+                                        background: col.bg,
+                                        boxShadow: '0 4px 14px rgba(15, 23, 42, 0.04)',
+                                        overflow: 'hidden'
+                                    }}
+                                    bodyStyle={{
+                                        flex: 1,
+                                        minHeight: 0,
+                                        overflowY: 'auto',
+                                        padding: '12px',
+                                        display: 'flex',
+                                        flexDirection: 'column'
+                                    }}
+                                >
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                     {col.items.length > 0 ? (
                                         col.items.map(task => (
@@ -652,7 +720,8 @@ export default function TaskManager() {
                         </Col>
                     ))}
                 </Row>
-            )}
+                )}
+            </div>
 
             {/* Create / Edit Modal (Super Admin only) */}
             {isSuperAdmin && (

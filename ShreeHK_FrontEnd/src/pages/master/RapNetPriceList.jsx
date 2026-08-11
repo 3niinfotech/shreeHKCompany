@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
-import { Alert, Button, Typography } from 'antd';
+import { Alert, Button, Space, Typography } from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { toastApiSuccess, toastApiError, getApiErrorMessage } from '../../utils/apiToast';
 import { MasterListTable } from '../../components/common/table';
@@ -12,7 +13,7 @@ const { Text } = Typography;
 const RapNetPriceList = () => {
     const [dataSource, setDataSource] = useState([]);
     const queryClient = useQueryClient();
-    const { data, isLoading, isError, error, refetch } = useFetchApi('rapnetPrices', ENDPOINTS.rapnet.prices, {});
+    const { data, isLoading, isFetching, isError, error, refetch } = useFetchApi('rapnetPrices', ENDPOINTS.rapnet.prices, {});
 
     const {
         refetch: refetchUpdate,
@@ -131,14 +132,19 @@ const RapNetPriceList = () => {
                     record?.id ?? `${record?.shape}-${record?.color}-${record?.clarity}-${record?.low_size}-${index}`
                 }
                 extraHeaderActions={
-                    <Button
-                        type="primary"
-                        loading={isUpdating}
-                        disabled={isUpdating}
-                        onClick={handleUpdateRapnet}
-                    >
-                        Update Rapnet Price
-                    </Button>
+                    <Space wrap>
+                        <Button icon={<ReloadOutlined />} loading={isFetching} onClick={() => refetch()}>
+                            Refresh
+                        </Button>
+                        <Button
+                            type="primary"
+                            loading={isUpdating}
+                            disabled={isUpdating}
+                            onClick={handleUpdateRapnet}
+                        >
+                            Update Rapnet Price
+                        </Button>
+                    </Space>
                 }
             />
         </>

@@ -14,7 +14,8 @@ export const getCategoryColumns = (dataSource = []) => [
         dataIndex: "parent",
         key: "parent",
         render: (parentId) => {
-            const parentRow = dataSource.find((r) => r.id === parentId);
+            if (!parentId || Number(parentId) === 0) return "-";
+            const parentRow = dataSource.find((r) => Number(r.id) === Number(parentId));
             return parentRow ? parentRow.name : "-";
         }
     }

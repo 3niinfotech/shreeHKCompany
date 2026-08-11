@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Form } from "antd";
+import { Button, Form } from "antd";
+import { ReloadOutlined } from "@ant-design/icons";
 import { toast } from "sonner";
 import { shippingFields } from "../Data";
 import { ConfirmDeleteModal } from "../../../components/common/modals";
@@ -27,7 +28,7 @@ const ShippingPage = () => {
     const deleteModal = useModal();
     const [deleteTarget, setDeleteTarget] = useState(null);
 
-    const { data, isLoading } = useEntityList(QUERY_KEYS.shipping, fetchShipping, { limit: PAGE_LIMIT, searchInput: search, });
+    const { data, isLoading, isFetching, refetch } = useEntityList(QUERY_KEYS.shipping, fetchShipping, { limit: PAGE_LIMIT, searchInput: search, });
 
     const { mutate: saveShippingMutation } = useEntityPostMutation(saveShipping, QUERY_KEYS.shipping);
     const { mutate: deleteShippingMutation, isPending: isDeleting } = useEntityDeleteMutation(
@@ -103,6 +104,11 @@ const ShippingPage = () => {
                 onDelete={openDelete}
                 searchValue={search}
                 onSearchChange={handleSearch}
+                extraHeaderActions={
+                    <Button icon={<ReloadOutlined />} loading={isFetching} onClick={() => refetch()}>
+                        Refresh
+                    </Button>
+                }
             />
 
             <MasterFormAddModal

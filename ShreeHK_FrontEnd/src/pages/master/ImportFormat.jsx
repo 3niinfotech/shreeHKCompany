@@ -15,7 +15,7 @@ const HEADERS = [
   "Mfg.Code",
   "D.No.",
   "Sku",
-  "R.Pcs",
+  // "R.Pcs",
   "P.Pcs",
   "P.Carat",
   "Cost",

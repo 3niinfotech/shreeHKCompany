@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { Card, Table, Typography, Tag, Alert } from "antd";
+import React, { useCallback, useEffect, useState } from "react";
+import { Card, Table, Typography, Tag, Alert, Button, Space } from "antd";
+import { ReloadOutlined } from "@ant-design/icons";
 import { api } from "../../api/axiosInstance";
 import { ENDPOINTS } from "../../constants/endpoints";
 
@@ -14,13 +15,18 @@ const LegacyAppsScope = () => {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const loadLegacyApps = useCallback(() => {
+    setLoading(true);
     api
       .get(ENDPOINTS.legacyApps)
       .then((res) => setRows(res.data?.Data || []))
       .catch(() => setRows([]))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    loadLegacyApps();
+  }, [loadLegacyApps]);
 
   const columns = [
     { title: "App", dataIndex: "name", key: "name" },
@@ -38,7 +44,12 @@ const LegacyAppsScope = () => {
 
   return (
     <div style={{ padding: 24 }}>
-      <Title level={3}>Legacy Apps — Migration Scope</Title>
+      <Space style={{ width: "100%", justifyContent: "space-between", marginBottom: 8 }} wrap>
+        <Title level={3} style={{ margin: 0 }}>Legacy Apps — Migration Scope</Title>
+        <Button icon={<ReloadOutlined />} onClick={loadLegacyApps} loading={loading}>
+          Refresh
+        </Button>
+      </Space>
       <Paragraph type="secondary">
         EMS, SMS, and Jewelry modules remain outside the Node/React DAI ERP rewrite. Use this page to
         document scope decisions for stakeholders.

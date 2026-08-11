@@ -28,7 +28,7 @@ const DynamicForm = ({ fields, forceFullWidth, layout = 'grid' }) => {
                     />
                 );
             case 'date':
-                return <DatePicker placeholder={field.placeholder || `Select ${field.label}`} style={inputStyle} disabled={field.disabled} />;
+                return <DatePicker format="DD-MM-YYYY" placeholder={field.placeholder || `Select ${field.label}`} style={inputStyle} disabled={field.disabled} />;
             case 'number':
                 return <InputNumber placeholder={`0.00`} style={inputStyle} disabled={field.disabled} min={0} />;
             case 'textarea':

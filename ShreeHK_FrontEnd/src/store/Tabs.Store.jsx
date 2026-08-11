@@ -11,7 +11,7 @@ const useTabsStore = create(
       activeKey: HOME_TAB.key,
 
       openTab: (tab) => {
-        const path = tab.path === "" ? "/" : tab.path;
+        const path = tab.path === "" ? HOME_TAB.path : tab.path;
 
         if (path === HOME_TAB.path) {
           set((state) =>

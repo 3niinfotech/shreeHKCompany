@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Form } from "antd";
+import { Button, Form } from "antd";
+import { ReloadOutlined } from "@ant-design/icons";
 import { toast } from "sonner";
 import { originFields } from "../Data";
 import { ConfirmDeleteModal } from "../../../components/common/modals";
@@ -27,7 +28,7 @@ const OriginPage = () => {
     const deleteModal = useModal();
     const [deleteTarget, setDeleteTarget] = useState(null);
 
-    const { data, isLoading } = useEntityList(QUERY_KEYS.origins, fetchOrigins, { limit: PAGE_LIMIT });
+    const { data, isLoading, isFetching, refetch } = useEntityList(QUERY_KEYS.origins, fetchOrigins, { limit: PAGE_LIMIT });
 
     const { mutate: saveOriginMutation } = useEntityPostMutation(saveOrigin, QUERY_KEYS.origins);
     const { mutate: deleteOriginMutation, isPending: isDeleting } = useEntityDeleteMutation(
@@ -97,6 +98,11 @@ const OriginPage = () => {
                 onAdd={handleAddClick}
                 onEdit={handleEditClick}
                 onDelete={openDelete}
+                extraHeaderActions={
+                    <Button icon={<ReloadOutlined />} loading={isFetching} onClick={() => refetch()}>
+                        Refresh
+                    </Button>
+                }
             />
 
             <MasterFormAddModal

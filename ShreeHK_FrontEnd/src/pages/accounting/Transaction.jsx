@@ -1,9 +1,10 @@
 import React, { useMemo, useState, useRef } from 'react';
-import { Select, DatePicker, Table, Typography } from 'antd';
+import { Select, DatePicker, Table, Typography, Button } from 'antd';
 import {
     BookOutlined,
     TeamOutlined,
     CalendarOutlined,
+    ReloadOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
@@ -90,6 +91,11 @@ const Transaction = () => {
                 clearDisabled={!activeFilterCount}
                 onSearch={handleSearch}
                 searchLoading={isLoading}
+                extraActions={(
+                    <Button type="default" icon={<ReloadOutlined />} className={filterPanelStyles.btnClear} onClick={handleSearch} loading={isLoading}>
+                        Reload
+                    </Button>
+                )}
             >
                 <FilterField label="Book" icon={<BookOutlined />}>
                     <Select

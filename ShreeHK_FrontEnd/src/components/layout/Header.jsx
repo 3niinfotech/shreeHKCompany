@@ -8,7 +8,7 @@ import NavBar from "./NavBar";
 import SkuActionModal from "../../hooks/useSkuModalAction";
 import styles from "../../assets/scss/layout/header.module.scss";
 import { Link, useNavigate } from "react-router-dom";
-import { Gem, Menu, Wifi, WifiOff, RefreshCw, CheckCircle2, Database } from "lucide-react";
+import { Gem, Menu, Wifi, WifiOff, RefreshCw, CheckCircle2, Database, FileCheck, Send, ShoppingCart, ShoppingBag } from "lucide-react";
 import useAuthStore from "../../store/Auth.Store";
 
 const { Header: AntHeader } = Layout;
@@ -286,7 +286,7 @@ const Header = ({
           )}
 
           {!hideLogo && (
-            <Link to="/" className={styles.logoLink}>
+            <Link to="/dashboard" className={styles.logoLink}>
               <span className={styles.logoIcon}>
                 <Gem size={20} strokeWidth={2.2} />
               </span>
@@ -302,14 +302,43 @@ const Header = ({
               onInventoryFilter={handleInventoryFilterFromSearch}
             />
           </div>
-          <Button
-            type="primary"
-            icon={<Database size={15} />}
-            className={styles.myInventoryBtn}
-            onClick={() => navigate('/inventory/my-inventory')}
-          >
-            My Inventory
-          </Button>
+          <div className={styles.topQuickActions}>
+            <Button
+              icon={<Database size={14} />}
+              className={`${styles.topQuickBtn} ${styles.myInventoryBtn}`}
+              onClick={() => navigate('/inventory/my-inventory')}
+            >
+              My Inventory
+            </Button>
+            <Button
+              icon={<FileCheck size={14} />}
+              className={`${styles.topQuickBtn} ${styles.inMemoBtn}`}
+              onClick={() => navigate('/transaction/in-memo')}
+            >
+              In Memo
+            </Button>
+            <Button
+              icon={<Send size={14} />}
+              className={`${styles.topQuickBtn} ${styles.outMemoBtn}`}
+              onClick={() => navigate('/transaction/out-memo')}
+            >
+              Out Memo
+            </Button>
+            <Button
+              icon={<ShoppingCart size={14} />}
+              className={`${styles.topQuickBtn} ${styles.saleBtn}`}
+              onClick={() => navigate('/transaction/sale')}
+            >
+              Sale
+            </Button>
+            <Button
+              icon={<ShoppingBag size={14} />}
+              className={`${styles.topQuickBtn} ${styles.purchaseBtn}`}
+              onClick={() => navigate('/transaction/purchase')}
+            >
+              Purchase
+            </Button>
+          </div>
         </div>
 
         <div className={styles.headerRight}>

@@ -14,7 +14,7 @@ applyTheme("light", "web");
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <QueryProvider>
-      <BrowserRouter>
+      <BrowserRouter useTransitions={false}>
         <ThemeApplier />
         <AppToaster />
         <App />

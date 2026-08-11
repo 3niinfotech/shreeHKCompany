@@ -1,6 +1,19 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Table, Card, Typography, Space, Button, Tag, Checkbox, Select, Input, Empty, Form, Spin } from 'antd';
-import { EditOutlined, PrinterOutlined, DeleteOutlined, ReloadOutlined, PlusOutlined, TeamOutlined } from '@ant-design/icons';
+import { Table, Card, Typography, Space, Button, Tag, Checkbox, Select, Input, Empty, Form, Spin, Tooltip } from 'antd';
+import {
+  EditOutlined,
+  PrinterOutlined,
+  DeleteOutlined,
+  ReloadOutlined,
+  PlusOutlined,
+  TeamOutlined,
+  RollbackOutlined,
+  DollarOutlined,
+  ShoppingCartOutlined,
+  SwapOutlined,
+  ExportOutlined,
+  ImportOutlined,
+} from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { toastApiSuccess, toastApiError } from '../../../utils/apiToast';
 import { useNavigate } from 'react-router-dom';
@@ -160,14 +173,27 @@ const TransactionStockTemplate = ({
         return false;
       }
       toastApiSuccess(res.data);
-      queryClient.invalidateQueries({ queryKey: [queryKey] });
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey?.[0];
+          if (Array.isArray(key)) return key[0] === queryKey;
+          return key === queryKey;
+        },
+      });
       if (infiniteScroll) {
-        setOffset(0);
-        setAllGroups([]);
         setHasMore(true);
         setScrollFetching(false);
+        if (offset !== 0) {
+          setOffset(0);
+          setAllGroups([]);
+        } else {
+          const result = await refetch();
+          const d = result?.data?.Data || result?.data?.data;
+          setAllGroups(Array.isArray(d) ? d : []);
+        }
+      } else {
+        await refetch();
       }
-      await refetch();
       return true;
     } catch (err) {
       toastApiError(err);
@@ -247,7 +273,14 @@ const TransactionStockTemplate = ({
     return fromApi;
   }, [infiniteScroll, listData, allGroups.length]);
 
-  const tableHeight = useTableBodyScrollHeight(tableRef, [groups.length, isLoading, isFetching, infiniteScroll ? offset : page]);
+  const tableHeight = useTableBodyScrollHeight(tableRef, [
+    groups.length,
+    isLoading,
+    isFetching,
+    infiniteScroll ? offset : page,
+    infiniteScroll ? false : pageSize,
+    infiniteScroll ? false : totalItems,
+  ]);
 
   const handleTableScroll = useCallback((e) => {
     if (!infiniteScroll) return;
@@ -258,10 +291,50 @@ const TransactionStockTemplate = ({
     }
   }, [infiniteScroll, scrollFetching, isFetching, hasMore]);
 
-  const refreshList = useCallback(() => {
-    resetList();
-    refetch();
-  }, [resetList, refetch]);
+  const refreshList = useCallback(async () => {
+    setExpandedRowKeys([]);
+
+    const invalidateStockQueries = () => {
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey?.[0];
+          if (Array.isArray(key)) return key[0] === queryKey;
+          return key === queryKey;
+        },
+      });
+    };
+
+    if (infiniteScroll) {
+      setHasMore(true);
+      setScrollFetching(false);
+      // Clearing allGroups before a same-key refetch can stick on empty when
+      // React Query structural-shares identical data and useEffect never re-runs.
+      if (offset !== 0) {
+        setOffset(0);
+        setAllGroups([]);
+        invalidateStockQueries();
+        return;
+      }
+      const result = await refetch();
+      const d = result?.data?.Data || result?.data?.data;
+      const newRecords = Array.isArray(d) ? d : [];
+      setAllGroups(newRecords);
+      const total = Number(result?.data?.TotalItems ?? result?.data?.total ?? 0);
+      if (!newRecords.length || newRecords.length < listLimit || (total > 0 && newRecords.length >= total)) {
+        setHasMore(false);
+      } else {
+        setHasMore(true);
+      }
+      return;
+    }
+
+    if (page !== 1) {
+      setPage(1);
+      invalidateStockQueries();
+      return;
+    }
+    await refetch();
+  }, [infiniteScroll, offset, page, refetch, listLimit, queryClient, queryKey]);
 
   const pageStats = useMemo(() => groups.reduce((acc, group) => {
     (group.products || []).forEach((p) => {
@@ -428,73 +501,21 @@ const TransactionStockTemplate = ({
     ...productColumns,
   ], [productColumns, selectedProducts]);
 
-  const renderGroupActions = (group) => {
-    const selectedCount = getSelected(group.id).length;
-    const displayType = group.type || group.inward_type;
-
-    return (
-      <Space wrap size="small" className={styles.expandActionBar}>
-        <Text type="secondary">Selected: {selectedCount}</Text>
-        {actions.showReturn && (
-          <Button size="small" disabled={!selectedCount || actionLoading} onClick={() => handleReturn(group)}>
-            Return
-          </Button>
-        )}
-        {actions.showMemoToSale && (
-          <Button size="small" type="primary" disabled={!selectedCount || actionLoading} onClick={() => handleMemoToSale(group)}>
-            Sale
-          </Button>
-        )}
-        {actions.showMemoToPurchase && (
-          <Button size="small" type="primary" disabled={!selectedCount || actionLoading} onClick={() => handleMemoToPurchase(group)}>
-            Purchase
-          </Button>
-        )}
-        {actions.showToConsign && displayType === 'memo' && (
-          <Button size="small" disabled={actionLoading} onClick={() => handleToExport(group, 'consign')}>
-            To Consign
-          </Button>
-        )}
-        {actions.showToExport && displayType === 'sale' && (
-          <Button size="small" disabled={actionLoading} onClick={() => handleToExport(group, 'export')}>
-            To Export
-          </Button>
-        )}
-        {actions.showToPurchase && displayType === 'import' && (
-          <Button size="small" disabled={actionLoading} onClick={() => handleToggle(group, 'purchase')}>
-            To Purchase
-          </Button>
-        )}
-        {actions.showToImport && displayType === 'purchase' && (
-          <Button size="small" disabled={actionLoading} onClick={() => handleToggle(group, 'import')}>
-            To Import
-          </Button>
-        )}
-        {actions.showPrint && (
-          <Button size="small" icon={<PrinterOutlined />} onClick={() => handlePrint(group)}>
-            Print
-          </Button>
-        )}
-      </Space>
-    );
-  };
-
   const renderExpandedRow = (group) => {
     const products = group.products || [];
     return (
       <div className={styles.expandedBlock}>
-        {renderGroupActions(group)}
         <div className={styles.innerTableWrap}>
           <Table
             columns={buildGroupColumns(group)}
             dataSource={products}
             rowKey="id"
             pagination={false}
-            size="small"
+            size="middle"
             bordered
             tableLayout="fixed"
-            scroll={{ x: Math.max(1200, productColumns.length * 100), y: 280 }}
             className={styles.innerTable}
+            style={{ minWidth: Math.max(1200, productColumns.length * 100) }}
           />
         </div>
       </div>
@@ -575,22 +596,90 @@ const TransactionStockTemplate = ({
     {
       title: 'Action',
       key: 'action',
-      width: 130,
+      width: 160,
       fixed: 'right',
       align: 'center',
-      render: (_, record) => (
-        <div className={styles.actionIcons}>
-          {actions.showEdit && (
-            <EditOutlined className={styles.edit} title="Edit" onClick={() => handleEditClick(record)} />
-          )}
-          {actions.showPrint && (
-            <PrinterOutlined className={styles.print} title="View & print invoice" onClick={() => handlePrint(record)} />
-          )}
-          {actions.showDelete && (
-            <DeleteOutlined className={styles.delete} title="Delete" onClick={() => openDelete(record)} />
-          )}
-        </div>
-      ),
+      render: (_, record) => {
+        const selectedCount = getSelected(record.id).length;
+        const displayType = record.type || record.inward_type;
+        const needsSelectionDisabled = !selectedCount || actionLoading;
+
+        return (
+          <div className={styles.actionIcons}>
+            {actions.showReturn && (
+              <Tooltip title="Return">
+                <RollbackOutlined
+                  className={`${styles.actionReturn} ${needsSelectionDisabled ? styles.actionDisabled : ''}`}
+                  onClick={() => !needsSelectionDisabled && handleReturn(record)}
+                />
+              </Tooltip>
+            )}
+            {actions.showMemoToSale && (
+              <Tooltip title="Sale">
+                <DollarOutlined
+                  className={`${styles.actionSale} ${needsSelectionDisabled ? styles.actionDisabled : ''}`}
+                  onClick={() => !needsSelectionDisabled && handleMemoToSale(record)}
+                />
+              </Tooltip>
+            )}
+            {actions.showMemoToPurchase && (
+              <Tooltip title="Purchase">
+                <ShoppingCartOutlined
+                  className={`${styles.actionPurchase} ${needsSelectionDisabled ? styles.actionDisabled : ''}`}
+                  onClick={() => !needsSelectionDisabled && handleMemoToPurchase(record)}
+                />
+              </Tooltip>
+            )}
+            {actions.showToConsign && displayType === 'memo' && (
+              <Tooltip title="To Consign">
+                <SwapOutlined
+                  className={`${styles.actionConsign} ${actionLoading ? styles.actionDisabled : ''}`}
+                  onClick={() => !actionLoading && handleToExport(record, 'consign')}
+                />
+              </Tooltip>
+            )}
+            {actions.showToExport && displayType === 'sale' && (
+              <Tooltip title="To Export">
+                <ExportOutlined
+                  className={`${styles.actionExport} ${actionLoading ? styles.actionDisabled : ''}`}
+                  onClick={() => !actionLoading && handleToExport(record, 'export')}
+                />
+              </Tooltip>
+            )}
+            {actions.showToPurchase && displayType === 'import' && (
+              <Tooltip title="To Purchase">
+                <ShoppingCartOutlined
+                  className={`${styles.actionPurchase} ${actionLoading ? styles.actionDisabled : ''}`}
+                  onClick={() => !actionLoading && handleToggle(record, 'purchase')}
+                />
+              </Tooltip>
+            )}
+            {actions.showToImport && displayType === 'purchase' && (
+              <Tooltip title="To Import">
+                <ImportOutlined
+                  className={`${styles.actionImport} ${actionLoading ? styles.actionDisabled : ''}`}
+                  onClick={() => !actionLoading && handleToggle(record, 'import')}
+                />
+              </Tooltip>
+            )}
+            {actions.showEdit && (
+              <Tooltip title="Edit">
+                <EditOutlined className={styles.edit} onClick={() => handleEditClick(record)} />
+              </Tooltip>
+            )}
+            {actions.showPrint && (
+              <Tooltip title="Print">
+                <PrinterOutlined className={styles.print} onClick={() => handlePrint(record)} />
+              </Tooltip>
+            )}
+            {actions.showDelete && (
+              <Tooltip title="Delete">
+                <DeleteOutlined className={styles.delete} onClick={() => openDelete(record)} />
+              </Tooltip>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -625,7 +714,7 @@ const TransactionStockTemplate = ({
 
       <AdvancedFilterPanel
         title={`${title}`}
-        subtitle="Filter records by company and invoice number."
+        // subtitle="Filter records by company and invoice number."
         activeCount={[party, invoice].filter(Boolean).length}
         onClear={() => { setParty(''); setInvoice(''); resetList(); }}
         clearDisabled={!party && !invoice}
@@ -653,7 +742,8 @@ const TransactionStockTemplate = ({
           </Space>
         }
       >
-        <FilterField label="Company" icon={<TeamOutlined />}>
+        {/* <FilterField label="Company" icon={<TeamOutlined />}> */}
+        <FilterField>
           <Select
             allowClear
             showSearch
@@ -666,7 +756,8 @@ const TransactionStockTemplate = ({
             style={{ padding: "6px 11px" }}
           />
         </FilterField>
-        <FilterField label="Invoice">
+        {/* <FilterField label="Invoice"> */}
+        <FilterField>
           <Input
             className={filterPanelStyles.filterControl}
             value={invoice}
@@ -678,38 +769,17 @@ const TransactionStockTemplate = ({
         </FilterField>
       </AdvancedFilterPanel>
 
-      <div className={styles.statsBar}>
-        <div className={styles.legendGroup}>
-          <Text strong>Total Records: {totalItems.toLocaleString()}</Text>
-          <Text type="secondary" style={{ marginLeft: 12 }}>
-            {infiniteScroll
-              ? `Loaded ${groups.length.toLocaleString()} ${groups.length === 1 ? 'entry' : 'entries'}`
-              : `Showing page ${page} · ${groups.length} ${groups.length === 1 ? 'entry' : 'entries'}`}
-          </Text>
-        </div>
-        <div className={styles.totalsGroup}>
-          <div className={styles.statItem}>
-            <label>{infiniteScroll ? 'Loaded Pcs' : 'Page Pcs'}</label>
-            <span>{pageStats.pcs.toLocaleString()}</span>
-          </div>
-          <div className={styles.statItem}>
-            <label>{infiniteScroll ? 'Loaded Carats' : 'Page Carats'}</label>
-            <span>{pageStats.carats.toFixed(2)}</span>
-          </div>
-          <div className={styles.statItem}>
-            <label>{infiniteScroll ? 'Loaded Amount' : 'Page Amount'}</label>
-            <span style={{ color: cssVar('color-error') }}>${pageStats.amount.toLocaleString()}</span>
-          </div>
-        </div>
-      </div>
-
       <Card variant="none" className={styles.cardContainer}>
-        <div ref={tableRef} className="erp-table-container">
+        <div
+          ref={tableRef}
+          className={`erp-table-container ${styles.fixedHeightTable}`}
+          style={{ ['--table-scroll-y']: `${tableHeight}px` }}
+        >
           <Table
             columns={mainColumns}
             dataSource={groups}
             rowKey="id"
-            loading={infiniteScroll ? (isLoading && offset === 0) : (isLoading || isFetching)}
+            loading={infiniteScroll ? ((isLoading || isFetching) && offset === 0) : (isLoading || isFetching)}
             className={styles.tableWrapper}
             size="small"
             bordered
@@ -741,12 +811,40 @@ const TransactionStockTemplate = ({
               position: ['bottomCenter'],
               hideOnSinglePage: totalItems <= PAGE_SIZE_DEFAULT,
             }}
-            footer={infiniteScroll ? () => (
-              <div style={{ textAlign: 'center', padding: 4, fontSize: 12, color: cssVar('color-text-muted') }}>
-                {(isFetching || scrollFetching) ? <Spin size="small" /> :
-                  hasMore ? 'Scroll down for more...' : `All ${groups.length} entries loaded`}
+            footer={() => (
+              <div className={styles.statsBarFooter}>
+                <div className={styles.statsBar}>
+                  <div className={styles.legendGroup}>
+                    <Text strong>Total Records: {totalItems.toLocaleString()}</Text>
+                    <Text type="secondary" style={{ marginLeft: 12 }}>
+                      {infiniteScroll
+                        ? `Total ${groups.length.toLocaleString()} ${groups.length === 1 ? 'entry' : 'entries'}`
+                        : `Showing page ${page} · ${groups.length} ${groups.length === 1 ? 'entry' : 'entries'}`}
+                    </Text>
+                  </div>
+                  {infiniteScroll && (
+                    <div className={styles.statsBarCenter}>
+                      {(isFetching || scrollFetching) ? <Spin size="small" /> :
+                        hasMore ? 'Scroll down for more...' : `All ${groups.length} entries loaded`}
+                    </div>
+                  )}
+                  <div className={styles.totalsGroup}>
+                    <div className={styles.statItem}>
+                      <label>{infiniteScroll ? 'Total Pcs' : 'Page Pcs'}</label>
+                      <span>{pageStats.pcs.toLocaleString()}</span>
+                    </div>
+                    <div className={styles.statItem}>
+                      <label>{infiniteScroll ? 'Total Carats' : 'Page Carats'}</label>
+                      <span>{pageStats.carats.toFixed(2)}</span>
+                    </div>
+                    <div className={styles.statItem}>
+                      <label>{infiniteScroll ? 'Total Amount' : 'Page Amount'}</label>
+                      <span style={{ color: cssVar('color-error') }}>${pageStats.amount.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-            ) : undefined}
+            )}
           />
         </div>
       </Card>
@@ -755,7 +853,7 @@ const TransactionStockTemplate = ({
         open={deleteModal.open}
         onCancel={closeDelete}
         onConfirm={handleDelete}
-        loading={isDeleting}
+        loading={isDeleting}  
         title="Delete record?"
         description="This action cannot be undone."
       />

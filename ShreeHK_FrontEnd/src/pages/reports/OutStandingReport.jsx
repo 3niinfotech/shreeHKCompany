@@ -205,7 +205,9 @@ const OutStandingReport = () => {
             handleSearch({ ...form.getFieldsValue(), dateRange: rangeValue }, true);
             // state clear kar do taaki refresh/back par dobara na lage
             window.history.replaceState({}, document.title);
+            return;
         }
+        handleSearch(form.getFieldsValue(), true);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -216,7 +218,7 @@ const OutStandingReport = () => {
         <div className={styles.pageContainer}>
             <AdvancedFilterPanel
                 title="Outstanding Report"
-                subtitle="Filter by type, party, invoice, and date range."
+                // subtitle="Filter by type, party, invoice, and date range."
                 showClear={false}
                 onSearch={() => handleSearch(form.getFieldsValue(), true)}
                 searchLoading={isSubmitting}

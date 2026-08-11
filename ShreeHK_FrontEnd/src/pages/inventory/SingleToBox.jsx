@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import {
   Table, Typography, Space, Input, Button, message,
 } from "antd";
-import { InboxOutlined } from "@ant-design/icons";
+import { InboxOutlined, ReloadOutlined } from "@ant-design/icons";
 import { Search, PackagePlus } from "lucide-react";
 import { toastApiSuccess, toastApiError } from "../../utils/apiToast";
 import useInventoryList from "../../hooks/useInventoryList";
@@ -99,14 +99,19 @@ const SingleToBox = () => {
         title="Singal To Box"
         icon={<InboxOutlined />}
         actions={(
-          <Input
-            placeholder="Enter Sku..."
-            prefix={<Search size={16} />}
-            className={styles.searchInput}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            allowClear
-          />
+          <Space wrap>
+            <Input
+              placeholder="Enter Sku..."
+              prefix={<Search size={16} />}
+              className={styles.searchInput}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              allowClear
+            />
+            <Button icon={<ReloadOutlined />} onClick={refresh} loading={isLoading || isFetchingMore}>
+              Refresh
+            </Button>
+          </Space>
         )}
       />
 

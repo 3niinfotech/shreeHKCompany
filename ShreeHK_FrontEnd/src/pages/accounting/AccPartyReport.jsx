@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useRef } from 'react';
 import { Select, DatePicker, Table, Typography, Button, message } from 'antd';
-import { BookOutlined, TeamOutlined, CalendarOutlined } from '@ant-design/icons';
+import { BookOutlined, TeamOutlined, CalendarOutlined, ReloadOutlined } from '@ant-design/icons';
 import { FileUp } from 'lucide-react';
 import dayjs from 'dayjs';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
@@ -139,9 +139,14 @@ const AccPartyReport = () => {
         onSearch={handleSearch}
         searchLoading={isLoading}
         extraActions={(
-          <Button type="primary" icon={<FileUp size={16} />} loading={exporting} onClick={handleExport} disabled={!dataSource.length} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff", padding: "18px" }}>
-            Export to Excel
-          </Button>
+          <>
+            <Button type="default" icon={<ReloadOutlined />} className={filterPanelStyles.btnClear} onClick={handleSearch} loading={isLoading}>
+              Reload
+            </Button>
+            <Button type="primary" icon={<FileUp size={16} />} loading={exporting} onClick={handleExport} disabled={!dataSource.length} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff", padding: "18px" }}>
+              Export to Excel
+            </Button>
+          </>
         )}
       >
         <FilterField label="Party" icon={<TeamOutlined />}>

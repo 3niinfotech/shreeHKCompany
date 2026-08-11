@@ -40,7 +40,9 @@ const ExpandedRowContent = ({ rowId }) => {
     ];
 
     const innerData = useMemo(() => {
-        const d = productData?.products || productData?.Data || productData?.data;
+        if (!productData) return [];
+        if (Array.isArray(productData)) return productData;
+        const d = productData.products || productData.Data || productData.data;
         return Array.isArray(d) ? d : [];
     }, [productData]);
 
@@ -51,11 +53,11 @@ const ExpandedRowContent = ({ rowId }) => {
                 dataSource={innerData}
                 pagination={false}
                 size="small"
-                rowKey="id"
+                rowKey={(row) => row.id ?? row.product_id ?? row.pid}
                 loading={isLoading}
                 className={styles.innerTable}
                 tableLayout="fixed"
-                scroll={{ x: 1300, y: 280 }}
+                scroll={{ x: 1300 }}
             />
         </div>
     );
@@ -324,7 +326,7 @@ const OutWord = () => {
 
             <AdvancedFilterPanel
                 title="Memo Transactions"
-                subtitle="Filter by type, party, invoice, and date range."
+                // subtitle="Filter by type, party, invoice, and date range."
                 activeCount={isFilterSelected ? [payload.party, payload.invoiceno, payload.type, payload.from, payload.to].filter(Boolean).length : 0}
                 showSearch={false}
                 showClear={false}
@@ -363,39 +365,6 @@ const OutWord = () => {
                 </div>
             </AdvancedFilterPanel>
 
-            <div className={styles.statsBar}>
-                <div className={styles.legendGroup}>
-                    <Text strong>Total Record: {outwardData?.total || mainTableData.length || 0}</Text>
-                    {/* <Space size="small" style={{ marginLeft: '15px' }}>
-                        <Badge color="#52c41a" text="GIA Certified" />
-                        <Badge color="#faad14" text="On Memo" />
-                        <Badge color="#f5222d" text="Send To Lab" />
-                    </Space> */}
-                    <Space size="small" style={{ marginLeft: '15px' }}>
-                        <Tag color="blue">GIA Certified</Tag>
-                        <Tag color="red">On Memo</Tag>
-                        <Tag color="green">Send To Lab</Tag>
-                    </Space>
-                    <Checkbox style={{ marginLeft: '15px' }}>Non-GIA Only</Checkbox>
-                </div>
-
-                <div className={styles.totalsGroup}>
-                    <div className={styles.statItem}><label>Total Pcs</label><span>{stats.pcs}</span></div>
-                    <div className={styles.statItem}><label>Total Carats</label><span>{stats.carats.toFixed(2)}</span></div>
-
-                    {/* --- Avg. Price calculation added back --- */}
-                    <div className={styles.statItem}>
-                        <label>Avg. Price</label>
-                        <span>${avgPrice.toFixed(2)}</span>
-                    </div>
-
-                    <div className={styles.statItem}>
-                        <label>Total Amount</label>
-                        <span style={{ color: cssVar('color-error') }}>${stats.amount.toLocaleString()}</span>
-                    </div>
-                </div>
-            </div>
-
             <Card variant="none" className={styles.cardContainer}>
                 <div ref={tableRef} className="erp-table-container">
                     <Table
@@ -415,6 +384,34 @@ const OutWord = () => {
                             onChange: (page) => setPayload(prev => ({ ...prev, page }))
                         }}
                         rowSelection={{ selectedRowKeys, onChange: (keys) => setSelectedRowKeys(keys) }}
+                        footer={() => (
+                            <div className={styles.statsBarFooter}>
+                                <div className={styles.statsBar}>
+                                    <div className={styles.legendGroup}>
+                                        <Text strong>Total Record: {outwardData?.total || mainTableData.length || 0}</Text>
+                                        <Space size="small" style={{ marginLeft: '15px' }}>
+                                            <Tag color="blue">GIA Certified</Tag>
+                                            <Tag color="red">On Memo</Tag>
+                                            <Tag color="green">Send To Lab</Tag>
+                                        </Space>
+                                        <Checkbox style={{ marginLeft: '15px' }}>Non-GIA Only</Checkbox>
+                                    </div>
+
+                                    <div className={styles.totalsGroup}>
+                                        <div className={styles.statItem}><label>Total Pcs</label><span>{stats.pcs}</span></div>
+                                        <div className={styles.statItem}><label>Total Carats</label><span>{stats.carats.toFixed(2)}</span></div>
+                                        <div className={styles.statItem}>
+                                            <label>Avg. Price</label>
+                                            <span>${avgPrice.toFixed(2)}</span>
+                                        </div>
+                                        <div className={styles.statItem}>
+                                            <label>Total Amount</label>
+                                            <span style={{ color: cssVar('color-error') }}>${stats.amount.toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     />
                 </div>
             </Card>

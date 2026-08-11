@@ -19,8 +19,9 @@
 
 .filterPanelTitle {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 12px;
+    flex: 0 1 auto;
 }
 
 .filterPanelIcon {
@@ -66,9 +67,11 @@
 .filterGrid {
     display: flex;
     flex-wrap: wrap;
-    justify-content: flex-start;
-    gap: 12px 14px;
-    padding: 14px 18px 16px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 16px;
+    padding: 12px 18px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--color-primary) 5%, transparent), transparent);
 }
 
 .filterFieldsRow {

@@ -7,7 +7,7 @@ import { api } from '../../api/axiosInstance';
 import { ENDPOINTS } from '../../constants/endpoints';
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
 import PageHeroHeader from '../../components/common/PageHeroHeader';
-import { SwapOutlined } from '@ant-design/icons';
+import { SwapOutlined, ReloadOutlined } from '@ant-design/icons';
 import { exportReportToExcel } from '../../utils/reportExcelExport';
 import { cssVar } from '../../theme';
 import styles from '../../assets/scss/pages/report/transferHistory.module.scss';
@@ -61,9 +61,11 @@ const TransferHistory = () => {
 
     useEffect(() => {
         const skuFromUrl = (searchParams.get('sku') || '').trim();
-        if (!skuFromUrl) return;
-        form.setFieldsValue({ skuSearch: skuFromUrl });
+        if (skuFromUrl) {
+            form.setFieldsValue({ skuSearch: skuFromUrl });
+        }
         handleSearch();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchParams]);
 
     const handleClear = () => {
@@ -119,16 +121,21 @@ const TransferHistory = () => {
 
             <AdvancedFilterPanel
                 title="Filter Transfer History"
-                subtitle="Search by SKU and date range to load transfer records."
+                // subtitle="Search by SKU and date range to load transfer records."
                 activeCount={activeCount}
                 onClear={handleClear}
                 clearDisabled={!activeCount}
                 onSearch={handleSearch}
                 searchLoading={loading}
                 extraActions={(
-                    <Button type="primary" icon={<FileUp size={16} />} loading={exporting} onClick={handleExport} disabled={!data.length} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff" }}>
-                        Export to Excel
-                    </Button>
+                    <>
+                        <Button type="default" icon={<ReloadOutlined />} className={filterPanelStyles.btnClear} onClick={handleSearch} loading={loading}>
+                            Reload
+                        </Button>
+                        <Button type="primary" icon={<FileUp size={16} />} loading={exporting} onClick={handleExport} disabled={!data.length} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff" }}>
+                            Export to Excel
+                        </Button>
+                    </>
                 )}
             >
                 <div className={`${filterPanelStyles.filterInlineRow} ${styles.transferFilterForm}`}>

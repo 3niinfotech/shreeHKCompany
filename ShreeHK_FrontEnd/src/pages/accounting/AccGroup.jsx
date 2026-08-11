@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Form } from "antd";
+import { Button, Form } from "antd";
+import { ReloadOutlined } from "@ant-design/icons";
 import { accGroupFields } from "../master/Data";
 import Loader from "../../components/common/Loader";
 import { ConfirmDeleteModal } from "../../components/common/modals";
@@ -21,7 +22,7 @@ const AccGroup = () => {
   const deleteModal = useModal();
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const { data, isLoading, refetch } = useFetchApi("accGroups", ENDPOINTS.accountingGroup.list);
+  const { data, isLoading, isFetching, refetch } = useFetchApi("accGroups", ENDPOINTS.accountingGroup.list);
   const { mutate: saveRow, isPending: saving } = usePostApiRequest(ENDPOINTS.accountingGroup.save, "accGroups");
   const { mutate: deleteRow, isPending: isDeleting } = useDeleteApiRequest(ENDPOINTS.accountingGroup.delete, "accGroups");
 
@@ -65,7 +66,13 @@ const AccGroup = () => {
         <MasterListTable title="Accounting Group" columns={columns} dataSource={dataSource} loading={isLoading}
           onAdd={() => { setEditRecord(null); addModal.openModal(); }}
           onEdit={(r) => { setEditRecord(r); editModal.openModal(); }}
-          onDelete={openDelete} />
+          onDelete={openDelete}
+          extraHeaderActions={
+            <Button icon={<ReloadOutlined />} loading={isFetching} onClick={() => refetch()}>
+              Refresh
+            </Button>
+          }
+        />
       )}
       <MasterFormAddModal isOpen={addModal.open} onClose={addModal.closeModal} onSave={() => handleSave("add")} loading={saving} form={form} formFields={accGroupFields} title="Add Group" width={400} />
       <MasterFormEditModal isOpen={editModal.open} onClose={editModal.closeModal} onSave={() => handleSave("edit")} loading={saving} form={form} formFields={accGroupFields} initialValues={editRecord} title={`Edit: ${editRecord?.name || ""}`} width={400} />

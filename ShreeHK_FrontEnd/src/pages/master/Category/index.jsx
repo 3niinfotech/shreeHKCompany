@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Form } from "antd";
+import { Button, Form } from "antd";
+import { ReloadOutlined } from "@ant-design/icons";
 import { toast } from "sonner";
 import { ConfirmDeleteModal } from "../../../components/common/modals";
 import { MasterListTable } from "../../../components/common/table";
@@ -17,6 +18,7 @@ const PAGE_LIMIT = 100;
 const CategoryPage = () => {
     const [form] = Form.useForm();
     const [dataSource, setDataSource] = useState([]);
+    const [search, setSearch] = useState("");
     const [editRecord, setEditRecord] = useState(null);
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [modalLoading, setModalLoading] = useState(false);
@@ -25,7 +27,10 @@ const CategoryPage = () => {
     const editModal = useModal();
     const deleteModal = useModal();
 
-    const { data, isLoading } = useEntityList(QUERY_KEYS.categories, fetchCategories, { limit: PAGE_LIMIT });
+    const { data, isLoading, isFetching, refetch } = useEntityList(QUERY_KEYS.categories, fetchCategories, {
+        limit: PAGE_LIMIT,
+        searchInput: search,
+    });
 
     const { mutate: saveCategoryMutation } = useEntityPostMutation(saveCategory, QUERY_KEYS.categories);
     const { mutate: deleteCategoryMutation, isPending: isDeleting } = useEntityDeleteMutation(
@@ -33,7 +38,7 @@ const CategoryPage = () => {
         QUERY_KEYS.categories
     );
 
-    const columns = getCategoryColumns();
+    const columns = getCategoryColumns(dataSource);
 
     const categoryFormFields = useMemo(() => {
         const editingId = editRecord?.id;
@@ -74,6 +79,10 @@ const CategoryPage = () => {
         editModal.openModal();
     };
 
+    const handleSearchChange = (value) => {
+        setSearch(value);
+    };
+
     const handleSave = async (mode) => {
         try {
             const values = await form.validateFields();
@@ -109,6 +118,13 @@ const CategoryPage = () => {
                 onAdd={handleAddClick}
                 onEdit={handleEditClick}
                 onDelete={openDelete}
+                searchValue={search}
+                onSearchChange={handleSearchChange}
+                extraHeaderActions={
+                    <Button icon={<ReloadOutlined />} loading={isFetching} onClick={() => refetch()}>
+                        Refresh
+                    </Button>
+                }
             />
 
             <MasterFormAddModal

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Table, Card, Form, Select, Input, DatePicker, Button, message } from 'antd';
 import { FileUp } from 'lucide-react';
 import dayjs from 'dayjs';
@@ -6,7 +6,7 @@ import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../constants/endpoints';
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
 import PageHeroHeader from '../../components/common/PageHeroHeader';
-import { BarChartOutlined } from '@ant-design/icons';
+import { BarChartOutlined, ReloadOutlined } from '@ant-design/icons';
 import { exportReportToExcel } from '../../utils/reportExcelExport';
 import styles from '../../assets/scss/pages/report/groupReport.module.scss';
 import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
@@ -42,6 +42,11 @@ const SaleStoneReport = () => {
             onSuccess: (res) => setTableData((res?.Data || []).map((r, i) => ({ ...r, key: i, no: i + 1 }))),
         });
     };
+
+    useEffect(() => {
+        handleSearch();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const columns = [
         { title: 'No', dataIndex: 'no', width: 60, align: 'center' },
@@ -114,16 +119,21 @@ const SaleStoneReport = () => {
             <AdvancedFilterPanel
                 // title="Filter Sale Stock Report"
                 title="Sale Stock Report"
-                subtitle="Filter by party, invoice number, and date range."
+                // subtitle="Filter by party, invoice number, and date range."
                 activeCount={activeCount}
                 onClear={handleClear}
                 clearDisabled={!activeCount}
                 onSearch={handleSearch}
                 searchLoading={tableLoading}
                 extraActions={(
-                    <Button type="primary" icon={<FileUp size={16} />} loading={exporting} onClick={handleExport} disabled={!tableData.length} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff" }}>
-                        Export to Excel
-                    </Button>
+                    <>
+                        <Button type="default" icon={<ReloadOutlined />} className={filterPanelStyles.btnClear} onClick={handleSearch} loading={tableLoading}>
+                            Reload
+                        </Button>
+                        <Button type="primary" icon={<FileUp size={16} />} loading={exporting} onClick={handleExport} disabled={!tableData.length} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff" }}>
+                            Export to Excel
+                        </Button>
+                    </>
                 )}
             >
                 <div className={`${filterPanelStyles.filterInlineRow} ${styles.saleStockFilterForm}`}>

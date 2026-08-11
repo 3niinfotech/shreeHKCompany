@@ -3,7 +3,7 @@ import {
   Card, Form, Input, Button, Typography, DatePicker, Alert, Table, Space, Modal, Popconfirm, Row, Col,
 } from "antd";
 import {
-  EditOutlined, DeleteOutlined, CalendarOutlined, DatabaseOutlined, PlusOutlined, TableOutlined,
+  EditOutlined, DeleteOutlined, CalendarOutlined, DatabaseOutlined, PlusOutlined, TableOutlined, ReloadOutlined,
 } from "@ant-design/icons";
 import {
   useFetchApi, usePostApiRequest, usePutApiRequest, useDeleteApiRequest,
@@ -155,6 +155,11 @@ const FiscalYearAdmin = () => {
         breadcrumb="ADMINISTRATION"
         title="Fiscal Year Management"
         icon={<CalendarOutlined />}
+        actions={(
+          <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>
+            Refresh
+          </Button>
+        )}
       />
 
       <Alert

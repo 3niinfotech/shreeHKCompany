@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Form } from "antd";
+import { Button, Form } from "antd";
+import { ReloadOutlined } from "@ant-design/icons";
 import { toast } from "sonner";
 import { labFields } from "../Data";
 import { ConfirmDeleteModal } from "../../../components/common/modals";
@@ -27,7 +28,7 @@ const LabPage = () => {
     const deleteModal = useModal();
     const [deleteTarget, setDeleteTarget] = useState(null);
 
-    const { data, isLoading } = useEntityList(QUERY_KEYS.labs, fetchLabs, { limit: PAGE_LIMIT });
+    const { data, isLoading, isFetching, refetch } = useEntityList(QUERY_KEYS.labs, fetchLabs, { limit: PAGE_LIMIT });
 
     const { mutate: saveLabMutation } = useEntityPostMutation(saveLab, QUERY_KEYS.labs);
     const { mutate: deleteLabMutation, isPending: isDeleting } = useEntityDeleteMutation(
@@ -99,6 +100,11 @@ const LabPage = () => {
                 onAdd={handleAddClick}
                 onEdit={handleEditClick}
                 onDelete={openDelete}
+                extraHeaderActions={
+                    <Button icon={<ReloadOutlined />} loading={isFetching} onClick={() => refetch()}>
+                        Refresh
+                    </Button>
+                }
             />
 
             <MasterFormAddModal

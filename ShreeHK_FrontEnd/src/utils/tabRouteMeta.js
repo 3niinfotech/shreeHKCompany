@@ -1,6 +1,6 @@
 import { getAuthorizedFlattenRoutes, userLacksRoleAccess } from "../routes/Routes";
 
-const HOME_TAB = { key: "home", label: "Home", path: "/" };
+const HOME_TAB = { key: "home", label: "Home", path: "/dashboard" };
 
 const pathToRegex = (routePath) => {
   const pattern = routePath
@@ -16,7 +16,7 @@ const pathToRegex = (routePath) => {
 export const resolveTabFromPath = (pathname, user, authorizedRoutes) => {
   const normalized = pathname === "" ? "/" : pathname;
 
-  if (normalized === "/") {
+  if (normalized === "/" || normalized === "/dashboard") {
     if (userLacksRoleAccess(user)) {
       return { key: "forbidden", label: "Access Denied", path: "/forbidden" };
     }

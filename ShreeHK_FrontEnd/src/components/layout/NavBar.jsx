@@ -127,8 +127,8 @@ const ICON_MAP = { House, Settings, Package, Repeat, Book, BarChart, ExternalLin
 const resolveNavSelectedKeys = (pathname, routes = []) => {
     const keys = new Set();
 
-    if (!pathname || pathname === '/') {
-        keys.add('/');
+    if (!pathname || pathname === '/' || pathname === '/dashboard') {
+        keys.add('/dashboard');
         return [...keys];
     }
 
