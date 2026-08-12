@@ -3,6 +3,7 @@ import { Modal, Form, Input, Alert, Table, Button, Space, message } from "antd";
 import { api } from "../../api/axiosInstance";
 import { ENDPOINTS } from "../../constants/endpoints";
 import { toastApiSuccess, toastApiError } from "../../utils/apiToast";
+import { SkuLink } from "../../hooks/useSkuModalAction";
 
 /**
  * Create or remove stone pairs from inventory (mirrors bulk sku-pair import).
@@ -85,7 +86,7 @@ const PairManagementModal = ({ open, selectedRows = [], onClose, onSuccess }) =>
           rowKey="id"
           dataSource={selectedRows}
           columns={[
-            { title: "SKU", dataIndex: "sku", key: "sku" },
+            { title: "SKU", dataIndex: "sku", key: "sku", render: (text, record) => <SkuLink sku={text} record={record} /> },
             { title: "Carat", dataIndex: "polishCarat", key: "carat", render: (v, r) => v ?? r.polish_carat ?? r.carat },
             { title: "Shape", dataIndex: "shape", key: "shape" },
           ]}

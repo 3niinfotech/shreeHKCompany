@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
-    Table, Button, Input, Select, Card, Typography, Space, Tooltip, Popconfirm, Form, Spin
+    Button, Input, Select, Card, Typography, Space, Tooltip, Popconfirm, Form, Spin
 } from 'antd';
 import {
     PlusOutlined,
@@ -17,6 +17,7 @@ import { BaseModal } from "../../components/common/modals";
 import { useDeleteApiRequest, useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../constants/endpoints';
 import { ConfirmDeleteModal } from "../../components/common/modals";
+import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
 import styles from '../../assets/scss/pages/accountings/PartyWiseTransaction.module.scss';
 import AICustomerSuggestModal from '../../components/ai/AICustomerSuggestModal';
 import PageHeroHeader from '../../components/common/PageHeroHeader';
@@ -283,7 +284,7 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
 
             <Card className={styles.tableCard}>
                 <div ref={tableRef} className="erp-table-container">
-                <Table
+                <SkeletonAwareTable
                     columns={columns}
                     dataSource={allData}
                     rowKey="id"

@@ -1,23 +1,48 @@
-import { cssVar } from "../../theme";
+/**
+ * Same tones as inventory table rowClassName (diamondInventoryTable.scss):
+ * red  = memo / consign
+ * green = lab outward / sale-like
+ * blue  = has lab certificate
+ * grey  = on hold
+ */
+export const INVENTORY_ROW_TONES = {
+  red: { bg: "#fee2e2", text: "#991b1b", hover: "#fecaca", border: "#fca5a5" },
+  green: { bg: "#dcfce7", text: "#14532d", hover: "#bbf7d0", border: "#86efac" },
+  blue: { bg: "#e0f2fe", text: "#0369a1", hover: "#bae6fd", border: "#7dd3fc" },
+  grey: { bg: "#f1f5f9", text: "#334155", hover: "#e2e8f0", border: "#cbd5e1" },
+  white: { bg: "#ffffff", text: "#334155", hover: "#f8fafc", border: "#e2e8f0" },
+};
+
+const toneTheme = (label, tone) => ({
+  label,
+  accent: tone.text,
+  border: tone.border,
+  bg: tone.bg,
+  hover: tone.hover,
+  btnBg: tone.text,
+  btnBorder: tone.text,
+});
 
 /**
- * Action themes aligned with inventoryFilterPanel action tile colors.
- * accent = OK button / header accent; border/bg match action grid tiles.
+ * Action themes = inventory row condition colors (same as action panel tiles).
+ * accent/bg = modal header; btnBg = Submit button.
  */
 export const INVENTORY_ACTION_THEME = {
-  onMemo: { label: "On Memo", accent: cssVar("color-warning"), border: cssVar("color-badge-warning-border"), bg: cssVar("color-warning-light") },
-  unHold: { label: "Un Hold", accent: cssVar("color-success-dark"), border: cssVar("color-badge-success-border"), bg: cssVar("color-success-light") },
-  sale: { label: "Sale", accent: cssVar("color-success-dark"), border: cssVar("color-badge-success-border"), bg: cssVar("color-alert-success-bg") },
-  sell: { label: "Sell Diamond", accent: cssVar("color-success-dark"), border: cssVar("color-badge-success-border"), bg: cssVar("color-alert-success-bg") },
-  changePrice: { label: "Change Price", accent: cssVar("color-info-dark"), border: cssVar("color-badge-info-border"), bg: cssVar("color-info-light") },
-  labelA4: { label: "Label A4", accent: cssVar("color-badge-info-text"), border: cssVar("color-badge-info-border"), bg: cssVar("color-badge-info-bg") },
-  label: { label: "Label", accent: cssVar("color-entity-other-text"), border: cssVar("color-badge-info-border"), bg: cssVar("color-entity-other-bg") },
-  iExport: { label: "I.Export", accent: cssVar("color-primary-dark"), border: cssVar("color-badge-success-border"), bg: cssVar("color-primary-pale") },
-  export: { label: "Export", accent: cssVar("color-info"), border: cssVar("color-badge-info-border"), bg: cssVar("color-info-light") },
-  hold: { label: "Hold", accent: cssVar("color-warning-dark"), border: cssVar("color-badge-warning-border"), bg: cssVar("color-alert-warning-bg") },
-  mail: { label: "Mail", accent: cssVar("color-error-dark"), border: cssVar("color-badge-error-border"), bg: cssVar("color-error-light") },
-  memo: { label: "Memo Diamond", accent: cssVar("color-warning"), border: cssVar("color-badge-warning-border"), bg: cssVar("color-warning-light") },
-  consignment: { label: "Consignment Diamond", accent: cssVar("color-entity-other-text"), border: cssVar("color-badge-info-border"), bg: cssVar("color-entity-other-bg") },
+  onMemo: toneTheme("On Memo", INVENTORY_ROW_TONES.red),
+  memo: toneTheme("On Memo", INVENTORY_ROW_TONES.red),
+  consignment: toneTheme("Consignment", INVENTORY_ROW_TONES.red),
+  unHold: toneTheme("Un Hold", INVENTORY_ROW_TONES.grey),
+  sale: toneTheme("Sale", INVENTORY_ROW_TONES.green),
+  sell: toneTheme("Sell Diamond", INVENTORY_ROW_TONES.green),
+  changePrice: toneTheme("Change Price", INVENTORY_ROW_TONES.blue),
+  labelA4: toneTheme("Label A4", INVENTORY_ROW_TONES.green),
+  label: toneTheme("Label", INVENTORY_ROW_TONES.green),
+  iExport: toneTheme("I.Export", INVENTORY_ROW_TONES.blue),
+  export: toneTheme("Export", INVENTORY_ROW_TONES.blue),
+  hold: toneTheme("Hold", INVENTORY_ROW_TONES.grey),
+  mail: toneTheme("Mail", INVENTORY_ROW_TONES.blue),
+  addPackage: toneTheme("Add Package", INVENTORY_ROW_TONES.white),
+  reservation: toneTheme("Reserve", INVENTORY_ROW_TONES.grey),
 };
 
 export const INVENTORY_ACTION_FIELDS = {
@@ -47,9 +72,9 @@ export const INVENTORY_ACTION_FIELDS = {
     { name: "remarks", label: "Remarks", type: "textarea", span: 24 },
   ],
   changePrice: [
-    { name: "cost", label: "New Cost", type: "number", span: 8 },
-    { name: "price", label: "New Price", type: "number", span: 8 },
-    { name: "rap_price", label: "New Rap Price", type: "number", span: 8 },
+    { name: "cost", label: "New Cost", type: "number", span: 12 },
+    { name: "price", label: "New Price", type: "number", span: 12 },
+    { name: "rap_price", label: "New Rap Price", type: "number", span: 12 },
   ],
   labelA4: [
     { name: "labelType", label: "Label Type", type: "select", required: true, span: 12, options: [{ label: "A4 Standard", value: "a4" }, { label: "A4 Detailed", value: "a4d" }] },
@@ -69,7 +94,7 @@ export const INVENTORY_ACTION_FIELDS = {
   ],
   hold: [
     { name: "holdUntil", label: "Hold Until", type: "date", span: 12 },
-    { name: "remarks", label: "Description", type: "textarea", span: 24 },
+    { name: "remarks", label: "Description", type: "textarea", span: 12, rows: 1 },
   ],
   mail: [
     { name: "toEmail", label: "To Email", type: "input", required: true, span: 12 },
@@ -96,6 +121,8 @@ const VARIANT_ALIASES = {
   export: "export",
   hold: "hold",
   mail: "mail",
+  addPackage: "addPackage",
+  reservation: "reservation",
   consignment: "consignment",
 };
 
@@ -103,12 +130,7 @@ export const resolveActionVariant = (actionKey) => VARIANT_ALIASES[actionKey] ||
 
 export const getActionTheme = (actionKey) => {
   const variant = resolveActionVariant(actionKey);
-  return INVENTORY_ACTION_THEME[variant] || {
-    label: actionKey,
-    accent: cssVar("color-alert-info-text"),
-    border: cssVar("color-badge-info-border"),
-    bg: cssVar("color-alert-info-bg"),
-  };
+  return INVENTORY_ACTION_THEME[variant] || toneTheme(actionKey, INVENTORY_ROW_TONES.blue);
 };
 
 export const getActionFields = (actionKey) => {

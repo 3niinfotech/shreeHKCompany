@@ -1,5 +1,8 @@
 const express = require("express");
 const md5 = require("md5");
+const path = require("path");
+const fs = require("fs");
+const multer = require("multer");
 const connection = require("../../connection.js");
 const helper = require("../../helper.js");
 const { authenticateToken, isSuperAdmin } = require("../../authMiddleware.js");
@@ -13,8 +16,47 @@ const COMPANY_COLUMNS = [
   "name", "address", "number", "date", "type", "partner", "city", "state",
   "pincode", "country", "email", "website", "panno", "tinno", "iecno",
   "vatno", "vwef", "cstno", "cwef", "period", "startdate", "enddate",
-  "rapnet_id", "rapnet_password", "shortcutName"
+  "rapnet_id", "rapnet_password", "shortcutName", "logo",
 ];
+
+const logoStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    const uploadPath = "uploads/company-logos/";
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    cb(null, uploadPath);
+  },
+  filename: (_req, file, cb) => {
+    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    cb(null, `company-${unique}${path.extname(file.originalname || ".png")}`);
+  },
+});
+
+const uploadLogo = multer({
+  storage: logoStorage,
+  limits: { fileSize: 3 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!file.mimetype || !file.mimetype.startsWith("image/")) {
+      return cb(new Error("Only image files are allowed for company logo"));
+    }
+    cb(null, true);
+  },
+});
+
+let logoColumnReady = false;
+const ensureLogoColumn = async () => {
+  if (logoColumnReady) return;
+  try {
+    await metaQuery("ALTER TABLE company ADD COLUMN logo VARCHAR(500) NULL");
+  } catch (err) {
+    const msg = String(err?.message || err || "");
+    if (!/duplicate column|ER_DUP_FIELDNAME/i.test(msg)) {
+      // column may already exist — continue
+    }
+  }
+  logoColumnReady = true;
+};
 
 const seedIncrementId = (companyId, pool, cb) => {
   pool.query("SELECT * FROM dai_incrementid WHERE company = ? LIMIT 1", [companyId], (existsErr, existsRows) => {
@@ -66,6 +108,7 @@ tenantCompanyRouter.get("/admin/tenant-company/options", authenticateToken, isSu
 
 tenantCompanyRouter.get("/admin/tenant-company", authenticateToken, isSuperAdmin, async (req, res) => {
   try {
+    await ensureLogoColumn();
     const { searchInput = "" } = req.query;
     let sql = "SELECT * FROM company";
     const params = [];
@@ -84,6 +127,7 @@ tenantCompanyRouter.get("/admin/tenant-company", authenticateToken, isSuperAdmin
 
 tenantCompanyRouter.get("/admin/tenant-company/:id", authenticateToken, isSuperAdmin, async (req, res) => {
   try {
+    await ensureLogoColumn();
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ status: false, message: "Invalid id" });
     const rows = await metaQuery("SELECT * FROM company WHERE id = ? LIMIT 1", [id]);
@@ -96,58 +140,86 @@ tenantCompanyRouter.get("/admin/tenant-company/:id", authenticateToken, isSuperA
   }
 });
 
-tenantCompanyRouter.post("/admin/tenant-company/save", authenticateToken, isSuperAdmin, (req, res) => {
-  const body = req.body || {};
-  const id = Number(body.id) || 0;
-
-  if (!body.name || !body.number || !body.address) {
-    return res.status(400).json({
-      status: false,
-      message: "Value can't be Blank.",
+tenantCompanyRouter.post(
+  "/admin/tenant-company/save",
+  authenticateToken,
+  isSuperAdmin,
+  (req, res, next) => {
+    uploadLogo.single("logo")(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({ status: false, message: err.message || "Logo upload failed" });
+      }
+      next();
     });
-  }
+  },
+  async (req, res) => {
+    try {
+      await ensureLogoColumn();
+      const body = req.body || {};
+      const id = Number(body.id) || 0;
 
-  const post = {};
-  COMPANY_COLUMNS.forEach((col) => {
-    if (body[col] !== undefined) post[col] = body[col];
-  });
-  if (!post.date) post.date = new Date().toISOString().slice(0, 10);
-
-  const meta = connection.getMetaPool();
-
-  if (id > 0) {
-    post.id = id;
-    const data = helper.updateString(post);
-    const sql = `UPDATE company SET ${data} WHERE id = ?`;
-    meta.query(sql, [id], (err) => {
-      if (err) return res.status(500).json({ status: false, message: err.message });
-      res.json({ status: true, message: "Successfully Saved !!!", id });
-    });
-    return;
-  }
-
-  const data = helper.insertString(post);
-  const sql = `INSERT INTO company (${data[0]}) VALUES (${data[1]})`;
-  meta.query(sql, (err, result) => {
-    if (err) return res.status(500).json({ status: false, message: err.message });
-
-    const newId = result.insertId;
-    seedIncrementId(newId, meta, (seedErr) => {
-      if (seedErr) {
-        return res.status(500).json({
+      if (!body.name || !body.number || !body.address) {
+        return res.status(400).json({
           status: false,
-          message: "Company created but increment seed failed: " + seedErr.message,
-          id: newId,
+          message: "Value can't be Blank.",
         });
       }
-      res.status(201).json({
-        status: true,
-        message: "Successfully Saved !!!",
-        id: newId,
+
+      const post = {};
+      COMPANY_COLUMNS.forEach((col) => {
+        if (body[col] !== undefined && col !== "logo") post[col] = body[col];
       });
-    });
-  });
-});
+      if (!post.date) post.date = new Date().toISOString().slice(0, 10);
+
+      if (req.file) {
+        post.logo = `/uploads/company-logos/${req.file.filename}`;
+      } else if (body.clear_logo === "1" || body.logo === "") {
+        post.logo = null;
+      } else if (body.logo !== undefined && body.logo !== "null") {
+        // keep existing path when no new file uploaded
+        post.logo = body.logo;
+      }
+
+      const meta = connection.getMetaPool();
+
+      if (id > 0) {
+        post.id = id;
+        const data = helper.updateString(post);
+        const sql = `UPDATE company SET ${data} WHERE id = ?`;
+        meta.query(sql, [id], (err) => {
+          if (err) return res.status(500).json({ status: false, message: err.message });
+          res.json({ status: true, message: "Successfully Saved !!!", id, logo: post.logo || null });
+        });
+        return;
+      }
+
+      const data = helper.insertString(post);
+      const sql = `INSERT INTO company (${data[0]}) VALUES (${data[1]})`;
+      meta.query(sql, (err, result) => {
+        if (err) return res.status(500).json({ status: false, message: err.message });
+
+        const newId = result.insertId;
+        seedIncrementId(newId, meta, (seedErr) => {
+          if (seedErr) {
+            return res.status(500).json({
+              status: false,
+              message: "Company created but increment seed failed: " + seedErr.message,
+              id: newId,
+            });
+          }
+          res.status(201).json({
+            status: true,
+            message: "Successfully Saved !!!",
+            id: newId,
+            logo: post.logo || null,
+          });
+        });
+      });
+    } catch (err) {
+      res.status(500).json({ status: false, message: err.message });
+    }
+  }
+);
 
 const verifyAdminPassword = (userId, password) =>
   new Promise((resolve, reject) => {

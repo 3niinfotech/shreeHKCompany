@@ -10,6 +10,7 @@ import CompanyYearPicker from "./CompanyYearPicker";
 import AuditUiTracker from "./AuditUiTracker";
 import useCopyableTableIdentifiers from "../../hooks/useCopyableTableIdentifiers";
 import TaskReminderModal from "../dashboard/TaskReminderModal";
+import { SkuModalProvider } from "../../hooks/useSkuModalAction";
 
 const LayoutShell = () => {
   const viewMode = useUIStore((state) => state.viewMode) ?? "web";
@@ -30,7 +31,7 @@ const LayoutShell = () => {
   }, [isAuthenticated, contextReady, setShowContextPicker]);
 
   return (
-    <>
+    <SkuModalProvider>
       <AuditUiTracker />
       {contextReady ? (
         <>
@@ -45,7 +46,7 @@ const LayoutShell = () => {
         onClose={() => setShowContextPicker(false)}
         force={!contextReady}
       />
-    </>
+    </SkuModalProvider>
   );
 };
 

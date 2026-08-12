@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { Table, Button, Card, Form, message } from 'antd';
+import { Button, Card, Form, message } from 'antd';
 import { FileUp } from 'lucide-react';
 import dayjs from 'dayjs';
 import useFormHandleChange from '../../hooks/useFormHandleChange';
@@ -10,8 +10,10 @@ import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/
 import PageHeroHeader from '../../components/common/PageHeroHeader';
 import { BarChartOutlined, ReloadOutlined } from '@ant-design/icons';
 import { exportReportToExcel } from '../../utils/reportExcelExport';
+import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
 import styles from '../../assets/scss/pages/report/groupReport.module.scss';
 import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
+import { SkuLink } from '../../hooks/useSkuModalAction';
 
 const REPORT_TYPES = [
     { value: 'memo', label: 'Memo' },
@@ -80,7 +82,7 @@ const GroupReport = () => {
         { title: 'Company', dataIndex: 'company', key: 'company', width: 240, fixed: 'left' },
         { title: 'Date', dataIndex: 'date', key: 'date', width: 100, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
         { title: 'Invoice', dataIndex: 'invoice', key: 'invoice', width: 120 },
-        { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 100 },
+        { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 100, render: (text, record) => <SkuLink sku={text} record={record} /> },
         { title: 'Lab', dataIndex: 'lab', key: 'lab', width: 120 },
         { title: 'Report No', dataIndex: 'reportNo', key: 'reportNo', width: 120 },
         { title: 'P.pcs', dataIndex: 'pcs', key: 'pcs', align: 'center', width: 80 },
@@ -179,7 +181,7 @@ const GroupReport = () => {
 
             <Card className={styles.tableCard}>
                 <div ref={tableRef} className="erp-table-container">
-                    <Table
+                    <SkeletonAwareTable
                         columns={columns}
                         dataSource={tableData}
                         loading={tableLoading}

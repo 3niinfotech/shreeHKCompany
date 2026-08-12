@@ -17,7 +17,13 @@ const MasterTemplate = ({
     initialValues,
     onEdit,
     rowSelection,
-    extraHeaderActions
+    extraHeaderActions,
+    loading = false,
+    onTableScroll,
+    totalItems,
+    searchValue,
+    onSearchChange,
+    hideCrudActions = false,
 }) => {
     const [form] = Form.useForm();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -76,9 +82,15 @@ const MasterTemplate = ({
                 rowSelection={rowSelection}
                 extraHeaderActions={extraHeaderActions}
                 searchPlaceholder={searchPlaceholder}
+                searchValue={searchValue}
+                onSearchChange={onSearchChange}
                 onAdd={handleAddClick}
                 onEdit={handleEditClick}
                 onDelete={onDelete}
+                onTableScroll={onTableScroll}
+                totalItems={totalItems}
+                loading={loading}
+                hideCrudActions={hideCrudActions}
             />
 
             <BaseModal

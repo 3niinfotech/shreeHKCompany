@@ -539,4 +539,70 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
 
 // });
 
+// Get inward (purchase / in-memo) by id — same response shape as /outward/?id=
+inwardRouter.get("/inward/", authenticateToken, (req, res) => {
+  const id = parseInt(req?.query?.id, 10) || 0;
+
+  if (!id) {
+    return res.status(400).json({ status: false, message: "Invalid Id" });
+  }
+
+  try {
+    const query = `SELECT * FROM dai_inward WHERE id = ? AND (deleted = 0 OR deleted IS NULL)`;
+
+    connection.query(query, [id], (error, data) => {
+      if (error) {
+        return res.status(201).json({
+          status: false,
+          message: "Error in Fetching data ",
+          Data: error,
+        });
+      }
+
+      if (!data || data.length === 0) {
+        return res.status(201).json({ status: false, message: "Error in Fetching data " });
+      }
+
+      const row = data[0];
+      const products = row.products || "";
+
+      if (!products) {
+        return res.status(201).json({
+          status: true,
+          Data: { ...row, type: row.inward_type },
+          products: [],
+        });
+      }
+
+      const pquery = `SELECT p.*, pv.* FROM dai_product p
+        JOIN dai_product_value pv ON p.id = pv.product_id
+        WHERE p.id IN (${products})`;
+
+      connection.query(pquery, (perror, pdata) => {
+        if (perror) {
+          return res.status(201).json({
+            status: false,
+            message: "Product -  Error in Fetching data ",
+            Data: perror,
+          });
+        }
+
+        const productsList = (pdata || []).map((p) => ({
+          ...p,
+          sell_price: p.sell_price || p.purchase_price || p.price,
+          sell_amount: p.sell_amount || p.purchase_amount || p.amount,
+        }));
+
+        return res.status(201).json({
+          status: true,
+          Data: { ...row, type: row.inward_type },
+          products: productsList,
+        });
+      });
+    });
+  } catch (error) {
+    return res.status(201).json({ status: false, message: error.message });
+  }
+});
+
 module.exports = inwardRouter;

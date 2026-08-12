@@ -11,6 +11,9 @@ const GIAMemoStock = () => (
     listEndpoint={ENDPOINTS.transactionStock.gia.list}
     deleteEndpoint={ENDPOINTS.transactionStock.gia.delete}
     entryPath="/transaction/gia-memo/entry"
+    typeFilterOptions={[
+      { value: 'lab', label: 'Lab' },
+    ]}
     actions={{
       showReturn: true,
       showPrint: true,

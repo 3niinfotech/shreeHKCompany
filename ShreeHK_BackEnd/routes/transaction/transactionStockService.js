@@ -40,6 +40,30 @@ function buildUserFilter(alias, userId) {
   return { clause: ` AND ${alias}.user != ?`, params: [16] };
 }
 
+function normalizeFilterDate(value) {
+  if (!value) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const parsed = moment(raw, ["YYYY-MM-DD", "DD-MM-YYYY", "DD/MM/YYYY", moment.ISO_8601], true);
+  return parsed.isValid() ? parsed.format("YYYY-MM-DD") : null;
+}
+
+/** Append From/To date filters against `{alias}.date`. Mutates `params`. */
+function buildDateFilterClause(alias, post, params) {
+  let clause = "";
+  const fromDate = normalizeFilterDate(post.fromDate || post.cfrom || post.from_date);
+  const toDate = normalizeFilterDate(post.toDate || post.cto || post.to_date);
+  if (fromDate) {
+    clause += ` AND DATE(${alias}.date) >= ?`;
+    params.push(fromDate);
+  }
+  if (toDate) {
+    clause += ` AND DATE(${alias}.date) <= ?`;
+    params.push(toDate);
+  }
+  return clause;
+}
+
 async function getProductDetail(id) {
   return productHelper.getDetail(id, "p.id");
 }
@@ -174,17 +198,23 @@ async function listGia(post, userContext = {}) {
     invoiceClause = " AND o.invoiceno LIKE ?";
     params.push(`%${post.invoice || post.invoiceno}%`);
   }
+  let typeFilterClause = "";
+  if (post.type) {
+    typeFilterClause = " AND o.type = ?";
+    params.push(String(post.type).toLowerCase());
+  }
+  const dateClause = buildDateFilterClause("o", post, params);
   const countRows = await query(
     `SELECT COUNT(*) AS total FROM dai_outward o
      WHERE o.company = ? AND o.type = 'lab' AND o.status = 'on_lab'
-     ${userFilter.clause} ${partyClause} ${invoiceClause}`,
+     ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${dateClause}`,
     params
   );
   const rows = await query(
     `SELECT o.*, ${PARTY_FIELDS} FROM dai_outward o
      LEFT JOIN dai_party p ON o.party = p.id
      WHERE o.company = ? AND o.type = 'lab' AND o.status = 'on_lab'
-     ${userFilter.clause} ${partyClause} ${invoiceClause}
+     ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${dateClause}
      ORDER BY o.date DESC, o.id DESC LIMIT ? OFFSET ?`,
     [...params, limit, offset]
   );
@@ -209,12 +239,23 @@ async function listInwardStock(post, userContext = {}) {
     partyClause = " AND i.party = ?";
     params.push(post.party);
   }
+  let invoiceClause = "";
+  if (post.invoice || post.invoiceno) {
+    invoiceClause = " AND i.invoiceno LIKE ?";
+    params.push(`%${post.invoice || post.invoiceno}%`);
+  }
+  let typeFilterClause = "";
+  if (post.type) {
+    typeFilterClause = " AND i.inward_type = ?";
+    params.push(String(post.type).toLowerCase());
+  }
+  const dateClause = buildDateFilterClause("i", post, params);
   const rows = await query(
     `SELECT i.*, ${PARTY_FIELDS} FROM dai_inward i
      LEFT JOIN dai_party p ON i.party = p.id
      WHERE (i.deleted = 0 OR i.deleted IS NULL) AND i.company = ?
      AND i.inward_type IN ('memo','consign')
-     ${userFilter.clause} ${partyClause}
+     ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${dateClause}
      ORDER BY i.date DESC, i.id DESC`,
     params
   );
@@ -246,12 +287,18 @@ async function listPurchaseStock(post, userContext = {}) {
     params.push(`%${post.invoice || post.invoiceno}%`);
     limitClause = "";
   }
+  let typeFilterClause = "";
+  if (post.type) {
+    typeFilterClause = " AND i.inward_type = ?";
+    params.push(String(post.type).toLowerCase());
+  }
+  const dateClause = buildDateFilterClause("i", post, params);
   const countParams = [...params];
   const countRows = await query(
     `SELECT COUNT(*) AS total FROM dai_inward i
      WHERE (i.deleted = 0 OR i.deleted IS NULL) AND i.company = ?
      AND i.inward_type IN ('import','purchase','consign')
-     ${userFilter.clause} ${partyClause} ${invoiceClause}`,
+     ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${dateClause}`,
     countParams
   );
   const listParams = limitClause ? [...params, limit, offset] : params;
@@ -260,7 +307,7 @@ async function listPurchaseStock(post, userContext = {}) {
      LEFT JOIN dai_party p ON i.party = p.id
      WHERE (i.deleted = 0 OR i.deleted IS NULL) AND i.company = ?
      AND i.inward_type IN ('import','purchase','consign')
-     ${userFilter.clause} ${partyClause} ${invoiceClause}
+     ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${dateClause}
      ORDER BY i.date DESC, i.id DESC ${limitClause}`,
     listParams
   );
@@ -307,17 +354,23 @@ async function listOutwardStock(post, stockType, userContext = {}) {
     invoiceClause = " AND o.invoiceno LIKE ?";
     params.push(`%${post.invoice || post.invoiceno}%`);
   }
+  let typeFilterClause = "";
+  if (post.type) {
+    typeFilterClause = " AND o.type = ?";
+    params.push(String(post.type).toLowerCase());
+  }
+  const dateClause = buildDateFilterClause("o", post, params);
   const countRows = await query(
     `SELECT COUNT(*) AS total FROM dai_outward o
      WHERE o.company = ? ${typeClause}
-     ${userFilter.clause} ${partyClause} ${invoiceClause}`,
+     ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${dateClause}`,
     params
   );
   const rows = await query(
     `SELECT o.*, ${PARTY_FIELDS} FROM dai_outward o
      LEFT JOIN dai_party p ON o.party = p.id
      WHERE o.company = ? ${typeClause}
-     ${userFilter.clause} ${partyClause} ${invoiceClause}
+     ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${dateClause}
      ORDER BY o.date DESC, o.id DESC LIMIT ? OFFSET ?`,
     [...params, limit, offset]
   );

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Modal, Button, Radio, Row, Col, Input, Select, Table, Typography } from "antd";
 import { cssVar } from "../../theme";
+import { SkuLink } from "../../hooks/useSkuModalAction";
 
 const { Text } = Typography;
 
@@ -39,7 +40,7 @@ const AddDiamondToBoxModal = ({
     );
 
     const columns = [
-        { title: "SKU", dataIndex: "sku", key: "sku", align: "center" },
+        { title: "SKU", dataIndex: "sku", key: "sku", align: "center", render: (text, record) => <SkuLink sku={text} record={record} /> },
         { title: "Pcs", dataIndex: "pcs", key: "pcs", align: "center" },
         { title: "Carats", dataIndex: "carats", key: "carats", align: "center" },
         { title: "Price", dataIndex: "price", key: "price", align: "center" },

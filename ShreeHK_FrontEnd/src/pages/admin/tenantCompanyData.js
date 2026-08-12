@@ -22,5 +22,4 @@ export const tenantCompanyFields = [
   { type: "date", label: "Book Start Date", name: "startdate", span: 12 },
   { type: "date", label: "Book End Date", name: "enddate", span: 12 },
   { type: "input", label: "RapNet ID", name: "rapnet_id", span: 12 },
-  { type: "input", label: "RapNet Password", name: "rapnet_password", span: 12 },
 ];

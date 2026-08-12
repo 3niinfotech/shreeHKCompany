@@ -13,6 +13,8 @@ import { cssVar } from '../../theme';
 import styles from '../../assets/scss/pages/report/transferHistory.module.scss';
 import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
 import { toastApiError } from '../../utils/apiToast';
+import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
+import { SkuLink } from '../../hooks/useSkuModalAction';
 
 const { Text } = Typography;
 
@@ -30,7 +32,7 @@ const TransferHistory = () => {
 
     const columns = [
         { title: 'No', dataIndex: 'no', key: 'no', width: 60, align: 'center' },
-        { title: 'Sku', dataIndex: 'sku', key: 'sku', className: styles.skuColumn },
+        { title: 'Sku', dataIndex: 'sku', key: 'sku', className: styles.skuColumn, render: (text, record) => <SkuLink sku={text} record={record} /> },
         { title: 'Date', dataIndex: 'date', key: 'date', render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
         { title: 'To Company', dataIndex: 'toCompany', key: 'toCompany' },
         { title: 'Discription', dataIndex: 'discription', key: 'discription' },
@@ -163,7 +165,7 @@ const TransferHistory = () => {
 
             <Card className={styles.tableCard}>
                 <div ref={tableRef} className="erp-table-container">
-                    <Table columns={columns} dataSource={data} loading={loading} pagination={{ pageSize: 50 }} size="small" bordered scroll={{ x: "max-content", y: tableHeight }} />
+                    <SkeletonAwareTable columns={columns} dataSource={data} loading={loading} pagination={{ pageSize: 50 }} size="small" bordered scroll={{ x: "max-content", y: tableHeight }} />
                 </div>
             </Card>
         </div>

@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import dayjs from "dayjs";
-import { Modal, Tag, Spin, Table } from "antd";
+import { Modal, Tag, Table } from "antd";
+import { SkeletonDetail, SkeletonList } from "../common/skeleton";
 import { DollarCircleOutlined, ExperimentOutlined, InfoCircleOutlined, HistoryOutlined } from "@ant-design/icons";
 import { useFetchApi } from "../../api/ApiFunction";
 import { ENDPOINTS } from "../../constants/endpoints";
@@ -155,7 +156,7 @@ const InventoryStoneDetailModal = ({ open, onClose, stone }) => {
       footer={null}
       centered
       width={820}
-      destroyOnClose
+      destroyOnClose={false}
       maskClosable
       title={
         <div className={styles.header}>
@@ -184,7 +185,7 @@ const InventoryStoneDetailModal = ({ open, onClose, stone }) => {
               <span>Hold Information</span>
             </div>
             {holdLoading ? (
-              <Spin size="small" />
+              <SkeletonDetail fields={3} />
             ) : holdInfo ? (
               <DetailGrid
                 items={[
@@ -242,7 +243,7 @@ const InventoryStoneDetailModal = ({ open, onClose, stone }) => {
             <span>Stone History</span>
           </div>
           {historyLoading ? (
-            <Spin size="small" />
+            <SkeletonList rows={4} withAvatar={false} />
           ) : historyRows.length ? (
             <Table
               className={styles.historyTable}

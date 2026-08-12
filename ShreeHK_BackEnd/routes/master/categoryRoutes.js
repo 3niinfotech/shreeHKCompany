@@ -12,7 +12,12 @@ categoryRouter.get("/master/category", authenticateToken, (req, res) => {
   const id = parseInt(req?.query?.id) || 0;
   const searchInput = req.query.searchInput;
 
-  let query = `SELECT * FROM category`;
+  // Join parent so Parent column can show name even when search filters out the parent row
+  let query = `
+    SELECT c.*, p.name AS parent_name
+    FROM category c
+    LEFT JOIN category p ON c.parent = p.id AND c.parent <> 0
+  `;
 
   const countQuery = `SELECT COUNT(*) as totalItems FROM category`;
 
@@ -24,12 +29,13 @@ categoryRouter.get("/master/category", authenticateToken, (req, res) => {
     if (id == 0) {
       if (searchInput) {
         const escaped = connection.escape("%" + searchInput + "%");
-        query += ` WHERE name LIKE ${escaped} OR parent LIKE ${escaped}`;
+        // Search category name OR parent category name (not numeric parent id)
+        query += ` WHERE c.name LIKE ${escaped} OR p.name LIKE ${escaped}`;
       }
 
-      query += ` ORDER BY id DESC`;
+      query += ` ORDER BY c.id DESC`;
     } else {
-      query += ` WHERE id=${parseInt(id)}`;
+      query += ` WHERE c.id=${parseInt(id)}`;
     }
 
     connection.query(query, (error, data) => {

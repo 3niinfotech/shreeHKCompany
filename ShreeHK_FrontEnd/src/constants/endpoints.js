@@ -49,6 +49,7 @@ export const ENDPOINTS = {
         inventorySuggest: "/product/inventory/suggest",
         detail: "/product/detail",
         save: "/product/save",
+        updateRemark: "/product/update-remark",
         holdDetail: "/product/holdDetail",
         changePrice: "/product/change-price",
         labelA4Print: "/product/label-a4/print",
@@ -69,6 +70,7 @@ export const ENDPOINTS = {
     inward: {
         checkExist: "/inward/checkExist",
         save: "/inward/save",
+        getById: "/inward",
     },
     transactionStock: {
         gia: {

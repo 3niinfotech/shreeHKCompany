@@ -123,10 +123,18 @@ sessionRouter.post("/session/context", authenticateToken, async (req, res) => {
       });
     }
 
-    const companies = await metaQuery(
-      "SELECT id, name, shortcutName FROM company WHERE id = ? LIMIT 1",
-      [companyId]
-    );
+    let companies;
+    try {
+      companies = await metaQuery(
+        "SELECT id, name, shortcutName, logo FROM company WHERE id = ? LIMIT 1",
+        [companyId]
+      );
+    } catch {
+      companies = await metaQuery(
+        "SELECT id, name, shortcutName FROM company WHERE id = ? LIMIT 1",
+        [companyId]
+      );
+    }
     if (!companies.length) {
       return res.status(404).json({
         status: false,
@@ -155,6 +163,7 @@ sessionRouter.post("/session/context", authenticateToken, async (req, res) => {
         dbName,
         companyName: companies[0].name,
         companyShortcutName: companies[0].shortcutName || null,
+        companyLogo: companies[0].logo || null,
       },
     });
   } catch (err) {

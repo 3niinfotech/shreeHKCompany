@@ -134,9 +134,11 @@
 
 .historyTableCard {
     flex-shrink: 0;
+    border: none !important;
+    box-shadow: none !important;
 
     :global(.ant-card-body) {
-        padding: 10px 12px 12px !important;
+        padding: 0 !important;
     }
 }
 

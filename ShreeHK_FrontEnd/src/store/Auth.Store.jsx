@@ -15,6 +15,7 @@ const useAuthStore = create(
       yearId: null,
       companyName: null,
       companyShortcutName: null,
+      companyLogo: null,
       dbName: null,
       showContextPicker: false,
 
@@ -45,18 +46,20 @@ const useAuthStore = create(
           yearId: context.yearId ?? get().yearId ?? null,
           companyName: context.companyName ?? user?.company_name ?? get().companyName ?? null,
           companyShortcutName: context.companyShortcutName ?? get().companyShortcutName ?? null,
+          companyLogo: context.companyLogo ?? get().companyLogo ?? null,
           dbName: context.dbName ?? get().dbName ?? null,
           showContextPicker: context.showContextPicker ?? get().showContextPicker ?? false,
         });
       },
 
-      setSessionContext: ({ token, companyId, yearId, companyName, companyShortcutName, dbName }) => {
+      setSessionContext: ({ token, companyId, yearId, companyName, companyShortcutName, companyLogo, dbName }) => {
         const updates = {};
         if (token) updates.token = token;
         if (companyId != null) updates.companyId = companyId;
         if (yearId != null) updates.yearId = yearId;
         if (companyName != null) updates.companyName = companyName;
         if (companyShortcutName != null) updates.companyShortcutName = companyShortcutName;
+        if (companyLogo !== undefined) updates.companyLogo = companyLogo;
         if (dbName != null) updates.dbName = dbName;
         set(updates);
       },
@@ -111,6 +114,7 @@ const useAuthStore = create(
           yearId: null,
           companyName: null,
           companyShortcutName: null,
+          companyLogo: null,
           dbName: null,
           showContextPicker: false,
         });

@@ -40,6 +40,16 @@
   overflow: hidden;
 }
 
+// Table-page cards: flush body, no outer chrome (padding / border / shadow).
+.ant-card:has(.erp-table-container) {
+  border: none !important;
+  box-shadow: none !important;
+
+  > .ant-card-body {
+    padding: 0 !important;
+  }
+}
+
 // Ant Design table wrapper — body scrolls vertically/horizontally inside viewport.
 .erp-table-container {
   flex: 1 1 auto;

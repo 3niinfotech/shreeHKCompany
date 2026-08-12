@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Card, Table, Typography, Tag, Alert, Button, Space } from "antd";
+import { Card, Typography, Tag, Alert, Button, Space } from "antd";
 import { ReloadOutlined } from "@ant-design/icons";
 import { api } from "../../api/axiosInstance";
 import { ENDPOINTS } from "../../constants/endpoints";
+import SkeletonAwareTable from "../../components/common/skeleton/SkeletonAwareTable";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -62,7 +63,7 @@ const LegacyAppsScope = () => {
         description="These PHP applications should stay on legacy deployment unless a separate product initiative is approved."
       />
       <Card>
-        <Table
+        <SkeletonAwareTable
           rowKey="key"
           loading={loading}
           columns={columns}

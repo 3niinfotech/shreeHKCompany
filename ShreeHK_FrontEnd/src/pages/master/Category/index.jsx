@@ -27,10 +27,23 @@ const CategoryPage = () => {
     const editModal = useModal();
     const deleteModal = useModal();
 
-    const { data, isLoading, isFetching, refetch } = useEntityList(QUERY_KEYS.categories, fetchCategories, {
+    // Full list (no search) — used to resolve Parent names + populate Parent dropdown
+    const { data: allCategoriesData } = useEntityList(QUERY_KEYS.categories, fetchCategories, {
         limit: PAGE_LIMIT,
-        searchInput: search,
     });
+    const allCategories = allCategoriesData?.Data || [];
+
+    const listParams = useMemo(() => {
+        const params = { limit: PAGE_LIMIT };
+        if (search) params.searchInput = search;
+        return params;
+    }, [search]);
+
+    const { data, isLoading, isFetching, refetch } = useEntityList(
+        QUERY_KEYS.categories,
+        fetchCategories,
+        listParams
+    );
 
     const { mutate: saveCategoryMutation } = useEntityPostMutation(saveCategory, QUERY_KEYS.categories);
     const { mutate: deleteCategoryMutation, isPending: isDeleting } = useEntityDeleteMutation(
@@ -38,13 +51,13 @@ const CategoryPage = () => {
         QUERY_KEYS.categories
     );
 
-    const columns = getCategoryColumns(dataSource);
+    const columns = getCategoryColumns(allCategories);
 
     const categoryFormFields = useMemo(() => {
         const editingId = editRecord?.id;
         const parentOptions = [
             { label: "None", value: 0 },
-            ...dataSource
+            ...allCategories
                 .filter((row) => row.id !== editingId)
                 .map((row) => ({ label: row.name, value: row.id })),
         ];
@@ -52,7 +65,7 @@ const CategoryPage = () => {
             { type: "input", label: "Name", name: "name", required: true, span: 24 },
             { type: "select", label: "Parent", name: "parent", required: false, span: 24, options: parentOptions },
         ];
-    }, [dataSource, editRecord?.id]);
+    }, [allCategories, editRecord?.id]);
 
     const openDelete = (record) => {
         setDeleteTarget(record);

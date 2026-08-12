@@ -7,8 +7,8 @@ const SKU_TYPES = new Set(["sku", "mfg", "report"]);
 const TopbarSearch = ({ onSkuSearch, onInventoryFilter, inputRef }) => {
   const [searchText, setSearchText] = useState("");
 
-  const handleSearch = () => {
-    const value = searchText.trim();
+  const handleSearch = (enteredValue) => {
+    const value = String(enteredValue ?? searchText ?? "").trim();
     if (!value) {
       toast.error("Please enter SKU, shape, cut, polish or carat", { duration: 1500 });
       return;

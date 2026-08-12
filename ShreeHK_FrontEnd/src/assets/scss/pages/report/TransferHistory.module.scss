@@ -59,7 +59,8 @@
   }
 
   .tableCard {
-    box-shadow: var(--shadow-md);
+    box-shadow: none;
+    border: none;
     border-radius: 12px;
 
     .tableToolbar {

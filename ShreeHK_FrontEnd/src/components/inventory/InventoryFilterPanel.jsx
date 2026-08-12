@@ -16,7 +16,7 @@ const InventoryFilterPanel = ({
   headerActions,
   toolbarActions,
   defaultExpanded = false,
-  expandOnHover = true,
+  expandOnHover = false,
   advancedTitle = "Advanced Filters",
 }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
@@ -50,13 +50,9 @@ const InventoryFilterPanel = ({
 
   const handleToggleClick = () => {
     clearLeaveTimer();
-    if (pinned) {
-      setExpanded(false);
-      setPinned(false);
-    } else {
-      setExpanded(true);
-      setPinned(true);
-    }
+    const next = !expanded;
+    setExpanded(next);
+    setPinned(next);
   };
 
   const handleAdvancedHoverEnter = () => {
@@ -66,6 +62,7 @@ const InventoryFilterPanel = ({
   };
 
   const handleAdvancedHoverLeave = () => {
+    if (!expandOnHover) return;
     scheduleClose();
   };
 

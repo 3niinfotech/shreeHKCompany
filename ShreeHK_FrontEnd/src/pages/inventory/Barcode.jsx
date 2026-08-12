@@ -15,7 +15,7 @@ import { mapInventoryRowCamel } from "../../utils/inventoryApiFilters";
 import InventoryBulkActionModal from "../../components/inventory/InventoryBulkActionModal";
 import { renderLocationWithFlag } from "../../components/inventory/LocationWithFlag";
 import InventoryPageToolbar from "../../components/inventory/InventoryPageToolbar";
-import InventoryStoneDetailModal from "../../components/inventory/InventoryStoneDetailModal";
+import { SkuLink } from "../../hooks/useSkuModalAction";
 import {
   BadgeDollarSign,
   Download,
@@ -91,7 +91,6 @@ const Barcode = () => {
   const [barcodePanelOpen, setBarcodePanelOpen] = useState(true);
   const [scannerMode, setScannerMode] = useState(false);
   const [searchText, setSearchText] = useState("");
-  const [stoneDetailModal, setStoneDetailModal] = useState({ open: false, data: null });
 
   const { form: filterForm, handleClear, renderFilters } = useFiltersFormFields(
     FILTER_FIELDS,
@@ -116,9 +115,7 @@ const Barcode = () => {
     { title: "Type", dataIndex: "group_type", key: "group_type", width: 90, ellipsis: true },
     {
       title: "Sku", dataIndex: "sku", key: "sku", width: 100, ellipsis: true,
-      render: (text, record) => (
-        <a className="inventory-sku-link" onClick={() => setStoneDetailModal({ open: true, data: mapInventoryRowCamel(record) })}>{text}</a>
-      ),
+      render: (text, record) => <SkuLink sku={text} record={mapInventoryRowCamel(record)} />,
     },
     { title: "Lab", dataIndex: "lab", key: "lab", width: 64, ellipsis: true },
     { title: "Certificate", dataIndex: "report_no", key: "report_no", width: 120, ellipsis: true },
@@ -365,11 +362,6 @@ const Barcode = () => {
             </div>
           );
         }}
-      />
-      <InventoryStoneDetailModal
-        open={stoneDetailModal.open}
-        onClose={() => setStoneDetailModal({ open: false, data: null })}
-        stone={stoneDetailModal.data}
       />
     </>
   );

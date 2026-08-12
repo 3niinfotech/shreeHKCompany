@@ -13,6 +13,7 @@ import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/
 import styles from "../../assets/scss/pages/outward.module.scss";
 import useTableBodyScrollHeight from "../../hooks/useTableBodyScrollHeight";
 import { cssVar } from '../../theme';
+import { SkuLink } from '../../hooks/useSkuModalAction';
 
 const { Title, Text } = Typography;
 
@@ -26,7 +27,7 @@ const ExpandedRowContent = ({ rowId }) => {
 
     const innerColumns = [
         { title: 'Type', dataIndex: 'group_type', key: 'group_type', width: 120, render: (v) => v?.toUpperCase() || '-' },
-        { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 120 },
+        { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 120, render: (text, record) => <SkuLink sku={text} record={record} /> },
         { title: 'Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', width: 70, align: 'center' },
         { title: 'Carat', dataIndex: 'polish_carat', key: 'polish_carat', width: 90, align: 'center' },
         { title: 'Price', dataIndex: 'sell_price', key: 'sell_price', width: 110, align: 'right', render: (v) => `$${v || 0}` },

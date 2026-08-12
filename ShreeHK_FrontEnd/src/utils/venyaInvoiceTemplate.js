@@ -12,6 +12,7 @@ import {
   isSaleInvoiceDocument,
 } from "./saleInvoiceTemplate.js";
 import { INVOICE_A4_STYLES } from "./invoiceA4.js";
+import { buildCompanyLogoHtml, resolveCompanyLogoUrl } from "./companyLogo.js";
 
 export const VENYA_BLUE = "#4991b1";
 export const VENYA_PINK = "#cc3399";
@@ -184,13 +185,12 @@ function buildCompanyBlock() {
   return `<p style="font-size:15px;margin:0 0 2px;"><b>${VENYA_COMPANY.name}</b></p>${lines}`;
 }
 
-function buildLogoCell() {
-  return `<td style="width:30%;color:#444444;">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 70" width="100%" height="70" role="img" aria-label="Venya Gems">
-      <text x="8" y="42" font-family="Georgia, serif" font-size="34" font-weight="700" fill="${VENYA_BLUE}">VENYA</text>
-      <text x="10" y="62" font-family="Arial, sans-serif" font-size="11" letter-spacing="2" fill="${VENYA_PINK}">GEMS CO., LTD.</text>
-    </svg>
-  </td>`;
+function buildLogoCell(company = {}) {
+  return `<td style="width:30%;color:#444444;">${buildCompanyLogoHtml({
+    logoUrl: resolveCompanyLogoUrl(company.logoUrl || company.logo),
+    companyName: company.name || "",
+    imgStyle: "max-height:70px;max-width:200px;object-fit:contain;display:block;margin:0 auto;",
+  })}</td>`;
 }
 
 function buildPartyBlock(party, variant) {
@@ -513,7 +513,7 @@ function buildInvoicePage(data, copyLabel) {
   return `<div class="venya-invoice-page" style="font-size:12pt;page-break-after:always;">
     <table cellspacing="0" style="width:100%;text-align:center;font-size:12px;">
       <tr>
-        ${buildLogoCell()}
+        ${buildLogoCell(data.company || {})}
         <td style="width:39%;text-align:center;">
           <span style="color:${VENYA_BLUE};font-size:18px;">${centerTitle}</span>
           ${copyLine}

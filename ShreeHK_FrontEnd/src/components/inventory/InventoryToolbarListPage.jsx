@@ -14,7 +14,7 @@ import {
 import MasterTableTemplate from "../../pages/inventory/MasterTableTemplate";
 import InventoryPageToolbar from "./InventoryPageToolbar";
 import InventoryBulkActionModal from "./InventoryBulkActionModal";
-import InventoryStoneDetailModal from "./InventoryStoneDetailModal";
+import { SkuLink } from "../../hooks/useSkuModalAction";
 import useInventoryToolbarPage from "../../hooks/useInventoryToolbarPage";
 import { cssVar } from "../../theme";
 import "../../assets/scss/pages/inventory/onHand_module.scss";
@@ -86,20 +86,13 @@ const InventoryToolbarListPage = ({
       if (idx !== skuColIndex && col.dataIndex !== "sku") return col;
       return {
         ...col,
-        render: (text, record) => (
-          <a
-            className="inventory-sku-link"
-            onClick={() => toolbar.openStoneDetail(record)}
-          >
-            {text}
-          </a>
-        ),
+        render: (text, record) => <SkuLink sku={text} record={record} />,
       };
     });
     if (!showSyncColumns) return mapped;
     const hasSync = mapped.some((c) => c.key === "rapnetUpload");
     return hasSync ? mapped : [...mapped, ...SYNC_COLUMNS];
-  }, [baseColumns, showSyncColumns, toolbar.openStoneDetail]);
+  }, [baseColumns, showSyncColumns]);
 
   return (
     <>
@@ -170,11 +163,6 @@ const InventoryToolbarListPage = ({
         totalsKeys={{ pcs: "pcs", carat: "carat", amount: "amount" }}
         renderFooterTotalsInTable
         showButton={false}
-      />
-      <InventoryStoneDetailModal
-        open={toolbar.stoneDetailModal.open}
-        onClose={() => toolbar.setStoneDetailModal({ open: false, data: null })}
-        stone={toolbar.stoneDetailModal.data}
       />
     </>
   );

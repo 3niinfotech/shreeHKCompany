@@ -1,6 +1,6 @@
 import { Typography } from "antd";
 import { renderLocationWithFlag } from "../../components/inventory/LocationWithFlag";
-import { cssVar } from "../../theme";
+import { SkuLink } from "../../hooks/useSkuModalAction";
 
 const { Text } = Typography;
 
@@ -8,7 +8,7 @@ export const boxParcelColumns = [
     { title: "Mfg.Code", dataIndex: "mfgCode", key: "mfgCode", width: 110, fixed: "left" },
     {
         title: "Sku", dataIndex: "sku", key: "sku", width: 110, fixed: "left",
-        render: (text) => <Text strong style={{ color: cssVar("color-text-link") }}>{text}</Text>,
+        render: (text, record) => <SkuLink sku={text} record={record} />,
     },
     { title: "Lab", dataIndex: "lab", key: "lab", width: 80 },
     { title: "Certificate", dataIndex: "certificate", key: "certificate", width: 120 },
@@ -28,7 +28,10 @@ export const boxParcelColumns = [
 
 export const singleStoneColumns = [
     { title: "Mfg.Code", dataIndex: "mfgCode", key: "mfgCode", width: 80, fixed: "left" },
-    { title: "Sku", dataIndex: "sku", key: "sku", width: 100, fixed: "left", render: (text) => <Text strong style={{ color: cssVar("color-text-link") }}>{text}</Text> },
+    {
+        title: "Sku", dataIndex: "sku", key: "sku", width: 100, fixed: "left",
+        render: (text, record) => <SkuLink sku={text} record={record} />,
+    },
     { title: "Lab", dataIndex: "lab", key: "lab", width: 80 },
     { title: "Certificate", dataIndex: "certificate", key: "certificate", width: 120 },
     { title: "Shape", dataIndex: "shape", key: "shape", width: 100 },

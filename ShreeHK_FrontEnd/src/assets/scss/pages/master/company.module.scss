@@ -14,17 +14,17 @@
   border-radius: v.$radius-card;
   height: 100%;
   width: 100%;
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   box-sizing: border-box;
-  border: 0.5px solid var(--color-border);
+  border: none;
   background: var(--color-card-bg);
 
   :global(.ant-card-body) {
-    padding: 16px;
-    display: flex;
+    display: flex; 
+    gap: 10px;
     flex-direction: column;
     height: 100%;
     width: 100%;

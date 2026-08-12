@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useRef } from "react";
-import { Tree, Input, Button, Card, Row, Col, Space, Typography, Tag, Table, message, Spin } from "antd";
+import { Tree, Input, Button, Card, Row, Col, Space, Typography, Tag, message } from "antd";
 import { FolderOutlined, ReloadOutlined } from "@ant-design/icons";
 import {
     Search,
@@ -22,13 +22,15 @@ import { cssVar } from "../../theme";
 import { renderLocationWithFlag } from "../../components/inventory/LocationWithFlag";
 import PageHeroHeader from "../../components/common/PageHeroHeader";
 import useTableBodyScrollHeight from "../../hooks/useTableBodyScrollHeight";
+import { SkuLink } from "../../hooks/useSkuModalAction";
+import { SkeletonTree, SkeletonAwareTable } from "../../components/common/skeleton";
 import styles from "../../assets/scss/pages/inventory/categories.module.scss";
 
 const { DirectoryTree } = Tree;
 const { Text } = Typography;
 
 const listColumns = [
-    { title: "SKU", dataIndex: "sku", key: "sku", width: 100 },
+    { title: "SKU", dataIndex: "sku", key: "sku", width: 100, render: (text, record) => <SkuLink sku={text} record={record} /> },
     { title: "Lab", dataIndex: "lab", key: "lab", width: 70 },
     { title: "Shape", dataIndex: "shape", key: "shape", width: 90 },
     { title: "Carat", dataIndex: "polish_carat", key: "polish_carat", width: 80, align: "right" },
@@ -196,7 +198,9 @@ const CategorizeInventory = () => {
                             onChange={(e) => setTreeSearch(e.target.value)}
                         />
                         {treeLoading ? (
-                            <Spin className={styles.treeLoading} />
+                            <div className={styles.treeLoading}>
+                                <SkeletonTree rows={10} />
+                            </div>
                         ) : (
                             <DirectoryTree
                                 multiple={false}
@@ -227,7 +231,7 @@ const CategorizeInventory = () => {
                         }
                     >
                         <div ref={tableRef} className="erp-table-container" style={{ flex: 1, minHeight: 0 }}>
-                        <Table
+                        <SkeletonAwareTable
                             className={styles.modernTable}
                             rowKey="id"
                             size="small"

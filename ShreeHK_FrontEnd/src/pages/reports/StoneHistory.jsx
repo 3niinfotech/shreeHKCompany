@@ -11,6 +11,7 @@ import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/
 import { exportReportToExcel } from '../../utils/reportExcelExport';
 import styles from '../../assets/scss/pages/report/stoneHistory.module.scss';
 import { toastApiError } from '../../utils/apiToast';
+import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
 
 const { Text } = Typography;
 
@@ -326,7 +327,7 @@ const StoneHistory = () => {
                     </Button>
                 )}
             >
-                <Table
+                <SkeletonAwareTable
                     columns={historyColumns}
                     dataSource={historyRows}
                     loading={loading}

@@ -11,6 +11,7 @@ import {
 import { ENDPOINTS } from "../../constants/endpoints";
 import dayjs from "dayjs";
 import PageHeroHeader from "../../components/common/PageHeroHeader";
+import SkeletonAwareTable from "../../components/common/skeleton/SkeletonAwareTable";
 import styles from "../../assets/scss/pages/admin/fiscalYearAdmin.module.scss";
 
 const { Title, Text } = Typography;
@@ -211,7 +212,7 @@ const FiscalYearAdmin = () => {
             )}
             className={styles.tableCard}
           >
-            <Table
+            <SkeletonAwareTable
               rowKey="id"
               columns={columns}
               dataSource={rows}

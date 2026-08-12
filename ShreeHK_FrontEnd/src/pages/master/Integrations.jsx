@@ -4,6 +4,7 @@ import { Search, Globe } from "lucide-react";
 import { api } from "../../api/axiosInstance";
 import { ENDPOINTS } from "../../constants/endpoints";
 import { toastApiSuccess, toastApiError } from "../../utils/apiToast";
+import { SkuLink } from "../../hooks/useSkuModalAction";
 
 const { Title, Text } = Typography;
 
@@ -45,7 +46,7 @@ const Integrations = () => {
   };
 
   const giaColumns = [
-    { title: "SKU", dataIndex: "sku", key: "sku" },
+    { title: "SKU", dataIndex: "sku", key: "sku", render: (text, record) => <SkuLink sku={text} record={record} /> },
     { title: "Lab", dataIndex: "lab", key: "lab" },
     { title: "Report #", dataIndex: "report_no", key: "report_no" },
     { title: "Shape", dataIndex: "shape", key: "shape" },

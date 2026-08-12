@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Input, Space, Spin } from 'antd';
+import { Input, Space } from 'antd';
+import { SkeletonBlock } from '../../../components/common/skeleton';
 import { Coins, Plus, Save, Check, Pencil, Trash2, RefreshCcw } from 'lucide-react';
 import { useFetchApi, usePostApiRequest, useDeleteApiRequest } from '../../../api/ApiFunction';
 import { ENDPOINTS } from '../../../constants/endpoints';
@@ -108,11 +109,16 @@ const CurrancyRate = () => {
                     </thead>
                     <tbody>
                         {isFetching ? (
-                            <tr>
-                                <td colSpan={6} style={{ textAlign: 'center', padding: 20 }}>
-                                    <Spin />
-                                </td>
-                            </tr>
+                            Array.from({ length: 6 }).map((_, i) => (
+                                <tr key={`sk-${i}`}>
+                                    <td><SkeletonBlock width={24} height={12} /></td>
+                                    <td><SkeletonBlock width="65%" height={12} /></td>
+                                    <td style={{ textAlign: 'center' }}><SkeletonBlock width={20} height={14} /></td>
+                                    <td style={{ textAlign: 'right' }}><SkeletonBlock width={56} height={12} /></td>
+                                    <td style={{ textAlign: 'right' }}><SkeletonBlock width={56} height={12} /></td>
+                                    <td style={{ textAlign: 'center' }}><SkeletonBlock width={48} height={12} /></td>
+                                </tr>
+                            ))
                         ) : (
                             rows.map((row, i) => (
                                 <tr key={row.id}>

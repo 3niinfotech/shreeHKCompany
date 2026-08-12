@@ -1,15 +1,21 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
-import { Modal, Table, Input, InputNumber, Select, DatePicker, Button, Form, Checkbox, Typography, message } from "antd";
+import { Modal, Table, Input, InputNumber, Select, DatePicker, Button, Form, Checkbox, message } from "antd";
 import { toast } from "sonner";
 import { DeleteOutlined, SendOutlined } from "@ant-design/icons";
 import { BarChart3, Diamond, DollarSign, Tag } from "lucide-react";
 import dayjs from "dayjs";
 import { useFetchApi } from "../../api/ApiFunction";
 import { ENDPOINTS } from "../../constants/endpoints";
-import { cssVar } from "../../theme";
+import { getActionTheme } from "./inventoryActionConfig";
+import { SkuLink } from "../../hooks/useSkuModalAction";
 import "../../assets/scss/pages/inventory/onMemoModal.scss";
 
-const { Text } = Typography;
+/** Same formula as OutwardEntryForm / InwardEntryForm: amount = carat × price */
+const calcAmount = (carat, price) =>
+  Math.round((Number(carat) || 0) * (Number(price) || 0) * 100) / 100;
+
+const isBoxOrParcel = (groupType) =>
+  groupType === "box" || groupType === "parcel";
 
 const recalcFromDisc = (row) => {
   const carat = Number(row.polishCarat) || 0;
@@ -18,11 +24,10 @@ const recalcFromDisc = (row) => {
   const refPrice = rapPrice > 0 ? rapPrice : basePrice;
   const disc = Number(row.disc) || 0;
   const price = refPrice > 0 ? refPrice * (1 + disc / 100) : (Number(row.price) || 0);
-  const amount = price * carat;
   return {
     ...row,
     price: +price.toFixed(2),
-    amount: +amount.toFixed(2),
+    amount: calcAmount(carat, price),
     basePrice: basePrice || +price.toFixed(2),
   };
 };
@@ -39,6 +44,7 @@ const recalcFromAmount = (row) => {
   return {
     ...row,
     price: +price.toFixed(2),
+    amount: calcAmount(carat, price),
     disc: +disc.toFixed(2),
     basePrice,
   };
@@ -51,11 +57,10 @@ const recalcFromPrice = (row) => {
   let basePrice = Number(row.basePrice) || 0;
   if (!basePrice && price > 0) basePrice = price;
   const refPrice = rapPrice > 0 ? rapPrice : basePrice;
-  const amount = price * carat;
   const disc = refPrice > 0 ? ((price * 100) / refPrice - 100) : (Number(row.disc) || 0);
   return {
     ...row,
-    amount: +amount.toFixed(2),
+    amount: calcAmount(carat, price),
     disc: +disc.toFixed(2),
     basePrice,
   };
@@ -66,35 +71,46 @@ const recalcFromCarat = (row, caratValue) => {
   return recalcFromPrice({ ...row, polishCarat });
 };
 
-const isBoxOrParcel = (groupType) =>
-  groupType === "box" || groupType === "parcel";
+/** Pcs change: for box/parcel keep avg carat/pcs from stock, then amount = carat × price */
+const recalcFromPcs = (row, pcsValue) => {
+  const polishPcs = Number(pcsValue) || 0;
+  const stockPcs = Number(row.stockPcs) || 0;
+  const stockCarat = Number(row.stockCarat) || 0;
+  let polishCarat = Number(row.polishCarat) || 0;
+  if (isBoxOrParcel(row.groupType) && stockPcs > 0) {
+    polishCarat = Math.round((stockCarat / stockPcs) * polishPcs * 100) / 100;
+  }
+  return recalcFromPrice({ ...row, polishPcs, polishCarat });
+};
 
-const ACTION_CONFIG = {
-  memo: {
-    title: "On Memo",
-    headerBg: cssVar("color-warning-light"),
-    headerBorder: cssVar("color-badge-warning-border"),
-    accentColor: cssVar("color-warning"),
-    submitBtn: { label: "Submit Memo", bg: cssVar("color-success-dark"), border: cssVar("color-success-dark") },
-  },
-  sell: {
-    title: "Sell Diamond",
-    headerBg: cssVar("color-success-light"),
-    headerBorder: cssVar("color-badge-success-border"),
-    accentColor: cssVar("color-success-dark"),
-    submitBtn: { label: "Submit Sale", bg: cssVar("color-success-dark"), border: cssVar("color-success-dark") },
-  },
-  consign: {
-    title: "Consignment",
-    headerBg: cssVar("color-entity-other-bg"),
-    headerBorder: cssVar("color-badge-info-border"),
-    accentColor: cssVar("color-entity-other-text"),
-    submitBtn: { label: "Submit Consignment", bg: cssVar("color-info"), border: cssVar("color-info") },
-  },
+const buildActionConfig = (actionType) => {
+  const themeKey = actionType === "memo" ? "onMemo" : actionType === "consign" ? "consignment" : "sell";
+  const theme = getActionTheme(themeKey);
+  const titles = {
+    memo: "On Memo",
+    sell: "Sell Diamond",
+    consign: "Consignment",
+  };
+  const submitLabels = {
+    memo: "Submit Memo",
+    sell: "Submit Sale",
+    consign: "Submit Consignment",
+  };
+  return {
+    title: titles[actionType] || theme.label,
+    headerBg: theme.bg,
+    headerBorder: theme.border,
+    accentColor: theme.accent,
+    submitBtn: {
+      label: submitLabels[actionType] || `Submit ${theme.label}`,
+      bg: theme.btnBg || theme.accent,
+      border: theme.btnBorder || theme.accent,
+    },
+  };
 };
 
 const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = "memo" }) => {
-  const config = ACTION_CONFIG[actionType] || ACTION_CONFIG.memo;
+  const config = buildActionConfig(actionType);
   const [memoRows, setMemoRows] = useState([]);
   const [narration, setNarration] = useState("");
   const [lessPercent, setLessPercent] = useState(null);
@@ -123,10 +139,21 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
         const carat = Number(row.polishCarat) || 0;
         const rapPrice = Number(row.rapPrice) || 0;
         const price = Number(row.price) || 0;
-        const amount = Number(row.amount) || price * carat;
+        const polishPcs = Number(row.polishPcs) || 1;
+        const amount = Number(row.amount) || calcAmount(carat, price);
         const basePrice = rapPrice > 0 ? rapPrice : price;
         const disc = rapPrice > 0 ? ((price * 100) / rapPrice - 100) : 0;
-        return { ...row, disc: +disc.toFixed(2), price, amount, carat, basePrice };
+        return {
+          ...row,
+          disc: +disc.toFixed(2),
+          price,
+          amount: calcAmount(carat, price) || amount,
+          carat,
+          basePrice,
+          polishPcs,
+          stockPcs: polishPcs,
+          stockCarat: carat,
+        };
       });
       setMemoRows(rows);
       setNarration("");
@@ -139,9 +166,9 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
         invoiceType: "Invoice From",
         ...(inc
           ? {
-              entryno: inc.outward,
-              invoiceno: inc.invoice != null ? String(inc.invoice) : undefined,
-            }
+            entryno: inc.outward,
+            invoiceno: inc.invoice != null ? String(inc.invoice) : undefined,
+          }
           : {}),
       });
     }
@@ -183,6 +210,12 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
     );
   }, []);
 
+  const handlePcsChange = useCallback((id, value) => {
+    setMemoRows((prev) =>
+      prev.map((row) => (row.id === id ? recalcFromPcs(row, value) : row))
+    );
+  }, []);
+
   const handleRemoveRow = useCallback((id) => {
     setMemoRows((prev) => prev.filter((row) => row.id !== id));
   }, []);
@@ -190,7 +223,7 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
   const footerStats = useMemo(() => {
     return memoRows.reduce(
       (acc, row) => {
-        acc.pcs += 1;
+        acc.pcs += Number(row.polishPcs) || 0;
         acc.carats += Number(row.polishCarat) || 0;
         acc.price += (Number(row.price) || 0) * (Number(row.polishCarat) || 0);
         acc.amount += Number(row.amount) || 0;
@@ -271,35 +304,49 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
 
   const columns = [
     { title: "No", width: 50, align: "center", render: (_, __, idx) => idx + 1 },
-    { title: "SKU", dataIndex: "sku", width: 110 },
-    { title: "Shape", dataIndex: "shape", width: 90 },
+    { title: "SKU", dataIndex: "sku", width: 110, align: "center", render: (text, record) => <SkuLink sku={text} record={record} /> },
+    { title: "Shape", dataIndex: "shape", width: 90, align: "center" },
+    { title: "Color", dataIndex: "color", width: 70, align: "center" },
+    { title: "Clarity", dataIndex: "clarity", width: 80, align: "center" },
+    { title: "Lab", dataIndex: "lab", width: 60, align: "center" },
+    { title: "Cert #", dataIndex: "certificate", width: 120, align: "center" },
+    {
+      title: "Pcs",
+      dataIndex: "polishPcs",
+      width: 80,
+      align: "center",
+      render: (value, record) => (
+        <InputNumber
+          value={value}
+          min={0}
+          step={1}
+          precision={0}
+          className="memo-editable-cell"
+          onChange={(val) => handlePcsChange(record.id, val)}
+        />
+      ),
+    },
     {
       title: "Carat",
       dataIndex: "polishCarat",
       width: 80,
-      align: "right",
-      render: (value, record) =>
-        isBoxOrParcel(record.groupType) ? (
-          <InputNumber
-            value={value}
-            min={0}
-            step={0.01}
-            className="memo-editable-cell"
-            onChange={(val) => handleCaratChange(record.id, val)}
-          />
-        ) : (
-          Number(value || 0).toFixed(2)
-        ),
+      align: "center",
+      render: (value, record) => (
+        <InputNumber
+          value={value}
+          min={0}
+          step={0.01}
+          className="memo-editable-cell"
+          onChange={(val) => handleCaratChange(record.id, val)}
+        />
+      ),
     },
-    { title: "Color", dataIndex: "color", width: 70 },
-    { title: "Clarity", dataIndex: "clarity", width: 80 },
-    { title: "Lab", dataIndex: "lab", width: 60 },
-    { title: "Cert #", dataIndex: "certificate", width: 120 },
-    { title: "Rap Price", dataIndex: "rapPrice", width: 100, render: (v) => `$${Number(v || 0).toLocaleString()}` },
+    { title: "Rap Price", dataIndex: "rapPrice", width: 100, align: "center", render: (v) => `$${Number(v || 0).toLocaleString()}` },
     {
       title: "Disc %",
       dataIndex: "disc",
       width: 120,
+      align: "center",
       render: (value, record) => (
         <InputNumber
           value={value}
@@ -313,6 +360,7 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
       title: "Price/Ct",
       dataIndex: "price",
       width: 120,
+      align: "center",
       render: (value, record) => (
         <InputNumber
           value={value}
@@ -326,7 +374,16 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
       title: "Amount",
       dataIndex: "amount",
       width: 130,
-      render: (v) => <Text strong>${Number(v || 0).toFixed(2)}</Text>,
+      align: "center",
+      render: (value, record) => (
+        <InputNumber
+          value={value}
+          min={0}
+          step={0.01}
+          className="memo-editable-cell"
+          onChange={(val) => handleAmountChange(record.id, val)}
+        />
+      ),
     },
     {
       title: "Action",
@@ -349,11 +406,18 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
       open={open}
       onCancel={onClose}
       width="85vw"
-      style={{ top: 120 }}
+      centered
+      closable={false}
+      styles={{
+        header: {
+          background: config.headerBg,
+          borderTop: `3px solid ${config.accentColor}`,
+        },
+      }}
       destroyOnClose
       maskClosable={false}
       title={
-        <div className="memo-modal-title" style={{ background: config.headerBg, borderTop: `4px solid ${config.accentColor}` }}>
+        <div className="memo-modal-title">
           <span className="memo-title-text">{config.title}</span>
           <span className="memo-title-count">{memoRows.length} diamond(s) selected — fill details below</span>
         </div>
@@ -371,7 +435,7 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
           <Form.Item label="Reference" name="reference">
             <Input placeholder="#Ref" style={{ width: 110 }} />
           </Form.Item>
-          <Form.Item label={<span>Date <span style={{ color: "red" }}>*</span></span>} name="date" rules={[{ required: true, message: "Date required" }]}>
+          <Form.Item label="Date" name="date" rules={[{ required: true, message: "Date required" }]}>
             <DatePicker format="YYYY-MM-DD" style={{ width: 130 }} />
           </Form.Item>
           {actionType === "sell" && (
@@ -384,12 +448,12 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
               </Form.Item>
             </>
           )}
-          <Form.Item label={<span>Company <span style={{ color: "red" }}>*</span></span>} name="company" rules={[{ required: true, message: "Company required" }]}>
+          <Form.Item label="Company" name="company" rules={[{ required: true, message: "Company required" }]}>
             <Select options={companyOptions} placeholder="Select Company" allowClear showSearch optionFilterProp="label" style={{ width: 180 }} />
           </Form.Item>
-          <Form.Item name="invoiceType">
+          {/* <Form.Item name="invoiceType">
             <Select options={[{ label: "Invoice From", value: "Invoice From" }, { label: "Invoice To", value: "Invoice To" }]} style={{ width: 130 }} />
-          </Form.Item>
+          </Form.Item> */}
           <Form.Item label="Other Party" name="other_party">
             <Select options={companyOptions} placeholder="Select other Party" allowClear showSearch optionFilterProp="label" style={{ width: 180 }} />
           </Form.Item>
@@ -407,7 +471,7 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
           rowKey="id"
           pagination={false}
           bordered
-          scroll={{ x: "max-content", y: actionType === "sell" ? "calc(100vh - 580px)" : "calc(100vh - 380px)" }}
+          scroll={{ x: "max-content", y: actionType === "sell" ? "calc(100vh - 520px)" : "calc(100vh - 340px)" }}
         />
       </div>
 
@@ -498,62 +562,54 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
       )}
 
       <div className="memo-modal-footer">
-        <div className="memo-footer-stats">
-          <div className="memo-stat-card">
-            <div className="memo-stat-icon memo-stat-icon--pcs"><BarChart3 size={20} /></div>
-            <div className="memo-stat-info">
-              <span className="memo-stat-label">Pcs</span>
-              <span className="memo-stat-value">{footerStats.pcs}</span>
+        <div className="memo-footer-stats-row">
+          <div className="memo-footer-stats">
+            <div className="memo-footer-stats-left">
+              <span className="memo-stat-badge memo-stat-badge--pcs">
+                <BarChart3 size={14} className="memo-stat-badge-icon" />
+                Pcs: <b>{footerStats.pcs}</b>
+              </span>
+              <span className="memo-stat-badge memo-stat-badge--carats">
+                <Diamond size={14} className="memo-stat-badge-icon" />
+                Carats: <b>{footerStats.carats.toFixed(2)}</b>
+              </span>
+              <span className="memo-stat-badge memo-stat-badge--price">
+                <DollarSign size={14} className="memo-stat-badge-icon" />
+                Avg Price: <b>${avgPrice}</b>
+              </span>
+              <span className="memo-stat-badge memo-stat-badge--amount">
+                <Tag size={14} className="memo-stat-badge-icon" />
+                Total Amount: <b>${footerStats.amount.toFixed(2)}</b>
+              </span>
+            </div>
+            <div className="memo-footer-stats-right">
+              {actionType === "sell" && (lessPercent || otherLessPercent || extraCharge) ? (
+                <span className="memo-stat-badge memo-stat-badge--final">
+                  <DollarSign size={14} className="memo-stat-badge-icon" />
+                  Final Amount: <b>${discountCalc.finalAmount.toFixed(2)}</b>
+                </span>
+              ) : null}
             </div>
           </div>
-          <div className="memo-stat-card">
-            <div className="memo-stat-icon memo-stat-icon--carats"><Diamond size={20} /></div>
-            <div className="memo-stat-info">
-              <span className="memo-stat-label">Carats</span>
-              <span className="memo-stat-value">{footerStats.carats.toFixed(2)}</span>
-            </div>
-          </div>
-          <div className="memo-stat-card">
-            <div className="memo-stat-icon memo-stat-icon--price"><DollarSign size={20} /></div>
-            <div className="memo-stat-info">
-              <span className="memo-stat-label">Avg Price</span>
-              <span className="memo-stat-value">${avgPrice}</span>
-            </div>
-          </div>
-          <div className="memo-stat-card">
-            <div className="memo-stat-icon memo-stat-icon--amount"><Tag size={20} /></div>
-            <div className="memo-stat-info">
-              <span className="memo-stat-label">Total Amount</span>
-              <span className="memo-stat-value">${footerStats.amount.toFixed(2)}</span>
-            </div>
-          </div>
-          {actionType === "sell" && (lessPercent || otherLessPercent || extraCharge) ? (
-            <div className="memo-stat-card">
-              <div className="memo-stat-icon memo-stat-icon--final"><DollarSign size={20} /></div>
-              <div className="memo-stat-info">
-                <span className="memo-stat-label">Final Amount</span>
-                <span className="memo-stat-value memo-stat-value--amount">${discountCalc.finalAmount.toFixed(2)}</span>
-              </div>
-            </div>
-          ) : null}
-        </div>
 
-        <div className="memo-footer-narration">
-          <label className="memo-narration-label">Narration <span>(Optional)</span></label>
-          <Input.TextArea
-            rows={3}
-            placeholder="Enter narration..."
-            value={narration}
-            maxLength={200}
-            showCount
-            onChange={(e) => setNarration(e.target.value)}
-          />
+          <div className="memo-footer-narration">
+            <label className="memo-narration-label">Narration <span>(Optional)</span></label>
+            <Input.TextArea
+              rows={1}
+              placeholder="Enter narration..."
+              value={narration}
+              maxLength={200}
+              showCount
+              onChange={(e) => setNarration(e.target.value)}
+            />
+          </div>
         </div>
 
         <div className="memo-footer-actions">
-          <Button onClick={onClose} danger>Cancel</Button>
+          <Button onClick={onClose} danger size="middle">Cancel</Button>
           <Button
             type="primary"
+            size="middle"
             loading={submitting}
             disabled={submitting || !memoRows.length}
             onClick={handleSubmit}

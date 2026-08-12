@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Spin } from 'antd';
+import { SkeletonBlock } from '../../../components/common/skeleton';
 import { Activity, RefreshCw } from 'lucide-react';
 import styles from '../../../assets/scss/pages/accountings/mybalance.module.scss';
 import { cssVar } from '../../../theme';
@@ -65,11 +65,17 @@ const LiveRates = () => {
                     </thead>
                     <tbody>
                         {loading ? (
-                            <tr>
-                                <td colSpan={7} style={{ textAlign: 'center', padding: 20 }}>
-                                    <Spin />
-                                </td>
-                            </tr>
+                            Array.from({ length: 6 }).map((_, i) => (
+                                <tr key={`sk-${i}`}>
+                                    <td><SkeletonBlock width={24} height={12} /></td>
+                                    <td><SkeletonBlock width="60%" height={12} /></td>
+                                    <td style={{ textAlign: 'center' }}><SkeletonBlock width={20} height={14} /></td>
+                                    <td style={{ textAlign: 'right' }}><SkeletonBlock width={56} height={12} /></td>
+                                    <td style={{ textAlign: 'right' }}><SkeletonBlock width={56} height={12} /></td>
+                                    <td style={{ textAlign: 'center' }}><SkeletonBlock width={48} height={12} /></td>
+                                    <td style={{ textAlign: 'right' }}><SkeletonBlock width={72} height={12} /></td>
+                                </tr>
+                            ))
                         ) : (
                             rates.map((row, i) => (
                                 <tr key={row.id}>

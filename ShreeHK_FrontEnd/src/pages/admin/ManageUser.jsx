@@ -6,13 +6,11 @@ const MasterTemplate = lazy(() => import('../../components/common/masterCommon/M
 const ConfirmDeleteModal = lazy(() => import("../../components/common/modals/ConfirmDeleteModal"));
 import { useFetchApi, usePostApiRequest, useDeleteApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../constants/endpoints';
-import Loader from '../../components/common/Loader';
 
 const ManageUser = () => {
     const [offset, setOffset] = useState(0);
     const [combinedData, setCombinedData] = useState([]);
     const [editRecord, setEditRecord] = useState(null);
-    const [isInitialLoading, setIsInitialLoading] = useState(true);
 
     const { data, isLoading, isFetching, refetch } = useFetchApi(
         'getUsersAdmin',
@@ -168,10 +166,6 @@ const ManageUser = () => {
             } else {
                 setCombinedData((prev) => [...prev, ...data.Data]);
             }
-
-            if (isInitialLoading) {
-                setIsInitialLoading(false);
-            }
         }
     }, [data, offset]);
 
@@ -191,10 +185,6 @@ const ManageUser = () => {
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
     }, [isFetching, combinedData.length, data?.TotalItems]);
-
-    if (isInitialLoading) {
-        return <Loader />;
-    }
 
     return (
         <>

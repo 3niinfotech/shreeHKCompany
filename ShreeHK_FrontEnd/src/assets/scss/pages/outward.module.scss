@@ -12,13 +12,14 @@
     flex-direction: column;
     overflow: hidden;
     border-radius: var(--radius-card);
-    box-shadow: var(--shadow-lg);
+    box-shadow: none;
     background: var(--color-card-bg);
-    border: 0.5px solid var(--color-border);
+    border: none;
 
     :global(.ant-card-body) {
       flex: 1;
       min-height: 0;
+      padding: 0;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -115,6 +116,18 @@
 
     .totalsGroup {
       justify-content: flex-end;
+
+      .statItem {
+        label {
+          font-size: 14px;
+          font-weight: 700;
+          color: #181840;
+        }
+
+        span {
+          font-size: 14px;
+        }
+      }
     }
 
     .statsBarCenter {
@@ -230,6 +243,14 @@
         vertical-align: middle !important;
       }
     }
+
+    // Child expanded table thead only — parent main thead stays primary-light
+    :global(.ant-table-expanded-row) .innerTable {
+      :global(.ant-table-thead > tr > th),
+      :global(.ant-table-thead > tr > th.ant-table-cell) {
+        background: #DDD8F5 !important;
+      }
+    }
   }
 
   .expandedRow {
@@ -315,6 +336,7 @@
       :global(.ant-table-thead > tr > th.ant-table-cell) {
         padding: 10px !important;
         vertical-align: middle !important;
+        background: #DDD8F5 !important;
       }
 
       :global(.ant-table-tbody > tr:not(.ant-table-measure-row) > td.ant-table-cell) {
@@ -323,6 +345,7 @@
         line-height: 1.4 !important;
         vertical-align: middle !important;
         overflow: visible !important;
+        background: transparent !important;
       }
 
       :global(.ant-table-tbody > tr:not(.ant-table-measure-row):last-child > td) {

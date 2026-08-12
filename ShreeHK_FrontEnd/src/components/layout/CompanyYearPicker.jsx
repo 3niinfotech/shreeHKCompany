@@ -106,6 +106,7 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
           yearId: Data.yearId,
           companyName: Data.companyName,
           companyShortcutName: Data.companyShortcutName,
+          companyLogo: Data.companyLogo || null,
           dbName: Data.dbName,
         });
       } else {
@@ -114,6 +115,7 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
           yearId: Data.yearId,
           companyName: Data.companyName,
           companyShortcutName: Data.companyShortcutName,
+          companyLogo: Data.companyLogo || null,
           dbName: Data.dbName,
         });
       }
