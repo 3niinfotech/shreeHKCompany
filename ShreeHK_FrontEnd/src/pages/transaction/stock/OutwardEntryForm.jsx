@@ -16,10 +16,11 @@ import useFormHandleChange from '../../../hooks/useFormHandleChange';
 import PageHeroHeader, { pageHeroHeaderStyles } from '../../../components/common/PageHeroHeader';
 import { BaseModal } from '../../../components/common/modals';
 import styles from '../../../assets/scss/pages/transaction/inwardpurchase.module.scss';
+import { SkuLink } from '../../../hooks/useSkuModalAction';
 
 const CONFIRM_TABLE_COLUMNS = [
   { title: 'No.', width: 50, render: (_, __, i) => i + 1 },
-  { title: 'SKU', dataIndex: 'sku', width: 120, ellipsis: true },
+  { title: 'SKU', dataIndex: 'sku', width: 120, ellipsis: true, render: (text, record) => <SkuLink sku={text} record={record} /> },
   { title: 'Shape', dataIndex: 'shape', width: 90, render: (v) => v || '—' },
   {
     title: 'Carat',

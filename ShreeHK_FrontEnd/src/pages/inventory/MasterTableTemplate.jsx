@@ -9,6 +9,7 @@ import { DatabaseOutlined } from "@ant-design/icons";
 import styles from '../../assets/scss/pages/inventory/mastertabletemplate.module.scss';
 import useThemeColors from '../../hooks/useThemeColors';
 import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
+import useTableSkeleton from '../../components/common/skeleton/useTableSkeleton';
 import { cssVar } from '../../theme';
 
 const { Text } = Typography;
@@ -43,7 +44,6 @@ const MasterTableTemplate = ({
     const theme = useThemeColors();
     const internalTableRef = useRef(null);
     const tableWrapRefResolved = tableWrapRef || internalTableRef;
-    const tableHeight = useTableBodyScrollHeight(tableWrapRefResolved, [dataSource.length, loading]);
     const [form] = Form.useForm();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalLoading, setModalLoading] = useState(false);
@@ -134,7 +134,22 @@ const MasterTableTemplate = ({
         ];
     }, [columns, showActionsColumn]);
 
-    const rowSelection = enableRowSelectionFooter
+    const safeDataSource = Array.isArray(dataSource) ? dataSource : [];
+    const {
+        columns: tableColumns,
+        dataSource: tableData,
+        tableLoading,
+        showSkeleton,
+    } = useTableSkeleton({
+        columns: finalColumns,
+        dataSource: safeDataSource,
+        loading,
+        rowCount: 10,
+        rowKey: '_skeletonKey',
+    });
+    const tableHeight = useTableBodyScrollHeight(tableWrapRefResolved, [tableData.length, loading]);
+
+    const rowSelection = enableRowSelectionFooter && !showSkeleton
         ? {
             selectedRowKeys,
             onChange: (keys) => setSelectedRowKeys(keys),
@@ -213,16 +228,16 @@ const MasterTableTemplate = ({
 
                 <div className={`${styles.tableContainer} erp-table-container`} ref={tableWrapRefResolved}>
                     <Table
-                        columns={finalColumns}
-                        dataSource={dataSource}
-                        rowKey={rowKey}
+                        columns={tableColumns}
+                        dataSource={tableData}
+                        rowKey={showSkeleton ? '_skeletonKey' : rowKey}
                         pagination={false}
-                        loading={loading}
+                        loading={tableLoading}
                         scroll={{ y: tableHeight, x: "max-content" }}
                         size="small"
                         className="custom-ant-table"
                         rowSelection={rowSelection}
-                        summary={tableFooterSummary}
+                        summary={showSkeleton ? undefined : tableFooterSummary}
                     />
                 </div>
 

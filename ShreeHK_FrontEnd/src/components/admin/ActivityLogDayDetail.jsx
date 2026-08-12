@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Spin, Tag, Typography, Button, Timeline } from "antd";
+import { Tag, Typography, Button, Timeline } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { api } from "../../api/axiosInstance";
@@ -10,6 +10,7 @@ import {
   formatActionTypeLabel,
   getActionTone,
 } from "../../utils/activityLogFormatters";
+import { SkeletonList } from "../common/skeleton";
 import styles from "../../assets/scss/pages/admin/activityHistory.module.scss";
 
 const { Text } = Typography;
@@ -68,8 +69,7 @@ const ActivityLogDayDetail = ({
   if (loading) {
     return (
       <div className={styles.dayDetailLoading}>
-        <Spin size="small" />
-        <Text type="secondary">Loading day activity…</Text>
+        <SkeletonList rows={4} withAvatar={false} />
       </div>
     );
   }

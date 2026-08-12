@@ -10,6 +10,8 @@ import { BarChartOutlined, ReloadOutlined } from '@ant-design/icons';
 import { exportReportToExcel } from '../../utils/reportExcelExport';
 import styles from '../../assets/scss/pages/report/groupReport.module.scss';
 import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
+import { SkuLink } from '../../hooks/useSkuModalAction';
+import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
 
 const SaleStoneReport = () => {
     const [form] = Form.useForm();
@@ -50,7 +52,7 @@ const SaleStoneReport = () => {
 
     const columns = [
         { title: 'No', dataIndex: 'no', width: 60, align: 'center' },
-        { title: 'SKU', dataIndex: 'sku', width: 100 },
+        { title: 'SKU', dataIndex: 'sku', width: 100, render: (text, record) => <SkuLink sku={text} record={record} /> },
         { title: 'Lab', dataIndex: 'lab', width: 80 },
         { title: 'Report No', dataIndex: 'report_no', width: 110 },
         { title: 'Pcs', dataIndex: 'polish_pcs', width: 70, align: 'center' },
@@ -171,7 +173,7 @@ const SaleStoneReport = () => {
 
             <Card className={styles.tableCard}>
                 <div ref={tableRef} className="erp-table-container">
-                    <Table
+                    <SkeletonAwareTable
                         columns={columns}
                         dataSource={tableData}
                         loading={tableLoading}

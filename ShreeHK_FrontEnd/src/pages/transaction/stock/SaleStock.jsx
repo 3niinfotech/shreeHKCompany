@@ -2,10 +2,11 @@ import React from 'react';
 import TransactionStockTemplate from './TransactionStockTemplate';
 import { TRANSACTION_STOCK_KEYS } from '../../../api/services/transactionStockService';
 import { ENDPOINTS } from '../../../constants/endpoints';
+import { SkuLink } from '../../../hooks/useSkuModalAction';
 
 const saleProductColumns = [
   { title: 'Parent SKU', dataIndex: 'parent_sku', key: 'parent_sku', width: 120, render: () => '-' },
-  { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 120 },
+  { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 120, render: (text, record) => <SkuLink sku={text} record={record} /> },
   { title: 'D. No.', dataIndex: 'diamond_no', key: 'diamond_no', width: 100 },
   { title: 'Mfg. Code', dataIndex: 'mfg_code', key: 'mfg_code', width: 110 },
   { title: 'Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', width: 70, align: 'center' },
@@ -28,6 +29,10 @@ const SaleStock = () => (
     entryPath="/transaction/sale/entry"
     infiniteScroll
     productColumns={saleProductColumns}
+    typeFilterOptions={[
+      { value: 'sale', label: 'Sale' },
+      { value: 'export', label: 'Export' },
+    ]}
     actions={{
       showPrint: true,
       showDelete: true,

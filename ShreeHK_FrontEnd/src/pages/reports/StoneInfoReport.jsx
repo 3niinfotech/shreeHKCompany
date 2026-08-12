@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import dayjs from 'dayjs';
-import { Card, Form, Input, Table, Tag, Typography, Button } from 'antd';
+import { Card, Form, Input, Tag, Typography, Button } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import { api } from '../../api/axiosInstance';
 import { ENDPOINTS } from '../../constants/endpoints';
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
 import styles from '../../assets/scss/pages/report/stoneHistory.module.scss';
 import { toastApiError } from '../../utils/apiToast';
+import { SkeletonDetail, SkeletonAwareTable } from '../../components/common/skeleton';
 
 const { Title } = Typography;
 
@@ -99,14 +100,20 @@ const StoneInfoReport = () => {
             {(loading || detail) && (
                 <Card style={{ marginTop: 16 }}>
                     {loading && !detail ? (
-                        <Table
-                            size="small"
-                            columns={historyColumns}
-                            dataSource={[]}
-                            loading
-                            pagination={false}
-                            bordered
-                        />
+                        <div style={{ padding: 8 }}>
+                            <SkeletonDetail fields={6} />
+                            <div style={{ marginTop: 16 }}>
+                                <SkeletonAwareTable
+                                    size="small"
+                                    columns={historyColumns}
+                                    dataSource={[]}
+                                    loading
+                                    pagination={false}
+                                    bordered
+                                    skeletonRows={5}
+                                />
+                            </div>
+                        </div>
                     ) : detail ? (
                         <>
                             <Title level={5}>SKU: {detail.sku} <Tag>{status}</Tag></Title>
@@ -115,7 +122,7 @@ const StoneInfoReport = () => {
                                 <div key={block.party_id} style={{ marginTop: 24 }}>
                                     <Title level={5}>{block.party_name}</Title>
                                     <Typography.Text strong>Memo / Consign</Typography.Text>
-                                    <Table
+                                    <SkeletonAwareTable
                                         size="small"
                                         columns={historyColumns}
                                         dataSource={(block.memoHistory || []).map((r, i) => ({ ...r, key: `m-${i}` }))}
@@ -123,15 +130,17 @@ const StoneInfoReport = () => {
                                         pagination={false}
                                         bordered
                                         style={{ marginBottom: 16 }}
+                                        rowKey="key"
                                     />
                                     <Typography.Text strong>Sale / Export</Typography.Text>
-                                    <Table
+                                    <SkeletonAwareTable
                                         size="small"
                                         columns={historyColumns}
                                         dataSource={(block.saleHistory || []).map((r, i) => ({ ...r, key: `s-${i}` }))}
                                         loading={loading}
                                         pagination={false}
                                         bordered
+                                        rowKey="key"
                                     />
                                 </div>
                             ))}

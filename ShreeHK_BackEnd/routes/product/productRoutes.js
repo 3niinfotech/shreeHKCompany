@@ -628,6 +628,53 @@ productRouter.post("/product/save", authenticateToken, async (req, res) => {
   }
 });
 
+productRouter.post("/product/update-remark", authenticateToken, async (req, res) => {
+  const id = Number(req.body?.id);
+  const remark = req.body?.remark != null ? String(req.body.remark) : "";
+
+  if (!id) {
+    return res.status(400).json({ status: false, message: "Invalid product id" });
+  }
+
+  try {
+    await helper.runInTransaction(async (q) => {
+      const rows = await q("SELECT id, sku, remark FROM dai_product WHERE id=? LIMIT 1", [id]);
+      if (!rows?.length) {
+        throw new Error("Product not found.");
+      }
+
+      const oldRemark = rows[0].remark || "";
+      await q("UPDATE dai_product SET remark=? WHERE id=?", [remark, id]);
+
+      try {
+        const { logAuditInTx } = require("../../services/auditIntegration.js");
+        const { diffFields } = require("../../services/auditService.js");
+        const oldSnap = { remark: oldRemark };
+        const newSnap = { remark };
+        await logAuditInTx(q, {
+          actionType: "UPDATE",
+          moduleName: "Inventory Remark",
+          recordId: id,
+          recordReference: rows[0]?.sku || String(id),
+          oldValue: oldSnap,
+          newValue: newSnap,
+          changedFields: diffFields(oldSnap, newSnap),
+        });
+      } catch (_) {
+        // Audit must not block remark save
+      }
+    });
+
+    return res.status(200).json({ status: true, message: "Remark updated successfully" });
+  } catch (err) {
+    console.error("[update-remark] error:", err);
+    return res.status(500).json({
+      status: false,
+      message: err?.message || "Failed to update remark",
+    });
+  }
+});
+
 productRouter.post("/product/change-price", authenticateToken, async (req, res) => {
   try {
     const validation = validateChangePriceBody(req.body || {});

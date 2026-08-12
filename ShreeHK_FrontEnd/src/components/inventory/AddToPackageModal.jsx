@@ -1,12 +1,16 @@
 import React from "react";
-import { Modal, Input, Form, Button, Space } from "antd";
+import { Modal, Input, Form, Button, Typography } from "antd";
 import { toast } from "sonner";
 import { usePostApiRequest } from "../../api/ApiFunction";
 import { ENDPOINTS } from "../../constants/endpoints";
+import { getActionTheme } from "./inventoryActionConfig";
+import styles from "../../assets/scss/components/inventoryBulkActionModal.module.scss";
 
 const AddToPackageModal = ({ open, onClose, productIds, onSuccess }) => {
   const [form] = Form.useForm();
   const { mutate, isLoading } = usePostApiRequest(ENDPOINTS.product.packageAssign, "GetProductData");
+  const theme = getActionTheme("addPackage");
+  const selectedCount = productIds?.length || 0;
 
   const handleOk = () => {
     form.validateFields().then((values) => {
@@ -30,21 +34,58 @@ const AddToPackageModal = ({ open, onClose, productIds, onSuccess }) => {
 
   return (
     <Modal
-      title="Add To Package"
+      className={styles.modal}
       open={open}
       onCancel={onClose}
+      width={420}
+      centered
+      closable={false}
       destroyOnClose
+      maskClosable={false}
+      styles={{
+        header: {
+          background: theme.bg,
+          borderTop: `3px solid ${theme.accent}`,
+        },
+      }}
+      title={
+        <div className={styles.header}>
+          <Typography.Title level={4} className={styles.title}>
+            {theme.label}
+          </Typography.Title>
+          <Typography.Text className={styles.subtitle}>
+            {selectedCount > 0
+              ? `${selectedCount} stone(s) selected — fill details below`
+              : "Fill details below"}
+          </Typography.Text>
+        </div>
+      }
       footer={[
         <Button key="cancel" onClick={onClose} danger>Cancel</Button>,
-        <Button key="ok" type="primary" loading={isLoading} onClick={handleOk} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)" }}>OK</Button>,
+        <Button
+          key="ok"
+          type="primary"
+          className={styles.okBtn}
+          loading={isLoading}
+          onClick={handleOk}
+          style={{ background: theme.btnBg || theme.accent, borderColor: theme.btnBorder || theme.accent, color: "#fff" }}
+        >
+          Submit {theme.label}
+        </Button>,
       ]}
     >
-      <Form form={form} layout="vertical">
-        <Form.Item name="packageName" label="Package Name" rules={[{ required: true, message: "Enter package name" }]}>
-          <Input placeholder="PKG-NAME" style={{ textTransform: "uppercase" }} />
-        </Form.Item>
-        <p>{productIds?.length || 0} stone(s) selected</p>
-      </Form>
+      <div className={styles.body}>
+        <Form form={form} layout="vertical">
+          <Form.Item
+            className={styles.formItem}
+            name="packageName"
+            label="Package Name"
+            rules={[{ required: true, message: "Enter package name" }]}
+          >
+            <Input placeholder="PKG-NAME" style={{ textTransform: "uppercase" }} />
+          </Form.Item>
+        </Form>
+      </div>
     </Modal>
   );
 };

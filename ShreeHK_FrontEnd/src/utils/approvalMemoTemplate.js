@@ -3,6 +3,8 @@
  * Used by TransactionInvoice preview + print (memo / out-memo documents).
  */
 
+import { buildCompanyLogoHtml, resolveCompanyLogoUrl } from "./companyLogo.js";
+
 export const APPROVAL_MEMO_COLORS = {
   pink: "#d6298e",
   blue: "#2e6fad",
@@ -263,10 +265,16 @@ export function buildApprovalMemoPage(data, copyLabel = "(ORIGINAL COPY)") {
   return `<div class="sheet am-page-break">
     <div class="header">
       <div class="brand">
-        <div class="logo">V</div>
+        ${buildCompanyLogoHtml({
+          logo: data.company?.logo,
+          logoUrl: resolveCompanyLogoUrl(data.company?.logoUrl || data.company?.logo),
+          companyName: data.company?.name || "Venya",
+          className: "logo",
+          imgStyle: "max-height:56px;max-width:140px;object-fit:contain;display:block;",
+        })}
         <div>
-          <div class="brand-name">VENYA</div>
-          <div class="brand-sub">GEMS CO., LTD.</div>
+          <div class="brand-name">${escapeHtml((data.company?.name || "VENYA").split(/\s+/)[0].toUpperCase())}</div>
+          <div class="brand-sub">${escapeHtml(data.company?.tagline || "GEMS CO., LTD.")}</div>
         </div>
       </div>
       <div class="memo-title">

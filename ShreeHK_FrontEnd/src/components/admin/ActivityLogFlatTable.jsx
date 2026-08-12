@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
-import { Table, Tag, Button, Switch, Space } from "antd";
+import { Tag, Button, Switch, Space } from "antd";
 import { EyeOutlined, EyeInvisibleOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { api } from "../../api/axiosInstance";
@@ -13,6 +13,7 @@ import {
   getModulePageLabel,
 } from "../../utils/activityLogFormatters";
 import useTableBodyScrollHeight from "../../hooks/useTableBodyScrollHeight";
+import SkeletonAwareTable from "../common/skeleton/SkeletonAwareTable";
 import styles from "../../assets/scss/pages/admin/activityHistory.module.scss";
 
 const ActivityLogFlatTable = ({
@@ -206,7 +207,7 @@ const ActivityLogFlatTable = ({
         </Space>
       </div>
       <div ref={tableRef} className="erp-table-container">
-      <Table
+      <SkeletonAwareTable
         className={styles.unifiedTable}
         columns={columns}
         dataSource={data}

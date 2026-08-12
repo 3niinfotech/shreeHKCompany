@@ -48,7 +48,7 @@ const InventoryBulkActionModal = ({
 
     switch (field.type) {
       case "textarea":
-        return <TextArea rows={3} {...common} />;
+        return <TextArea rows={field.rows || 3} {...common} />;
       case "number":
         return <InputNumber className="w-100" style={{ width: "100%" }} {...common} />;
       case "select":
@@ -62,23 +62,26 @@ const InventoryBulkActionModal = ({
 
   if (!actionKey) return null;
 
+  const submitLabel = `Submit ${theme.label}`;
+
   return (
     <Modal
       className={styles.modal}
       open={open}
       onCancel={onClose}
-      width={920}
+      width={520}
       centered
+      closable={false}
       destroyOnClose
       maskClosable={false}
+      styles={{
+        header: {
+          background: theme.bg,
+          borderTop: `3px solid ${theme.accent}`,
+        },
+      }}
       title={
-        <div
-          className={`${styles.header} ${styles.headerAccent}`}
-          style={{
-            borderTopColor: theme.accent,
-            background: theme.bg,
-          }}
-        >
+        <div className={styles.header}>
           <Typography.Title level={4} className={styles.title}>
             {theme.label}
           </Typography.Title>
@@ -100,11 +103,12 @@ const InventoryBulkActionModal = ({
           loading={loading}
           onClick={handleOk}
           style={{
-            background: "var(--color-btn-save-bg)",
-            borderColor: "var(--color-btn-save-bg)",
+            background: theme.btnBg || theme.accent,
+            borderColor: theme.btnBorder || theme.accent,
+            color: "#fff",
           }}
         >
-          OK
+          {submitLabel}
         </Button>,
       ]}
     >

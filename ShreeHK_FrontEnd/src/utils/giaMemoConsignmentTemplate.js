@@ -6,6 +6,7 @@
 import giaMemoInvoiceCss from "../assets/css/giaMemoInvoice.css?raw";
 import { INVOICE_A4_STYLES } from "./invoiceA4.js";
 import { num2words } from "./venyaInvoiceTemplate.js";
+import { buildCompanyLogoHtml, resolveCompanyLogoUrl } from "./companyLogo.js";
 
 export const GIA_MEMO_INVOICE_STYLES = giaMemoInvoiceCss;
 
@@ -173,10 +174,16 @@ export function buildGiaMemoConsignmentPage(data, copyLabel = "(ORIGINAL COPY)")
   return `<div class="sheet gia-page-break">
     <div class="header">
       <div class="brand">
-        <div class="logo">V</div>
+        ${buildCompanyLogoHtml({
+          logo: data.company?.logo,
+          logoUrl: resolveCompanyLogoUrl(data.company?.logoUrl || data.company?.logo),
+          companyName: data.company?.name || "Venya",
+          className: "logo",
+          imgStyle: "max-height:56px;max-width:140px;object-fit:contain;display:block;",
+        })}
         <div>
-          <div class="brand-name">VENYA</div>
-          <div class="brand-sub">GEMS CO., LTD.</div>
+          <div class="brand-name">${escapeHtml((data.company?.name || "VENYA").split(/\s+/)[0].toUpperCase())}</div>
+          <div class="brand-sub">${escapeHtml(data.company?.tagline || "GEMS CO., LTD.")}</div>
         </div>
       </div>
       <div class="memo-title">

@@ -20,6 +20,11 @@ body,
   border-radius: var(--radius-card) !important;
 }
 
+// Table list/report cards — no outer border (see also _table-layout.scss)
+.ant-card:has(.erp-table-container) {
+  border: none !important;
+}
+
 .ant-modal-content {
   background: var(--color-card-bg) !important;
   border: 0.5px solid var(--color-border) !important;

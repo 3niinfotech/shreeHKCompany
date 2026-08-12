@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback, useLayoutEffect, useContext, startTransition } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { SelectionContext } from "./SelectionContext";
-import SkuActionModal from "../../hooks/useSkuModalAction";
-import { Table, Button, Dropdown, Tag, Form, message } from "antd";
+import { SkuLink } from "../../hooks/useSkuModalAction";
+import { Table, Button, Dropdown, Tag, Form, message, Input } from "antd";
 import { DownOutlined, DownloadOutlined, ReloadOutlined } from "@ant-design/icons";
 import InventorySmartSearch from "../../components/inventory/InventorySmartSearch";
 import { useQueryClient } from "@tanstack/react-query";
@@ -38,6 +38,7 @@ import useAiStockAlert from "../../components/ai/useAiStockAlert";
 import { Sparkles } from "lucide-react";
 import InventoryCaratCell from "../../components/inventory/InventoryCaratCell";
 import { buildInventoryApiFilters } from "../../utils/inventoryApiFilters";
+import useTableSkeleton from "../../components/common/skeleton/useTableSkeleton";
 import { StoneActionSuccessModal } from "./components/ShopTopActionFilter";
 import "../../assets/scss/pages/inventory/onHand_module.scss";
 import "../../assets/scss/pages/inventory/diamondInventoryTable.scss";
@@ -111,6 +112,51 @@ const SelectAllCheckbox = React.memo(function SelectAllCheckbox() {
       checked={checked}
       onChange={handleChange}
       onClick={(e) => e.stopPropagation()}
+    />
+  );
+});
+
+const EditableRemarkCell = React.memo(function EditableRemarkCell({ id, value, onSave }) {
+  const [text, setText] = useState(value ?? "");
+  const [saving, setSaving] = useState(false);
+  const initialRef = useRef(String(value ?? ""));
+
+  useEffect(() => {
+    const next = String(value ?? "");
+    setText(next);
+    initialRef.current = next;
+  }, [id, value]);
+
+  const commit = async () => {
+    const next = String(text ?? "");
+    if (next === initialRef.current || saving) return;
+    setSaving(true);
+    try {
+      await onSave(id, next);
+      initialRef.current = next;
+    } catch {
+      setText(initialRef.current);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Input
+      size="small"
+      value={text}
+      disabled={saving}
+      className="inventory-remark-input"
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && !e.nativeEvent?.isComposing) {
+          e.preventDefault();
+          e.currentTarget.blur();
+        }
+      }}
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
     />
   );
 });
@@ -353,7 +399,6 @@ const DiamondInventoryTable = () => {
   const [tableData, setTableData] = useState([]);
   const [isFetching, setIsFetching] = useState(false);
   const [tableHeight, setTableHeight] = useState(600);
-  const [modalConfig, setModalConfig] = useState({ visible: false, data: null });
   const [stoneDetailModal, setStoneDetailModal] = useState({ open: false, data: null });
   const [bulkActionModal, setBulkActionModal] = useState({ open: false, actionKey: null });
   const [memoModalOpen, setMemoModalOpen] = useState(false);
@@ -443,10 +488,6 @@ const DiamondInventoryTable = () => {
       navigate(INVENTORY_ENTRY_ROUTES[entry], { replace: true });
     }
   }, [location.search, navigate]);
-
-  const handleSkuAction = (actionType, data) => {
-    setModalConfig({ visible: false, data: null });
-  };
 
   const { data: summaryRes } = useFetchApi(
     "myInventorySummary",
@@ -867,8 +908,25 @@ const DiamondInventoryTable = () => {
     return () => scrollContainer.removeEventListener("scroll", onScroll);
   }, [tableData, isFetching, productData]);
 
-  const handleOpenSkuModal = useCallback((record) => {
-    setModalConfig({ visible: true, data: record });
+  const handleRemarkSave = useCallback(async (productId, nextRemark) => {
+    try {
+      const res = await api.post(ENDPOINTS.product.updateRemark, {
+        id: Number(productId),
+        remark: nextRemark,
+      });
+      if (res?.data?.status === false) {
+        throw new Error(res?.data?.message || "Failed to update remark");
+      }
+      setTableData((prev) =>
+        prev.map((row) =>
+          String(row.id) === String(productId) ? { ...row, remark: nextRemark } : row
+        )
+      );
+      message.success(res?.data?.message || "Remark updated");
+    } catch (error) {
+      toastApiError(error);
+      throw error;
+    }
   }, []);
 
   const columns = useMemo(() => [
@@ -884,20 +942,23 @@ const DiamondInventoryTable = () => {
       render: (id) => <SelectionCheckbox id={String(id)} />,
     },
     { title: "No", key: "no", dataIndex: "no", width: 52, align: "center", fixed: "left", shouldCellUpdate: () => false },
-    { title: "Type", key: "groupType", dataIndex: "groupType", width: 96, align: "center", ellipsis: true, fixed: "left", shouldCellUpdate: () => false },
+    {
+      title: "Type",
+      key: "groupType",
+      dataIndex: "groupType",
+      width: 96,
+      align: "center",
+      ellipsis: true,
+      fixed: "left",
+      shouldCellUpdate: () => false,
+      render: (text) =>
+        text == null || text === ""
+          ? "-"
+          : <span style={{ textTransform: "capitalize" }}>{String(text)}</span>,
+    },
     {
       title: "SKU", key: "sku", dataIndex: "sku", width: 102, ellipsis: true, align: "center", shouldCellUpdate: () => false,
-      render: (text, record) => (
-        <a
-          className="inventory-sku-link"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleOpenSkuModal(record);
-          }}
-        >
-          {text}
-        </a>
-      ),
+      render: (text, record) => <SkuLink sku={text} record={record} />,
     },
     {
       title: "Lab", key: "lab", dataIndex: "lab", width: 58, align: "center", shouldCellUpdate: () => false,
@@ -912,7 +973,7 @@ const DiamondInventoryTable = () => {
       }
     },
     {
-      title: "Cert #", key: "certificate", dataIndex: "certificate", width: 118, ellipsis: true, align: "center", shouldCellUpdate: () => false,
+      title: "Certificate", key: "certificate", dataIndex: "certificate", width: 118, ellipsis: true, align: "center", shouldCellUpdate: () => false,
       render: (text) => text ? (
         <a href={`https://www.gia.edu/report-check?reportno=${text}`} target="_blank" rel="noopener noreferrer">
           {text}
@@ -933,7 +994,7 @@ const DiamondInventoryTable = () => {
     },
     { title: "PCS", key: "polishPcs", dataIndex: "polishPcs", width: 84, ellipsis: true, align: "center", shouldCellUpdate: () => false },
     {
-      title: "Crt.",
+      title: "Carat",
       key: "polishCarat",
       dataIndex: "polishCarat",
       width: 72,
@@ -949,7 +1010,7 @@ const DiamondInventoryTable = () => {
         />
       ),
     },
-    { title: "Color", key: "color", dataIndex: "color", width: 58, ellipsis: true, align: "center", shouldCellUpdate: () => false },
+    { title: "Full Color", key: "color", dataIndex: "color", width: 74, ellipsis: true, align: "center", shouldCellUpdate: () => false },
     { title: "Argyle Color", key: "argyleColor", dataIndex: "argyleColor", width: 109, ellipsis: true, align: "center", shouldCellUpdate: () => false },
     { title: "In-House Clarity", key: "mainClarity", dataIndex: "mainClarity", width: 130, ellipsis: true, align: "center", shouldCellUpdate: () => false },
     {
@@ -965,7 +1026,7 @@ const DiamondInventoryTable = () => {
       onFilter: (value, record) => record.clarity === value,
     },
     {
-      title: "Rap Price",
+      title: "Rap",
       key: "rapPrice",
       dataIndex: "rapPrice",
       width: 92,
@@ -997,7 +1058,7 @@ const DiamondInventoryTable = () => {
       sorter: (a, b) => (Number(a.cost) || 0) - (Number(b.cost) || 0),
     },
     {
-      title: "Price/Crt",
+      title: "Price",
       key: "price",
       dataIndex: "price",
       width: 92,
@@ -1023,13 +1084,13 @@ const DiamondInventoryTable = () => {
       sorter: (a, b) => (Number(a.amount) || 0) - (Number(b.amount) || 0),
     },
     { title: "Size", key: "size", dataIndex: "size", width: 68, ellipsis: true, align: "center", shouldCellUpdate: () => false },
-    { title: "Flour.", key: "fluorescence", dataIndex: "fluorescence", width: 68, ellipsis: true, align: "center", shouldCellUpdate: () => false },
+    { title: "Flourescence", key: "fluorescence", dataIndex: "fluorescence", width: 68, ellipsis: true, align: "center", shouldCellUpdate: () => false },
     { title: "Cut", key: "cut", dataIndex: "cut", width: 56, ellipsis: true, align: "center", shouldCellUpdate: () => false },
-    { title: "Pol.", key: "polish", dataIndex: "polish", width: 52, ellipsis: true, align: "center", shouldCellUpdate: () => false },
-    { title: "Sym.", key: "symmetry", dataIndex: "symmetry", width: 52, ellipsis: true, align: "center", shouldCellUpdate: () => false },
+    { title: "Polish", key: "polish", dataIndex: "polish", width: 52, ellipsis: true, align: "center", shouldCellUpdate: () => false },
+    { title: "Symm", key: "symmetry", dataIndex: "symmetry", width: 52, ellipsis: true, align: "center", shouldCellUpdate: () => false },
     { title: "Table%", key: "table", dataIndex: "table", width: 68, align: "center", shouldCellUpdate: () => false, sorter: (a, b) => (Number(a.table) || 0) - (Number(b.table) || 0) },
     { title: "Depth%", key: "depth", dataIndex: "depth", width: 68, align: "center", shouldCellUpdate: () => false, sorter: (a, b) => (Number(a.depth) || 0) - (Number(b.depth) || 0) },
-    { title: "Meas.", key: "measurement", dataIndex: "measurement", width: 112, ellipsis: true, align: "center", shouldCellUpdate: () => false },
+    { title: "Measurmnt", key: "measurement", dataIndex: "measurement", width: 112, ellipsis: true, align: "center", shouldCellUpdate: () => false },
     { title: "Girdle", key: "girdle", dataIndex: "girdle", width: 76, ellipsis: true, align: "center", shouldCellUpdate: () => false },
     { title: "Mining", key: "mining", dataIndex: "mining", width: 76, ellipsis: true, align: "center", shouldCellUpdate: () => false },
     { title: "Origin", key: "origin", dataIndex: "origin", width: 76, ellipsis: true, align: "center", shouldCellUpdate: () => false },
@@ -1082,10 +1143,22 @@ const DiamondInventoryTable = () => {
     },
     { title: "Sub Group", key: "subGroup", dataIndex: "subGroup", width: 96, ellipsis: true, align: "center", shouldCellUpdate: () => false },
     {
-      title: "Remark", key: "remark", dataIndex: "remark", width: 200, ellipsis: true, align: "center", shouldCellUpdate: () => false,
-      render: (t) => <div className="inventory-remark-cell">{t}</div>
+      title: "Remark",
+      key: "remark",
+      dataIndex: "remark",
+      width: 200,
+      ellipsis: true,
+      align: "center",
+      shouldCellUpdate: (record, prev) => record.remark !== prev?.remark,
+      render: (text, record) => (
+        <EditableRemarkCell
+          id={record.id}
+          value={text}
+          onSave={handleRemarkSave}
+        />
+      ),
     },
-  ], [handleOpenSkuModal]);
+  ], [handleRemarkSave]);
 
   const ACTION_KEY_MAP = {
     onMemo: "memo",
@@ -1315,6 +1388,20 @@ const DiamondInventoryTable = () => {
   };
 
   const filteredTableData = tableData;
+  const initialListLoading = (isFetching || isLoading) && filteredTableData.length === 0;
+  const refetchListLoading = (isFetching || isLoading) && filteredTableData.length > 0;
+  const {
+    columns: tableColumnsSk,
+    dataSource: tableDataSk,
+    tableLoading: overlayLoading,
+    showSkeleton: isTableSkeleton,
+  } = useTableSkeleton({
+    columns,
+    dataSource: filteredTableData,
+    loading: initialListLoading || refetchListLoading,
+    rowCount: 12,
+    rowKey: "_skeletonKey",
+  });
   const tableDataById = useMemo(
     () => new Map(tableData.map((row) => [String(row.id), row])),
     [tableData],
@@ -1430,9 +1517,9 @@ const DiamondInventoryTable = () => {
                 <Button size="small" type="primary" onClick={applyInventoryFilters}>
                   Apply
                 </Button>
-                <Button size="small" onClick={resetInventoryFilters}>
+                {/* <Button size="small" onClick={resetInventoryFilters}>
                   Reset
-                </Button>
+                </Button> */}
                 <Button
                   size="small"
                   icon={<ReloadOutlined />}
@@ -1511,35 +1598,28 @@ const DiamondInventoryTable = () => {
         >
           <Table
             className="diamond-inventory-table"
-            columns={columns}
-            dataSource={filteredTableData}
-            rowKey={getRowKey}
+            columns={tableColumnsSk}
+            dataSource={tableDataSk}
+            rowKey={isTableSkeleton ? "_skeletonKey" : getRowKey}
             size="small"
             tableLayout="fixed"
-            rowClassName={getInventoryRowClass}
-            onRow={handleOnRow}
-            loading={isFetching || isLoading}
+            rowClassName={isTableSkeleton ? undefined : getInventoryRowClass}
+            onRow={isTableSkeleton ? undefined : handleOnRow}
+            loading={overlayLoading}
             pagination={false}
             bordered
             scroll={tableScroll}
-            components={tableComponents}
+            components={isTableSkeleton ? undefined : tableComponents}
             locale={TABLE_LOCALE}
-            footer={renderTableFooter}
+            footer={isTableSkeleton ? undefined : renderTableFooter}
           />
         </div>
 
-        <SkuActionModal
-          visible={modalConfig.visible}
-          skuData={modalConfig.data}
-          onClose={() => setModalConfig({ visible: false, data: null })}
-          onAction={handleSkuAction}
-        />
-
-        <InventoryStoneDetailModal
+        {/* <InventoryStoneDetailModal
           open={stoneDetailModal.open}
           stone={stoneDetailModal.data}
           onClose={() => setStoneDetailModal({ open: false, data: null })}
-        />
+        /> */}
 
         <InventoryBulkActionModal
           open={bulkActionModal.open || holdActionState.open}

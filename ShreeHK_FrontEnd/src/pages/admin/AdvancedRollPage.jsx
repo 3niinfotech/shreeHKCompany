@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Layout, Form, Card, Button, Input, Space,
-  Typography, Switch, notification, Modal, Spin,
+  Typography, Switch, notification, Modal,
   Tag, Tooltip, Checkbox, Row, Col, Empty,
 } from 'antd';
+import { SkeletonCard } from '../../components/common/skeleton';
 import {
   SearchOutlined, SaveOutlined, ReloadOutlined,
   ClusterOutlined, PlusOutlined, DeleteOutlined,
@@ -377,7 +378,13 @@ const AdvancedRollPage = () => {
                   className={styles.roleSearch}
                 />
 
-                <Spin spinning={isRolesLoading} wrapperClassName={styles.spinWrap}>
+                {isRolesLoading ? (
+                  <div className={styles.roleList} aria-busy="true">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <SkeletonCard key={i} lines={2} withAvatar className={styles.roleCard} />
+                    ))}
+                  </div>
+                ) : (
                   <div className={styles.roleList}>
                     {filteredRoles.length === 0 ? (
                       <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No roles found" />
@@ -407,7 +414,7 @@ const AdvancedRollPage = () => {
                       })
                     )}
                   </div>
-                </Spin>
+                )}
 
                 {selectedRoleId && selectedRoleId !== 1 && (
                   <Button

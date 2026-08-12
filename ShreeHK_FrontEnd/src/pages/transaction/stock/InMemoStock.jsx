@@ -10,6 +10,10 @@ const InMemoStock = () => (
     listEndpoint={ENDPOINTS.transactionStock.inward.list}
     deleteEndpoint={ENDPOINTS.transactionStock.inward.delete}
     entryPath="/transaction/in-memo/entry"
+    typeFilterOptions={[
+      { value: 'memo', label: 'Memo' },
+      { value: 'consign', label: 'Consign' },
+    ]}
     actions={{
       showReturn: true,
       showMemoToPurchase: true,
@@ -18,6 +22,7 @@ const InMemoStock = () => (
       showEdit: true,
       returnEndpoint: ENDPOINTS.transactionStock.inward.return,
       memoToPurchaseEndpoint: ENDPOINTS.transactionStock.inward.memoToPurchase,
+      editGetEndpoint: ENDPOINTS.inward.getById,
       printType: 'purchase',
     }}
   />

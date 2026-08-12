@@ -25,7 +25,8 @@
   overflow: hidden;
   margin: 16px;
   border-radius: 8px;
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
+  border: none;
   background: var(--color-bg-card);
 
   :global(.ant-card-body) {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Input, Space, Spin } from 'antd';
+import { Input, Space } from 'antd';
+import { SkeletonBlock } from '../../../components/common/skeleton';
 import { BookOpen, Plus, Save, Check, Pencil, Trash2, RefreshCcw } from 'lucide-react';
 import { useFetchApi, usePostApiRequest, useDeleteApiRequest } from '../../../api/ApiFunction';
 import { ENDPOINTS } from '../../../constants/endpoints';
@@ -125,11 +126,15 @@ const BalanceBook = () => {
                         </thead>
                         <tbody>
                             {isFetching ? (
-                                <tr>
-                                    <td colSpan={5} style={{ textAlign: 'center', padding: 20 }}>
-                                        <Spin />
-                                    </td>
-                                </tr>
+                                Array.from({ length: 6 }).map((_, i) => (
+                                    <tr key={`sk-${i}`}>
+                                        <td><SkeletonBlock width={24} height={12} /></td>
+                                        <td><SkeletonBlock width="70%" height={12} /></td>
+                                        <td><SkeletonBlock width="50%" height={12} /></td>
+                                        <td style={{ textAlign: 'right' }}><SkeletonBlock width={64} height={12} /></td>
+                                        <td style={{ textAlign: 'center' }}><SkeletonBlock width={48} height={12} /></td>
+                                    </tr>
+                                ))
                             ) : (
                                 rows.map((row, i) => (
                                     <tr key={getRowKey(row)}>

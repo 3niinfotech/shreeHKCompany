@@ -1,0 +1,180 @@
+/* Shared skeleton tokens — theme-aware via CSS variables */
+
+@keyframes skeletonShimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@mixin skeletonFill {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-muted) 0%,
+    var(--color-border) 45%,
+    var(--color-bg-muted) 90%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+}
+
+.block {
+  display: inline-block;
+  vertical-align: middle;
+  @include skeletonFill;
+  border-radius: var(--radius-control, 6px);
+}
+
+.blockRound {
+  display: inline-block;
+  vertical-align: middle;
+  @include skeletonFill;
+  border-radius: var(--radius-full, 9999px);
+}
+
+.blockCircle {
+  display: inline-block;
+  vertical-align: middle;
+  @include skeletonFill;
+  border-radius: 50%;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  min-height: 22px;
+  width: 100%;
+}
+
+.cellBar {
+  display: block;
+  height: 12px;
+  max-width: 100%;
+  @include skeletonFill;
+  border-radius: var(--radius-control, 6px);
+}
+
+.card {
+  padding: var(--spacing-4, 16px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card, 12px);
+  background: var(--color-bg-card, #fff);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3, 12px);
+  margin-bottom: var(--spacing-3, 12px);
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2, 8px);
+}
+
+.statCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2, 8px);
+  padding: var(--spacing-4, 16px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card, 12px);
+  background: var(--color-bg-card, #fff);
+  min-height: 120px;
+}
+
+.statTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-3, 12px);
+}
+
+.statFooter {
+  margin-top: auto;
+  padding-top: var(--spacing-2, 8px);
+}
+
+.chart {
+  width: 100%;
+  height: 220px;
+  @include skeletonFill;
+  border-radius: var(--radius-md, 8px);
+}
+
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3, 12px);
+  align-items: center;
+}
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2, 8px);
+  margin-bottom: var(--spacing-3, 12px);
+}
+
+.listRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3, 12px);
+  padding: var(--spacing-2, 8px) 0;
+}
+
+.listRows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1, 4px);
+}
+
+.treeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2, 8px);
+  padding: 6px 0;
+}
+
+.treeIndent {
+  flex-shrink: 0;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-4, 16px);
+}
+
+@media (max-width: 768px) {
+  .detailGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .statCard {
+    min-height: 100px;
+  }
+
+  .chart {
+    height: 160px;
+  }
+}
+
+:global(.ant-skeleton .ant-skeleton-content .ant-skeleton-title),
+:global(.ant-skeleton .ant-skeleton-content .ant-skeleton-paragraph > li),
+:global(.ant-skeleton .ant-skeleton-button),
+:global(.ant-skeleton .ant-skeleton-avatar),
+:global(.ant-skeleton .ant-skeleton-input) {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-muted) 0%,
+    var(--color-border) 45%,
+    var(--color-bg-muted) 90%
+  ) !important;
+  background-size: 200% 100% !important;
+  animation: skeletonShimmer 1.4s ease-in-out infinite !important;
+}

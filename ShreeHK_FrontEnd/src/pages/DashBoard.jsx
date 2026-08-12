@@ -1,4 +1,4 @@
-import { Card, Row, Col, Table, Typography, Tooltip, Spin, Tabs, Skeleton, Select, Tag } from 'antd';
+import { Card, Row, Col, Typography, Tooltip, Tabs, Select, Tag } from 'antd';
 import {
     Diamond,
     ChevronRight,
@@ -29,7 +29,67 @@ import dayjs from 'dayjs';
 import { useFetchApi, usePostApiRequest, usePutApiRequest, useDeleteApiRequest } from '../api/ApiFunction';
 import { ENDPOINTS } from '../constants/endpoints';
 import useThemeColors from '../hooks/useThemeColors';
+import {
+    SkeletonBlock,
+    SkeletonStatCard,
+    SkeletonList,
+    SkeletonChart,
+} from '../components/common/skeleton';
 import "../assets/scss/pages/dashboard.scss";
+
+const DueTableSkeleton = ({ columns }) => (
+    <table className="inventory-table" aria-hidden="true">
+        <thead>
+            <tr>
+                {columns.map((col) => (
+                    <th key={col.key} style={{ textAlign: col.align || 'left' }}>{col.title}</th>
+                ))}
+            </tr>
+        </thead>
+        <tbody>
+            {Array.from({ length: 5 }).map((_, rowIdx) => (
+                <tr key={rowIdx}>
+                    {columns.map((col, colIdx) => (
+                        <td key={col.key} style={{ textAlign: col.align || 'left' }}>
+                            <SkeletonBlock
+                                variant="text"
+                                width={`${58 + ((rowIdx + colIdx) % 4) * 8}%`}
+                                height={12}
+                            />
+                        </td>
+                    ))}
+                </tr>
+            ))}
+        </tbody>
+    </table>
+);
+
+const NotesTableSkeleton = ({ isSuperAdmin }) => (
+    <table className="inventory-table notes-table" aria-hidden="true">
+        <thead>
+            <tr>
+                <th style={{ width: 45, textAlign: 'center' }}>Status</th>
+                <th>Task Description</th>
+                {isSuperAdmin && <th style={{ width: 130, textAlign: 'center' }}>Assignee</th>}
+                <th style={{ width: 130, textAlign: 'center' }}>Target Date</th>
+                <th style={{ width: 90, textAlign: 'center' }}>Priority</th>
+                {isSuperAdmin && <th style={{ width: 80, textAlign: 'center' }}>Actions</th>}
+            </tr>
+        </thead>
+        <tbody>
+            {Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i}>
+                    <td style={{ textAlign: 'center' }}><SkeletonBlock variant="icon" width={16} height={16} /></td>
+                    <td><SkeletonBlock variant="text" width={`${70 + (i % 3) * 8}%`} height={12} /></td>
+                    {isSuperAdmin && <td style={{ textAlign: 'center' }}><SkeletonBlock variant="text" width="70%" height={12} /></td>}
+                    <td style={{ textAlign: 'center' }}><SkeletonBlock variant="text" width="80%" height={12} /></td>
+                    <td style={{ textAlign: 'center' }}><SkeletonBlock variant="text" width="60%" height={12} /></td>
+                    {isSuperAdmin && <td style={{ textAlign: 'center' }}><SkeletonBlock variant="icon" width={40} height={16} /></td>}
+                </tr>
+            ))}
+        </tbody>
+    </table>
+);
 
 const QuickNotesCard = () => {
     const navigate = useNavigate();
@@ -280,9 +340,7 @@ const QuickNotesCard = () => {
 
             <div className="table-wrapper notes-table-wrapper" style={{ marginTop: 14 }}>
                 {isLoading ? (
-                    <div style={{ textAlign: 'center', padding: '30px 0' }}>
-                        <Spin size="medium" />
-                    </div>
+                    <NotesTableSkeleton isSuperAdmin={isSuperAdmin} />
                 ) : (
                     <table className="inventory-table notes-table">
                         <thead>
@@ -458,7 +516,9 @@ const StatSummaryCard = ({ title, subtitle, value, icon, footerText, link, isLoa
         <div className="stat-card-body">
             <div className="stat-card-top">
                 <div className="stat-icon">{icon}</div>
-                <h3 className="stat-value">{isLoading ? <Skeleton.Button active size="small" shape="round" /> : value}</h3>
+                <h3 className="stat-value">
+                    {isLoading ? <SkeletonBlock variant="heading" width={72} height={22} shape="round" /> : value}
+                </h3>
             </div>
             <div className="stat-info">
                 <p className="stat-title">{title}</p>
@@ -737,9 +797,7 @@ const Dashboard = () => {
                                     onNavigate={navigate}
                                 />
                             ) : (
-                                <Card bordered={false} className="stat-card stat-card--loading" styles={{ body: { padding: 24 } }}>
-                                    <Skeleton active title={{ width: '50%' }} paragraph={{ rows: 1, width: '100%' }} />
-                                </Card>
+                                <SkeletonStatCard />
                             )}
                         </Col>
                     ))}
@@ -780,9 +838,7 @@ const Dashboard = () => {
                                     children: (
                                         <div className="table-wrapper due-payments-table-wrapper" style={{ height: 260, maxHeight: 260, overflowY: 'auto' }}>
                                             {isLoading ? (
-                                                <div style={{ padding: 24 }}>
-                                                    <Skeleton active title={false} paragraph={{ rows: 5, width: '100%' }} />
-                                                </div>
+                                                <DueTableSkeleton columns={columns} />
                                             ) : duePayments.length > 0 ? (
                                                 <table className="inventory-table">
                                                     <thead>
@@ -831,9 +887,7 @@ const Dashboard = () => {
                                     children: (
                                         <div className="table-wrapper due-payments-table-wrapper" style={{ height: 260, maxHeight: 260, overflowY: 'auto' }}>
                                             {isLoading ? (
-                                                <div style={{ padding: 24 }}>
-                                                    <Skeleton active title={false} paragraph={{ rows: 5, width: '100%' }} />
-                                                </div>
+                                                <DueTableSkeleton columns={columns} />
                                             ) : purchaseDuePayments.length > 0 ? (
                                                 <table className="inventory-table">
                                                     <thead>
@@ -902,8 +956,8 @@ const Dashboard = () => {
                         </div>
                         <div className="transactions-list">
                             {isLoading ? (
-                                <div style={{ padding: 24 }}>
-                                    <Skeleton active avatar title={false} paragraph={{ rows: 4, width: '100%' }} />
+                                <div style={{ padding: '8px 4px' }}>
+                                    <SkeletonList rows={5} withAvatar />
                                 </div>
                             ) : recentTransactions.length > 0 ? (
                                 recentTransactions.map((txn, i) => (
@@ -950,7 +1004,11 @@ const Dashboard = () => {
                             <span className="card-title-text">Stock by Shape</span>
                             <a className="view-report-link" onClick={() => navigate('/inventory/on-hand-stock')}>View Report</a>
                         </div>
-                        <DonutChart data={breakdowns?.byShape} total={breakdowns?.total} fallbackColor={theme.muted} />
+                        {isLoading ? (
+                            <div style={{ padding: '12px 0' }}><SkeletonChart height={180} /></div>
+                        ) : (
+                            <DonutChart data={breakdowns?.byShape} total={breakdowns?.total} fallbackColor={theme.muted} />
+                        )}
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} xl={6} className="dashboard-grid__col">
@@ -959,7 +1017,11 @@ const Dashboard = () => {
                             <span className="card-title-text">Stock by Color</span>
                             <a className="view-report-link" onClick={() => navigate('/inventory/on-hand-stock')}>View Report</a>
                         </div>
-                        <DonutChart data={breakdowns?.byColor} total={breakdowns?.total} fallbackColor={theme.muted} />
+                        {isLoading ? (
+                            <div style={{ padding: '12px 0' }}><SkeletonChart height={180} /></div>
+                        ) : (
+                            <DonutChart data={breakdowns?.byColor} total={breakdowns?.total} fallbackColor={theme.muted} />
+                        )}
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} xl={6} className="dashboard-grid__col">
@@ -968,7 +1030,11 @@ const Dashboard = () => {
                             <span className="card-title-text">Stock by Clarity</span>
                             <a className="view-report-link" onClick={() => navigate('/inventory/on-hand-stock')}>View Report</a>
                         </div>
-                        <DonutChart data={breakdowns?.byClarity} total={breakdowns?.total} fallbackColor={theme.muted} />
+                        {isLoading ? (
+                            <div style={{ padding: '12px 0' }}><SkeletonChart height={180} /></div>
+                        ) : (
+                            <DonutChart data={breakdowns?.byClarity} total={breakdowns?.total} fallbackColor={theme.muted} />
+                        )}
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} xl={6} className="dashboard-grid__col">
@@ -978,7 +1044,9 @@ const Dashboard = () => {
                             <a className="view-report-link" onClick={() => navigate('/report/outstanding')}>View Report</a>
                         </div>
                         <div className="top-parties-list">
-                            {topParties.length ? topParties.map((party, i) => (
+                            {isLoading ? (
+                                <SkeletonList rows={5} withAvatar={false} />
+                            ) : topParties.length ? topParties.map((party, i) => (
                                 <div key={i} className="party-item">
                                     <span className="party-name">{party.name}</span>
                                     <span className="party-amount">{party.amount}</span>

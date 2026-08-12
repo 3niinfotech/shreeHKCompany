@@ -1,10 +1,11 @@
 import { Edit2, Trash2, Plus, Search } from "lucide-react";
 import { Table, Button, Input, Space, Card, Typography } from "antd";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { AppstoreOutlined } from "@ant-design/icons";
 import useThemeColors from "../../../hooks/useThemeColors";
 import useTableBodyScrollHeight from "../../../hooks/useTableBodyScrollHeight";
 import PageHeroHeader from "../PageHeroHeader";
+import useTableSkeleton from "../skeleton/useTableSkeleton";
 import styles from "../../../assets/scss/pages/master/company.module.scss";
 
 const { Text } = Typography;
@@ -33,17 +34,10 @@ const MasterListTable = ({
     const safeDataSource = (Array.isArray(dataSource) ? dataSource : []).filter(
         (row) => row != null
     );
-    const tableHeight = useTableBodyScrollHeight(tableRef, [safeDataSource.length, loading]);
 
-    const resolveRowKey = (record, index) => {
-        if (record == null) return `row-${index}`;
-        if (typeof rowKey === "function") return rowKey(record, index);
-        return record[rowKey] ?? `row-${index}`;
-    };
-
-    const finalColumns = hideCrudActions
-        ? columns
-        : [
+    const withActions = useMemo(() => {
+        if (hideCrudActions) return columns;
+        return [
             ...columns,
             {
                 title: "Edit / Delete",
@@ -66,6 +60,29 @@ const MasterListTable = ({
                 ),
             },
         ];
+    }, [columns, hideCrudActions, onEdit, onDelete]);
+
+    const {
+        columns: tableColumns,
+        dataSource: tableData,
+        tableLoading,
+        showSkeleton,
+    } = useTableSkeleton({
+        columns: withActions,
+        dataSource: safeDataSource,
+        loading,
+        rowCount: 10,
+        rowKey: "_skeletonKey",
+    });
+
+    const tableHeight = useTableBodyScrollHeight(tableRef, [tableData.length, loading]);
+
+    const resolveRowKey = (record, index) => {
+        if (record?.__isSkeleton) return record._skeletonKey ?? `skeleton-${index}`;
+        if (record == null) return `row-${index}`;
+        if (typeof rowKey === "function") return rowKey(record, index);
+        return record[rowKey] ?? `row-${index}`;
+    };
 
     return (
         <div className={styles.pageWrapper}>
@@ -101,15 +118,15 @@ const MasterListTable = ({
 
                 <div className={`${styles.tableContainer} erp-table-container`} ref={tableRef}>
                     <Table
-                        columns={finalColumns}
-                        dataSource={safeDataSource}
+                        columns={tableColumns}
+                        dataSource={tableData}
                         rowKey={resolveRowKey}
-                        rowSelection={rowSelection}
+                        rowSelection={showSkeleton ? undefined : rowSelection}
                         pagination={false}
                         scroll={{ y: tableHeight, x: "max-content" }}
                         size="small"
-                        loading={loading}
-                        onScroll={onTableScroll}
+                        loading={tableLoading}
+                        onScroll={showSkeleton ? undefined : onTableScroll}
                         className="custom-ant-table"
                     />
                 </div>

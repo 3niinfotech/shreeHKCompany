@@ -6,6 +6,7 @@ import PageHeroHeader from "../../components/common/PageHeroHeader";
 import { api } from "../../api/axiosInstance";
 import { ENDPOINTS } from "../../constants/endpoints";
 import useTableBodyScrollHeight from "../../hooks/useTableBodyScrollHeight";
+import { SkuLink } from "../../hooks/useSkuModalAction";
 import styles from "../../assets/scss/pages/inventory/cycleCount.module.scss";
 
 const { Text } = Typography;
@@ -54,7 +55,7 @@ const CycleCount = () => {
   const tableHeight = useTableBodyScrollHeight(tableRef, [scanned.length, loading]);
 
   const columns = [
-    { title: "SKU", dataIndex: "sku", key: "sku" },
+    { title: "SKU", dataIndex: "sku", key: "sku", render: (text, record) => <SkuLink sku={text} record={record} /> },
     {
       title: "Status",
       dataIndex: "found",

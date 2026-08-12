@@ -2,9 +2,10 @@ import React from 'react';
 import TransactionStockTemplate from './TransactionStockTemplate';
 import { TRANSACTION_STOCK_KEYS } from '../../../api/services/transactionStockService';
 import { ENDPOINTS } from '../../../constants/endpoints';
+import { SkuLink } from '../../../hooks/useSkuModalAction';
 
 const _purchaseProductColumns = [
-  { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 120 },
+  { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 120, render: (text, record) => <SkuLink sku={text} record={record} /> },
   { title: 'D. No.', dataIndex: 'diamond_no', key: 'diamond_no', width: 100 },
   { title: 'Mfg. Code', dataIndex: 'mfg_code', key: 'mfg_code', width: 110 },
   { title: 'R.Pcs', dataIndex: 'rought_pcs', key: 'rought_pcs', width: 70, align: 'center' },
@@ -27,6 +28,11 @@ const PurchaseStock = () => (
     deleteEndpoint={ENDPOINTS.transactionStock.inward.delete}
     entryPath="/transaction/purchase/entry"
     infiniteScroll
+    typeFilterOptions={[
+      { value: 'purchase', label: 'Purchase' },
+      { value: 'import', label: 'Import' },
+      { value: 'consign', label: 'Consign' },
+    ]}
     actions={{
       showPrint: true,
       showDelete: true,
@@ -34,6 +40,7 @@ const PurchaseStock = () => (
       showToPurchase: true,
       showToImport: true,
       toggleEndpoint: ENDPOINTS.transactionStock.purchase.toggleType,
+      editGetEndpoint: ENDPOINTS.inward.getById,
       printType: 'purchase',
     }}
   />

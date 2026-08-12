@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Table, Card, Typography, Space, Button, Tag, Checkbox, Select, Input, Empty, Form, Spin, Tooltip } from 'antd';
+import { Table, Card, Typography, Space, Button, Tag, Checkbox, Select, Input, Empty, Form, Spin, Tooltip, DatePicker } from 'antd';
 import {
   EditOutlined,
   PrinterOutlined,
@@ -30,8 +30,12 @@ import PageHeroHeader from '../../../components/common/PageHeroHeader';
 import { FileTextOutlined } from '@ant-design/icons';
 import useAuthStore from '../../../store/Auth.Store';
 import useTableBodyScrollHeight from '../../../hooks/useTableBodyScrollHeight';
+import useTableSkeleton from '../../../components/common/skeleton/useTableSkeleton';
+import { SkeletonForm } from '../../../components/common/skeleton';
 import { cssVar } from '../../../theme';
 import styles from '../../../assets/scss/pages/outward.module.scss';
+import { SkuLink } from '../../../hooks/useSkuModalAction';
+import { resolveCompanyLogoUrl } from '../../../utils/companyLogo';
 
 const { Text, Title } = Typography;
 
@@ -40,7 +44,7 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const SCROLL_LIMIT = 20;
 
 const defaultProductColumns = [
-  { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 120 },
+  { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 120, render: (text, record) => <SkuLink sku={text} record={record} /> },
   { title: 'Mfg. Code', dataIndex: 'mfg_code', key: 'mfg_code', width: 110 },
   { title: 'Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', width: 70, align: 'center' },
   { title: 'Carat', dataIndex: 'polish_carat', key: 'polish_carat', width: 90, align: 'center' },
@@ -75,11 +79,16 @@ const TransactionStockTemplate = ({
   deleteQueryKey,
   invoiceTitle = 'Purchase Invoice',
   infiniteScroll = false,
+  typeFilterOptions = [],
 }) => {
   const navigate = useNavigate();
   const companyName = useAuthStore((s) => s.companyName);
+  const companyLogo = useAuthStore((s) => s.companyLogo);
   const [party, setParty] = useState('');
   const [invoice, setInvoice] = useState('');
+  const [filterType, setFilterType] = useState('');
+  const [fromDate, setFromDate] = useState(null);
+  const [toDate, setToDate] = useState(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_DEFAULT);
   const [offset, setOffset] = useState(0);
@@ -111,7 +120,10 @@ const TransactionStockTemplate = ({
     start: listStart,
     ...listPayload,
     ...(stockType ? { stockType } : {}),
-  }), [party, invoice, page, listLimit, listStart, listPayload, stockType, infiniteScroll]);
+    ...(filterType ? { type: filterType } : {}),
+    ...(fromDate ? { fromDate: dayjs(fromDate).format('YYYY-MM-DD') } : {}),
+    ...(toDate ? { toDate: dayjs(toDate).format('YYYY-MM-DD') } : {}),
+  }), [party, invoice, page, listLimit, listStart, listPayload, stockType, infiniteScroll, filterType, fromDate, toDate]);
 
   const queryClient = useQueryClient();
   const [actionLoading, setActionLoading] = useState(false);
@@ -134,34 +146,62 @@ const TransactionStockTemplate = ({
     { showToast: true }
   );
 
+  // Purchase / In-Memo are dai_inward — must not call /outward/?id=
+  const editGetBase = actions.editGetEndpoint ?? ENDPOINTS.outward.getById;
+  const editDetailUrl = editId ? `${editGetBase}/?id=${editId}` : null;
+
   const { data: editDetailData, isLoading: isEditLoading } = useFetchApi(
-    ['StockEditDetails', editId],
-    `${ENDPOINTS.outward.getById}/?id=${editId}`,
+    ['StockEditDetails', editGetBase, editId],
+    editDetailUrl,
     null,
     'GET',
-    { enabled: !!editId && actions.showEdit }
+    { enabled: !!editId && !!actions.showEdit && !!editDetailUrl }
   );
 
-  useEffect(() => {
-    const details = editDetailData?.Data || editDetailData?.data;
+  const applyEditDetails = useCallback((details, productsArg) => {
     if (!details) return;
+
+    const productList = Array.isArray(productsArg)
+      ? productsArg
+      : Array.isArray(details.products)
+        ? details.products
+        : [];
+
+    const normalizedProducts = productList.map((p) => ({
+      ...p,
+      sell_price: p.sell_price ?? p.purchase_price ?? p.price,
+      sell_amount: p.sell_amount ?? p.purchase_amount ?? p.amount,
+    }));
+
     editForm.setFieldsValue({
       ...details,
+      type: details.type || details.inward_type || '',
+      entryno: details.entryno ?? details.id,
       date: details.date ? dayjs(details.date) : null,
       invoicedate: details.invoicedate ? dayjs(details.invoicedate) : null,
       duedate: details.duedate ? dayjs(details.duedate) : null,
       party: details.party != null ? String(details.party) : undefined,
       other_party: details.other_party != null ? String(details.other_party) : undefined,
-      boc: details.boc === 1,
-      citi: details.citi === 1,
-      dbs: details.dbs === 1,
-      sc: details.sc === 1,
+      boc: details.boc === 1 || details.boc === true,
+      citi: details.citi === 1 || details.citi === true,
+      dbs: details.dbs === 1 || details.dbs === true,
+      sc: details.sc === 1 || details.sc === true,
     });
-    setFetchedProducts(editDetailData?.products || []);
-    const csvIds = details.products
-      || (editDetailData?.products || []).map((p) => p.id).filter(Boolean).join(',');
+
+    setFetchedProducts(normalizedProducts);
+
+    const csvIds = typeof details.products === 'string' && details.products
+      ? details.products
+      : normalizedProducts.map((p) => p.id).filter(Boolean).join(',');
     setOriginalSproducts(csvIds || '');
-  }, [editDetailData, editForm]);
+  }, [editForm]);
+
+  useEffect(() => {
+    if (!editDetailData || editDetailData.status === false) return;
+    const details = editDetailData?.Data || editDetailData?.data;
+    if (!details) return;
+    applyEditDetails(details, editDetailData?.products);
+  }, [editDetailData, applyEditDetails]);
 
   const postAction = async (url, body) => {
     if (!url) return false;
@@ -370,8 +410,13 @@ const TransactionStockTemplate = ({
   const closeInvoice = () => setInvoiceModal({ open: false, record: null });
 
   const invoiceCompany = useMemo(
-    () => ({ name: companyName || 'ShreeHK', tagline: 'Diamond & Gemstone Trading' }),
-    [companyName]
+    () => ({
+      name: companyName || 'ShreeHK',
+      tagline: 'Diamond & Gemstone Trading',
+      logo: companyLogo || null,
+      logoUrl: resolveCompanyLogoUrl(companyLogo),
+    }),
+    [companyName, companyLogo]
   );
 
   const handlePrint = (record) => {
@@ -385,6 +430,8 @@ const TransactionStockTemplate = ({
     setFetchedProducts([]);
     setOriginalSproducts('');
     editForm.resetFields();
+    // Fill immediately from list row (API may be inward/outward; list already has header + products)
+    applyEditDetails(record, record.products);
   };
 
   const closeEditModal = () => {
@@ -683,6 +730,23 @@ const TransactionStockTemplate = ({
     },
   ];
 
+  const listLoading = infiniteScroll
+    ? ((isLoading || isFetching) && offset === 0)
+    : (isLoading || isFetching);
+
+  const {
+    columns: skeletonAwareColumns,
+    dataSource: skeletonAwareGroups,
+    tableLoading,
+    showSkeleton,
+  } = useTableSkeleton({
+    columns: mainColumns,
+    dataSource: groups,
+    loading: listLoading,
+    rowCount: 8,
+    rowKey: '_skeletonKey',
+  });
+
   const handlePaginationChange = (nextPage, nextPageSize) => {
     setPage(nextPage);
     if (nextPageSize !== pageSize) {
@@ -715,9 +779,16 @@ const TransactionStockTemplate = ({
       <AdvancedFilterPanel
         title={`${title}`}
         // subtitle="Filter records by company and invoice number."
-        activeCount={[party, invoice].filter(Boolean).length}
-        onClear={() => { setParty(''); setInvoice(''); resetList(); }}
-        clearDisabled={!party && !invoice}
+        activeCount={[party, invoice, filterType, fromDate, toDate].filter(Boolean).length}
+        onClear={() => {
+          setParty('');
+          setInvoice('');
+          setFilterType('');
+          setFromDate(null);
+          setToDate(null);
+          resetList();
+        }}
+        clearDisabled={!party && !invoice && !filterType && !fromDate && !toDate}
         showSearch={false}
         extraActions={
           <Space>
@@ -767,6 +838,41 @@ const TransactionStockTemplate = ({
             allowClear
           />
         </FilterField>
+        {typeFilterOptions.length > 0 && (
+          <FilterField>
+            <Select
+              allowClear
+              placeholder="All Type"
+              className={filterPanelStyles.filterControl}
+              value={filterType || undefined}
+              onChange={(v) => { setFilterType(v || ''); resetList(); }}
+              options={typeFilterOptions}
+              style={{ padding: "6px 11px", minWidth: 140 }}
+            />
+          </FilterField>
+        )}
+        <FilterField>
+          <DatePicker
+            allowClear
+            format="DD-MM-YYYY"
+            placeholder="From Date"
+            className={filterPanelStyles.filterControl}
+            value={fromDate}
+            onChange={(v) => { setFromDate(v); resetList(); }}
+            style={{ width: '100%', minWidth: 140 }}
+          />
+        </FilterField>
+        <FilterField>
+          <DatePicker
+            allowClear
+            format="DD-MM-YYYY"
+            placeholder="To Date"
+            className={filterPanelStyles.filterControl}
+            value={toDate}
+            onChange={(v) => { setToDate(v); resetList(); }}
+            style={{ width: '100%', minWidth: 140 }}
+          />
+        </FilterField>
       </AdvancedFilterPanel>
 
       <Card variant="none" className={styles.cardContainer}>
@@ -776,16 +882,16 @@ const TransactionStockTemplate = ({
           style={{ ['--table-scroll-y']: `${tableHeight}px` }}
         >
           <Table
-            columns={mainColumns}
-            dataSource={groups}
-            rowKey="id"
-            loading={infiniteScroll ? ((isLoading || isFetching) && offset === 0) : (isLoading || isFetching)}
+            columns={skeletonAwareColumns}
+            dataSource={skeletonAwareGroups}
+            rowKey={showSkeleton ? '_skeletonKey' : 'id'}
+            loading={tableLoading}
             className={styles.tableWrapper}
             size="small"
             bordered
             tableLayout="fixed"
             scroll={{ x: 1200, y: tableHeight }}
-            onScroll={infiniteScroll ? handleTableScroll : undefined}
+            onScroll={infiniteScroll && !showSkeleton ? handleTableScroll : undefined}
             locale={{
               emptyText: (
                 <Empty
@@ -794,13 +900,13 @@ const TransactionStockTemplate = ({
                 />
               ),
             }}
-            expandable={{
+            expandable={showSkeleton ? undefined : {
               expandedRowRender: renderExpandedRow,
               expandedRowClassName: () => styles.expandedRow,
               expandedRowKeys,
               onExpandedRowsChange: setExpandedRowKeys,
             }}
-            pagination={infiniteScroll ? false : {
+            pagination={showSkeleton || infiniteScroll ? false : {
               current: page,
               pageSize,
               total: totalItems,
@@ -822,7 +928,7 @@ const TransactionStockTemplate = ({
                         : `Showing page ${page} · ${groups.length} ${groups.length === 1 ? 'entry' : 'entries'}`}
                     </Text>
                   </div>
-                  {infiniteScroll && (
+                  {infiniteScroll && groups.length > 0 && (
                     <div className={styles.statsBarCenter}>
                       {(isFetching || scrollFetching) ? <Spin size="small" /> :
                         hasMore ? 'Scroll down for more...' : `All ${groups.length} entries loaded`}
@@ -894,25 +1000,54 @@ const TransactionStockTemplate = ({
           onSave={handleSaveEdit}
           loading={isUpdating}
           content={(
-            <Form form={editForm} layout="vertical">
-              <DynamicForm fields={editFields} />
-              <Title level={5} style={{ marginTop: 20 }}>Products</Title>
-              <Table
-                loading={isEditLoading}
-                columns={[
-                  { title: 'SKU', dataIndex: 'sku', key: 'sku', render: (val, _record, idx) => <Input value={val} onChange={(e) => handleProductFieldChange(idx, 'sku', e.target.value)} /> },
-                  { title: 'Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', render: (val, _record, idx) => <Input type="number" value={val} onChange={(e) => handleProductFieldChange(idx, 'polish_pcs', e.target.value)} /> },
-                  { title: 'Carat', dataIndex: 'polish_carat', key: 'polish_carat', render: (val, _record, idx) => <Input type="number" value={val} onChange={(e) => handleProductFieldChange(idx, 'polish_carat', e.target.value)} /> },
-                  { title: 'Price', dataIndex: 'sell_price', key: 'sell_price', render: (val, _record, idx) => <Input type="number" value={val} onChange={(e) => handleProductFieldChange(idx, 'sell_price', e.target.value)} /> },
-                  { title: 'Amount', dataIndex: 'sell_amount', key: 'sell_amount', render: (val, _record, idx) => <Input type="number" value={val} onChange={(e) => handleProductFieldChange(idx, 'sell_amount', e.target.value)} /> },
-                ]}
-                dataSource={fetchedProducts}
-                rowKey="id"
-                pagination={false}
-                size="small"
-                scroll={{ x: 600 }}
-              />
-            </Form>
+            <>
+              <style>{`
+                .edit-modal-form-readable .ant-input-disabled,
+                .edit-modal-form-readable .ant-input[disabled],
+                .edit-modal-form-readable .ant-input-number-disabled .ant-input-number-input,
+                .edit-modal-form-readable .ant-input-number-disabled input,
+                .edit-modal-form-readable .ant-select-disabled .ant-select-selection-item,
+                .edit-modal-form-readable .ant-picker-disabled input,
+                .edit-modal-form-readable .ant-picker-input > input[disabled],
+                .edit-modal-form-readable textarea.ant-input-disabled {
+                  color: #000 !important;
+                  -webkit-text-fill-color: #000 !important;
+                  opacity: 1 !important;
+                }
+              `}</style>
+              <Form form={editForm} layout="vertical" className="edit-modal-form-readable">
+                {isEditLoading ? (
+                  <SkeletonForm fields={6} />
+                ) : (
+                  <DynamicForm fields={editFields} />
+                )}
+                <Title level={5} style={{ marginTop: 20 }}>Products</Title>
+                <Table
+                  loading={false}
+                  columns={isEditLoading ? [
+                    { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 120 },
+                    { title: 'Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', width: 80 },
+                    { title: 'Carat', dataIndex: 'polish_carat', key: 'polish_carat', width: 80 },
+                    { title: 'Price', dataIndex: 'sell_price', key: 'sell_price', width: 80 },
+                    { title: 'Amount', dataIndex: 'sell_amount', key: 'sell_amount', width: 80 },
+                  ].map((col) => ({
+                    ...col,
+                    render: () => <span style={{ display: 'inline-block', width: '70%', height: 12, borderRadius: 6, background: 'var(--color-bg-muted)' }} />,
+                  })) : [
+                    { title: 'SKU', dataIndex: 'sku', key: 'sku', render: (val, _record, idx) => <Input value={val} onChange={(e) => handleProductFieldChange(idx, 'sku', e.target.value)} /> },
+                    { title: 'Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', render: (val, _record, idx) => <Input type="number" value={val} onChange={(e) => handleProductFieldChange(idx, 'polish_pcs', e.target.value)} /> },
+                    { title: 'Carat', dataIndex: 'polish_carat', key: 'polish_carat', render: (val, _record, idx) => <Input type="number" value={val} onChange={(e) => handleProductFieldChange(idx, 'polish_carat', e.target.value)} /> },
+                    { title: 'Price', dataIndex: 'sell_price', key: 'sell_price', render: (val, _record, idx) => <Input type="number" value={val} onChange={(e) => handleProductFieldChange(idx, 'sell_price', e.target.value)} /> },
+                    { title: 'Amount', dataIndex: 'sell_amount', key: 'sell_amount', render: (val, _record, idx) => <Input type="number" value={val} onChange={(e) => handleProductFieldChange(idx, 'sell_amount', e.target.value)} /> },
+                  ]}
+                  dataSource={isEditLoading ? Array.from({ length: 3 }, (_, i) => ({ id: `sk-p-${i}` })) : fetchedProducts}
+                  rowKey="id"
+                  pagination={false}
+                  size="small"
+                  scroll={{ x: 600 }}
+                />
+              </Form>
+            </>
           )}
           saveBtnText="Update"
           width={1200}

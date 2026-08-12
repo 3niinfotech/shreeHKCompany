@@ -66,12 +66,18 @@ export function mapTransactionToInvoice(record, options = {}) {
     contactPerson: record?.contact_person || "",
   };
 
+  const companyPayload = {
+    ...company,
+    logo: company.logo || company.logoUrl || null,
+    logoUrl: company.logoUrl || company.logo || null,
+  };
+
   return {
     invoiceTitle,
     docType: record?.type || "",
     inwardType: record?.inward_type || "",
     type: record?.type || record?.inward_type || "",
-    company,
+    company: companyPayload,
     entryNo: record?.entryno ?? "—",
     invoiceNo: record?.invoiceno ?? "—",
     date: fmtDate(record?.invoicedate || record?.date),

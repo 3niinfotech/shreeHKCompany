@@ -1,6 +1,7 @@
 import React from "react";
 import { APPROVAL_MEMO_COLORS } from "../../../utils/approvalMemoTemplate";
 import { num2words } from "../../../utils/venyaInvoiceTemplate";
+import { resolveCompanyLogoUrl } from "../../../utils/companyLogo";
 import "../../../assets/scss/components/transaction/saleInvoice.scss";
 
 export const VENYA_SENDER = {
@@ -336,10 +337,21 @@ export const SaleInvoicePage = ({ data, copyLabel = "(ORIGINAL COPY)" }) => {
       <div className="sale-invoice-top">
         <div className="header">
           <div className="brand">
-            <div className="logo">V</div>
+            {resolveCompanyLogoUrl(data.company?.logoUrl || data.company?.logo) ? (
+              <img
+                className="logo"
+                src={resolveCompanyLogoUrl(data.company?.logoUrl || data.company?.logo)}
+                alt={data.company?.name || "Company logo"}
+                style={{ maxHeight: 56, maxWidth: 140, objectFit: "contain", display: "block" }}
+              />
+            ) : (
+              <div className="logo">{(data.company?.name || "V").charAt(0).toUpperCase()}</div>
+            )}
             <div>
-              <div className="brand-name">VENYA</div>
-              <div className="brand-sub">GEMS CO., LTD.</div>
+              <div className="brand-name">
+                {(data.company?.name || "VENYA").split(/\s+/)[0].toUpperCase()}
+              </div>
+              <div className="brand-sub">{data.company?.tagline || "GEMS CO., LTD."}</div>
             </div>
           </div>
           <div className="memo-title">

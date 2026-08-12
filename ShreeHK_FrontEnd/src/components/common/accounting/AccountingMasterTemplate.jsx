@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { toast } from 'sonner';
 import DynamicFormField from '../../../hooks/DynamicFormField';
 import { Edit2, Trash2, Plus, Search } from 'lucide-react';
 import { BaseModal } from '../modals';
@@ -9,6 +8,7 @@ import PageHeroHeader from '../PageHeroHeader';
 import styles from '../../../assets/scss/pages/master/company.module.scss';
 import useThemeColors from '../../../hooks/useThemeColors';
 import useTableBodyScrollHeight from '../../../hooks/useTableBodyScrollHeight';
+import useTableSkeleton from '../skeleton/useTableSkeleton';
 import { cssVar } from '../../../theme';
 import { useNavigate } from 'react-router-dom';
 
@@ -50,17 +50,6 @@ const AccountingMasterTemplate = ({
         );
     }, [searchText, dataSource]);
 
-    const tableHeight = useTableBodyScrollHeight(tableRef, [processedData.length, loading]);
-
-    const handleTableScroll = (e) => {
-        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-        if (scrollHeight - scrollTop <= clientHeight + 20) {
-            if (!loading && hasMore && onLoadMore) {
-                onLoadMore();
-            }
-        }
-    };
-
     const handleAddClick = () => {
         if (addPagePath) {
             onEdit?.(null);
@@ -91,7 +80,7 @@ const AccountingMasterTemplate = ({
     };
 
     const safeColumns = Array.isArray(columns) ? columns : [];
-    const finalColumns = [
+    const finalColumns = useMemo(() => [
         ...safeColumns,
         {
             title: 'Action',
@@ -110,7 +99,32 @@ const AccountingMasterTemplate = ({
                 </div>
             ),
         },
-    ];
+    ], [safeColumns, onDelete, title]);
+
+    const {
+        columns: tableColumns,
+        dataSource: tableData,
+        tableLoading,
+        showSkeleton,
+    } = useTableSkeleton({
+        columns: finalColumns,
+        dataSource: processedData,
+        loading,
+        rowCount: 10,
+        rowKey: '_skeletonKey',
+    });
+
+    const tableHeight = useTableBodyScrollHeight(tableRef, [tableData.length, loading]);
+
+    const handleTableScroll = (e) => {
+        if (showSkeleton) return;
+        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+        if (scrollHeight - scrollTop <= clientHeight + 20) {
+            if (!loading && hasMore && onLoadMore) {
+                onLoadMore();
+            }
+        }
+    };
 
     useEffect(() => {
         if (isModalOpen) {
@@ -121,6 +135,8 @@ const AccountingMasterTemplate = ({
             }
         }
     }, [isModalOpen, initialValues, modalConfig.mode, form]);
+
+    const isLoadMore = loading && processedData.length > 0;
 
     return (
         <div className={styles.pageWrapper}>
@@ -150,19 +166,20 @@ const AccountingMasterTemplate = ({
                     )}
                 />
 
-                <div className={`${styles.tableContainer} erp-table-container`} ref={tableRef} style={{ marginTop: '20px' }}>
+                <div className={`${styles.tableContainer} erp-table-container`} ref={tableRef}>
                     <Table
-                        columns={finalColumns}
-                        dataSource={processedData}
-                        rowKey={rowKey}
+                        columns={tableColumns}
+                        dataSource={tableData}
+                        rowKey={showSkeleton ? '_skeletonKey' : rowKey}
                         pagination={false}
                         scroll={{ y: tableHeight, x: 'max-content' }}
                         size="small"
                         bordered
+                        loading={tableLoading}
                         onScroll={handleTableScroll}
                         footer={() => (
                             <div style={{ textAlign: 'center', padding: '5px' }}>
-                                {loading ? <Spin size="small" tip="Loading..." /> :
+                                {isLoadMore ? <Spin size="small" tip="Loading..." /> :
                                     hasMore ? "Scroll for more" : `Total ${processedData.length} records`}
                             </div>
                         )}
@@ -183,7 +200,6 @@ const AccountingMasterTemplate = ({
                 </div>
             </Card>
         </div>
-
     );
 };
 

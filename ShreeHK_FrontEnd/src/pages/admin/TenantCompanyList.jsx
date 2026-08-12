@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from "react";
 import {
-  Layout, Typography, Button, Spin, Modal, Form, Space, Input, Tag, Empty, Alert,
+  Layout, Typography, Button, Modal, Form, Space, Input, Tag, Empty, Alert, Upload, Row, Col,
 } from "antd";
+import { SkeletonCard } from "../../components/common/skeleton";
 import { toast } from "sonner";
 import {
   PlusOutlined,
@@ -15,6 +16,7 @@ import {
   GlobalOutlined,
   CheckCircleFilled,
   ReloadOutlined,
+  UploadOutlined,
 } from "@ant-design/icons";
 import { useFetchApi, usePostApiRequest } from "../../api/ApiFunction";
 import { ENDPOINTS } from "../../constants/endpoints";
@@ -22,6 +24,7 @@ import DynamicForm from "../../hooks/DynamicFormField";
 import { tenantCompanyFields } from "./tenantCompanyData";
 import PageHeroHeader from "../../components/common/PageHeroHeader";
 import useAuthStore from "../../store/Auth.Store";
+import { resolveUploadUrl } from "../../utils/uploadBaseUrl";
 import styles from "../../assets/scss/pages/admin/tenantCompany.module.scss";
 import dayjs from "dayjs";
 
@@ -73,9 +76,13 @@ const TenantCompanyList = () => {
   const [search, setSearch] = useState("");
   const [form] = Form.useForm();
   const [deleteForm] = Form.useForm();
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [clearLogo, setClearLogo] = useState(false);
 
   const companyId = useAuthStore((s) => s.companyId);
   const companyName = useAuthStore((s) => s.companyName);
+  const setSessionContext = useAuthStore((s) => s.setSessionContext);
 
   const { data, isLoading, refetch } = useFetchApi(
     "tenantCompanies",
@@ -114,6 +121,9 @@ const TenantCompanyList = () => {
 
   const openCreate = () => {
     setEditing(null);
+    setLogoFile(null);
+    setLogoPreview(null);
+    setClearLogo(false);
     form.resetFields();
     form.setFieldsValue({ id: 0 });
     setModalOpen(true);
@@ -121,19 +131,48 @@ const TenantCompanyList = () => {
 
   const openEdit = (company) => {
     setEditing(company);
+    setLogoFile(null);
+    setClearLogo(false);
+    setLogoPreview(company?.logo ? resolveUploadUrl(company.logo) : null);
     form.setFieldsValue(mapApiToForm(company));
     setModalOpen(true);
   };
 
   const handleSave = (values) => {
-    const payload = {
+    const mapped = {
       ...mapFormToApi(values),
       id: editing?.id || 0,
     };
-    saveCompany(payload, {
-      onSuccess: () => {
+
+    const formData = new FormData();
+    Object.entries(mapped).forEach(([key, value]) => {
+      if (value === undefined || value === null) return;
+      formData.append(key, value);
+    });
+    if (logoFile) {
+      formData.append("logo", logoFile);
+    } else if (clearLogo) {
+      formData.append("clear_logo", "1");
+      formData.append("logo", "");
+    } else if (editing?.logo) {
+      formData.append("logo", editing.logo);
+    }
+
+    saveCompany(formData, {
+      onSuccess: (res) => {
+        if (res?.status === false) return;
+        if (editing?.id && activeCompanyId != null && Number(editing.id) === activeCompanyId) {
+          const nextLogo = clearLogo ? null : (res?.logo ?? editing.logo ?? null);
+          setSessionContext({
+            companyLogo: nextLogo,
+            companyName: mapped.name || companyName,
+          });
+        }
         setModalOpen(false);
         form.resetFields();
+        setLogoFile(null);
+        setLogoPreview(null);
+        setClearLogo(false);
         refetch();
       },
     });
@@ -233,8 +272,10 @@ const TenantCompanyList = () => {
         </section>
 
         {isLoading ? (
-          <div className={styles.loaderWrap}>
-            <Spin size="large" />
+          <div className={styles.companyGrid} aria-busy="true">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonCard key={i} lines={4} withAvatar />
+            ))}
           </div>
         ) : companies.length === 0 ? (
           <div className={styles.emptyState}>
@@ -264,7 +305,11 @@ const TenantCompanyList = () => {
               >
                 <div className={styles.cardTop}>
                   <div className={styles.avatar} data-initials={getInitials(item.name)}>
-                    {getInitials(item.name)}
+                    {item.logo ? (
+                      <img src={resolveUploadUrl(item.logo)} alt={item.name || "logo"} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit" }} />
+                    ) : (
+                      getInitials(item.name)
+                    )}
                   </div>
                   <Space size={4}>
                     <Button
@@ -365,6 +410,57 @@ const TenantCompanyList = () => {
           >
             <Form.Item name="id" hidden><input type="hidden" /></Form.Item>
             <DynamicForm fields={tenantCompanyFields} />
+            <Row gutter={[16, 0]} align="top">
+              <Col span={12}>
+                <Form.Item name="rapnet_password" label="RapNet Password">
+                  <Input placeholder="Enter RapNet Password..." />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Company Logo (for bills / invoices)">
+                  <Space align="start" wrap>
+                    {logoPreview ? (
+                      <img
+                        src={logoPreview}
+                        alt="Company logo preview"
+                        style={{ width: 88, height: 88, objectFit: "contain", border: "1px solid #ddd", borderRadius: 8, background: "#fff" }}
+                      />
+                    ) : null}
+                    <Upload
+                      accept="image/*"
+                      maxCount={1}
+                      showUploadList={false}
+                      beforeUpload={(file) => {
+                        setLogoFile(file);
+                        setClearLogo(false);
+                        setLogoPreview(URL.createObjectURL(file));
+                        return false;
+                      }}
+                    >
+                      <Button icon={<UploadOutlined />}>
+                        {logoPreview ? "Change Logo" : "Upload Logo"}
+                      </Button>
+                    </Upload>
+                    {logoPreview ? (
+                      <Button
+                        danger
+                        type="link"
+                        onClick={() => {
+                          setLogoFile(null);
+                          setLogoPreview(null);
+                          setClearLogo(true);
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    ) : null}
+                  </Space>
+                  <Text type="secondary" style={{ display: "block", marginTop: 8, fontSize: 12 }}>
+                    This logo appears on sale, purchase, memo and other bills for the selected company.
+                  </Text>
+                </Form.Item>
+              </Col>
+            </Row>
           </Form>
         </Modal>
 

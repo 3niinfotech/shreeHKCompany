@@ -1,12 +1,13 @@
 import { Table, Typography } from "antd";
 import WarningActionModal from "../components/common/modals/WarningActionModal";
 import { cssVar } from "../theme";
+import { SkuLink } from "./useSkuModalAction";
 
 const { Text } = Typography;
 
 const EXIST_COLUMNS = [
     { title: "No.", width: 50, render: (_, __, index) => index + 1 },
-    { title: "SKU", dataIndex: "sku", width: 140 },
+    { title: "SKU", dataIndex: "sku", width: 140, render: (text, record) => <SkuLink sku={text} record={record} /> },
     { title: "Pcs", dataIndex: "polish_pcs", width: 70, align: "right" },
     { title: "Carat", dataIndex: "polish_carat", width: 80, align: "right" },
     { title: "Price", dataIndex: "price", width: 90, align: "right" },

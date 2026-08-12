@@ -157,11 +157,16 @@ const InventorySmartSearch = ({
     toggle();
   };
 
-  const handlePressEnter = () => {
+  const handlePressEnter = (event) => {
+    if (event?.nativeEvent?.isComposing) return;
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
     stop();
     setDropdownOpen(false);
     setSuggestions([]);
-    onSearch?.();
+    // Use live DOM value so Enter works even if React state has not flushed yet
+    const liveValue = String(event?.target?.value ?? value ?? "").trim();
+    onSearch?.(liveValue);
   };
 
   const showDropdown = dropdownOpen && (fetching || suggestions.length > 0);
@@ -208,7 +213,11 @@ const InventorySmartSearch = ({
           placeholder={placeholder}
           prefix={<SearchOutlined />}
           className={styles.searchInput}
-          onPressEnter={handlePressEnter}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.nativeEvent?.isComposing) {
+              handlePressEnter(event);
+            }
+          }}
           allowClear={variant !== "header"}
           suffix={
             variant === "header" ? (

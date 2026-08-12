@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useLocation } from "react-router-dom";
-import { Form, Button, Divider, Row, Col, Empty, Spin, Input } from 'antd';
+import { Form, Button, Divider, Row, Col, Empty, Input } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { Save, Box } from "lucide-react";
 import AIPriceSuggestBlock from '../../components/ai/AIPriceSuggestBlock';
@@ -11,6 +11,7 @@ import { ENDPOINTS } from '../../constants/endpoints';
 import useFormHandleChange from '../../hooks/useFormHandleChange';
 import DynamicForm from '../../hooks/DynamicFormField';
 import useThemeColors from '../../hooks/useThemeColors';
+import { SkeletonForm, SkeletonDetail } from '../../components/common/skeleton';
 import Toggle from './Toggle';
 import {
     stoneUploadfields,
@@ -109,8 +110,11 @@ const StoneUpdate = () => {
     }, [apiResponse, populateForm]);
 
     const renderLoader = () => (
-        <div className={styles.loaderContainer}>
-            <Spin size="large" tip="Fetching ERP Data..." />
+        <div className={styles.loaderContainer} style={{ padding: 24 }}>
+            <SkeletonDetail fields={8} />
+            <div style={{ marginTop: 24 }}>
+                <SkeletonForm fields={6} />
+            </div>
         </div>
     );
 

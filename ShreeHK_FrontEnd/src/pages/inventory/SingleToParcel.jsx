@@ -13,6 +13,7 @@ import { useFetchApi } from "../../api/ApiFunction";
 import { ENDPOINTS } from "../../constants/endpoints";
 import { addStonesToParcel } from "../../api/services/productService";
 import PageHeroHeader from "../../components/common/PageHeroHeader";
+import useTableSkeleton from "../../components/common/skeleton/useTableSkeleton";
 import styles from "../../assets/scss/pages/inventory/singleToBoxModern.module.scss";
 
 const { Text } = Typography;
@@ -96,6 +97,19 @@ const SingleToParcel = () => {
     { pcs: 0, carat: 0, amount: 0 },
   );
 
+  const {
+    columns: tableColumns,
+    dataSource: skeletonData,
+    tableLoading,
+    showSkeleton,
+  } = useTableSkeleton({
+    columns: singleStoneColumns,
+    dataSource: tableData,
+    loading: isLoading || isFetchingMore,
+    rowCount: 10,
+    rowKey: "_skeletonKey",
+  });
+
   return (
     <div className={styles.pageContainer}>
       <PageHeroHeader
@@ -138,11 +152,11 @@ const SingleToParcel = () => {
 
       <div ref={tableWrapRef} className={`${styles.tableWrap} erp-table-container`}>
         <Table
-          rowSelection={rowSelection}
-          columns={singleStoneColumns}
-          dataSource={tableData}
-          rowKey="id"
-          loading={isLoading || isFetchingMore}
+          rowSelection={showSkeleton ? undefined : rowSelection}
+          columns={tableColumns}
+          dataSource={skeletonData}
+          rowKey={showSkeleton ? "_skeletonKey" : "id"}
+          loading={tableLoading}
           size="small"
           bordered
           className={styles.modernTable}

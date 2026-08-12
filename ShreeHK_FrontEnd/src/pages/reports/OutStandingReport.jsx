@@ -17,6 +17,7 @@ import PageHeroHeader from '../../components/common/PageHeroHeader';
 import { exportReportToExcel } from '../../utils/reportExcelExport';
 import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
 import styles from '../../assets/scss/pages/report/outStanding.module.scss';
+import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
 
 const OutStandingReport = () => {
     const [tableData, setTableData] = useState([]);
@@ -264,7 +265,7 @@ const OutStandingReport = () => {
 
             <Card styles={{ body: { padding: 0 } }} className={styles.tableCard}>
                 <div ref={tableRef} className="erp-table-container">
-                    <Table
+                    <SkeletonAwareTable
                         columns={columns}
                         dataSource={tableData}
                         pagination={{

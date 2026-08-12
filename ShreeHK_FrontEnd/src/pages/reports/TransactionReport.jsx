@@ -12,6 +12,7 @@ import { ENDPOINTS } from '../../constants/endpoints';
 import useFormHandleChange from '../../hooks/useFormHandleChange';
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
 import PageHeroHeader from '../../components/common/PageHeroHeader';
+import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
 import { exportReportToExcel } from '../../utils/reportExcelExport';
 import styles from '../../assets/scss/pages/report/TransactionReport.module.scss';
 import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
@@ -252,7 +253,7 @@ const TransactionReport = () => {
 
             <Card className={styles.tableCard}>
                 <div ref={tableRef} className="erp-table-container">
-                    <Table
+                    <SkeletonAwareTable
                         columns={columns}
                         dataSource={tableData}
                         loading={tableLoading}

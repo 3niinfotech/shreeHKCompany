@@ -29,7 +29,7 @@ import {
 import { Button, Tag } from "antd";
 import AIResultPanel from "../../components/ai/AIResultPanel";
 import useAiStockAlert from "../../components/ai/useAiStockAlert";
-import InventoryStoneDetailModal from "../../components/inventory/InventoryStoneDetailModal";
+import { SkuLink } from "../../hooks/useSkuModalAction";
 import InventoryFilterPresets from "../../components/inventory/InventoryFilterPresets";
 import InventorySummaryToolbar from "../../components/inventory/InventorySummaryToolbar";
 import { mapInventoryRowCamel } from "../../utils/inventoryApiFilters";
@@ -94,7 +94,6 @@ const OnHandStock = () => {
     const [pairModalOpen, setPairModalOpen] = useState(false);
     const [bulkActionModal, setBulkActionModal] = useState({ open: false, actionKey: null });
     const [searchText, setSearchText] = useState("");
-    const [stoneDetailModal, setStoneDetailModal] = useState({ open: false, data: null });
 
     const columns = useMemo(() => [
         { title: "No.", key: "index", width: 56, fixed: "left", render: (_, __, i) => i + 1 },
@@ -102,12 +101,7 @@ const OnHandStock = () => {
         {
             title: "Sku", dataIndex: "sku", key: "sku", width: 100, ellipsis: true,
             render: (text, record) => (
-                <a
-                    className="inventory-sku-link"
-                    onClick={() => setStoneDetailModal({ open: true, data: mapInventoryRowCamel(record) })}
-                >
-                    {text}
-                </a>
+                <SkuLink sku={text} record={mapInventoryRowCamel(record)} />
             ),
         },
         { title: "Lab", dataIndex: "lab", key: "lab", width: 64, ellipsis: true },
@@ -426,11 +420,6 @@ const OnHandStock = () => {
                         </div>
                     );
                 }}
-            />
-            <InventoryStoneDetailModal
-                open={stoneDetailModal.open}
-                onClose={() => setStoneDetailModal({ open: false, data: null })}
-                stone={stoneDetailModal.data}
             />
         </>
     );
