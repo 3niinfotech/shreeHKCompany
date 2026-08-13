@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { message } from "antd";
+import { toastWarning } from "../utils/toastNotify";
 import useFiltersFormFields from "./useFiltersFormFields";
 import useInventoryList from "./useInventoryList";
 import useInventoryHoldActions from "./useInventoryHoldActions";
@@ -77,7 +77,7 @@ export default function useInventoryToolbarPage({
       const normalizedKey = key === "unhold" ? "unHold" : key;
       if (normalizedKey === "changePrice") {
         if (!selectedRowKeys.length) {
-          message.warning("Please select at least one item");
+          toastWarning("Please select at least one item");
           return true;
         }
         setBulkActionModal({ open: true, actionKey: "changePrice" });
@@ -113,7 +113,7 @@ export default function useInventoryToolbarPage({
 
   const handleLabelClick = useCallback(() => {
     if (!selectedRowKeys.length) {
-      message.warning("Please Select Item");
+      toastWarning("Please Select Item");
       return true;
     }
     const stockChecks = filterForm?.getFieldValue("stockChecks") || [];
@@ -124,7 +124,7 @@ export default function useInventoryToolbarPage({
   const handleToolbarAction = useCallback(
     (key) => {
       if (!selectedRowKeys.length) {
-        message.warning("Please Select Item");
+        toastWarning("Please Select Item");
         return;
       }
       if (key === "export") {

@@ -191,7 +191,8 @@ const ActivityHistory = () => {
 
       <AdvancedFilterPanel
         title="Filter Activity Log"
-        subtitle="Summary Show First. Show button or toggle After/Before data Show"
+        // subtitle="Summary Show First. Show button or toggle After/Before data Show"
+        subtitle=""
         activeCount={activeCount}
         onClear={handleClear}
         clearDisabled={!activeCount && !total}

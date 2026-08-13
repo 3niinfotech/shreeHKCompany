@@ -1,19 +1,182 @@
+$delete-header-h: 56px;
+$delete-icon-size: 32px;
+$delete-close-size: 22px;
+$delete-pad-x: 16px;
+$delete-gap: 10px;
+
 .conformation_modal {
+    display: flex;
+    align-items: center;
+    gap: $delete-gap;
     font-size: 14px;
-    line-height: 1.6;
+    line-height: 1.45;
+    color: var(--color-text-heading);
+
+    .ant-typography {
+        margin: 0 !important;
+        color: var(--color-text-heading) !important;
+        font-size: 14px;
+        line-height: 1.45;
+    }
 
     .massage {
-        display: inline-block;
-        color: red;
-        font-weight: 600;
-
-        /* 👇 faster vibration */
+        display: inline;
+        color: var(--color-danger, #dc3d43);
+        font-weight: 700;
         animation: shakeX 0.25s linear 0s 4;
-        /* 0.25 × 12 ≈ 3 seconds */
     }
 }
 
-/* Remove modal focus outline */
+.master-delete-modal-root {
+    .ant-modal-content,
+    .ant-modal-container {
+        padding: 0 !important;
+        border-radius: 10px !important;
+        overflow: hidden !important;
+        background: var(--color-card-bg, #fff) !important;
+    }
+
+    .ant-modal-content,
+    .ant-modal-container,
+    .ant-modal-body {
+        background: var(--color-card-bg, #fff) !important;
+    }
+
+    .ant-modal-header {
+        display: flex !important;
+        align-items: center !important;
+        box-sizing: border-box !important;
+        height: $delete-header-h !important;
+        min-height: $delete-header-h !important;
+        max-height: $delete-header-h !important;
+        margin: 0 !important;
+        padding: 0 44px 0 $delete-pad-x !important;
+        border-bottom: 1px solid var(--color-border, #e8eaed) !important;
+        background: var(--color-card-bg, #fff) !important;
+    }
+
+    .ant-modal-title {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        height: auto !important;
+        line-height: 1 !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    .master-delete-modal__title-row {
+        display: flex;
+        align-items: center;
+        gap: $delete-gap;
+        min-width: 0;
+        width: 100%;
+    }
+
+    .master-delete-modal__title {
+        display: block;
+        min-width: 0;
+        font-size: 16px;
+        font-weight: 700;
+        line-height: 22px;
+        color: var(--color-text-heading);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .master-delete-modal__icon {
+        flex-shrink: 0;
+        width: $delete-icon-size;
+        height: $delete-icon-size;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--color-danger-light, #fdecec);
+        color: var(--color-danger, #dc3d43);
+    }
+
+    .ant-modal-close {
+        position: absolute !important;
+        top: calc((#{$delete-header-h} - #{$delete-close-size}) / 2) !important;
+        inset-inline-end: 14px !important;
+        left: auto !important;
+        transform: none !important;
+        width: $delete-close-size !important;
+        height: $delete-close-size !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 4px !important;
+        line-height: 1 !important;
+        color: var(--color-text-muted, #8a94a6) !important;
+    }
+
+    .ant-modal-close-x {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: $delete-close-size !important;
+        height: $delete-close-size !important;
+        font-size: 12px !important;
+        line-height: 1 !important;
+        color: inherit !important;
+    }
+
+    .ant-modal-body {
+        padding: 18px $delete-pad-x !important;
+        background: var(--color-card-bg, #fff) !important;
+    }
+
+    .ant-modal-footer {
+        display: flex !important;
+        justify-content: flex-end !important;
+        align-items: center !important;
+        gap: 8px !important;
+        padding: 12px $delete-pad-x !important;
+        margin: 0 !important;
+        border-top: 1px solid var(--color-border, #e8eaed) !important;
+        background: var(--color-card-bg, #fff) !important;
+    }
+
+    .master-delete-modal__btn-close {
+        height: 32px !important;
+        padding: 0 14px !important;
+        border-radius: 6px !important;
+        background: #fff !important;
+        border: 1px solid var(--color-border, #d9dee7) !important;
+        color: var(--color-text-heading) !important;
+        box-shadow: none !important;
+        font-weight: 500 !important;
+
+        &:hover {
+            border-color: var(--color-text-muted, #8a94a6) !important;
+            color: var(--color-text-heading) !important;
+        }
+    }
+
+    .master-delete-modal__btn-delete {
+        height: 32px !important;
+        padding: 0 14px !important;
+        border-radius: 6px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        background: var(--color-danger, #dc3d43) !important;
+        border-color: var(--color-danger, #dc3d43) !important;
+        font-weight: 600 !important;
+
+        .ant-btn-icon {
+            display: inline-flex !important;
+            align-items: center !important;
+        }
+    }
+}
+
 .ant-modal:focus,
 .ant-modal-content:focus,
 .ant-modal-close:focus,
@@ -24,7 +187,6 @@
     box-shadow: none !important;
 }
 
-/* Fast horizontal shake */
 @keyframes shakeX {
     0% {
         transform: translateX(0);

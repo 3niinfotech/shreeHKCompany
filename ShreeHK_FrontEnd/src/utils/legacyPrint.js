@@ -1,4 +1,4 @@
-import { message } from "antd";
+import { toastWarning } from "./toastNotify";
 
 /**
  * Opens legacy PHP PDF print until native Node PDF is available.
@@ -7,7 +7,7 @@ import { message } from "antd";
 export function openLegacyPdf(path, params = {}) {
   const base = (import.meta.env.VITE_LEGACY_PDF_URL || "").trim();
   if (!base) {
-    message.warning("Legacy PDF URL is not configured (VITE_LEGACY_PDF_URL)");
+    toastWarning("Legacy PDF URL is not configured (VITE_LEGACY_PDF_URL)");
     return;
   }
   const qs = new URLSearchParams(params).toString();

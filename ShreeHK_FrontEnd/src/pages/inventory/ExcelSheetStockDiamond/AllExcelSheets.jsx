@@ -12,8 +12,8 @@
  *     selectedKeys: selectedRowKeys,   // [] = export all
  *     filePrefix  : "Defult_Stock_List",
  *     sheetName   : "Stock List",
- *     onSuccess   : (msg) => message.success(msg),
- *     onError     : (msg) => message.warning(msg),
+ *     onSuccess   : (msg) => toastSuccess(msg),
+ *     onError     : (msg) => toastWarning(msg),
  *   });
  * ─────────────────────────────────────────────────────────────
  */

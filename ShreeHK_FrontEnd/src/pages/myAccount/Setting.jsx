@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 
-import { Layout, Menu, Form, Input, Button, Switch, Divider, Space, Typography, Table, Tag, message } from 'antd';
+import { Layout, Menu, Form, Input, Button, Switch, Divider, Space, Typography, Table, Tag } from 'antd';
+import { toastSuccess } from '../../utils/toastNotify';
 
 import {
 
@@ -29,7 +30,7 @@ const Settings = () => {
 
     const onFinish = (values) => {
 
-        message.success('Settings updated successfully!');
+        toastSuccess('Settings updated successfully!');
 
         console.log('Success:', values);
 

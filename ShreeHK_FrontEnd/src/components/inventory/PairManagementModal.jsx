@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Modal, Form, Input, Alert, Table, Button, Space, message } from "antd";
+import { Modal, Form, Input, Alert, Table, Button, Space } from "antd";
+import { toastWarning } from "../../utils/toastNotify";
 import { api } from "../../api/axiosInstance";
 import { ENDPOINTS } from "../../constants/endpoints";
 import { toastApiSuccess, toastApiError } from "../../utils/apiToast";
@@ -14,7 +15,7 @@ const PairManagementModal = ({ open, selectedRows = [], onClose, onSuccess }) =>
 
   const handlePair = async (values) => {
     if (selectedRows.length !== 2) {
-      message.warning("Select exactly two stones to pair");
+      toastWarning("Select exactly two stones to pair");
       return;
     }
     setLoading(true);
@@ -41,7 +42,7 @@ const PairManagementModal = ({ open, selectedRows = [], onClose, onSuccess }) =>
 
   const handleUnpair = async () => {
     if (!selectedRows.length) {
-      message.warning("Select stones to unpair");
+      toastWarning("Select stones to unpair");
       return;
     }
     setLoading(true);

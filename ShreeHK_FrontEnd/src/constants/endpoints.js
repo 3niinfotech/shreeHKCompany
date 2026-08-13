@@ -144,6 +144,7 @@ export const ENDPOINTS = {
         group: "/report/group",
         saleStock: "/report/sale-stock",
         stoneDetail: "/report/stone-detail",
+        stoneDetailOld: "/report/stone-detail/old",
         stoneInfo: "/report/stone-info",
         transferHistory: "/report/transfer-history",
         filterOptions: "/report/filter-options",

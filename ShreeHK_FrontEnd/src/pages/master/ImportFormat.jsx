@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { Button, Card, Col, Divider, Row, Space, Tag, Typography } from "antd";
 import { Download, FileSpreadsheet } from "lucide-react";
-import XLSX from "xlsx-js-style";
+import { loadXlsx } from "../../utils/loadXlsx";
 import useThemeColors from "../../hooks/useThemeColors";
 import { cssVar } from "../../theme";
 
@@ -63,7 +63,8 @@ const buildHeaderCell = (value) => ({
   },
 });
 
-const downloadImportFormatExcel = () => {
+const downloadImportFormatExcel = async () => {
+  const XLSX = await loadXlsx();
   const ws = {};
 
   HEADERS.forEach((header, c) => {

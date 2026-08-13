@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo, useRef } from "react";
-import { Tree, Input, Button, Card, Row, Col, Space, Typography, Tag, message } from "antd";
+import { Tree, Input, Button, Card, Row, Col, Space, Typography, Tag } from "antd";
+import { toastWarning } from "../../utils/toastNotify";
 import { FolderOutlined, ReloadOutlined } from "@ant-design/icons";
 import {
     Search,
@@ -100,7 +101,7 @@ const CategorizeInventory = () => {
 
     const handleAssignCategory = async () => {
         if (!selectedKey || !selectedRowKeys.length) {
-            message.warning("Select category and at least one stone");
+            toastWarning("Select category and at least one stone");
             return;
         }
         setAssigning(true);
@@ -125,7 +126,7 @@ const CategorizeInventory = () => {
 
     const runWithSelection = useCallback((fn) => {
         if (!selectedRowKeys.length) {
-            message.warning("Please select stones from the list");
+            toastWarning("Please select stones from the list");
             return;
         }
         fn(selectedRowKeys);

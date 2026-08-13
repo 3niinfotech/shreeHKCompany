@@ -2,6 +2,7 @@ const connection = require("../../connection.js");
 const productHelper = require("../../productHelper.js");
 const moment = require("moment");
 const { auditQuery } = require("../../services/auditDb.js");
+const { metaQuery, databaseExists } = require("../../tenantHelper.js");
 
 const queryAsync = (sql, values = []) =>
   new Promise((resolve, reject) => {
@@ -74,6 +75,53 @@ async function getTransferHistory({ sku, fromDate, toDate }) {
 const getCompanyId = (req) => Number(req.companyId ?? req.user?.companyId) || 1;
 const getUserId = (req) => Number(req.user?.user_id) || 1;
 const hideUser16 = (userId) => userId !== 16 && userId !== 1;
+
+/** Mirrors PHP Helper::getStoneAction() */
+const STONE_ACTION_LABELS = {
+  import: "Import",
+  purchase: "Purchase",
+  lab: "Send To Lab",
+  lab_return: "Lab Return",
+  memo: "Memo",
+  in_memo: "In Memo",
+  sale: "Sale",
+  sale_return: "Sale Return",
+  sale_close: "Sale Close",
+  close_memo: "Memo Close",
+  close_lab: "Lab Close",
+  memo_return: "Memo Return",
+  memo_close: "Memo Close",
+  lab_close: "Lab Close",
+  hold: "Hold",
+  unhold: "Unhold",
+  price_change: "Price Changed",
+  unboxing: "Unboxing",
+  boxing: "Boxing",
+  to_box: "To Box",
+  from_box: "From Box",
+  export: "Export",
+  export_close: "Export Close",
+  consign: "Consignment",
+  in_consign: "In Consign",
+  consign_close: "Consign Close",
+  sku_change: "Sku Change",
+  purchase_delete: "Purchase Delete",
+  close_sale: "Sale Close",
+};
+
+function queryPool(pool, sql, values = []) {
+  return new Promise((resolve, reject) => {
+    pool.query(sql, values, (err, rows) => (err ? reject(err) : resolve(rows || [])));
+  });
+}
+
+function mapStoneHistoryRows(history, partyMap) {
+  return history.map((h) => ({
+    ...h,
+    party_name: partyMap[h.party] || h.party || "",
+    action_label: STONE_ACTION_LABELS[h.action] || h.action,
+  }));
+}
 
 function buildDateFilter(from, to, column = "date") {
   if (from && to) {
@@ -418,8 +466,26 @@ function enrichHistoryDates(history, activityLogs) {
   });
 }
 
+async function resolveStoneDetail(sku, companyId) {
+  const trimmed = String(sku || "").trim();
+  if (!trimmed) return null;
+
+  let detail = null;
+  if (companyId) {
+    detail = await productHelper.getDetailBySku(trimmed, companyId);
+  }
+  if (!detail) {
+    detail = await productHelper.getDetail(trimmed, "p.sku");
+  }
+  if (!detail || !detail.id) return null;
+  if (companyId && detail.company != null && String(detail.company) !== String(companyId)) {
+    return null;
+  }
+  return detail;
+}
+
 async function getStoneDetail(sku, companyId, userId) {
-  const detail = await productHelper.getDetail(sku, "p.sku");
+  const detail = await resolveStoneDetail(sku, companyId);
   if (!detail || !detail.id) return null;
 
   let historySql = "SELECT * FROM dai_history WHERE product_id = ?";
@@ -433,26 +499,8 @@ async function getStoneDetail(sku, companyId, userId) {
   const transfer = await getBoxHistoryByProductId(detail.id);
 
   const partyMap = await getPartyMap();
-  const actionLabels = {
-    import: "Import",
-    purchase: "Purchase",
-    lab: "Send To Lab",
-    memo: "Memo",
-    sale: "Sale",
-    export: "Export",
-    consign: "Consignment",
-    memo_return: "Memo Return",
-    sale_return: "Sale Return",
-    close_memo: "Memo Close",
-    close_sale: "Sale Close",
-  };
-
   const activityLogs = await getActivityLogForStone(sku, detail.id, companyId);
-  const mappedHistory = history.map((h) => ({
-    ...h,
-    party_name: partyMap[h.party] || h.party,
-    action_label: actionLabels[h.action] || h.action,
-  }));
+  const mappedHistory = mapStoneHistoryRows(history, partyMap);
   const enrichedHistory = enrichHistoryDates(mappedHistory, activityLogs);
 
   const lastUpdatedAt =
@@ -469,6 +517,49 @@ async function getStoneDetail(sku, companyId, userId) {
     history: enrichedHistory,
     transfer,
     status: !detail.outward ? "AVAILABLE" : String(detail.outward).toUpperCase(),
+  };
+}
+
+async function getStoneOldHistory(sku, companyId, userId, currentDbName) {
+  const detail = await resolveStoneDetail(sku, companyId);
+  if (!detail || !detail.id) return null;
+
+  const currentDb = currentDbName || connection.getTenantStore()?.dbName || connection.META_DB;
+  let years = [];
+  try {
+    years = await metaQuery(
+      "SELECT db_name FROM company_year WHERE db_name IS NOT NULL AND db_name <> ''"
+    );
+  } catch {
+    years = [];
+  }
+
+  const otherDbs = [...new Set(
+    (years || [])
+      .map((y) => String(y.db_name || "").trim())
+      .filter((db) => db && db !== currentDb)
+  )];
+
+  const userFilter = hideUser16(userId) ? " AND user <> 16" : "";
+  const sql = `SELECT * FROM dai_history WHERE product_id = ?${userFilter} ORDER BY date, id`;
+  const rows = [];
+
+  for (const dbName of otherDbs) {
+    try {
+      if (!(await databaseExists(dbName))) continue;
+      const pool = connection.getPoolForDb(dbName);
+      const yearRows = await queryPool(pool, sql, [detail.id]);
+      yearRows.forEach((row) => rows.push({ ...row, year_db: dbName }));
+    } catch {
+      // Skip year DBs that are missing or unreachable, same as PHP skip-on-fail intent.
+    }
+  }
+
+  const partyMap = await getPartyMap();
+  return {
+    sku: detail.sku,
+    product_id: detail.id,
+    history: mapStoneHistoryRows(rows, partyMap),
   };
 }
 
@@ -1009,6 +1100,7 @@ module.exports = {
   getGroupReport,
   getStoneSaleReport,
   getStoneDetail,
+  getStoneOldHistory,
   getStoneInfoByParty,
   getFilterOptions,
   getPartyMap,

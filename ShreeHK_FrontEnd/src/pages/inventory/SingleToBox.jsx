@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from "react";
 import {
-  Table, Typography, Space, Input, Button, message,
+  Table, Typography, Space, Input, Button,
 } from "antd";
+import { toastWarning } from "../../utils/toastNotify";
 import { InboxOutlined, ReloadOutlined } from "@ant-design/icons";
 import { Search, PackagePlus } from "lucide-react";
 import { toastApiSuccess, toastApiError } from "../../utils/apiToast";
@@ -54,7 +55,7 @@ const SingleToBox = () => {
 
   const handleOpenModal = () => {
     if (!selectedRowKeys.length) {
-      message.warning("Select some rows first");
+      toastWarning("Select some rows first");
       return;
     }
     setIsModalOpen(true);

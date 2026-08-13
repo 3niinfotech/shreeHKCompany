@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from "react";
-import { message } from "antd";
 import MasterTableTemplate from "./MasterTableTemplate";
+import { toastWarning } from "../../utils/toastNotify";
 import useFiltersFormFields from "../../hooks/useFiltersFormFields";
 import useInventoryList from "../../hooks/useInventoryList";
 import useInventoryHoldActions from "../../hooks/useInventoryHoldActions";
@@ -211,7 +211,7 @@ const OnHandStock = () => {
             const normalizedKey = key === "unhold" ? "unHold" : key;
             if (normalizedKey === "changePrice") {
                 if (!selectedRowKeys.length) {
-                    message.warning("Please select at least one item");
+                    toastWarning("Please select at least one item");
                     return true;
                 }
                 setBulkActionModal({ open: true, actionKey: "changePrice" });
@@ -256,7 +256,7 @@ const OnHandStock = () => {
 
     const handleLabelClick = useCallback(() => {
         if (!selectedRowKeys.length) {
-            message.warning("Please Select Item");
+            toastWarning("Please Select Item");
             return true;
         }
         const stockChecks = filterForm.getFieldValue("stockChecks") || [];
@@ -268,7 +268,7 @@ const OnHandStock = () => {
     const handleToolbarAction = useCallback(
         (key) => {
             if (!selectedRowKeys.length) {
-                message.warning("Please Select Item");
+                toastWarning("Please Select Item");
                 return;
             }
             if (key === "export") {

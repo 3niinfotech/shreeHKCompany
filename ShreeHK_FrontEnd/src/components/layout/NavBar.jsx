@@ -111,6 +111,7 @@ import { Menu, ConfigProvider, Drawer, Button } from 'antd';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Menu as MenuIcon, X, House, Settings, Package, Repeat, Book, BarChart, ExternalLink, User, Users, Shield, NotebookPen, CheckSquare, ClipboardList } from 'lucide-react';
 import { getAuthorizedRouteMeta } from '../../routes/Routes';
+import { prefetchRoute, prefetchRouteTree } from '../../routes/routePrefetch';
 import useAuthStore from '../../store/Auth.Store';
 import useThemeColors from '../../hooks/useThemeColors';
 import styles from '../../assets/scss/layout/navbar.module.scss';
@@ -198,9 +199,12 @@ const NavBar = () => {
                     ? buildMenuItems(item.children, index)
                     : null,
 
+                onMouseEnter: () => prefetchRouteTree(item),
+
                 onClick: hasChildren
                     ? null
                     : () => {
+                        prefetchRoute(item.path);
                         navigate(item.path);
                         setVisible(false);
                     }
@@ -237,6 +241,9 @@ const NavBar = () => {
                         items={menuItems}
                         triggerSubMenuAction="hover"
                         selectedKeys={selectedKeys}
+                        onOpenChange={(openKeys) => {
+                            openKeys.forEach((key) => prefetchRoute(key));
+                        }}
                         onMouseDown={preventNavTextCaret}
                         style={{ border: 'none', lineHeight: '46px', flex: 1 }}
                     />

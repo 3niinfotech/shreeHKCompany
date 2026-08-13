@@ -377,6 +377,7 @@ const NotificationDropdown = ({ buttonClassName, badgeClassName }) => {
           meta.unreadCount > 0 ? styles.hasUnread : "",
         ].filter(Boolean).join(" ")}
         aria-label="Notifications"
+        title="Notifications"
         aria-expanded={open}
         onClick={(e) => e.preventDefault()}
       >

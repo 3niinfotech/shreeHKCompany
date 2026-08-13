@@ -17,11 +17,17 @@ const FormModal = ({
     formFields,
     initialValues,
     title,
+    subtitle,
+    headerIcon,
+    saveIcon,
+    variant,
     width = 400,
     saveBtnText = "Save",
     cancelBtnText = "Close",
     content,
     formKey,
+    className,
+    rootClassName,
 }) => {
     useEffect(() => {
         if (!isOpen) return;
@@ -75,6 +81,10 @@ const FormModal = ({
     return (
         <BaseModal
             title={title}
+            subtitle={subtitle}
+            headerIcon={headerIcon}
+            saveIcon={saveIcon}
+            variant={variant}
             isOpen={isOpen}
             onClose={onClose}
             onSave={handleSaveWithToast}
@@ -83,9 +93,10 @@ const FormModal = ({
             saveBtnText={saveBtnText}
             cancelBtnText={cancelBtnText}
             content={modalContent}
+            className={className}
+            rootClassName={rootClassName}
         />
     );
 };
 
 export default FormModal;
-

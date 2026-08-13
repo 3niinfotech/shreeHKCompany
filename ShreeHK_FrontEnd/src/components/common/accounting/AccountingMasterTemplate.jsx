@@ -1,8 +1,10 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef, createElement } from 'react';
 import DynamicFormField from '../../../hooks/DynamicFormField';
 import { Edit2, Trash2, Plus, Search } from 'lucide-react';
-import { BaseModal } from '../modals';
+import FormModal from '../modals/FormModal';
+import { Pencil, CircleCheck } from 'lucide-react';
 import { Table, Button, Input, Space, Card, Form, Spin } from 'antd';
+import '../../../assets/scss/masterEdit.scss';
 import { AccountBookOutlined, ReloadOutlined } from '@ant-design/icons';
 import PageHeroHeader from '../PageHeroHeader';
 import styles from '../../../assets/scss/pages/master/company.module.scss';
@@ -37,7 +39,7 @@ const AccountingMasterTemplate = ({
     const Navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalLoading, setModalLoading] = useState(false);
-    const [modalConfig, setModalConfig] = useState({ title: '', mode: 'add' });
+    const [modalConfig, setModalConfig] = useState({ title: '', subtitle: '', mode: 'add' });
     const [searchText, setSearchText] = useState("");
 
     const processedData = useMemo(() => {
@@ -59,8 +61,9 @@ const AccountingMasterTemplate = ({
 
     const handleEditClick = (record) => {
         setModalConfig({
-            title: `Edit ${title}: ${record.name || record.party || ''}`,
-            mode: 'edit'
+            title: `Edit ${title}`,
+            subtitle: record.name || record.party || '',
+            mode: 'edit',
         });
         onEdit?.(record);
         setTimeout(() => setIsModalOpen(true), 0);
@@ -184,13 +187,20 @@ const AccountingMasterTemplate = ({
                             </div>
                         )}
                     />
-                    <BaseModal
+                    <FormModal
+                        variant="edit"
                         title={modalConfig.title}
+                        subtitle={modalConfig.subtitle}
+                        headerIcon={createElement(Pencil, { size: 16, strokeWidth: 2 })}
+                        saveIcon={createElement(CircleCheck, { size: 15, strokeWidth: 2.25 })}
                         isOpen={isModalOpen}
                         onClose={() => setIsModalOpen(false)}
                         onSave={handleInternalSave}
                         loading={modalLoading}
                         width={modalWidth}
+                        saveBtnText="Update"
+                        cancelBtnText="Close"
+                        form={form}
                         content={
                             <Form form={form} layout="vertical">
                                 {Array.isArray(formFields) ? <DynamicFormField fields={formFields} /> : formFields}

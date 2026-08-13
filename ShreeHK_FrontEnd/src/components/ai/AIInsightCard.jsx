@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
-import { Button, Card, Spin, Typography, message } from "antd";
+import { Button, Card, Spin, Typography } from "antd";
+import { toastError } from "../../utils/toastNotify";
 import { RefreshCw, Sparkles } from "lucide-react";
 import { fetchStockAlert } from "../../api/services/aiService";
 import { pickApiMessage } from "../../utils/apiToast";
@@ -19,11 +20,11 @@ const AIInsightCard = () => {
         setInsight(res.data);
       } else {
         const msg = pickApiMessage(res);
-        if (msg) message.error(msg);
+        if (msg) toastError(msg);
       }
     } catch (err) {
       const msg = pickApiMessage(err?.response?.data);
-      if (msg) message.error(msg);
+      if (msg) toastError(msg);
     } finally {
       setLoading(false);
     }

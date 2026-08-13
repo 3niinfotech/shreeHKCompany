@@ -66,6 +66,20 @@ reportRouter.get("/report/stone-detail", authenticateToken, async (req, res) => 
   }
 });
 
+reportRouter.get("/report/stone-detail/old", authenticateToken, async (req, res) => {
+  try {
+    const sku = req.query.sku;
+    if (!sku) return res.status(400).json({ status: false, message: "sku is required" });
+    const companyId = Number(req.user?.companyId) || 1;
+    const userId = Number(req.user?.user_id) || 1;
+    const result = await reportService.getStoneOldHistory(sku, companyId, userId, req.dbName);
+    if (!result) return res.status(404).json({ status: false, message: "Product not found" });
+    return res.json({ status: true, ...result });
+  } catch (error) {
+    return res.status(500).json({ status: false, message: error.message });
+  }
+});
+
 reportRouter.get("/report/stone-info", authenticateToken, async (req, res) => {
   try {
     const sku = req.query.sku;

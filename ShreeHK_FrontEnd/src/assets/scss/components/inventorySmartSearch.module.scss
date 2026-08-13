@@ -24,6 +24,23 @@
   height: 32px !important;
   font-size: 12px !important;
   border-radius: 6px !important;
+  border-color: #9fa2ae !important;
+
+  &:hover {
+    border-color: #9fa2ae !important;
+  }
+
+  &:focus,
+  &:focus-within {
+    border-color: #9fa2ae !important;
+  }
+
+  :global(.ant-input::placeholder),
+  &::placeholder {
+    color: #3A3F55 !important;
+    -webkit-text-fill-color: #3A3F55 !important;
+    opacity: 1 !important;
+  }
 }
 
 .suggestList {
@@ -81,6 +98,14 @@
   height: 32px !important;
   font-size: 12px !important;
   border-radius: 6px !important;
+  border-color: #9fa2ae !important;
+
+  :global(.ant-input::placeholder),
+  &::placeholder {
+    color: #3A3F55 !important;
+    -webkit-text-fill-color: #3A3F55 !important;
+    opacity: 1 !important;
+  }
 }
 
 .micBtn {
@@ -255,7 +280,8 @@
       font-size: 13px !important;
 
       &::placeholder {
-        color: color-mix(in srgb, var(--color-text-inverse) 72%, transparent) !important;
+        color: #fff !important;
+        -webkit-text-fill-color: #fff !important;
         opacity: 1 !important;
       }
     }
@@ -344,7 +370,8 @@
         color: var(--color-navy) !important;
 
         &::placeholder {
-          color: var(--color-neutral) !important;
+          color: #fff !important;
+          -webkit-text-fill-color: #fff !important;
           opacity: 1 !important;
         }
       }

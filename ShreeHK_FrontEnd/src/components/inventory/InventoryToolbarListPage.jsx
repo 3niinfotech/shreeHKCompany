@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Button, message } from "antd";
+import { Button } from "antd";
 import { ReloadOutlined } from "@ant-design/icons";
 import {
   BadgeDollarSign,

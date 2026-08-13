@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Input, Spin, Tooltip, message } from "antd";
+import { Input, Spin, Tooltip } from "antd";
+import { toastError, toastWarning } from "../../utils/toastNotify";
 import { AudioOutlined, SearchOutlined } from "@ant-design/icons";
 import { api } from "../../api/axiosInstance";
 import { ENDPOINTS } from "../../constants/endpoints";
@@ -94,7 +95,7 @@ const InventorySmartSearch = ({
     } catch (err) {
       if (err?.name === "CanceledError" || err?.code === "ERR_CANCELED") return;
       setSuggestions([]);
-      message.error("Search suggestions unavailable — check login / backend");
+      toastError("Search suggestions unavailable — check login / backend");
     } finally {
       if (requestId === requestIdRef.current) {
         setFetching(false);
@@ -151,7 +152,7 @@ const InventorySmartSearch = ({
     event.preventDefault();
     event.stopPropagation();
     if (!supported) {
-      message.warning("Voice search: use Chrome or Edge and allow microphone");
+      toastWarning("Voice search: use Chrome or Edge and allow microphone");
       return;
     }
     toggle();

@@ -1,11 +1,13 @@
 import { toast } from "sonner";
-import XLSX from "xlsx-js-style";
+import { loadXlsx } from "../../../utils/loadXlsx";
 
-export const exportCompanyExcel = (selectedRows) => {
+export const exportCompanyExcel = async (selectedRows) => {
     if (selectedRows.length === 0) {
         toast.warning("Please select at least one row.");
         return;
     }
+
+    const XLSX = await loadXlsx();
 
     const ellipsisText = (text, maxLength = 40) => {
         const value = String(text ?? "");

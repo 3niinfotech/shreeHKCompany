@@ -30,7 +30,7 @@ const productRouter = express.Router();
 productRouter.use(express.json());
 
 const columnName =
-  " p.id,p.mfg_code,p.diamond_no,p.sku,p.pair,p.polish_pcs,p.polish_carat,p.rap_price,p.cost,p.price,p.amount,p.main_group,p.sub_group,p.remark,p.location,p.date,p.company,p.inward_id,p.group_type,p.lab,p.send_to_lab,p.outward,p.box_products,p.parcel_products,p.box_id,p.parcel_id,p.hold,p.visibility,p.parent_id,p.main_color,p.category,p.argyle_color,p.in_house_clarity,p.mining,p.origin,p.rapnet_upload,p.site_upload,pv.report_no,pv.shape,pv.color,pv.clarity,pv.size,pv.polish,pv.f_intensity,pv.symmentry,pv.cut,pv.mesurment,pv.table_pc,pv.depth_pc,pv.gridle,pv.intensity,pv.overtone,pv.package,pv.bgm,pv.eyeclean ";
+  " p.id,p.mfg_code,p.diamond_no,p.sku,p.pair,p.polish_pcs,p.polish_carat,p.rap_price,p.cost,p.price,p.amount,p.main_group,p.sub_group,p.remark,p.location,p.date,p.company,p.inward_id,p.inward,p.group_type,p.lab,p.send_to_lab,p.outward,p.box_products,p.parcel_products,p.box_id,p.parcel_id,p.hold,p.visibility,p.parent_id,p.main_color,p.category,p.argyle_color,p.in_house_clarity,p.mining,p.origin,p.rapnet_upload,p.site_upload,pv.report_no,pv.shape,pv.color,pv.clarity,pv.size,pv.polish,pv.f_intensity,pv.symmentry,pv.cut,pv.mesurment,pv.table_pc,pv.depth_pc,pv.gridle,pv.intensity,pv.overtone,pv.package,pv.bgm,pv.eyeclean ";
 
 productRouter.get("/product/inventory/suggest", authenticateToken, async (req, res) => {
   try {

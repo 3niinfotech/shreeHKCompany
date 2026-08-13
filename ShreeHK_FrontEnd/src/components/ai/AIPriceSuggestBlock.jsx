@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Button, message } from "antd";
+import { Button } from "antd";
+import { toastError } from "../../utils/toastNotify";
 import { Sparkles } from "lucide-react";
 import { fetchPriceSuggest } from "../../api/services/aiService";
 import { pickApiMessage } from "../../utils/apiToast";
@@ -30,11 +31,11 @@ const AIPriceSuggestBlock = ({ getFormValues }) => {
         setResult(res.data);
       } else {
         const msg = pickApiMessage(res);
-        if (msg) message.error(msg);
+        if (msg) toastError(msg);
       }
     } catch (err) {
       const msg = pickApiMessage(err?.response?.data);
-      if (msg) message.error(msg);
+      if (msg) toastError(msg);
     } finally {
       setLoading(false);
     }

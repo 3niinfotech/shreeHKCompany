@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from "react";
-import { message, Input, Button } from "antd";
+import { Input, Button } from "antd";
+import { toastSuccess, toastError, toastWarning } from "../../utils/toastNotify";
 import { ReloadOutlined } from "@ant-design/icons";
 import MasterTableTemplate from "./MasterTableTemplate";
 import useFiltersFormFields from "../../hooks/useFiltersFormFields";
@@ -153,7 +154,7 @@ const Barcode = () => {
       const normalizedKey = key === "unhold" ? "unHold" : key;
       if (normalizedKey === "changePrice") {
         if (!selectedRowKeys.length) {
-          message.warning("Please select at least one item");
+          toastWarning("Please select at least one item");
           return true;
         }
         setBulkActionModal({ open: true, actionKey: "changePrice" });
@@ -194,7 +195,7 @@ const Barcode = () => {
 
   const handleLabelClick = useCallback(() => {
     if (!selectedRowKeys.length) {
-      message.warning("Please Select Item");
+      toastWarning("Please Select Item");
       return true;
     }
     const stockChecks = filterForm.getFieldValue("stockChecks") || [];
@@ -205,7 +206,7 @@ const Barcode = () => {
   const handleToolbarAction = useCallback(
     (key) => {
       if (!selectedRowKeys.length) {
-        message.warning("Please Select Item");
+        toastWarning("Please Select Item");
         return;
       }
       if (key === "export") {
@@ -226,7 +227,7 @@ const Barcode = () => {
   const handleBarcodeLookup = async () => {
     const value = barcodeInput.trim();
     if (!value) {
-      message.warning("Enter Barcode or SKU");
+      toastWarning("Enter Barcode or SKU");
       return;
     }
     setBarcodeLoading(true);
@@ -243,17 +244,17 @@ const Barcode = () => {
         const sku = res.matches?.[0]?.sku || value;
         setSearchText(sku);
         if (scannerMode) {
-          message.success(`Scanned: ${sku}`);
+          toastSuccess(`Scanned: ${sku}`);
         }
       } else {
         const msg = res?.message || "AI unavailable, try again";
         setBarcodeError(msg);
-        message.error(msg);
+        toastError(msg);
       }
     } catch {
       const msg = "AI unavailable, try again";
       setBarcodeError(msg);
-      message.error(msg);
+      toastError(msg);
       setSearchText(value);
     } finally {
       setBarcodeLoading(false);

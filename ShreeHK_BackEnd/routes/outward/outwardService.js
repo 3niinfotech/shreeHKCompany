@@ -53,10 +53,10 @@ function buildMemoOutwardRow(post, productsCsv) {
     charge: post.charge ?? 0,
     other_less_amount: post.other_less_amount ?? 0,
     other_less_percent: post.other_less_percent ?? 0,
-    shipping_charge: 0,
-    shipping_name: "",
-    origin_of: "",
-    cif: "",
+    shipping_charge: post.shipping_charge ?? 0,
+    shipping_name: post.shipping_name || "",
+    origin_of: post.origin_of || "",
+    cif: post.cif || "",
     lab: post.lab || "",
     out_product: "",
     bank: 0,
@@ -468,6 +468,24 @@ async function sendTo(rawPost, userContext = {}) {
     return { ok: false, message: preCheck };
   }
 
+  if (type === "lab" && !String(post.lab || "").trim()) {
+    return { ok: false, message: "Please select lab type" };
+  }
+
+  if (type === "export") {
+    const qRead = (sql, vals) => helper.query(sql, vals);
+    for (const pid of productIds) {
+      const edata = await getProductDetail(qRead, pid, companyId);
+      const inward = String(edata?.inward || "").toLowerCase();
+      if (inward === "memo" || inward === "consign") {
+        return {
+          ok: false,
+          message: `SKU ${edata.sku} is IN Memo. Please purchase first`,
+        };
+      }
+    }
+  }
+
   if (!post.party) {
     return { ok: false, message: "Please select party" };
   }
@@ -778,6 +796,13 @@ function mapRequestBody(body) {
     terms: body.terms ?? "",
     duedate: body.duedate,
     final_amount: body.final_amount ?? body.finalAmount ?? 0,
+    lab: body.lab || "",
+    shipping_name: body.shipping_name || "",
+    origin_of: body.origin_of || "",
+    shipping_charge: body.shipping_charge ?? 0,
+    cif: body.cif || "",
+    vat_percent: body.vat_percent ?? body.vatPercent ?? 0,
+    vat_amount: body.vat_amount ?? body.vatAmount ?? 0,
     products,
     record,
   };

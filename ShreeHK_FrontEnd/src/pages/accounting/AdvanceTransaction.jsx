@@ -93,6 +93,9 @@ const AdvanceTransaction = () => {
                         value={party || undefined}
                         onChange={setParty}
                         allowClear
+                        showSearch
+                        optionFilterProp="children"
+                        virtual
                     >
                         {partyOptions.map((p) => (
                             <Option key={p.value || 'all'} value={p.value}>{p.label}</Option>

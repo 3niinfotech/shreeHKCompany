@@ -15,6 +15,8 @@ import {
   ChevronDown,
   Sparkles,
   Package,
+  FlaskConical,
+  Send,
 } from "lucide-react";
 import styles from "../../assets/scss/components/inventoryFilterPanel.module.scss";
 import useThemeColors from "../../hooks/useThemeColors";
@@ -25,6 +27,8 @@ export const INVENTORY_ACTION_ITEMS = [
   { key: "consignment", label: "Consignment", variant: "consignment", icon: Undo2 },
   { key: "unHold", label: "Un Hold", variant: "unHold", icon: Unlock },
   { key: "sale", label: "Sale", variant: "sale", icon: ShoppingCart },
+  { key: "lab", label: "LAB", variant: "lab", icon: FlaskConical },
+  { key: "toExport", label: "To Export", variant: "toExport", icon: Send },
   { key: "changePrice", label: "Change Price", variant: "changePrice", icon: BadgeDollarSign },
   { key: "labelA4", label: "Label A4", variant: "labelA4", icon: Printer },
   { key: "iExport", label: "I.Export", variant: "iExport", icon: FileSpreadsheet },

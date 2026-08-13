@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Table, Card, Typography, Space, Button, Tag, Checkbox, Select, Input, Empty, Form, Spin, Tooltip, DatePicker } from 'antd';
+import { Table, Card, Typography, Space, Button, Tag, Checkbox, Select, Input, InputNumber, Empty, Form, Spin, Tooltip, DatePicker, Dropdown, Row, Col } from 'antd';
 import {
   EditOutlined,
   PrinterOutlined,
@@ -13,10 +13,11 @@ import {
   SwapOutlined,
   ExportOutlined,
   ImportOutlined,
+  EllipsisOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { toastApiSuccess, toastApiError } from '../../../utils/apiToast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useFetchApi, useDeleteApiRequest, usePostApiRequest } from '../../../api/ApiFunction';
 import { api } from '../../../api/axiosInstance';
@@ -32,12 +33,14 @@ import useAuthStore from '../../../store/Auth.Store';
 import useTableBodyScrollHeight from '../../../hooks/useTableBodyScrollHeight';
 import useTableSkeleton from '../../../components/common/skeleton/useTableSkeleton';
 import { SkeletonForm } from '../../../components/common/skeleton';
+import { Pencil, CircleCheck } from 'lucide-react';
 import { cssVar } from '../../../theme';
 import styles from '../../../assets/scss/pages/outward.module.scss';
 import { SkuLink } from '../../../hooks/useSkuModalAction';
 import { resolveCompanyLogoUrl } from '../../../utils/companyLogo';
+import '../../../assets/scss/masterEdit.scss';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 const PAGE_SIZE_DEFAULT = 10;
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -82,10 +85,11 @@ const TransactionStockTemplate = ({
   typeFilterOptions = [],
 }) => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const companyName = useAuthStore((s) => s.companyName);
   const companyLogo = useAuthStore((s) => s.companyLogo);
   const [party, setParty] = useState('');
-  const [invoice, setInvoice] = useState('');
+  const [invoice, setInvoice] = useState(() => (searchParams.get('invoice') || '').trim());
   const [filterType, setFilterType] = useState('');
   const [fromDate, setFromDate] = useState(null);
   const [toDate, setToDate] = useState(null);
@@ -248,7 +252,7 @@ const TransactionStockTemplate = ({
     return Array.isArray(d) ? d.map((item) => ({ label: item.name, value: String(item.id) })) : [];
   }, [companyData]);
 
-  const editFields = useMemo(() => [
+  const editMainFields = useMemo(() => [
     { name: 'entryno', label: 'Entry', type: 'text', required: true, span: 6, disabled: true },
     { name: 'type', label: 'Type', type: 'text', required: true, span: 6, disabled: true },
     { name: 'place', label: 'Place', type: 'text', span: 6 },
@@ -261,13 +265,9 @@ const TransactionStockTemplate = ({
     { name: 'party', label: 'Party Name', type: 'select', options: partyOptions, required: true, span: 6 },
     { name: 'other_party', label: 'Other Party', type: 'select', options: partyOptions, span: 6 },
     { name: 'paid_amount', label: 'Paid Amount', type: 'number', span: 6 },
-    { name: 'due_amount', label: 'Due Amount', type: 'number', span: 6 },
-    { name: 'boc', label: 'BOC', type: 'checkbox', span: 6 },
-    { name: 'citi', label: 'CITI', type: 'checkbox', span: 6 },
-    { name: 'dbs', label: 'DBS', type: 'checkbox', span: 6 },
-    { name: 'sc', label: 'SC', type: 'checkbox', span: 6 },
-    { name: 'narretion', label: 'Narration', type: 'textarea', span: 24 },
   ], [partyOptions]);
+
+  const invoiceFromUrl = (searchParams.get('invoice') || '').trim();
 
   const resetList = useCallback(() => {
     if (infiniteScroll) {
@@ -280,6 +280,11 @@ const TransactionStockTemplate = ({
     }
     setExpandedRowKeys([]);
   }, [infiniteScroll]);
+
+  useEffect(() => {
+    setInvoice(invoiceFromUrl);
+    resetList();
+  }, [invoiceFromUrl, resetList]);
 
   useEffect(() => {
     if (!infiniteScroll || !listData) return;
@@ -550,11 +555,25 @@ const TransactionStockTemplate = ({
 
   const renderExpandedRow = (group) => {
     const products = group.products || [];
+    const columns = buildGroupColumns(group);
+    const childTotals = products.reduce((acc, p) => {
+      acc.pcs += Number(p.polish_pcs || 0);
+      acc.carats += Number(p.polish_carat || 0);
+      acc.price += Number(p.sell_price ?? p.purchase_price ?? p.price ?? 0);
+      acc.amount += Number(p.sell_amount ?? p.purchase_amount ?? p.amount ?? 0);
+      return acc;
+    }, { pcs: 0, carats: 0, price: 0, amount: 0 });
+
+    const isPcsCol = (key) => key === 'polish_pcs' || key === 'pcs';
+    const isCaratCol = (key) => key === 'polish_carat' || key === 'carat';
+    const isPriceCol = (key) => key === 'price' || key === 'sell_price' || key === 'purchase_price';
+    const isAmountCol = (key) => key === 'amount' || key === 'sell_amount' || key === 'purchase_amount';
+
     return (
       <div className={styles.expandedBlock}>
         <div className={styles.innerTableWrap}>
           <Table
-            columns={buildGroupColumns(group)}
+            columns={columns}
             dataSource={products}
             rowKey="id"
             pagination={false}
@@ -563,6 +582,39 @@ const TransactionStockTemplate = ({
             tableLayout="fixed"
             className={styles.innerTable}
             style={{ minWidth: Math.max(1200, productColumns.length * 100) }}
+            summary={() => {
+              if (!products.length) return null;
+              return (
+                <Table.Summary fixed>
+                  <Table.Summary.Row className={styles.childSummaryRow}>
+                    {columns.map((col, index) => {
+                      const key = col.dataIndex || col.key;
+                      let content = null;
+                      if (index === 0) {
+                        content = <Text strong>Total</Text>;
+                      } else if (isPcsCol(key)) {
+                        content = <Text strong>{childTotals.pcs.toLocaleString()}</Text>;
+                      } else if (isCaratCol(key)) {
+                        content = <Text strong>{childTotals.carats.toFixed(2)}</Text>;
+                      } else if (isPriceCol(key)) {
+                        content = <Text strong>{childTotals.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>;
+                      } else if (isAmountCol(key)) {
+                        content = <Text strong>{childTotals.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>;
+                      }
+                      return (
+                        <Table.Summary.Cell
+                          key={key || index}
+                          index={index}
+                          align={col.align || (index === 0 ? 'left' : undefined)}
+                        >
+                          {content}
+                        </Table.Summary.Cell>
+                      );
+                    })}
+                  </Table.Summary.Row>
+                </Table.Summary>
+              );
+            }}
           />
         </div>
       </div>
@@ -651,63 +703,86 @@ const TransactionStockTemplate = ({
         const displayType = record.type || record.inward_type;
         const needsSelectionDisabled = !selectedCount || actionLoading;
 
+        const moreItems = [];
+        if (actions.showReturn) {
+          moreItems.push({
+            key: 'return',
+            icon: <RollbackOutlined className={styles.actionReturn} />,
+            label: 'Return',
+            disabled: needsSelectionDisabled,
+          });
+        }
+        if (actions.showMemoToSale) {
+          moreItems.push({
+            key: 'sale',
+            icon: <DollarOutlined className={styles.actionSale} />,
+            label: 'Sale',
+            disabled: needsSelectionDisabled,
+          });
+        }
+        if (actions.showMemoToPurchase) {
+          moreItems.push({
+            key: 'purchase',
+            icon: <ShoppingCartOutlined className={styles.actionPurchase} />,
+            label: 'Purchase',
+            disabled: needsSelectionDisabled,
+          });
+        }
+        if (actions.showToConsign && displayType === 'memo') {
+          moreItems.push({
+            key: 'toConsign',
+            icon: <SwapOutlined className={styles.actionConsign} />,
+            label: 'To Consign',
+            disabled: actionLoading,
+          });
+        }
+        if (actions.showToExport && displayType === 'sale') {
+          moreItems.push({
+            key: 'toExport',
+            icon: <ExportOutlined className={styles.actionExport} />,
+            label: 'To Export',
+            disabled: actionLoading,
+          });
+        }
+        if (actions.showToPurchase && displayType === 'import') {
+          moreItems.push({
+            key: 'toPurchase',
+            icon: <ShoppingCartOutlined className={styles.actionPurchase} />,
+            label: 'To Purchase',
+            disabled: actionLoading,
+          });
+        }
+        if (actions.showToImport && displayType === 'purchase') {
+          moreItems.push({
+            key: 'toImport',
+            icon: <ImportOutlined className={styles.actionImport} />,
+            label: 'To Import',
+            disabled: actionLoading,
+          });
+        }
+
+        const handleMoreClick = ({ key }) => {
+          if (key === 'return' && !needsSelectionDisabled) handleReturn(record);
+          if (key === 'sale' && !needsSelectionDisabled) handleMemoToSale(record);
+          if (key === 'purchase' && !needsSelectionDisabled) handleMemoToPurchase(record);
+          if (key === 'toConsign' && !actionLoading) handleToExport(record, 'consign');
+          if (key === 'toExport' && !actionLoading) handleToExport(record, 'export');
+          if (key === 'toPurchase' && !actionLoading) handleToggle(record, 'purchase');
+          if (key === 'toImport' && !actionLoading) handleToggle(record, 'import');
+        };
+
         return (
           <div className={styles.actionIcons}>
-            {actions.showReturn && (
-              <Tooltip title="Return">
-                <RollbackOutlined
-                  className={`${styles.actionReturn} ${needsSelectionDisabled ? styles.actionDisabled : ''}`}
-                  onClick={() => !needsSelectionDisabled && handleReturn(record)}
-                />
-              </Tooltip>
-            )}
-            {actions.showMemoToSale && (
-              <Tooltip title="Sale">
-                <DollarOutlined
-                  className={`${styles.actionSale} ${needsSelectionDisabled ? styles.actionDisabled : ''}`}
-                  onClick={() => !needsSelectionDisabled && handleMemoToSale(record)}
-                />
-              </Tooltip>
-            )}
-            {actions.showMemoToPurchase && (
-              <Tooltip title="Purchase">
-                <ShoppingCartOutlined
-                  className={`${styles.actionPurchase} ${needsSelectionDisabled ? styles.actionDisabled : ''}`}
-                  onClick={() => !needsSelectionDisabled && handleMemoToPurchase(record)}
-                />
-              </Tooltip>
-            )}
-            {actions.showToConsign && displayType === 'memo' && (
-              <Tooltip title="To Consign">
-                <SwapOutlined
-                  className={`${styles.actionConsign} ${actionLoading ? styles.actionDisabled : ''}`}
-                  onClick={() => !actionLoading && handleToExport(record, 'consign')}
-                />
-              </Tooltip>
-            )}
-            {actions.showToExport && displayType === 'sale' && (
-              <Tooltip title="To Export">
-                <ExportOutlined
-                  className={`${styles.actionExport} ${actionLoading ? styles.actionDisabled : ''}`}
-                  onClick={() => !actionLoading && handleToExport(record, 'export')}
-                />
-              </Tooltip>
-            )}
-            {actions.showToPurchase && displayType === 'import' && (
-              <Tooltip title="To Purchase">
-                <ShoppingCartOutlined
-                  className={`${styles.actionPurchase} ${actionLoading ? styles.actionDisabled : ''}`}
-                  onClick={() => !actionLoading && handleToggle(record, 'purchase')}
-                />
-              </Tooltip>
-            )}
-            {actions.showToImport && displayType === 'purchase' && (
-              <Tooltip title="To Import">
-                <ImportOutlined
-                  className={`${styles.actionImport} ${actionLoading ? styles.actionDisabled : ''}`}
-                  onClick={() => !actionLoading && handleToggle(record, 'import')}
-                />
-              </Tooltip>
+            {moreItems.length > 0 && (
+              <Dropdown
+                menu={{ items: moreItems, onClick: handleMoreClick }}
+                trigger={['click']}
+                placement="bottomRight"
+              >
+                <Tooltip title="More">
+                  <EllipsisOutlined className={styles.actionMore} />
+                </Tooltip>
+              </Dropdown>
             )}
             {actions.showEdit && (
               <Tooltip title="Edit">
@@ -731,8 +806,8 @@ const TransactionStockTemplate = ({
   ];
 
   const listLoading = infiniteScroll
-    ? ((isLoading || isFetching) && offset === 0)
-    : (isLoading || isFetching);
+    ? (isLoading && offset === 0)
+    : isLoading;
 
   const {
     columns: skeletonAwareColumns,
@@ -824,6 +899,7 @@ const TransactionStockTemplate = ({
             value={party || undefined}
             onChange={(v) => { setParty(v || ''); resetList(); }}
             options={partyOptions}
+            virtual
             style={{ padding: "6px 11px" }}
           />
         </FilterField>
@@ -959,9 +1035,13 @@ const TransactionStockTemplate = ({
         open={deleteModal.open}
         onCancel={closeDelete}
         onConfirm={handleDelete}
-        loading={isDeleting}  
+        loading={isDeleting}
         title="Delete record?"
-        description="This action cannot be undone."
+        entityName={
+          deleteModal.record?.entryno != null && deleteModal.record?.entryno !== ""
+            ? `#${deleteModal.record.entryno}`
+            : deleteModal.record?.invoiceno || deleteModal.record?.id
+        }
       />
 
       {actions.giaReturn && (
@@ -994,11 +1074,16 @@ const TransactionStockTemplate = ({
 
       {actions.showEdit && (
         <BaseModal
-          title={`Edit: ${editingRecord?.invoiceno || ''}`}
+          title="Edit"
+          subtitle={editingRecord?.invoiceno || ''}
+          variant="edit"
+          headerIcon={<Pencil size={16} strokeWidth={2} />}
+          saveIcon={<CircleCheck size={15} strokeWidth={2.25} />}
           isOpen={isEditModalOpen}
           onClose={closeEditModal}
           onSave={handleSaveEdit}
           loading={isUpdating}
+          className={styles.stockEditModal}
           content={(
             <>
               <style>{`
@@ -1015,14 +1100,50 @@ const TransactionStockTemplate = ({
                   opacity: 1 !important;
                 }
               `}</style>
-              <Form form={editForm} layout="vertical" className="edit-modal-form-readable">
+              <Form form={editForm} layout="vertical" className={`edit-modal-form-readable ${styles.stockEditForm}`}>
                 {isEditLoading ? (
                   <SkeletonForm fields={6} />
                 ) : (
-                  <DynamicForm fields={editFields} />
+                  <>
+                    <DynamicForm fields={editMainFields} />
+                    <Row gutter={[16, 0]} className={styles.stockEditPayRow}>
+                      <Col span={6}>
+                        <Form.Item name="due_amount" label="Due Amount">
+                          <InputNumber min={0} placeholder="0.00" style={{ width: '100%', height: 40 }} />
+                        </Form.Item>
+                      </Col>
+                      <Col span={12}>
+                        <Form.Item name="narretion" label="Narration">
+                          <Input.TextArea rows={1} placeholder="Enter Narration..." />
+                        </Form.Item>
+                      </Col>
+                      <Col span={6}>
+                        <Form.Item
+                          label={<span className={styles.stockEditBankLabel}>Due Amount</span>}
+                          colon={false}
+                        >
+                          <div className={styles.stockEditBankSlot}>
+                            <Form.Item name="boc" valuePropName="checked" noStyle>
+                              <Checkbox>BOC</Checkbox>
+                            </Form.Item>
+                            <Form.Item name="citi" valuePropName="checked" noStyle>
+                              <Checkbox>CITI</Checkbox>
+                            </Form.Item>
+                            <Form.Item name="dbs" valuePropName="checked" noStyle>
+                              <Checkbox>DBS</Checkbox>
+                            </Form.Item>
+                            <Form.Item name="sc" valuePropName="checked" noStyle>
+                              <Checkbox>SC</Checkbox>
+                            </Form.Item>
+                          </div>
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  </>
                 )}
-                <Title level={5} style={{ marginTop: 20 }}>Products</Title>
+                <div className={styles.stockEditProductsHead}>Products</div>
                 <Table
+                  className={styles.stockEditProductTable}
                   loading={false}
                   columns={isEditLoading ? [
                     { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 120 },
@@ -1044,7 +1165,7 @@ const TransactionStockTemplate = ({
                   rowKey="id"
                   pagination={false}
                   size="small"
-                  scroll={{ x: 600 }}
+                  scroll={{ x: 600, y: 220 }}
                 />
               </Form>
             </>

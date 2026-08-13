@@ -12,7 +12,7 @@
     color-mix(in srgb, var(--color-primary) 10%, transparent) 0%,
     rgba(255, 255, 255, 0.98) 58%
   );
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--color-primary) 8%, transparent);
+  // box-shadow: 0 6px 18px color-mix(in srgb, var(--color-primary) 8%, transparent);
   flex-shrink: 0;
 }
 

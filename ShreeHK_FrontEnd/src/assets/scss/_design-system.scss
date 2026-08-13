@@ -39,12 +39,6 @@ body,
   color: var(--color-text-heading) !important;
 }
 
-// Delete confirmation modal
-.ant-modal:has(.conformation_modal) .ant-modal-content,
-.ant-modal:has(.conformation_modal) .ant-modal-body {
-  background: var(--color-danger-light) !important;
-}
-
 .conformation_modal .massage {
   color: var(--color-danger) !important;
 }

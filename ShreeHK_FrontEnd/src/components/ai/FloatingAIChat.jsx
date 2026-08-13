@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Button, Drawer, message, Tooltip, Tag, Select } from "antd";
+import { Button, Drawer, Tooltip, Tag, Select } from "antd";
+import { toastSuccess, toastError } from "../../utils/toastNotify";
 import {
   Bot,
   Diamond,
@@ -103,7 +104,7 @@ const FloatingAIChat = () => {
     }
     setMessages([]);
     setInput("");
-    message.success("Conversation cleared");
+    toastSuccess("Conversation cleared");
     loadThreads();
   };
 
@@ -151,7 +152,7 @@ const FloatingAIChat = () => {
         loadThreads();
       } else {
         const errMsg = pickApiMessage(res);
-        if (errMsg) message.error(errMsg);
+        if (errMsg) toastError(errMsg);
         setMessages([
           ...nextHistory,
           { role: "assistant", content: errMsg || "Failed to generate AI response.", isError: true },
@@ -159,7 +160,7 @@ const FloatingAIChat = () => {
       }
     } catch (err) {
       const errMsg = pickApiMessage(err?.response?.data);
-      if (errMsg) message.error(errMsg);
+      if (errMsg) toastError(errMsg);
       setMessages([
         ...nextHistory,
         { role: "assistant", content: errMsg || "AI Assistant unavailable.", isError: true },

@@ -75,7 +75,7 @@ export default function TaskManager() {
     const [statusFilter, setStatusFilter] = useState('ALL'); // ALL, PENDING, COMPLETED
     const [priorityFilter, setPriorityFilter] = useState('ALL'); // ALL, High, Medium, Low
     const [dateFilter, setDateFilter] = useState('ALL'); // ALL, TODAY, OVERDUE, UPCOMING
-    const [viewMode, setViewMode] = useState('TABLE'); // TABLE, BOARD
+    const [viewMode, setViewMode] = useState('BOARD'); // TABLE, BOARD
 
     // Modal states
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -452,7 +452,7 @@ export default function TaskManager() {
                 />
 
                 {/* KPI Cards Header */}
-                <Row gutter={[16, 16]} style={{ marginBottom: 12 }}>
+                <Row gutter={[16, 16]} style={{ padding:'10px 0px' }}>
                     <Col xs={12} sm={6} lg={4}>
                         <Card bordered={false} style={{ borderRadius: 14, background: '#ffffff', boxShadow: '0 4px 14px rgba(15, 23, 42, 0.05)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

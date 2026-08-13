@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { message } from "antd";
+import { toastError } from "../../utils/toastNotify";
 import { fetchStockAlert } from "../../api/services/aiService";
 
 export default function useAiStockAlert() {
@@ -20,12 +20,12 @@ export default function useAiStockAlert() {
       } else {
         const msg = res?.message || "AI unavailable, try again";
         setError(msg);
-        message.error(msg);
+        toastError(msg);
       }
     } catch (err) {
       const msg = err?.response?.data?.message || "AI unavailable, try again";
       setError(msg);
-      message.error(msg);
+      toastError(msg);
     } finally {
       setLoading(false);
     }

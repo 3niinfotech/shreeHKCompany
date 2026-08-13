@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Layout, Form, Card, Button, Input, Space,
-  Typography, Switch, notification, Modal,
+  Typography, Switch, Modal,
   Tag, Tooltip, Checkbox, Row, Col, Empty,
 } from 'antd';
+import { toastWarning, toastError, toastInfo } from '../../utils/toastNotify';
 import { SkeletonCard } from '../../components/common/skeleton';
 import {
   SearchOutlined, SaveOutlined, ReloadOutlined,
@@ -137,7 +138,7 @@ const AdvancedRollPage = () => {
 
   const onFinish = (values) => {
     if (!selectedRoleId) {
-      notification.warning({ message: 'Please select a role first.' });
+      toastWarning('Please select a role first.');
       return;
     }
 
@@ -146,8 +147,7 @@ const AdvancedRollPage = () => {
       : normalizeCompanyIds(selectedRole?.company);
 
     if (!companiesToSave.length) {
-      notification.warning({
-        message: 'Select at least one company for this role.',
+      toastWarning('Select at least one company for this role.', {
         description: 'Users with this role cannot pick a company at login until company access is assigned.',
       });
       return;
@@ -172,11 +172,11 @@ const AdvancedRollPage = () => {
       {
         onSuccess: (res) => {
           if (!res.status) {
-            notification.error({ message: res.message || 'Update failed' });
+            toastError(res.message || 'Update failed');
           }
         },
         onError: (err) => {
-          notification.error({ message: 'Server error: ' + (err.message || 'Unknown') });
+          toastError('Server error: ' + (err.message || 'Unknown'));
         },
       }
     );
@@ -193,12 +193,7 @@ const AdvancedRollPage = () => {
       setMasterToggle(false);
       setCompanyIds([]);
     }
-    notification.info({
-      message: 'Changes discarded',
-      style: {
-        margin: '0px'
-      }
-    });
+    toastInfo('Changes discarded');
   };
 
   const handleCreateRole = (values) => {
@@ -214,10 +209,10 @@ const AdvancedRollPage = () => {
             newRoleForm.resetFields();
             setTimeout(() => setSelectedRoleId(res.data?.id), 300);
           } else {
-            notification.error({ message: res.message || 'Creation failed' });
+            toastError(res.message || 'Creation failed');
           }
         },
-        onError: (err) => notification.error({ message: 'Server error: ' + (err.message || 'Unknown') }),
+        onError: (err) => toastError('Server error: ' + (err.message || 'Unknown')),
       }
     );
   };
@@ -243,7 +238,7 @@ const AdvancedRollPage = () => {
             if (res.status) {
               setSelectedRoleId(null);
             } else {
-              notification.error({ message: res.message });
+              toastError(res.message);
             }
           },
         });

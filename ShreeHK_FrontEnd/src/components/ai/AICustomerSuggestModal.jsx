@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Modal, Spin, Typography, message } from "antd";
+import { Modal, Spin, Typography } from "antd";
+import { toastError } from "../../utils/toastNotify";
 import { fetchCustomerInsight } from "../../api/services/aiService";
 import { pickApiMessage } from "../../utils/apiToast";
 import styles from "../../assets/scss/components/ai/aiComponents.module.scss";
@@ -22,11 +23,11 @@ const AICustomerSuggestModal = ({ open, onClose, customerId, customerName }) => 
           setResult(res.data);
         } else {
           const msg = pickApiMessage(res);
-          if (msg) message.error(msg);
+          if (msg) toastError(msg);
         }
       } catch (err) {
         const msg = pickApiMessage(err?.response?.data);
-        if (msg) message.error(msg);
+        if (msg) toastError(msg);
       } finally {
         setLoading(false);
       }

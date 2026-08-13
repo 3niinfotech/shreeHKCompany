@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Button, Layout, Modal } from "antd";
+import { Button, Layout, Modal, Tooltip } from "antd";
 import TopbarSearch from "../sub_component/TopBarSearch";
 import ProfileDropdown from "../sub_component/ProfileDropdown";
 import NotificationDropdown from "../sub_component/NotificationDropdown";
@@ -302,56 +302,78 @@ const Header = ({
               onInventoryFilter={handleInventoryFilterFromSearch}
             />
           </div>
-          <div className={styles.topQuickActions}>
-            <Button
-              icon={<Database size={14} />}
-              className={`${styles.topQuickBtn} ${styles.myInventoryBtn}`}
-              onClick={() => navigate('/inventory/my-inventory')}
-            >
-              My Inventory
-            </Button>
-            <Button
-              icon={<FileCheck size={14} />}
-              className={`${styles.topQuickBtn} ${styles.inMemoBtn}`}
-              onClick={() => navigate('/transaction/in-memo')}
-            >
-              In Memo
-            </Button>
-            <Button
-              icon={<Send size={14} />}
-              className={`${styles.topQuickBtn} ${styles.outMemoBtn}`}
-              onClick={() => navigate('/transaction/out-memo')}
-            >
-              Out Memo
-            </Button>
-            <Button
-              icon={<ShoppingCart size={14} />}
-              className={`${styles.topQuickBtn} ${styles.saleBtn}`}
-              onClick={() => navigate('/transaction/sale')}
-            >
-              Sale
-            </Button>
-            <Button
-              icon={<ShoppingBag size={14} />}
-              className={`${styles.topQuickBtn} ${styles.purchaseBtn}`}
-              onClick={() => navigate('/transaction/purchase')}
-            >
-              Purchase
-            </Button>
-          </div>
         </div>
 
         <div className={styles.headerRight}>
+          <div className={styles.topQuickActions}>
+            <Tooltip title="My Inventory">
+              <Button
+                icon={<Database size={14} />}
+                className={`${styles.topQuickBtn} ${styles.myInventoryBtn}`}
+                onClick={() => navigate('/inventory/my-inventory')}
+              >
+                {/* My Inventory */}
+              </Button>
+            </Tooltip>
+            <Tooltip title="In Memo">
+              <Button
+                icon={<FileCheck size={14} />}
+                className={`${styles.topQuickBtn} ${styles.inMemoBtn}`}
+                onClick={() => navigate('/transaction/in-memo')}
+              >
+                {/* In Memo */}
+              </Button>
+            </Tooltip>
+            <Tooltip title="Out Memo">
+              <Button
+                icon={<Send size={14} />}
+                className={`${styles.topQuickBtn} ${styles.outMemoBtn}`}
+                onClick={() => navigate('/transaction/out-memo')}
+              >
+                {/* Out Memo */}
+              </Button>
+            </Tooltip>
+            <Tooltip title="Sale">
+              <Button
+                icon={<ShoppingCart size={14} />}
+                className={`${styles.topQuickBtn} ${styles.saleBtn}`}
+                onClick={() => navigate('/transaction/sale')}
+              >
+                {/* Sale */}
+              </Button>
+            </Tooltip>
+            <Tooltip title="Purchase">
+              <Button
+                icon={<ShoppingBag size={14} />}
+                className={`${styles.topQuickBtn} ${styles.purchaseBtn}`}
+                onClick={() => navigate('/transaction/purchase')}
+              >
+                {/* Purchase */}
+              </Button>
+            </Tooltip>
+          </div>
           {/* <ConnectionStatusPill isOnline={isOnline} /> */}
-          <TaskHeaderButton
-            buttonClassName={styles.notificationBtn}
-            badgeClassName={styles.notificationBadge}
-          />
-          <NotificationDropdown
-            buttonClassName={styles.notificationBtn}
-            badgeClassName={styles.notificationBadge}
-          />
-          <ProfileDropdown />
+          <Tooltip title="Tasks">
+            <span>
+              <TaskHeaderButton
+                buttonClassName={styles.notificationBtn}
+                badgeClassName={styles.notificationBadge}
+              />
+            </span>
+          </Tooltip>
+          <Tooltip title="Notifications">
+            <span>
+              <NotificationDropdown
+                buttonClassName={styles.notificationBtn}
+                badgeClassName={styles.notificationBadge}
+              />
+            </span>
+          </Tooltip>
+          <Tooltip title="Profile">
+            <span>
+              <ProfileDropdown />
+            </span>
+          </Tooltip>
         </div>
       </AntHeader>
       {!hideNavBar && <NavBar />}

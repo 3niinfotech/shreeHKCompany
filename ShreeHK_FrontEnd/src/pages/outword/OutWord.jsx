@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Table, Card, Typography, Space, Button, Tag, Checkbox, Badge, Form, Input } from 'antd';
+import { Table, Card, Typography, Space, Button, Tag, Checkbox, Badge, Form, Input, Row, Col } from 'antd';
 import { EditOutlined, PrinterOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Pencil, CircleCheck } from 'lucide-react';
 import dayjs from 'dayjs';
 import { useSearchParams } from 'react-router-dom';
 import { useFetchApi, usePostApiRequest, useDeleteApiRequest } from '../../api/ApiFunction';
@@ -14,6 +15,7 @@ import styles from "../../assets/scss/pages/outward.module.scss";
 import useTableBodyScrollHeight from "../../hooks/useTableBodyScrollHeight";
 import { cssVar } from '../../theme';
 import { SkuLink } from '../../hooks/useSkuModalAction';
+import '../../assets/scss/masterEdit.scss';
 
 const { Title, Text } = Typography;
 
@@ -80,7 +82,7 @@ const OutWord = () => {
     });
 
     const { data: companyData, isLoading: isCompanyLoading } = useFetchApi('GetCompany', ENDPOINTS.company.options);
-    const { mutate: updateTransaction } = usePostApiRequest(ENDPOINTS.outward.getProducts, 'OutwardList', { showToast: false });
+    const { mutate: updateTransaction } = usePostApiRequest(ENDPOINTS.outward.update, 'OutwardList', { showToast: true });
 
     const { mutate: deleteOutward, isPending: isDeleting } = useDeleteApiRequest(ENDPOINTS.outward.delete, 'OutwardList');
 
@@ -136,7 +138,7 @@ const OutWord = () => {
         ],
         partyOptions: partyOptions,
         isPartyLoading: isCompanyLoading,
-        showLabels: true,
+        showLabels: false,
     });
 
     useEffect(() => {
@@ -171,7 +173,7 @@ const OutWord = () => {
 
     const avgPrice = stats.carats > 0 ? stats.amount / stats.carats : 0;
 
-    const editFields = [
+    const editMainFields = [
         { name: 'entryno', label: 'Entry', type: 'text', required: true, span: 6 },
         { name: 'type', label: '@ Sale', type: 'text', required: true, span: 6 },
         { name: 'date', label: 'Date', type: 'date', required: true, span: 6 },
@@ -184,11 +186,6 @@ const OutWord = () => {
         { name: 'other_party', label: 'Other Party', type: 'select', options: partyOptions, required: true, span: 6 },
         { name: 'paid_amount', label: 'Paid Amount', type: 'number', required: true, span: 6 },
         { name: 'due_amount', label: 'Due Amount', type: 'number', required: true, span: 6 },
-        { name: 'boc', label: 'BOC', type: 'checkbox', span: 6 },
-        { name: 'citi', label: 'CITI', type: 'checkbox', span: 6 },
-        { name: 'dbs', label: 'DBS', type: 'checkbox', span: 6 },
-        { name: 'sc', label: 'SC', type: 'checkbox', span: 6 },
-        { name: 'narretion', label: 'Narration', type: 'textarea', span: 24 }
     ];
 
     const handleProductFieldChange = (index, field, value) => {
@@ -313,7 +310,7 @@ const OutWord = () => {
     const tableHeight = useTableBodyScrollHeight(tableRef, [mainTableData.length, outwardLoading]);
 
     return (
-        <div className={styles.outwardContainer}>
+        <div className={`${styles.outwardContainer} ${styles.outwardListPage}`}>
             {/* <PageHeroHeader
                 breadcrumb="TRANSACTION / OUTWARD"
                 title="Memo Transactions"
@@ -367,7 +364,11 @@ const OutWord = () => {
             </AdvancedFilterPanel>
 
             <Card variant="none" className={styles.cardContainer}>
-                <div ref={tableRef} className="erp-table-container">
+                <div
+                    ref={tableRef}
+                    className={`erp-table-container ${styles.fixedHeightTable}`}
+                    style={{ ['--table-scroll-y']: `${tableHeight}px` }}
+                >
                     <Table
                         columns={columns}
                         dataSource={mainTableData}
@@ -418,28 +419,79 @@ const OutWord = () => {
             </Card>
 
             <BaseModal
-                title={`Edit Transaction: ${editingRecord?.invoiceno || ''}`}
+                title="Edit"
+                subtitle={editingRecord?.invoiceno || ''}
+                variant="edit"
+                headerIcon={<Pencil size={16} strokeWidth={2} />}
+                saveIcon={<CircleCheck size={15} strokeWidth={2.25} />}
                 isOpen={isEditModalOpen}
                 onClose={() => { setIsEditModalOpen(false); setEditId(null); setFetchedProducts([]); }}
                 onSave={handleSaveEdit}
+                className={styles.stockEditModal}
                 content={(
-                    <Form form={editForm} layout="vertical">
-                        <DynamicForm fields={editFields} />
-                        <Title level={5} style={{ marginTop: '20px' }}>Products</Title>
-                        <Table
-                            loading={isProductLoading}
-                            columns={[
-                                { title: 'SKU', dataIndex: 'sku', key: 'sku', render: (val, record, idx) => <Input value={val} onChange={e => handleProductFieldChange(idx, 'sku', e.target.value)} /> },
-                                { title: 'Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', render: (val, record, idx) => <Input type="number" value={val} onChange={e => handleProductFieldChange(idx, 'polish_pcs', e.target.value)} /> },
-                                { title: 'Carat', dataIndex: 'polish_carat', key: 'polish_carat', render: (val, record, idx) => <Input type="number" value={val} onChange={e => handleProductFieldChange(idx, 'polish_carat', e.target.value)} /> },
-                                { title: 'Price', dataIndex: 'sell_price', key: 'sell_price', render: (val, record, idx) => <Input type="number" value={val} onChange={e => handleProductFieldChange(idx, 'sell_price', e.target.value)} /> },
-                            ]}
-                            dataSource={fetchedProducts}
-                            rowKey="id"
-                            pagination={false}
-                            size="small"
-                        />
-                    </Form>
+                    <>
+                        <style>{`
+                            .edit-modal-form-readable .ant-input-disabled,
+                            .edit-modal-form-readable .ant-input[disabled],
+                            .edit-modal-form-readable .ant-input-number-disabled .ant-input-number-input,
+                            .edit-modal-form-readable .ant-input-number-disabled input,
+                            .edit-modal-form-readable .ant-select-disabled .ant-select-selection-item,
+                            .edit-modal-form-readable .ant-picker-disabled input,
+                            .edit-modal-form-readable .ant-picker-input > input[disabled],
+                            .edit-modal-form-readable textarea.ant-input-disabled {
+                              color: #000 !important;
+                              -webkit-text-fill-color: #000 !important;
+                              opacity: 1 !important;
+                            }
+                        `}</style>
+                        <Form form={editForm} layout="vertical" className={`edit-modal-form-readable ${styles.stockEditForm}`}>
+                            <DynamicForm fields={editMainFields} />
+                            <Row gutter={[16, 0]} className={styles.stockEditPayRow}>
+                                <Col span={18}>
+                                    <Form.Item name="narretion" label="Narration">
+                                        <Input.TextArea rows={1} placeholder="Enter Narration..." />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={6}>
+                                    <Form.Item
+                                        label={<span className={styles.stockEditBankLabel}>Due Amount</span>}
+                                        colon={false}
+                                    >
+                                        <div className={styles.stockEditBankSlot}>
+                                            <Form.Item name="boc" valuePropName="checked" noStyle>
+                                                <Checkbox>BOC</Checkbox>
+                                            </Form.Item>
+                                            <Form.Item name="citi" valuePropName="checked" noStyle>
+                                                <Checkbox>CITI</Checkbox>
+                                            </Form.Item>
+                                            <Form.Item name="dbs" valuePropName="checked" noStyle>
+                                                <Checkbox>DBS</Checkbox>
+                                            </Form.Item>
+                                            <Form.Item name="sc" valuePropName="checked" noStyle>
+                                                <Checkbox>SC</Checkbox>
+                                            </Form.Item>
+                                        </div>
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                            <div className={styles.stockEditProductsHead}>Products</div>
+                            <Table
+                                className={styles.stockEditProductTable}
+                                loading={isProductLoading}
+                                columns={[
+                                    { title: 'SKU', dataIndex: 'sku', key: 'sku', render: (val, record, idx) => <Input value={val} onChange={e => handleProductFieldChange(idx, 'sku', e.target.value)} /> },
+                                    { title: 'Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', render: (val, record, idx) => <Input type="number" value={val} onChange={e => handleProductFieldChange(idx, 'polish_pcs', e.target.value)} /> },
+                                    { title: 'Carat', dataIndex: 'polish_carat', key: 'polish_carat', render: (val, record, idx) => <Input type="number" value={val} onChange={e => handleProductFieldChange(idx, 'polish_carat', e.target.value)} /> },
+                                    { title: 'Price', dataIndex: 'sell_price', key: 'sell_price', render: (val, record, idx) => <Input type="number" value={val} onChange={e => handleProductFieldChange(idx, 'sell_price', e.target.value)} /> },
+                                ]}
+                                dataSource={fetchedProducts}
+                                rowKey="id"
+                                pagination={false}
+                                size="small"
+                                scroll={{ x: 600, y: 220 }}
+                            />
+                        </Form>
+                    </>
                 )}
                 saveBtnText="Update"
                 width={1200}

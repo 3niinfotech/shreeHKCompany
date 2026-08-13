@@ -7,6 +7,7 @@ import useAuthStore from "../../store/Auth.Store";
 import useUIStore from "../../store/Ui.Store";
 import { resolveTabFromPath, HOME_TAB } from "../../utils/tabRouteMeta";
 import { getAuthorizedRouteMeta, getPostLoginPath } from "../../routes/Routes";
+import { prefetchRoute } from "../../routes/routePrefetch";
 import styles from "../../assets/scss/layout/tabBar.module.scss";
 
 const renderTabLabel = (tab) => {
@@ -68,10 +69,16 @@ const TabBar = () => {
     () =>
       tabs.map((tab) => ({
         key: tab.key,
-        label: renderTabLabel(tab),
+        label: (
+          <span
+            onMouseEnter={() => prefetchRoute(tab.key === HOME_TAB.key ? homePath : tab.path)}
+          >
+            {renderTabLabel(tab)}
+          </span>
+        ),
         closable: tab.closable !== false,
       })),
-    [tabs]
+    [tabs, homePath]
   );
 
   const handleChange = (key) => {
@@ -79,6 +86,7 @@ const TabBar = () => {
     if (!tab) return;
     setActiveTab(key);
     const targetPath = tab.key === HOME_TAB.key ? homePath : tab.path;
+    prefetchRoute(targetPath);
     if (location.pathname !== targetPath) {
       navigate(targetPath);
     }

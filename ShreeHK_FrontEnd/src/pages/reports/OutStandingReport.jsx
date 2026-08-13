@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Table, Button, Card, Form, Tag, message } from 'antd';
+import { Table, Button, Card, Form, Tag } from 'antd';
+import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
 import dayjs from 'dayjs';
 import { cssVar } from '../../theme';
 import debounce from 'lodash/debounce';
@@ -178,7 +179,7 @@ const OutStandingReport = () => {
 
     const handleExport = async () => {
         if (!tableData.length) {
-            message.warning('Run search first — no data to export.');
+            toastWarning('Run search first — no data to export.');
             return;
         }
         setExporting(true);
@@ -190,9 +191,9 @@ const OutStandingReport = () => {
                 fileName: 'outstanding_report',
                 sheetName: 'Outstanding',
             });
-            message.success('Exported to Excel');
+            toastSuccess('Exported to Excel');
         } catch (err) {
-            message.error(err.message || 'Export failed');
+            toastError(err.message || 'Export failed');
         } finally {
             setExporting(false);
         }
