@@ -241,7 +241,7 @@ const QuickNotesCard = () => {
     const pendingCount = notes.filter((n) => !n.completed).length;
 
     return (
-        <Card bordered={false} id="quick-notes-section" className="dashboard-card dashboard-card--luxury quick-notes-card">
+        <Card bordered={false} id="quick-notes-section" className="dashboard-card dashboard-card--luxury quick-notes-card dashboard-fill-card">
             <div className="card-header">
                 <div className="card-title-group">
                     <span className="card-icon-badge card-icon-badge--primary">
@@ -285,7 +285,7 @@ const QuickNotesCard = () => {
                     <div className="notes-meta-bar">
                         <div className="notes-meta-fields">
                             <div className="input-group-assignee" style={{
-                                minWidth: 150,
+                                minWidth: 140,
                                 display: 'flex',
                                 flexDirection: 'column',
                                 gap: '4px'
@@ -338,7 +338,7 @@ const QuickNotesCard = () => {
             )
             }
 
-            <div className="table-wrapper notes-table-wrapper" style={{ marginTop: 14 }}>
+            <div className="table-wrapper notes-table-wrapper">
                 {isLoading ? (
                     <NotesTableSkeleton isSuperAdmin={isSuperAdmin} />
                 ) : (
@@ -812,7 +812,7 @@ const Dashboard = () => {
 
             <Row gutter={[20, 20]} className="middle-section dashboard-grid" align="stretch">
                 <Col xs={24} lg={12} xl={8} className="dashboard-grid__col">
-                    <Card bordered={false} className="dashboard-card dashboard-card--luxury">
+                    <Card bordered={false} className="dashboard-card dashboard-card--luxury due-payments-card dashboard-fill-card">
                         <div className="card-header">
                             <div className="card-title-group">
                                 <span className="card-icon-badge card-icon-badge--danger">
@@ -836,7 +836,7 @@ const Dashboard = () => {
                                     key: "sale",
                                     label: "Sale Due Payments",
                                     children: (
-                                        <div className="table-wrapper due-payments-table-wrapper" style={{ height: 260, maxHeight: 260, overflowY: 'auto' }}>
+                                        <div className="table-wrapper due-payments-table-wrapper" >
                                             {isLoading ? (
                                                 <DueTableSkeleton columns={columns} />
                                             ) : duePayments.length > 0 ? (
@@ -874,7 +874,7 @@ const Dashboard = () => {
                                                     </tbody>
                                                 </table>
                                             ) : (
-                                                <div style={{ padding: 16, color: theme.textMuted }}>
+                                                <div className="card-empty-fill">
                                                     No due payments in the next 7 days.
                                                 </div>
                                             )}
@@ -885,7 +885,7 @@ const Dashboard = () => {
                                     key: "purchase",
                                     label: "Purchase Due Payments",
                                     children: (
-                                        <div className="table-wrapper due-payments-table-wrapper" style={{ height: 260, maxHeight: 260, overflowY: 'auto' }}>
+                                        <div className="table-wrapper due-payments-table-wrapper" >
                                             {isLoading ? (
                                                 <DueTableSkeleton columns={columns} />
                                             ) : purchaseDuePayments.length > 0 ? (
@@ -923,7 +923,7 @@ const Dashboard = () => {
                                                     </tbody>
                                                 </table>
                                             ) : (
-                                                <div style={{ padding: 16, color: theme.textMuted }}>
+                                                <div className="card-empty-fill">
                                                     No purchase due payments in the next 7 days.
                                                 </div>
                                             )}
@@ -936,7 +936,7 @@ const Dashboard = () => {
                 </Col>
 
                 <Col xs={24} lg={12} xl={8} className="dashboard-grid__col">
-                    <Card bordered={false} className="dashboard-card dashboard-card--luxury">
+                    <Card bordered={false} className="dashboard-card dashboard-card--luxury recent-txn-card dashboard-fill-card">
                         <div className="card-header">
                             <div className="card-title-group">
                                 <span className="card-icon-badge card-icon-badge--primary">
@@ -981,7 +981,7 @@ const Dashboard = () => {
                                     </div>
                                 ))
                             ) : (
-                                <div style={{ padding: 16, color: theme.textMuted }}>No recent transactions found.</div>
+                                <div className="card-empty-fill">No recent transactions found.</div>
                             )}
                         </div>
                     </Card>

@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import SkuActionModal from "../../hooks/useSkuModalAction";
-import { Table, Button, Dropdown, Tag, Form, message } from "antd";
+import { Table, Button, Dropdown, Tag, Form } from "antd";
+import { toastWarning, toastInfo } from "../../utils/toastNotify";
 import { DownOutlined, DownloadOutlined } from "@ant-design/icons";
 import InventorySmartSearch from "../../components/inventory/InventorySmartSearch";
 import { useQueryClient } from "@tanstack/react-query";
@@ -895,7 +896,7 @@ const DiamondInventoryTable = () => {
     }
     if (key === "onMemo" || mapped === "memo") {
       if (selectedRowKeys.length === 0) {
-        message.warning("Please select at least one diamond");
+        toastWarning("Please select at least one diamond");
         return;
       }
       setMemoModalOpen(true);
@@ -903,7 +904,7 @@ const DiamondInventoryTable = () => {
     }
     if (key === "consignment" || key === "consign") {
       if (selectedRowKeys.length === 0) {
-        message.warning("Please select at least one diamond");
+        toastWarning("Please select at least one diamond");
         return;
       }
       setConsignModalOpen(true);
@@ -911,7 +912,7 @@ const DiamondInventoryTable = () => {
     }
     if (key === "reservation") {
       if (selectedRowKeys.length === 0) {
-        message.warning("Please select at least one diamond");
+        toastWarning("Please select at least one diamond");
         return;
       }
       setReservationModalOpen(true);
@@ -919,14 +920,14 @@ const DiamondInventoryTable = () => {
     }
     if (key === "sale" || mapped === "sell" || key === "sell") {
       if (selectedRowKeys.length === 0) {
-        message.warning("Please select at least one diamond");
+        toastWarning("Please select at least one diamond");
         return;
       }
       const nonMemoRows = selectedRows.filter(
         (row) => String(row?.outward || "").toLowerCase() !== "memo",
       );
       if (nonMemoRows.length) {
-        message.warning("Sale is allowed only for memo diamonds");
+        toastWarning("Sale is allowed only for memo diamonds");
         return;
       }
       setSellModalOpen(true);
@@ -938,7 +939,7 @@ const DiamondInventoryTable = () => {
     }
     if (key === "addPackage") {
       if (selectedRowKeys.length === 0) {
-        message.warning("Please select at least one diamond");
+        toastWarning("Please select at least one diamond");
         return;
       }
       setPackageModalOpen(true);
@@ -983,7 +984,7 @@ const DiamondInventoryTable = () => {
       closeBulkActionModal();
       return;
     } else {
-      message.info(`${key} flow submitted (${selectedRowKeys.length} selected)`);
+      toastInfo(`${key} flow submitted (${selectedRowKeys.length} selected)`);
     }
     closeBulkActionModal();
   };
@@ -998,7 +999,7 @@ const DiamondInventoryTable = () => {
 
   const handleDownloadMenuClick = async ({ key }) => {
     if (!selectedRowKeys.length) {
-      message.warning("Please select at least one diamond");
+      toastWarning("Please select at least one diamond");
       return;
     }
 
@@ -1458,3 +1459,5 @@ const DiamondInventoryTable = () => {
 };
 
 export default DiamondInventoryTable;
+
+

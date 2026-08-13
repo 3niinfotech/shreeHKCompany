@@ -110,18 +110,37 @@ export default defineConfig({
       '/master/shipping': apiProxy(),
       '/master/origin': apiProxy(),
       '/master/attribute': apiProxy(),
+      // Stone History Image/Video: same-origin so thumbs are not hotlink-blocked
+      // and Vision360 is not refused by X-Frame-Options: SAMEORIGIN.
+      '/media': {
+        target: 'https://www.shreehk.com',
+        changeOrigin: true,
+        secure: true,
+        configure(proxy) {
+          proxy.on('proxyReq', (proxyReq) => {
+            proxyReq.setHeader('referer', 'https://www.shreehk.com/')
+            proxyReq.setHeader('origin', 'https://www.shreehk.com')
+          })
+          proxy.on('proxyRes', (proxyRes) => {
+            delete proxyRes.headers['x-frame-options']
+            delete proxyRes.headers['content-security-policy']
+            delete proxyRes.headers['content-security-policy-report-only']
+          })
+        },
+      },
     },
   },
   build: {
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // Ant Design aur Icons ko alag chunk mein daalna
           if (id.includes('node_modules')) {
             if (id.includes('antd')) return 'vendor-antd';
             if (id.includes('@ant-design/icons')) return 'vendor-icons';
             if (id.includes('lucide-react')) return 'vendor-lucide';
-            return 'vendor'; // Baki sab library ek file mein
+            if (id.includes('@tanstack/react-query')) return 'vendor-query';
+            if (id.includes('xlsx-js-style') || id.includes('/xlsx/')) return 'vendor-xlsx';
+            return 'vendor';
           }
         },
       },

@@ -97,38 +97,55 @@
   gap: 8px;
   flex-wrap: nowrap;
 
-  :global(.ant-btn) {
-    height: 38px !important;
-    padding: 0 14px !important;
-    font-size: 13px !important;
+  .ant-btn,
+  .ant-btn-default:not(:disabled),
+  .ant-btn:disabled {
+    height: 32px !important;
+    padding: 0 10px !important;
+    font-size: 12px !important;
     font-weight: 600 !important;
-    border-radius: 8px !important;
+    border-radius: 6px !important;
+    line-height: 30px !important;
     display: inline-flex !important;
     align-items: center !important;
     gap: 6px !important;
     background: var(--color-bg-card, #ffffff) !important;
-    border: 1px solid var(--color-border-strong, #cbd5e1) !important;
-    color: var(--color-text-heading, #1e293b) !important;
+    border: 0.5px solid #9fa2ae !important;
+    border-width: 0.5px !important;
+    border-style: solid !important;
+    border-color: #9fa2ae !important;
+    color: #3A3F55 !important;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
     transition: all 0.2s ease-in-out !important;
 
+    a,
+    .anticon,
+    svg,
+    span {
+      color: #3A3F55 !important;
+    }
+
     a {
-      color: inherit !important;
       text-decoration: none !important;
       display: inline-flex;
       align-items: center;
     }
 
     &:hover,
-    &:focus {
+    &:focus,
+    &:hover:not(:disabled) {
       background: var(--color-bg-muted, #f8fafc) !important;
-      border-color: var(--color-primary, #0284c7) !important;
-      color: var(--color-primary, #0284c7) !important;
-      box-shadow: 0 3px 6px rgba(2, 132, 199, 0.12) !important;
+      border: 0.5px solid #9fa2ae !important;
+      border-color: #9fa2ae !important;
+      color: #3A3F55 !important;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08) !important;
       transform: translateY(-1px);
 
-      a {
-        color: var(--color-primary, #0284c7) !important;
+      a,
+      .anticon,
+      svg,
+      span {
+        color: #3A3F55 !important;
       }
     }
 
@@ -137,9 +154,11 @@
     }
 
     &:disabled {
-      opacity: 0.6 !important;
+      opacity: 0.7 !important;
       transform: none !important;
       box-shadow: none !important;
+      color: #3A3F55 !important;
+      border: 0.5px solid #9fa2ae !important;
     }
   }
 }

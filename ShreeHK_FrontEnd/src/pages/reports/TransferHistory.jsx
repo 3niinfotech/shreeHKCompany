@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Table, Card, Typography, Form, Input, DatePicker, Button, message } from 'antd';
+import { Table, Card, Typography, Form, Input, DatePicker, Button } from 'antd';
+import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
 import { FileUp } from 'lucide-react';
 import dayjs from 'dayjs';
 import { api } from '../../api/axiosInstance';
@@ -89,7 +90,7 @@ const TransferHistory = () => {
 
     const handleExport = async () => {
         if (!data.length) {
-            message.warning('Run search first — no data to export.');
+            toastWarning('Run search first — no data to export.');
             return;
         }
         setExporting(true);
@@ -100,9 +101,9 @@ const TransferHistory = () => {
                 fileName: 'transfer_history',
                 sheetName: 'Transfers',
             });
-            message.success('Exported to Excel');
+            toastSuccess('Exported to Excel');
         } catch (err) {
-            message.error(err.message || 'Export failed');
+            toastError(err.message || 'Export failed');
         } finally {
             setExporting(false);
         }

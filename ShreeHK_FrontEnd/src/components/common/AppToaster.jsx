@@ -8,6 +8,7 @@ import {
   X,
 } from "lucide-react";
 import useUIStore from "../../store/Ui.Store";
+import { toastClassNames } from "../../utils/toastNotify";
 
 const iconSize = 18;
 const iconStroke = 2.25;
@@ -32,16 +33,6 @@ const toastIcons = {
   close: <X size={14} strokeWidth={2.5} aria-hidden />,
 };
 
-const toastClassNames = {
-  toast: "shreehk-toast",
-  title: "shreehk-toast__title",
-  description: "shreehk-toast__description",
-  closeButton: "shreehk-toast__close",
-  icon: "shreehk-toast__icon",
-  actionButton: "shreehk-toast__action",
-  cancelButton: "shreehk-toast__cancel",
-};
-
 /**
  * Global Sonner toast host — styled via assets/scss/_toast.scss (ShreeHK design system).
  */
@@ -61,7 +52,7 @@ export default function AppToaster() {
       mobileOffset={{ top: 64, right: 12, left: 12 }}
       duration={4000}
       toastOptions={{
-        classNames: toastClassNames,
+        classNames: toastClassNames.base,
       }}
       icons={toastIcons}
     />

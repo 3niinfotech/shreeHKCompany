@@ -1,4 +1,4 @@
-import XLSX from "xlsx-js-style";
+import { loadXlsx } from "../../../utils/loadXlsx";
 
 const NUMBER_FIELDS = new Set([
   "rPcs", "pPcs", "pCarat", "cost", "price", "amount", "tablePer", "depthPer",
@@ -104,6 +104,7 @@ export async function parseInwardImportExcel(file) {
   if (!file) throw new Error("Please select an Excel file.");
 
   const buffer = await readFileAsArrayBuffer(file);
+  const XLSX = await loadXlsx();
   const workbook = XLSX.read(buffer, { type: "array", cellDates: false });
   const sheetName = workbook.SheetNames[0];
   if (!sheetName) throw new Error("Excel file has no sheets.");

@@ -11,7 +11,7 @@ import {
     Tooltip
 } from 'antd';
 import { FileSpreadsheet, Upload as UploadIcon, Download } from 'lucide-react';
-import XLSX from "xlsx-js-style";
+import { loadXlsx } from '../../utils/loadXlsx';
 import DynamicFormField from '../../hooks/DynamicFormField';
 import styles from '../../assets/scss/pages/master/bulkupdate.module.scss';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -179,10 +179,11 @@ const BulkUpdate = () => {
         },
     };
 
-    const handleDownloadTemplate = (item) => {
+    const handleDownloadTemplate = async (item) => {
         const template = templateMap[item];
         if (!template) return;
 
+        const XLSX = await loadXlsx();
         const ws = {};
         template.headers.forEach((header, c) => {
             ws[XLSX.utils.encode_cell({ r: 0, c })] = buildHeaderCell(header);

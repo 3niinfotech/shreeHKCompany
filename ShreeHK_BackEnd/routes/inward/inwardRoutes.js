@@ -194,12 +194,62 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
                 const attrData = helper.insertString(attr);
                 const attrSql = `INSERT INTO dai_product_value (${attrData[0]}) VALUES (${attrData[1]})`;
 
-                connection.query(attrSql, (err) => {
+                connection.query(attrSql, async (err) => {
                   if (err) return reject(err);
+
+                  const action =
+                    post.inward_type === "purchase" ? post.inward_type : `in_${post.inward_type}`;
+                  try {
+                    await helper.addHistory({
+                      product_id: pid,
+                      action,
+                      party: post.party || "",
+                      narretion: post.narretion || "",
+                      date: post.invoicedate,
+                      description: `New Stone ${post.inward_type} with reference no is ${post.reference}`,
+                      pcs: r.polish_pcs,
+                      carat: r.polish_carat,
+                      balance_pcs: r.polish_pcs,
+                      balance_carat: r.polish_carat,
+                      amount: r.amount,
+                      price: r.price,
+                      sku: r.sku,
+                      type: "cr",
+                      invoice: post.invoiceno || "",
+                      entry_from: "inward",
+                      entryno: lid,
+                      user: userid,
+                    });
+                  } catch (histErr) {
+                    console.error("inward/save addHistory:", histErr);
+                  }
+
                   if (SkuData && (SkuData.group_type === "box" || SkuData.group_type === "parcel")) {
                     const updateSkuSql = `UPDATE dai_product SET polish_pcs=polish_pcs+${parseFloat(r.purchase_pcs)}, polish_carat=polish_carat+${parseFloat(r.purchase_carat)}, child_count=${SkuData.child_count} WHERE id=${SkuData.id}`;
-                    connection.query(updateSkuSql, (err) => {
-                      if (err) return reject(err);
+                    connection.query(updateSkuSql, async (updErr) => {
+                      if (updErr) return reject(updErr);
+                      try {
+                        await helper.addHistory({
+                          product_id: SkuData.id,
+                          action: post.inward_type,
+                          party: post.party || "",
+                          narretion: post.narretion || "",
+                          date: post.invoicedate,
+                          description: `New Stone ${post.inward_type} with reference no is ${post.reference}`,
+                          pcs: r.polish_pcs,
+                          carat: r.polish_carat,
+                          amount: r.amount,
+                          price: r.price,
+                          sku: r.sku,
+                          type: "cr",
+                          invoice: post.invoiceno || "",
+                          entry_from: "inward",
+                          entryno: lid,
+                          user: userid,
+                        });
+                      } catch (histErr) {
+                        console.error("inward/save parent addHistory:", histErr);
+                      }
                       resolve();
                     });
                   } else {

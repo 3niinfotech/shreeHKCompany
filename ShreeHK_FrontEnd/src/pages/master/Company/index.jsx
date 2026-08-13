@@ -255,7 +255,7 @@ const CompanyPage = () => {
     const deleteModal = useModal();
     const [deleteTarget, setDeleteTarget] = useState(null);
 
-    const { data, isFetching, isPlaceholderData, refetch } = useEntityList(
+    const { data, isLoading, isFetching, isPlaceholderData, refetch } = useEntityList(
         QUERY_KEYS.companies,
         fetchCompanies,
         {
@@ -406,7 +406,7 @@ const CompanyPage = () => {
                 title="Company"
                 columns={columns}
                 dataSource={combinedData}
-                loading={isFetching}
+                loading={isLoading}
                 onAdd={handleAddClick}
                 onEdit={handleEditClick}
                 onDelete={openDelete}

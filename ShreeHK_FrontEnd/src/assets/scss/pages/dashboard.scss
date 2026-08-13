@@ -30,6 +30,83 @@
     margin-right: 0 !important;
   }
 
+  // Middle row: Sale Due / Recent Txn / Quick Notes — equal height, tables fill
+  .middle-section.dashboard-grid {
+    .dashboard-grid__col {
+      height: 560px;
+      min-height: 560px;
+
+      > .ant-card {
+        height: 100% !important;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+    }
+
+    .dashboard-fill-card {
+      .ant-card-body {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        padding: 18px 18px 16px;
+      }
+
+      .card-header {
+        flex-shrink: 0;
+        margin-bottom: 12px;
+      }
+    }
+
+    .due-payments-card {
+      .ant-tabs {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .ant-tabs-nav {
+        flex-shrink: 0;
+        margin-bottom: 10px !important;
+      }
+
+      .ant-tabs-content-holder,
+      .ant-tabs-content,
+      .ant-tabs-tabpane {
+        flex: 1;
+        min-height: 0;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .ant-tabs-tabpane-hidden {
+        display: none !important;
+      }
+    }
+
+    .card-empty-fill {
+      flex: 1;
+      min-height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      color: var(--color-text-muted, #94a3b8);
+      text-align: center;
+    }
+  }
+
+  @media (max-width: 1199px) {
+    .middle-section.dashboard-grid .dashboard-grid__col {
+      height: 520px;
+      min-height: 520px;
+    }
+  }
+
   // =========================================================================
   // Dashboard Header (original simple row)
   // =========================================================================
@@ -466,9 +543,17 @@
     position: relative;
 
     &.due-payments-table-wrapper {
-      height: 260px !important;
-      max-height: 260px !important;
+      flex: 1;
+      min-height: 0;
+      height: auto !important;
+      max-height: none !important;
       overflow-y: auto !important;
+      display: flex;
+      flex-direction: column;
+
+      .inventory-table {
+        min-height: 100%;
+      }
     }
 
     &::-webkit-scrollbar {
@@ -547,9 +632,11 @@
   // =========================================================================
   .transactions-list {
     flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     gap: 2px;
+    overflow-y: auto;
   }
 
   .transaction-item {
@@ -642,6 +729,22 @@
   // Quick Notes & Tasks Card
   // =========================================================================
   .quick-notes-card {
+    .notes-input-bar-stacked {
+      flex-shrink: 0;
+      margin-bottom: 14px;
+    }
+
+    .notes-table-wrapper {
+      flex: 1;
+      min-height: 0;
+      max-height: none !important;
+      margin-top: 0;
+
+      table.notes-table {
+        min-height: 100%;
+      }
+    }
+
     .notes-counter-badge {
       font-size: 0.75rem;
       font-weight: 700;
@@ -1170,7 +1273,6 @@
 .notes-input-bar-stacked {
   display: flex;
   flex-direction: column;
-  gap: 12px;
   background: color-mix(in srgb, var(--color-primary-pale, #ecfdf5) 40%, #ffffff);
   padding: 14px 16px;
   border-radius: 14px;
@@ -1212,7 +1314,7 @@
   .notes-meta-fields {
     display: flex;
     align-items: flex-end;
-    gap: 14px;
+    gap: 6px;
     flex-wrap: wrap;
   }
 
@@ -1270,12 +1372,12 @@
     background: linear-gradient(135deg, var(--color-primary, #059669) 0%, var(--color-primary-dark, #047857) 100%);
     color: #ffffff;
     border: none;
-    border-radius: 9px;
+    border-radius: 4px;
     font-size: 0.84rem;
     font-weight: 600;
     cursor: pointer;
     white-space: nowrap;
-    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+    // box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
     transition: transform 0.15s ease, box-shadow 0.15s ease;
 
     &:hover {
@@ -1292,7 +1394,9 @@
 }
 
 .notes-table-wrapper {
-  max-height: 260px;
+  flex: 1;
+  min-height: 0;
+  max-height: none;
   overflow-y: auto;
   border-radius: 10px;
   border: 1px solid var(--color-border, #e2e8f0);

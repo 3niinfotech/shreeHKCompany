@@ -42,6 +42,7 @@ const integrationRouter = require("./routes/integration/integrationRoutes.js");
 const tenantCompanyRouter = require("./routes/admin/tenantCompanyRoutes.js");
 const legacyApps = require("./config/legacyApps.js");
 const { enforceApiPermission } = require("./authMiddleware.js");
+const { proxyStoneMedia, MEDIA_PREFIX } = require("./routes/media/stoneMediaProxy.js");
 const { attachAuditContext } = require("./middleware/auditContext.js");
 const { auditPreSnapshot } = require("./middleware/auditPreSnapshot.js");
 const { auditHttpLogger } = require("./middleware/auditHttpLogger.js");
@@ -97,6 +98,7 @@ app.use(attachAuditContext);
 app.use(auditPreSnapshot);
 app.use(auditHttpLogger);
 app.use('/uploads', express.static('uploads'));
+app.use(MEDIA_PREFIX, proxyStoneMedia);
 if (apiLimiter) app.use(apiLimiter);
 if (loginLimiter) app.use("/user/login", loginLimiter);
 

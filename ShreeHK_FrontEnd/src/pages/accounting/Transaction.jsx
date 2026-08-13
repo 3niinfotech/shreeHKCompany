@@ -120,6 +120,7 @@ const Transaction = () => {
                         className={filterPanelStyles.filterControl}
                         value={party || undefined}
                         onChange={setParty}
+                        virtual
                     >
                         {partyOptions.map((p) => (
                             <Option key={p.value} value={p.value}>{p.label}</Option>

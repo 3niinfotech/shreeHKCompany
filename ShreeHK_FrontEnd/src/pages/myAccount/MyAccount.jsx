@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     Row, Col, Card, Avatar, Typography, Tabs,
     Form, Input, Button, Divider,
-    Badge, Switch, List, Space, message, Tag
+    Badge, Switch, List, Space, Tag
 } from 'antd';
 import {
     UserOutlined, MailOutlined, LockOutlined,

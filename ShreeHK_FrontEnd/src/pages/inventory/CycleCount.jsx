@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef } from "react";
 import dayjs from "dayjs";
-import { Card, Input, Button, Table, Tag, Space, Typography, message } from "antd";
+import { Card, Input, Button, Table, Tag, Space, Typography } from "antd";
+import { toastError } from "../../utils/toastNotify";
 import { ScanOutlined, CheckOutlined, CloseOutlined, ReloadOutlined } from "@ant-design/icons";
 import PageHeroHeader from "../../components/common/PageHeroHeader";
 import { api } from "../../api/axiosInstance";
@@ -29,7 +30,7 @@ const CycleCount = () => {
       const rows = res.data?.Data || [];
       setExpectedSkus(new Set(rows.map((r) => String(r.sku || "").trim().toLowerCase()).filter(Boolean)));
     } catch {
-      message.error("Failed to load expected stock list");
+      toastError("Failed to load expected stock list");
     } finally {
       setLoading(false);
     }

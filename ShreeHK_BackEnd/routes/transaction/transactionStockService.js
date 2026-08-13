@@ -799,6 +799,33 @@ async function inwardMemoToPurchase(post, userContext = {}) {
 
   for (const pid of outProducts) {
     await query("UPDATE dai_product SET inward_id=? WHERE id = ?", [newId, pid]);
+    const pdata = await getProductDetail(pid);
+    if (!pdata) continue;
+    const rec = record[pid] || record[String(pid)] || {};
+    const price = rec.price || pdata.price;
+    const amount = parseFloat(pdata.polish_carat) * parseFloat(price);
+    try {
+      await addHistoryAudited({
+        product_id: pid,
+        action: "purchase",
+        party: purchasePost.party,
+        narretion: purchasePost.narretion || "",
+        date: purchasePost.invoicedate,
+        description: ` Stone Memo To Purchase with reference no is ${reference}`,
+        pcs: 0,
+        carat: 0,
+        amount,
+        price,
+        sku: pdata.sku,
+        type: "cr",
+        invoice: purchasePost.invoiceno,
+        balance_pcs: pdata.polish_pcs,
+        balance_carat: pdata.polish_carat,
+        user: userId,
+      });
+    } catch (histErr) {
+      console.error("inwardMemoToPurchase addHistory:", histErr);
+    }
   }
 
   const remaining = (memoData.products || "")

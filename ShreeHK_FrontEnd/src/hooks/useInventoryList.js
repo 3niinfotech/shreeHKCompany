@@ -55,7 +55,7 @@ export default function useInventoryList({
   );
 
   const { data: productData, isLoading, isFetching, isError, error, refetch } = useFetchApi(
-    `${queryKey}_${offset}_${baseFiltersKey}_${searchText}_${JSON.stringify(stockChecks)}_${fwRadio}`,
+    queryKey,
     ENDPOINTS.product.inventory,
     inventoryQueryParams,
     "GET",
@@ -67,18 +67,10 @@ export default function useInventoryList({
 
   const refresh = useCallback(async () => {
     // Do not clear tableData before fetch — that leaves "No data" if API does not re-run.
-    // Real query keys are `${queryKey}_…`, so refetch current page-0 query (or reset offset).
     if (offset !== 0) {
       setOffset(0);
-      queryClient.invalidateQueries({
-        predicate: (query) => {
-          const key = query.queryKey?.[0];
-          return (
-            typeof key === "string" &&
-            (key.startsWith(`${queryKey}_`) || key === "GetProductData" || key.startsWith("GetProductData"))
-          );
-        },
-      });
+      queryClient.invalidateQueries({ queryKey: [queryKey] });
+      queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
       return;
     }
     await refetch();
@@ -126,9 +118,16 @@ export default function useInventoryList({
     return () => tableBody.removeEventListener("scroll", onScroll);
   }, [tableData.length, isFetchingMore, isLoading, totalItems]);
 
+  const cachedMappedRows = useMemo(() => {
+    if (offset !== 0 || !productData?.Data?.length) return [];
+    return productData.Data.map((item, index) => mapRow(item, index, offset + 1, PAGE_LIMIT));
+  }, [productData, offset, mapRow]);
+
+  const displayTableData = tableData.length > 0 ? tableData : cachedMappedRows;
+
   return {
-    tableData,
-    isLoading: (isLoading || isFetching) && offset === 0,
+    tableData: displayTableData,
+    isLoading: isLoading && offset === 0 && displayTableData.length === 0,
     isFetchingMore,
     isError,
     error,

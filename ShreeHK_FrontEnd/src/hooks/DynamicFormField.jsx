@@ -21,6 +21,7 @@ const DynamicForm = ({ fields, forceFullWidth, layout = 'grid' }) => {
                         options={field.options}
                         showSearch
                         allowClear
+                        virtual
                         maxTagCount={field.mode === 'multiple' ? 'responsive' : undefined}
                         optionFilterProp="label"
                         style={inputStyle}
@@ -32,7 +33,7 @@ const DynamicForm = ({ fields, forceFullWidth, layout = 'grid' }) => {
             case 'number':
                 return <InputNumber placeholder={`0.00`} style={inputStyle} disabled={field.disabled} min={0} />;
             case 'textarea':
-                return <TextArea rows={3} placeholder={`Enter ${field.label}...`} style={inputStyle} disabled={field.disabled} />;
+                return <TextArea rows={field.rows || 3} placeholder={`Enter ${field.label}...`} style={inputStyle} disabled={field.disabled} />;
             case 'checkbox':
                 return <Checkbox disabled={field.disabled}>{field.label}</Checkbox>;
             default:

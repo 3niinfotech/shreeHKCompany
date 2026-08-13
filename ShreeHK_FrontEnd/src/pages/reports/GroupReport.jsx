@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { Button, Card, Form, message } from 'antd';
+import { Button, Card, Form } from 'antd';
+import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
 import { FileUp } from 'lucide-react';
 import dayjs from 'dayjs';
 import useFormHandleChange from '../../hooks/useFormHandleChange';
@@ -114,7 +115,7 @@ const GroupReport = () => {
 
     const handleExport = async () => {
         if (!tableData.length) {
-            message.warning('Run search first — no data to export.');
+            toastWarning('Run search first — no data to export.');
             return;
         }
         setExporting(true);
@@ -125,9 +126,9 @@ const GroupReport = () => {
                 fileName: 'group_report',
                 sheetName: 'Group',
             });
-            message.success('Exported to Excel');
+            toastSuccess('Exported to Excel');
         } catch (err) {
-            message.error(err.message || 'Export failed');
+            toastError(err.message || 'Export failed');
         } finally {
             setExporting(false);
         }

@@ -1,16 +1,18 @@
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import useUIStore from "../../store/Ui.Store";
 import useAuthStore from "../../store/Auth.Store";
 import useSessionKeepalive from "../../hooks/useSessionKeepalive";
 import MainLayout from "./MainLayout";
 import DashboardLayout from "./DashboardLayout";
-import FloatingAIChat from "../ai/FloatingAIChat";
-import FloatingRapaportPanel from "../rapaport/FloatingRapaportPanel";
 import CompanyYearPicker from "./CompanyYearPicker";
 import AuditUiTracker from "./AuditUiTracker";
 import useCopyableTableIdentifiers from "../../hooks/useCopyableTableIdentifiers";
 import TaskReminderModal from "../dashboard/TaskReminderModal";
 import { SkuModalProvider } from "../../hooks/useSkuModalAction";
+import { prefetchMasterQueries } from "../../api/prefetchMasterQueries";
+
+const FloatingAIChat = lazy(() => import("../ai/FloatingAIChat"));
 
 const LayoutShell = () => {
   const viewMode = useUIStore((state) => state.viewMode) ?? "web";
@@ -23,6 +25,7 @@ const LayoutShell = () => {
   useCopyableTableIdentifiers();
 
   const contextReady = companyId != null && yearId != null;
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (isAuthenticated && !contextReady) {
@@ -30,14 +33,32 @@ const LayoutShell = () => {
     }
   }, [isAuthenticated, contextReady, setShowContextPicker]);
 
+  useEffect(() => {
+    if (isAuthenticated && contextReady) {
+      prefetchMasterQueries(queryClient);
+    }
+  }, [isAuthenticated, contextReady, queryClient]);
+
+  useEffect(() => {
+    if (!contextReady) return undefined;
+    const prefetchChat = () => import("../ai/FloatingAIChat");
+    if (typeof window.requestIdleCallback === "function") {
+      const idleId = window.requestIdleCallback(prefetchChat);
+      return () => window.cancelIdleCallback(idleId);
+    }
+    const timer = window.setTimeout(prefetchChat, 1);
+    return () => window.clearTimeout(timer);
+  }, [contextReady]);
+
   return (
     <SkuModalProvider>
       <AuditUiTracker />
       {contextReady ? (
         <>
           {viewMode === "dashboard" ? <DashboardLayout /> : <MainLayout />}
-          {/* <FloatingRapaportPanel /> */}
-          <FloatingAIChat />
+          <Suspense fallback={null}>
+            <FloatingAIChat />
+          </Suspense>
           <TaskReminderModal />
         </>
       ) : null}

@@ -72,7 +72,7 @@ const AccGroup = () => {
         }
       />
       <MasterFormAddModal isOpen={addModal.open} onClose={addModal.closeModal} onSave={() => handleSave("add")} loading={saving} form={form} formFields={accGroupFields} title="Add Group" width={400} />
-      <MasterFormEditModal isOpen={editModal.open} onClose={editModal.closeModal} onSave={() => handleSave("edit")} loading={saving} form={form} formFields={accGroupFields} initialValues={editRecord} title={`Edit: ${editRecord?.name || ""}`} width={400} />
+      <MasterFormEditModal isOpen={editModal.open} onClose={editModal.closeModal} onSave={() => handleSave("edit")} loading={saving} form={form} formFields={accGroupFields} initialValues={editRecord} title={`Edit Group: ${editRecord?.name || ""}`} width={400} />
       <ConfirmDeleteModal open={deleteModal.open} title="Delete Group" entityName={deleteTarget?.name} loading={isDeleting} onCancel={closeDelete} onConfirm={handleDelete} />
     </>
   );

@@ -43,6 +43,8 @@ export const INVENTORY_ACTION_THEME = {
   mail: toneTheme("Mail", INVENTORY_ROW_TONES.blue),
   addPackage: toneTheme("Add Package", INVENTORY_ROW_TONES.white),
   reservation: toneTheme("Reserve", INVENTORY_ROW_TONES.grey),
+  lab: toneTheme("Send to Lab", INVENTORY_ROW_TONES.green),
+  toExport: toneTheme("To Export", INVENTORY_ROW_TONES.blue),
 };
 
 export const INVENTORY_ACTION_FIELDS = {
@@ -124,6 +126,8 @@ const VARIANT_ALIASES = {
   addPackage: "addPackage",
   reservation: "reservation",
   consignment: "consignment",
+  lab: "lab",
+  toExport: "toExport",
 };
 
 export const resolveActionVariant = (actionKey) => VARIANT_ALIASES[actionKey] || actionKey;

@@ -26,6 +26,20 @@ const ACTION_CONFIG = {
     accent: "#C596E8",
     ring: "rgba(197,150,232,0.35)",
   },
+  lab: {
+    label: "Lab",
+    heading: "Sent To Lab",
+    verb: "sent to lab",
+    accent: "#4ADE80",
+    ring: "rgba(74,222,128,0.35)",
+  },
+  export: {
+    label: "Export",
+    heading: "Sent To Export",
+    verb: "sent as export",
+    accent: "#38BDF8",
+    ring: "rgba(56,189,248,0.35)",
+  },
   hold: {
     label: "On Hold",
     heading: "Placed On Hold",

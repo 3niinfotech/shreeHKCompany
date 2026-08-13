@@ -1,6 +1,6 @@
 
 
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, createElement } from 'react';
 import {
     Button, Input, Select, Card, Typography, Space, Tooltip, Popconfirm, Form, Spin
 } from 'antd';
@@ -13,7 +13,9 @@ import {
     ReloadOutlined,
 } from '@ant-design/icons';
 import DynamicFormField from "../../hooks/DynamicFormField"
-import { BaseModal } from "../../components/common/modals";
+import { BaseModal, FormModal } from "../../components/common/modals";
+import { Pencil, CircleCheck } from "lucide-react";
+import "../../assets/scss/masterEdit.scss";
 import { useDeleteApiRequest, useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../constants/endpoints';
 import { ConfirmDeleteModal } from "../../components/common/modals";
@@ -92,6 +94,7 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
     const [selectedRowKey, setSelectedRowKey] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
+    const [editingName, setEditingName] = useState('');
     const [allData, setAllData] = useState([]);
     const [deleteModal, setDeleteModal] = useState({ open: false, record: null });
     const [offset, setOffset] = useState(0);
@@ -153,6 +156,7 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
     const showModal = (record = null) => {
         if (record) {
             setEditingId(record.id);
+            setEditingName(record.name || '');
             form.setFieldsValue({
                 under_group: record.under_group,
                 under_subgroup: record.under_subgroup,
@@ -165,6 +169,7 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
             });
         } else {
             setEditingId(null);
+            setEditingName('');
             form.resetFields();
         }
         setIsModalOpen(true);
@@ -306,27 +311,47 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
             </Card>
 
             {/* FORM MODAL INTEGRATION */}
-            <BaseModal
-                title={editingId ? "Edit Party" : "Add New Party"}
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                onSave={handleInternalSave}
-                loading={isSubmitting}
-                width={800}
-                saveBtnText={editingId ? "Update" : "Save"}
-                content={
-                    <Form
-                        form={form}
-                        layout="vertical"
-                        key={editingId ? editingId : 'add'}
-                    >
-                        <DynamicFormField
-                            fields={formFields}
-                            forceFullWidth={formFields.length <= 2}
-                        />
-                    </Form>
-                }
-            />
+            {editingId ? (
+                <FormModal
+                    variant="edit"
+                    title={`Edit ${pageTitle}`}
+                    subtitle={editingName}
+                    headerIcon={createElement(Pencil, { size: 16, strokeWidth: 2 })}
+                    saveIcon={createElement(CircleCheck, { size: 15, strokeWidth: 2.25 })}
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    onSave={handleInternalSave}
+                    loading={isSubmitting}
+                    width={800}
+                    saveBtnText="Update"
+                    cancelBtnText="Close"
+                    form={form}
+                    formKey={editingId}
+                    formFields={formFields}
+                />
+            ) : (
+                <BaseModal
+                    title="Add New Party"
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    onSave={handleInternalSave}
+                    loading={isSubmitting}
+                    width={800}
+                    saveBtnText="Save"
+                    content={
+                        <Form
+                            form={form}
+                            layout="vertical"
+                            key="add"
+                        >
+                            <DynamicFormField
+                                fields={formFields}
+                                forceFullWidth={formFields.length <= 2}
+                            />
+                        </Form>
+                    }
+                />
+            )}
             <ConfirmDeleteModal
                 open={deleteModal.open}
                 title="Delete Category"

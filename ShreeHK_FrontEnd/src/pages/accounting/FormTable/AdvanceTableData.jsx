@@ -22,6 +22,30 @@ const AdvanceTableData = () => {
         { limit, offset }
     );
 
+    const { data: companyData } = useFetchApi('GetCompany', ENDPOINTS.company.options);
+
+    const partyOptions = useMemo(() => {
+        const list = companyData?.Data || [];
+        return list.map((item) => ({
+            label: item.name,
+            value: item.id,
+        }));
+    }, [companyData]);
+
+    const partyNameById = useMemo(() => {
+        const map = new Map();
+        (companyData?.Data || []).forEach((item) => {
+            map.set(String(item.id), item.name);
+            map.set(String(item.name), item.name);
+        });
+        return map;
+    }, [companyData]);
+
+    const resolvePartyName = useCallback((party) => {
+        if (party == null || party === '') return '-';
+        return partyNameById.get(String(party)) || String(party);
+    }, [partyNameById]);
+
     const { mutate: saveExpanse } = usePostApiRequest(ENDPOINTS.advance.payment, 'advanceSave');
 
     // Delete API Hook - Make sure the endpoint matches your backend
@@ -104,22 +128,22 @@ const AdvanceTableData = () => {
         });
     };
 
-    const columns = [
+    const columns = useMemo(() => [
         { title: 'No.', key: 'index', width: 70, render: (_, __, i) => i + 1 },
         { title: 'Date', dataIndex: 'date', key: 'date', render: (d) => (d && dayjs(d).isValid() ? dayjs(d).format('DD-MM-YYYY') : (d?.split('T')[0] || '-')) },
-        { title: 'Party', dataIndex: 'party', key: 'party' },
+        { title: 'Party', dataIndex: 'party', key: 'party', render: (party) => resolvePartyName(party) },
         { title: 'Amount', dataIndex: 'amount', key: 'amount', align: 'right' },
         { title: 'Book Type', dataIndex: 'type', key: 'type' },
         { title: 'Description', dataIndex: 'description', key: 'description', ellipsis: true },
-    ];
+    ], [resolvePartyName]);
 
-    const expanseFields = [
+    const expanseFields = useMemo(() => [
         { name: 'date', label: 'Date', type: 'date', required: true, span: 12 },
-        { name: 'party', label: 'Party', type: 'select', options: [{ label: 'Cash', value: 'cash' }], required: true, span: 12 },
+        { name: 'party', label: 'Party', type: 'select', options: partyOptions, required: true, span: 12 },
         { name: 'amount', label: 'Amount', type: 'number', required: true, span: 12 },
         { name: 'type', label: 'Type', type: 'select', options: [{ label: "DR", value: "dr" }, { label: "CR", value: "cr" }], required: true, span: 12 },
         { name: 'description', label: 'Description', type: 'textarea', span: 24 },
-    ];
+    ], [partyOptions]);
 
     return (
         <>

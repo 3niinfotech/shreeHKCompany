@@ -2,7 +2,8 @@ import React, { useEffect, useState, useRef, useMemo, useCallback, useLayoutEffe
 import { useLocation, useNavigate } from "react-router-dom";
 import { SelectionContext } from "./SelectionContext";
 import { SkuLink } from "../../hooks/useSkuModalAction";
-import { Table, Button, Dropdown, Tag, Form, message, Input } from "antd";
+import { Table, Button, Dropdown, Tag, Form, Input } from "antd";
+import { toastSuccess, toastWarning, toastInfo } from "../../utils/toastNotify";
 import { DownOutlined, DownloadOutlined, ReloadOutlined } from "@ant-design/icons";
 import InventorySmartSearch from "../../components/inventory/InventorySmartSearch";
 import { useQueryClient } from "@tanstack/react-query";
@@ -16,14 +17,11 @@ import InventoryFilterGroups from "../../components/inventory/InventoryFilterGro
 import InventoryCompactFilterRow from "../../components/inventory/InventoryCompactFilterRow";
 import InventoryActionPanel from "../../components/inventory/InventoryActionPanel";
 import InventoryBulkActionModal from "../../components/inventory/InventoryBulkActionModal";
-import OnMemoModal from "../../components/inventory/OnMemoModal";
-import AddToPackageModal from "../../components/inventory/AddToPackageModal";
 import InventoryStoneDetailModal from "../../components/inventory/InventoryStoneDetailModal";
 import InventoryQuickLinks from "../../components/inventory/InventoryQuickLinks";
 import InventorySummaryToolbar from "../../components/inventory/InventorySummaryToolbar";
-import InventoryCompareModal from "../../components/inventory/InventoryCompareModal";
 import InventoryFilterPresets from "../../components/inventory/InventoryFilterPresets";
-import ReservationModal from "../../components/inventory/ReservationModal";
+import InventoryPageModals from "./InventoryPageModals";
 import useInventoryHoldActions from "../../hooks/useInventoryHoldActions";
 import useInventoryChangePriceActions from "../../hooks/useInventoryChangePriceActions";
 import useInventoryLabelA4Actions from "../../hooks/useInventoryLabelA4Actions";
@@ -46,6 +44,78 @@ import "../../assets/scss/pages/inventory/diamondInventoryTable.scss";
 const EMPTY_ARRAY = [];
 const getRowKey = (record) => String(record.id);
 const TABLE_LOCALE = { emptyText: "No data found" };
+
+const mapInventoryProductRow = (item, index, offset = 1) => ({
+  id: String(item.id), no: (offset - 1) * 100 + index + 1, mfgCode: item.mfg_code,
+  groupType: item.group_type, sku: item.sku, lab: item.lab,
+  outward: item.outward ?? "",
+  hold: item.hold === 1 || item.hold === true || item.hold === "1",
+  certificate: item.report_no, shape: item.shape, polishPcs: item.polish_pcs,
+  polishCarat: item.polish_carat,
+  memoCarat: Number(item.memo_carat) || 0,
+  memoItems: (item.memo_items || []).map((memoItem) => ({
+    id: memoItem.id,
+    sku: memoItem.sku,
+    polishCarat: memoItem.polish_carat,
+    polishPcs: memoItem.polish_pcs,
+    outward: memoItem.outward,
+    price: memoItem.price,
+    amount: memoItem.amount,
+    entryno: memoItem.entryno,
+    invoiceno: memoItem.invoiceno,
+    reference: memoItem.reference,
+    memoDate: memoItem.memo_date,
+    outwardId: memoItem.outward_id,
+    partyName: memoItem.party_name,
+  })),
+  memoHistory: (item.memo_history || []).map((historyItem) => ({
+    id: historyItem.id,
+    productId: historyItem.product_id,
+    sku: historyItem.sku,
+    action: historyItem.action,
+    description: historyItem.description,
+    date: historyItem.date,
+    carat: historyItem.carat,
+    pcs: historyItem.pcs,
+    amount: historyItem.amount,
+    price: historyItem.price,
+    invoice: historyItem.invoice,
+    type: historyItem.type,
+    narration: historyItem.narration,
+    partyName: historyItem.party_name,
+  })),
+  mainClarity: item.in_house_clarity,
+  clarity: item.clarity,
+  argyleColor: item.argyle_color,
+  rapPrice: item.rap_price,
+  cost: item.cost,
+  price: item.price,
+  amount: item.amount,
+  size: item.size,
+  fluorescence: item.f_intensity,
+  cut: item.cut,
+  polish: item.polish,
+  symmetry: item.symmentry,
+  table: item.table_pc,
+  depth: item.depth_pc,
+  measurement: item.mesurment,
+  girdle: item.gridle,
+  mining: item.mining,
+  origin: item.origin,
+  intensity: item.intensity,
+  overTone: item.overtone,
+  color: item.color,
+  location: item.location,
+  package: item.package,
+  bgm: item.bgm,
+  eyeClean: item.eyeclean,
+  group: item.main_group,
+  subGroup: item.sub_group,
+  remark: item.remark,
+  rapnetUpload: item.rapnet_upload,
+  siteUpload: item.site_upload,
+  inward: item.inward ?? "",
+});
 
 const SelectionCheckbox = React.memo(function SelectionCheckbox({ id }) {
   const context = useContext(SelectionContext);
@@ -401,13 +471,8 @@ const DiamondInventoryTable = () => {
   const [tableHeight, setTableHeight] = useState(600);
   const [stoneDetailModal, setStoneDetailModal] = useState({ open: false, data: null });
   const [bulkActionModal, setBulkActionModal] = useState({ open: false, actionKey: null });
-  const [memoModalOpen, setMemoModalOpen] = useState(false);
-  const [sellModalOpen, setSellModalOpen] = useState(false);
-  const [consignModalOpen, setConsignModalOpen] = useState(false);
-  const [compareModalOpen, setCompareModalOpen] = useState(false);
-  const [reservationModalOpen, setReservationModalOpen] = useState(false);
   const [syncLoading, setSyncLoading] = useState(false);
-  const [packageModalOpen, setPackageModalOpen] = useState(false);
+  const pageModalsRef = useRef(null);
   const [filterForm] = Form.useForm();
   const [advancedFilterForm] = Form.useForm();
   const stoneTypeFw = Form.useWatch("stoneTypeFw", filterForm) || "";
@@ -696,7 +761,6 @@ const DiamondInventoryTable = () => {
     }
     toastApiSuccess(result);
     showSuccessModal("memo", selectedRows);
-    setMemoModalOpen(false);
     setSelectedRowKeys([]);
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
@@ -711,7 +775,6 @@ const DiamondInventoryTable = () => {
     }
     toastApiSuccess(result);
     showSuccessModal("sale", selectedRows);
-    setSellModalOpen(false);
     setSelectedRowKeys([]);
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
@@ -726,7 +789,34 @@ const DiamondInventoryTable = () => {
     }
     toastApiSuccess(result);
     showSuccessModal("consign", selectedRows);
-    setConsignModalOpen(false);
+    setSelectedRowKeys([]);
+    setOffset(1);
+    queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
+    queryClient.invalidateQueries({ queryKey: ["OutwardList"] });
+    queryClient.invalidateQueries({ queryKey: ["getIncrement"] });
+  };
+
+  const handleLabSubmit = async (payload) => {
+    const result = await sendToOutward(payload);
+    if (!result?.status) {
+      throw new Error(result?.message || "");
+    }
+    toastApiSuccess(result);
+    showSuccessModal("lab", selectedRows);
+    setSelectedRowKeys([]);
+    setOffset(1);
+    queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
+    queryClient.invalidateQueries({ queryKey: ["OutwardList"] });
+    queryClient.invalidateQueries({ queryKey: ["getIncrement"] });
+  };
+
+  const handleExportSubmit = async (payload) => {
+    const result = await sendToOutward(payload);
+    if (!result?.status) {
+      throw new Error(result?.message || "");
+    }
+    toastApiSuccess(result);
+    showSuccessModal("export", selectedRows);
     setSelectedRowKeys([]);
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
@@ -806,76 +896,7 @@ const DiamondInventoryTable = () => {
 
   useEffect(() => {
     if (productData?.Data?.length > 0) {
-      const mapped = productData.Data.map((item, index) => ({
-        id: String(item.id), no: (offset - 1) * 100 + index + 1, mfgCode: item.mfg_code,
-        groupType: item.group_type, sku: item.sku, lab: item.lab,
-        outward: item.outward ?? "",
-        hold: item.hold === 1 || item.hold === true || item.hold === "1",
-        certificate: item.report_no, shape: item.shape, polishPcs: item.polish_pcs,
-        polishCarat: item.polish_carat,
-        memoCarat: Number(item.memo_carat) || 0,
-        memoItems: (item.memo_items || []).map((memoItem) => ({
-          id: memoItem.id,
-          sku: memoItem.sku,
-          polishCarat: memoItem.polish_carat,
-          polishPcs: memoItem.polish_pcs,
-          outward: memoItem.outward,
-          price: memoItem.price,
-          amount: memoItem.amount,
-          entryno: memoItem.entryno,
-          invoiceno: memoItem.invoiceno,
-          reference: memoItem.reference,
-          memoDate: memoItem.memo_date,
-          outwardId: memoItem.outward_id,
-          partyName: memoItem.party_name,
-        })),
-        memoHistory: (item.memo_history || []).map((historyItem) => ({
-          id: historyItem.id,
-          productId: historyItem.product_id,
-          sku: historyItem.sku,
-          action: historyItem.action,
-          description: historyItem.description,
-          date: historyItem.date,
-          carat: historyItem.carat,
-          pcs: historyItem.pcs,
-          amount: historyItem.amount,
-          price: historyItem.price,
-          invoice: historyItem.invoice,
-          type: historyItem.type,
-          narration: historyItem.narration,
-          partyName: historyItem.party_name,
-        })),
-        mainClarity: item.in_house_clarity,
-        clarity: item.clarity,
-        argyleColor: item.argyle_color,
-        rapPrice: item.rap_price,
-        cost: item.cost,
-        price: item.price,
-        amount: item.amount,
-        size: item.size,
-        fluorescence: item.f_intensity,
-        cut: item.cut,
-        polish: item.polish,
-        symmetry: item.symmentry,
-        table: item.table_pc,
-        depth: item.depth_pc,
-        measurement: item.mesurment,
-        girdle: item.gridle,
-        mining: item.mining,
-        origin: item.origin,
-        intensity: item.intensity,
-        overTone: item.overtone,
-        color: item.color,
-        location: item.location,
-        package: item.package,
-        bgm: item.bgm,
-        eyeClean: item.eyeclean,
-        group: item.main_group,
-        subGroup: item.sub_group,
-        remark: item.remark,
-        rapnetUpload: item.rapnet_upload,
-        siteUpload: item.site_upload,
-      }));
+      const mapped = productData.Data.map((item, index) => mapInventoryProductRow(item, index, offset));
       setTableData(prev => {
         const existingIds = new Set(prev.map(d => d.id));
         const newItems = mapped.filter(d => !existingIds.has(d.id));
@@ -922,7 +943,7 @@ const DiamondInventoryTable = () => {
           String(row.id) === String(productId) ? { ...row, remark: nextRemark } : row
         )
       );
-      message.success(res?.data?.message || "Remark updated");
+      toastSuccess(res?.data?.message || "Remark updated");
     } catch (error) {
       toastApiError(error);
       throw error;
@@ -1174,41 +1195,77 @@ const DiamondInventoryTable = () => {
     }
     if (key === "onMemo" || mapped === "memo") {
       if (selectedRowKeys.length === 0) {
-        message.warning("Please select at least one diamond");
+        toastWarning("Please select at least one diamond");
         return;
       }
-      setMemoModalOpen(true);
+      pageModalsRef.current?.openStock("memo");
       return;
     }
     if (key === "consignment" || key === "consign") {
       if (selectedRowKeys.length === 0) {
-        message.warning("Please select at least one diamond");
+        toastWarning("Please select at least one diamond");
         return;
       }
-      setConsignModalOpen(true);
+      pageModalsRef.current?.openStock("consign");
       return;
     }
     if (key === "reservation") {
       if (selectedRowKeys.length === 0) {
-        message.warning("Please select at least one diamond");
+        toastWarning("Please select at least one diamond");
         return;
       }
-      setReservationModalOpen(true);
+      pageModalsRef.current?.openReservation();
       return;
     }
     if (key === "sale" || mapped === "sell" || key === "sell") {
       if (selectedRowKeys.length === 0) {
-        message.warning("Please select at least one diamond");
+        toastWarning("Please select at least one diamond");
         return;
       }
       const nonMemoRows = selectedRows.filter(
         (row) => String(row?.outward || "").toLowerCase() !== "memo",
       );
       if (nonMemoRows.length) {
-        message.warning("Sale is allowed only for memo diamonds");
+        toastWarning("Sale is allowed only for memo diamonds");
         return;
       }
-      setSellModalOpen(true);
+      pageModalsRef.current?.openStock("sell");
+      return;
+    }
+    if (key === "lab") {
+      if (selectedRowKeys.length === 0) {
+        toastWarning("Please select at least one diamond");
+        return;
+      }
+      const blocked = selectedRows.filter(
+        (row) => row?.hold || String(row?.outward || "").trim(),
+      );
+      if (blocked.length) {
+        toastWarning("One of the stones is on Memo/Hold. Please return/unhold those stones first.");
+        return;
+      }
+      pageModalsRef.current?.openStock("lab");
+      return;
+    }
+    if (key === "toExport") {
+      if (selectedRowKeys.length === 0) {
+        toastWarning("Please select at least one diamond");
+        return;
+      }
+      const blocked = selectedRows.filter((row) => {
+        const inward = String(row?.inward || "").toLowerCase();
+        return (
+          row?.hold
+          || String(row?.outward || "").trim()
+          || inward === "memo"
+          || inward === "consign"
+        );
+      });
+      if (blocked.length) {
+        toastWarning("One of the stones is IN Memo/OUT Memo/Hold. Please purchase/return/unhold those stones first.");
+        return;
+      }
+      pageModalsRef.current?.openStock("export");
       return;
     }
     if (key === "hold" || key === "unHold") {
@@ -1217,10 +1274,10 @@ const DiamondInventoryTable = () => {
     }
     if (key === "addPackage") {
       if (selectedRowKeys.length === 0) {
-        message.warning("Please select at least one diamond");
+        toastWarning("Please select at least one diamond");
         return;
       }
-      setPackageModalOpen(true);
+      pageModalsRef.current?.openPackage();
       return;
     }
     setBulkActionModal({ open: true, actionKey: mapped });
@@ -1258,11 +1315,11 @@ const DiamondInventoryTable = () => {
       if (!ok) return;
     } else if (key === "consignment") {
       if (selectedRowKeys.length === 0) return;
-      setConsignModalOpen(true);
+      pageModalsRef.current?.openStock("consign");
       closeBulkActionModal();
       return;
     } else {
-      message.info(`${key} flow submitted (${selectedRowKeys.length} selected)`);
+      toastInfo(`${key} flow submitted (${selectedRowKeys.length} selected)`);
     }
     closeBulkActionModal();
   };
@@ -1277,7 +1334,7 @@ const DiamondInventoryTable = () => {
 
   const handleDownloadMenuClick = async ({ key }) => {
     if (!selectedRowKeys.length) {
-      message.warning("Please select at least one diamond");
+      toastWarning("Please select at least one diamond");
       return;
     }
 
@@ -1375,21 +1432,33 @@ const DiamondInventoryTable = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when navigated from header search
   }, [location.state?.inventorySmartFilter]);
 
-  const resetInventoryFilters = () => {
-    filterForm.resetFields();
-    advancedFilterForm.resetFields();
-    setSearchText("");
-    setCaratFrom("");
-    setCaratTo("");
+  const refreshInventory = async (options = {}) => {
+    if (options.reset) {
+      filterForm.resetFields();
+      advancedFilterForm.resetFields();
+      setSearchText("");
+      setCaratFrom("");
+      setCaratTo("");
+      setIsFetching(false);
+      setAppliedFilters({});
+      setSelectedRowKeys([]);
+    }
     setOffset(1);
-    setIsFetching(false);
-    setAppliedFilters({});
-    setSelectedRowKeys([]);
+    if (offset === 1) {
+      await refetchInventory();
+    } else {
+      queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
+    }
+    queryClient.invalidateQueries({ queryKey: ["myInventorySummary"] });
   };
 
-  const filteredTableData = tableData;
-  const initialListLoading = (isFetching || isLoading) && filteredTableData.length === 0;
-  const refetchListLoading = (isFetching || isLoading) && filteredTableData.length > 0;
+  const cachedMappedRows = useMemo(() => {
+    if (offset !== 1 || !productData?.Data?.length) return EMPTY_ARRAY;
+    return productData.Data.map((item, index) => mapInventoryProductRow(item, index, offset));
+  }, [productData, offset]);
+
+  const filteredTableData = tableData.length > 0 ? tableData : cachedMappedRows;
+  const initialListLoading = isLoading && filteredTableData.length === 0;
   const {
     columns: tableColumnsSk,
     dataSource: tableDataSk,
@@ -1398,13 +1467,13 @@ const DiamondInventoryTable = () => {
   } = useTableSkeleton({
     columns,
     dataSource: filteredTableData,
-    loading: initialListLoading || refetchListLoading,
+    loading: initialListLoading,
     rowCount: 12,
     rowKey: "_skeletonKey",
   });
   const tableDataById = useMemo(
-    () => new Map(tableData.map((row) => [String(row.id), row])),
-    [tableData],
+    () => new Map(filteredTableData.map((row) => [String(row.id), row])),
+    [filteredTableData],
   );
   const selectedRows = useMemo(() => {
     if (!selectedRowKeys.length) return EMPTY_ARRAY;
@@ -1412,7 +1481,7 @@ const DiamondInventoryTable = () => {
   }, [selectedRowKeys, tableDataById]);
 
   const showTotalStats = useMemo(() => {
-    const computed = computeSelectedStockCalculationStats(tableData);
+    const computed = computeSelectedStockCalculationStats(filteredTableData);
     const td = productData?.TotalData;
     return {
       totalPcs: td?.TotalItems ?? computed.totalPcs,
@@ -1479,7 +1548,9 @@ const DiamondInventoryTable = () => {
     handleSelectAllToggle,
   }), [selectedRowKeysSet, handleToggleRowSelection, isAllSelected, isIndeterminate, handleSelectAllToggle]);
 
-  const handleOpenCompareModal = useCallback(() => setCompareModalOpen(true), []);
+  const handleOpenCompareModal = useCallback(() => {
+    pageModalsRef.current?.openCompare();
+  }, []);
 
   return (
     <SelectionContext.Provider value={selectionContextValue}>
@@ -1515,24 +1586,16 @@ const DiamondInventoryTable = () => {
             headerActionsLeft={
               <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                 <Button size="small" type="primary" onClick={applyInventoryFilters}>
-                  Apply
+                  Search
                 </Button>
-                {/* <Button size="small" onClick={resetInventoryFilters}>
+                {/* <Button size="small" onClick={() => refreshInventory({ reset: true })}>
                   Reset
                 </Button> */}
                 <Button
                   size="small"
                   icon={<ReloadOutlined />}
                   loading={isLoading || isInventoryFetching}
-                  onClick={async () => {
-                    setOffset(1);
-                    if (offset === 1) {
-                      await refetchInventory();
-                    } else {
-                      queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
-                    }
-                    queryClient.invalidateQueries({ queryKey: ["myInventorySummary"] });
-                  }}
+                  onClick={() => refreshInventory({ reset: true })}
                 >
                   Refresh
                 </Button>
@@ -1647,53 +1710,18 @@ const DiamondInventoryTable = () => {
           onSubmit={handleBulkActionSubmit}
         />
 
-        <OnMemoModal
-          open={memoModalOpen}
-          onClose={() => setMemoModalOpen(false)}
-          selectedRows={memoModalOpen ? selectedRows : EMPTY_ARRAY}
-          actionType="memo"
-          onSubmit={handleMemoSubmit}
-        />
-
-        <OnMemoModal
-          open={sellModalOpen}
-          onClose={() => setSellModalOpen(false)}
-          selectedRows={sellModalOpen ? selectedRows : EMPTY_ARRAY}
-          actionType="sell"
-          onSubmit={handleSaleSubmit}
-        />
-
-        <OnMemoModal
-          open={consignModalOpen}
-          onClose={() => setConsignModalOpen(false)}
-          selectedRows={consignModalOpen ? selectedRows : EMPTY_ARRAY}
-          actionType="consign"
-          onSubmit={handleConsignSubmit}
-        />
-
-        <InventoryCompareModal
-          open={compareModalOpen}
-          rows={compareModalOpen ? selectedRows : EMPTY_ARRAY}
-          onClose={() => setCompareModalOpen(false)}
-        />
-
-        <ReservationModal
-          open={reservationModalOpen}
-          selectedIds={reservationModalOpen ? selectedRowKeys : EMPTY_ARRAY}
-          onClose={() => setReservationModalOpen(false)}
-          onSuccess={() => {
+        <InventoryPageModals
+          ref={pageModalsRef}
+          selectedRows={selectedRows}
+          selectedRowKeys={selectedRowKeys}
+          onMemoSubmit={handleMemoSubmit}
+          onSaleSubmit={handleSaleSubmit}
+          onConsignSubmit={handleConsignSubmit}
+          onLabSubmit={handleLabSubmit}
+          onExportSubmit={handleExportSubmit}
+          onAfterPackageOrReservation={() => {
             setSelectedRowKeys([]);
             queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
-          }}
-        />
-
-        <AddToPackageModal
-          open={packageModalOpen}
-          onClose={() => setPackageModalOpen(false)}
-          productIds={packageModalOpen ? selectedRowKeys : EMPTY_ARRAY}
-          onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
-            setSelectedRowKeys([]);
           }}
         />
 

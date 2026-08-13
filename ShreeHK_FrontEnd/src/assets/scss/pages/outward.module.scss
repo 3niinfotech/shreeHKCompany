@@ -4,6 +4,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  gap: 10px;
 
   .cardContainer {
     flex: 1;
@@ -23,6 +24,34 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
+    }
+  }
+
+  /* /outward list only — strip extra wrapper/card/footer backgrounds (GIA-Memo unchanged) */
+  &.outwardListPage {
+    .cardContainer {
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+
+    .tableWrapper {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+
+      :global(.ant-table) {
+        background: transparent !important;
+      }
+
+      :global(.ant-table-footer) {
+        background: transparent !important;
+      }
+    }
+
+    .expandedRow {
+      :global(> .ant-table-cell) {
+        background: transparent !important;
+      }
     }
   }
 
@@ -51,7 +80,7 @@
     :global(.ant-picker) {
       border-radius: 4px;
     }
-    
+
   }
 
   .statsBar {
@@ -121,7 +150,7 @@
         label {
           font-size: 14px;
           font-weight: 700;
-          color: #181840;
+          color: #1A1840;
         }
 
         span {
@@ -141,6 +170,7 @@
 
   // Keep table body height fixed even with few rows (Ant scroll.y is max-height only)
   .fixedHeightTable {
+
     :global(.ant-table-wrapper),
     :global(.ant-spin-nested-loading),
     :global(.ant-spin-container) {
@@ -176,6 +206,27 @@
       overflow-y: auto !important;
     }
 
+    :global(.ant-table-sticky-scroll) {
+      display: none !important;
+    }
+
+    :global(.ant-table-empty .ant-table-body) {
+      overflow: hidden !important;
+    }
+
+    :global(.ant-table-empty .ant-table-body table) {
+      height: 100%;
+    }
+
+    :global(.ant-table-wrapper .ant-table-placeholder) {
+      height: 100% !important;
+    }
+
+    :global(.ant-table-wrapper .ant-table-tbody > tr.ant-table-placeholder > td) {
+      height: 100% !important;
+      vertical-align: middle;
+    }
+
     :global(.ant-table-footer) {
       flex-shrink: 0;
     }
@@ -201,14 +252,18 @@
       border-bottom: 0.5px solid var(--color-border) !important;
     }
 
-    // Main table only (not expanded child) — padding 50% of Ant defaults
+    // Main table header — keep existing padding
     :global(.ant-table-header .ant-table-thead > tr > th),
-    :global(.ant-table-body > table > tbody > tr:not(.ant-table-expanded-row):not(.ant-table-measure-row) > td),
-    :global(.ant-table-tbody > tr:not(.ant-table-expanded-row):not(.ant-table-measure-row) > td.ant-table-cell-fix-left),
-    :global(.ant-table-tbody > tr:not(.ant-table-expanded-row):not(.ant-table-measure-row) > td.ant-table-cell-fix-right),
     :global(.ant-table-header .ant-table-cell-fix-left),
     :global(.ant-table-header .ant-table-cell-fix-right) {
       padding: 10px 8px !important;
+    }
+
+    // Main table row data — top/bottom padding reduced 60% (10px → 4px)
+    :global(.ant-table-body > table > tbody > tr:not(.ant-table-expanded-row):not(.ant-table-measure-row) > td),
+    :global(.ant-table-tbody > tr:not(.ant-table-expanded-row):not(.ant-table-measure-row) > td.ant-table-cell-fix-left),
+    :global(.ant-table-tbody > tr:not(.ant-table-expanded-row):not(.ant-table-measure-row) > td.ant-table-cell-fix-right) {
+      padding: 4px 8px !important;
     }
 
     :global(.ant-table-tbody > tr:hover > td) {
@@ -246,6 +301,7 @@
 
     // Child expanded table thead only — parent main thead stays primary-light
     :global(.ant-table-expanded-row) .innerTable {
+
       :global(.ant-table-thead > tr > th),
       :global(.ant-table-thead > tr > th.ant-table-cell) {
         background: #DDD8F5 !important;
@@ -270,11 +326,11 @@
 
     // Transaction stock nested table only — do not apply to OutWord expand
     .innerTable {
-      --ant-table-cell-padding-block: 10px;
+      --ant-table-cell-padding-block: 4px;
       --ant-table-cell-padding-inline: 10px;
-      --ant-table-cell-padding-block-md: 10px;
+      --ant-table-cell-padding-block-md: 4px;
       --ant-table-cell-padding-inline-md: 10px;
-      --ant-table-cell-padding-block-sm: 8px;
+      --ant-table-cell-padding-block-sm: 3px;
       --ant-table-cell-padding-inline-sm: 8px;
 
       height: auto !important;
@@ -340,7 +396,7 @@
       }
 
       :global(.ant-table-tbody > tr:not(.ant-table-measure-row) > td.ant-table-cell) {
-        padding: 10px !important;
+        padding: 4px 10px !important;
         font-size: 12px !important;
         line-height: 1.4 !important;
         vertical-align: middle !important;
@@ -350,6 +406,24 @@
 
       :global(.ant-table-tbody > tr:not(.ant-table-measure-row):last-child > td) {
         border-bottom: 1px solid var(--color-border) !important;
+      }
+
+      :global(.ant-table-summary) {
+        background: var(--color-bg-muted);
+
+        > tr > td {
+          padding: 2px 10px !important;
+          font-size: 12px !important;
+          font-weight: 600 !important;
+          background: #f0edfa !important;
+          border-top: 1px solid var(--color-border) !important;
+        }
+      }
+    }
+
+    .childSummaryRow {
+      :global(td) {
+        background: #f0edfa !important;
       }
     }
   }
@@ -462,9 +536,162 @@
       }
     }
 
+    .actionMore {
+      color: var(--color-text-secondary, #5f7383);
+      cursor: pointer;
+      font-size: 16px;
+
+      &:hover {
+        color: var(--color-text-heading);
+      }
+    }
+
     .actionDisabled {
       opacity: 0.4;
       cursor: not-allowed;
+    }
+  }
+}
+
+.stockEditForm {
+  :global(.ant-form-item) {
+    margin-bottom: 12px !important;
+  }
+
+  :global(.ant-form-item-label) {
+    padding-bottom: 2px !important;
+  }
+
+  :global(.ant-form-item-label > label) {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: var(--color-text-heading) !important;
+    height: auto !important;
+  }
+
+  :global(.ant-input),
+  :global(.ant-select-selector),
+  :global(.ant-picker),
+  :global(.ant-input-number) {
+    border-radius: 6px !important;
+  }
+
+  :global(textarea.ant-input) {
+    height: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
+    padding: 4px 11px !important;
+    line-height: 30px !important;
+    resize: none !important;
+    overflow-y: auto !important;
+  }
+}
+
+.stockEditPayRow {
+  :global(.ant-form-item) {
+    margin-bottom: 12px !important;
+  }
+
+  :global(.ant-form-item-control-input) {
+    min-height: 40px !important;
+  }
+
+  :global(.ant-input-number),
+  :global(.ant-input-number-affix-wrapper),
+  :global(textarea.ant-input) {
+    height: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
+    border: 1px solid #d9d9d9 !important;
+    border-radius: 6px !important;
+    box-sizing: border-box !important;
+  }
+
+  :global(.ant-input-number-input) {
+    height: 38px !important;
+  }
+}
+
+.stockEditBankLabel {
+  visibility: hidden;
+}
+
+.stockEditBankSlot {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 40px;
+  min-height: 40px;
+  max-height: 40px;
+  box-sizing: border-box;
+  padding: 0 11px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  background: #fff;
+
+  :global(.ant-checkbox-wrapper) {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: var(--color-text-heading) !important;
+    margin-inline-end: 0 !important;
+    white-space: nowrap;
+  }
+}
+
+.stockEditProductsHead {
+  margin: 4px 0 10px;
+  padding-bottom: 6px;
+  // border-bottom: 1px solid var(--color-border, #e8eaed);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-heading);
+}
+
+.stockEditProductTable {
+  :global(.ant-table-container) {
+    border: 1px solid var(--color-border, #e8eaed);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  :global(.ant-table-header) {
+    overflow: hidden !important;
+  }
+
+  :global(.ant-table-body) {
+    height: 220px !important;
+    max-height: 220px !important;
+    overflow-y: auto !important;
+  }
+
+  :global(.ant-table-thead > tr > th) {
+    padding: 4px 14px !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    background: var(--color-bg-muted) !important;
+  }
+
+  :global(.ant-table-tbody > tr > td) {
+    padding: 0 14px !important;
+    line-height: 1 !important;
+  }
+
+  :global(.ant-input) {
+    height: 32px !important;
+    padding: 0 11px !important;
+    font-size: 13px !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+
+    &:hover,
+    &:focus,
+    &:focus-within {
+      border: none !important;
+      box-shadow: none !important;
     }
   }
 }

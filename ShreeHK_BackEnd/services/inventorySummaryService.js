@@ -16,6 +16,50 @@ const toAgg = (row = {}) => ({
   count: Number(row.count) || 0,
 });
 
+const parseProductIds = (products) =>
+  String(products || "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+
+async function getProductAmountMap(ids) {
+  const uniqueIds = [...new Set(ids)];
+  const map = new Map();
+  if (!uniqueIds.length) return map;
+  const placeholders = uniqueIds.map(() => "?").join(",");
+  const rows = await helper.query(
+    `SELECT id, amount FROM dai_product WHERE id IN (${placeholders})`,
+    uniqueIds
+  );
+  for (const row of rows) {
+    map.set(String(row.id), Number(row.amount) || 0);
+  }
+  return map;
+}
+
+function sumAmounts(ids, amountMap) {
+  return ids.reduce((sum, id) => sum + (amountMap.get(String(id)) || 0), 0);
+}
+
+async function mapDuePaymentRows(rows) {
+  const allIds = rows.flatMap((row) => parseProductIds(row.products));
+  const amountMap = await getProductAmountMap(allIds);
+  return rows.map((row) => {
+    const ids = [...new Set(parseProductIds(row.products))];
+    let total = Number(row.final_amount) || 0;
+    if (ids.length) {
+      total = sumAmounts(ids, amountMap) || total;
+    }
+    return {
+      party: row.party_name || row.party,
+      entry: row.entryno,
+      total,
+      paid: Number(row.paid_amount) || 0,
+      balance: Number(row.due_amount) || 0,
+    };
+  });
+}
+
 /**
  * Aggregate pcs/carat/amount/count for dai_product rows.
  */
@@ -241,34 +285,7 @@ async function getDueSalePayments(companyId, userId, isAdmin) {
   sql += " ORDER BY o.entryno LIMIT 20";
 
   const rows = await helper.query(sql, params);
-  const result = [];
-
-  for (const row of rows) {
-    let total = Number(row.final_amount) || 0;
-    if (row.products) {
-      const ids = String(row.products)
-        .split(",")
-        .map((id) => id.trim())
-        .filter(Boolean);
-      if (ids.length) {
-        const placeholders = ids.map(() => "?").join(",");
-        const sumRows = await helper.query(
-          `SELECT COALESCE(SUM(amount), 0) AS amount FROM dai_product WHERE id IN (${placeholders})`,
-          ids
-        );
-        total = Number(sumRows[0]?.amount) || total;
-      }
-    }
-    result.push({
-      party: row.party_name || row.party,
-      entry: row.entryno,
-      total,
-      paid: Number(row.paid_amount) || 0,
-      balance: Number(row.due_amount) || 0,
-    });
-  }
-
-  return result;
+  return mapDuePaymentRows(rows);
 }
 
 async function getDuePurchasePayments(companyId, userId, isAdmin) {
@@ -297,34 +314,7 @@ async function getDuePurchasePayments(companyId, userId, isAdmin) {
   sql += " ORDER BY i.entryno DESC LIMIT 20";
 
   const rows = await helper.query(sql, params);
-  const result = [];
-
-  for (const row of rows) {
-    let total = Number(row.final_amount) || 0;
-    if (row.products) {
-      const ids = String(row.products)
-        .split(",")
-        .map((id) => id.trim())
-        .filter(Boolean);
-      if (ids.length) {
-        const placeholders = ids.map(() => "?").join(",");
-        const sumRows = await helper.query(
-          `SELECT COALESCE(SUM(amount), 0) AS amount FROM dai_product WHERE id IN (${placeholders})`,
-          ids
-        );
-        total = Number(sumRows[0]?.amount) || total;
-      }
-    }
-    result.push({
-      party: row.party_name || row.party,
-      entry: row.entryno,
-      total,
-      paid: Number(row.paid_amount) || 0,
-      balance: Number(row.due_amount) || 0,
-    });
-  }
-
-  return result;
+  return mapDuePaymentRows(rows);
 }
 
 async function getRecentTransactions(companyId, limit = 5) {

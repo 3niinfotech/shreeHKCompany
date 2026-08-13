@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useRef } from 'react';
-import { Select, DatePicker, Table, Typography, Button, message } from 'antd';
+import { Select, DatePicker, Table, Typography, Button } from 'antd';
+import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
 import { BookOutlined, TeamOutlined, CalendarOutlined, ReloadOutlined } from '@ant-design/icons';
 import { FileUp } from 'lucide-react';
 import dayjs from 'dayjs';
@@ -87,7 +88,7 @@ const AccPartyReport = () => {
 
   const handleExport = async () => {
     if (!dataSource.length) {
-      message.warning('Run search first — no data to export.');
+      toastWarning('Run search first — no data to export.');
       return;
     }
     setExporting(true);
@@ -98,9 +99,9 @@ const AccPartyReport = () => {
         fileName: 'accounting_party_report',
         sheetName: 'Party Report',
       });
-      message.success('Exported to Excel');
+      toastSuccess('Exported to Excel');
     } catch (err) {
-      message.error(err.message || 'Export failed');
+      toastError(err.message || 'Export failed');
     } finally {
       setExporting(false);
     }
@@ -159,6 +160,7 @@ const AccPartyReport = () => {
             value={partyId || undefined}
             onChange={(v) => setPartyId(v || '')}
             options={partyOptions}
+            virtual
             style={{ padding: "7px" }}
           />
         </FilterField>

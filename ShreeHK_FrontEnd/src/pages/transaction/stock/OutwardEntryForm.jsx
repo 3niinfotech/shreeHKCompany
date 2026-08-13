@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { Form, Input, Button, Table, InputNumber, Select, message } from 'antd';
+import { Form, Input, Button, Table, InputNumber, Select } from 'antd';
+import { toastWarning } from '../../../utils/toastNotify';
 import { RefreshCcw, PlusCircle, Trash2, CheckCircle } from 'lucide-react';
 import { SwapOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -258,7 +259,7 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
       const p = data?.Data;
       const validationError = getSkuValidationError(p, trimmed, config);
       if (validationError) {
-        message.warning(validationError);
+        toastWarning(validationError);
         return;
       }
 
@@ -268,7 +269,7 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
       }));
     } catch (err) {
       if (err?.response?.status === 404) {
-        message.warning(`SKU "${trimmed}" not found for your company`);
+        toastWarning(`SKU "${trimmed}" not found for your company`);
         return;
       }
       toastApiError(err);

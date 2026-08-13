@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import {
-    Form, Button, Card, Typography, Space, message, Input,
+    Form, Button, Card, Typography, Space, Input,
 } from 'antd';
 import { WalletOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import {

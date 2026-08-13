@@ -1,7 +1,8 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import {
-    Table, Button, Card, Typography, Checkbox, Form, Select, Input, DatePicker, message,
+    Table, Button, Card, Typography, Checkbox, Form, Select, Input, DatePicker,
 } from 'antd';
+import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
 import { SearchOutlined, BarChartOutlined, ReloadOutlined } from '@ant-design/icons';
 import { FileUp, Sparkles } from 'lucide-react';
 import dayjs from 'dayjs';
@@ -101,7 +102,7 @@ const TransactionReport = () => {
 
     const handleExport = async () => {
         if (!tableData.length) {
-            message.warning('Run search first — no data to export.');
+            toastWarning('Run search first — no data to export.');
             return;
         }
         setExporting(true);
@@ -112,9 +113,9 @@ const TransactionReport = () => {
                 fileName: 'transaction_report',
                 sheetName: 'Transaction',
             });
-            message.success('Exported to Excel');
+            toastSuccess('Exported to Excel');
         } catch (err) {
-            message.error(err.message || 'Export failed');
+            toastError(err.message || 'Export failed');
         } finally {
             setExporting(false);
         }
@@ -195,6 +196,7 @@ const TransactionReport = () => {
                                     options={companyOptions}
                                     loading={isCompanyLoading}
                                     optionFilterProp="label"
+                                    virtual
                                     className={styles.fieldLg}
                                 />
                             </Form.Item>
