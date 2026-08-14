@@ -1,1094 +1,350 @@
-import { Card, Row, Col, Typography, Tooltip, Tabs, Select, Tag } from 'antd';
+import { Row, Col } from "antd";
 import {
-    Diamond,
-    ChevronRight,
-    Plus,
-    PlusCircle,
-    Receipt,
-    FileText,
-    FlaskConical,
-    TrendingUp,
-    Send,
-    ClipboardList,
-    BarChart3,
-    CalendarDays,
-    Wallet,
-    Activity,
-    NotebookPen,
-    Edit2,
-    Trash2,
-    Check,
-    X,
-    Tag as TagIcon,
-} from 'lucide-react';
-import { toast } from 'sonner';
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import useAuthStore from '../store/Auth.Store';
-import dayjs from 'dayjs';
-import { useFetchApi, usePostApiRequest, usePutApiRequest, useDeleteApiRequest } from '../api/ApiFunction';
-import { ENDPOINTS } from '../constants/endpoints';
-import useThemeColors from '../hooks/useThemeColors';
-import {
-    SkeletonBlock,
-    SkeletonStatCard,
-    SkeletonList,
-    SkeletonChart,
-} from '../components/common/skeleton';
+  Diamond,
+  Plus,
+  Receipt,
+  FileText,
+  FlaskConical,
+  TrendingUp,
+  Send,
+  ClipboardList,
+  BarChart3,
+  Tag as TagIcon,
+} from "lucide-react";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import dayjs from "dayjs";
+import { useFetchApi } from "../api/ApiFunction";
+import { ENDPOINTS } from "../constants/endpoints";
+import useThemeColors from "../hooks/useThemeColors";
+import { SkeletonStatCard } from "../components/common/skeleton";
+import KpiCard from "../components/dashboard/KpiCard";
+import StockValueTrendCard from "../components/dashboard/StockValueTrendCard";
+import FlowBarCard from "../components/dashboard/FlowBarCard";
+import DuePaymentsPanel from "../components/dashboard/DuePaymentsPanel";
+import RecentTransactionsPanel from "../components/dashboard/RecentTransactionsPanel";
+import QuickNotesCard from "../components/dashboard/QuickNotesCard";
+import TopPartiesPanel, { StockBreakdownCard } from "../components/dashboard/TopPartiesPanel";
+import QuickActionsBar from "../components/dashboard/QuickActionsBar";
+import { fmtCaratPcs, fmtMoney } from "../components/dashboard/dashboardFormatters";
 import "../assets/scss/pages/dashboard.scss";
 
-const DueTableSkeleton = ({ columns }) => (
-    <table className="inventory-table" aria-hidden="true">
-        <thead>
-            <tr>
-                {columns.map((col) => (
-                    <th key={col.key} style={{ textAlign: col.align || 'left' }}>{col.title}</th>
-                ))}
-            </tr>
-        </thead>
-        <tbody>
-            {Array.from({ length: 5 }).map((_, rowIdx) => (
-                <tr key={rowIdx}>
-                    {columns.map((col, colIdx) => (
-                        <td key={col.key} style={{ textAlign: col.align || 'left' }}>
-                            <SkeletonBlock
-                                variant="text"
-                                width={`${58 + ((rowIdx + colIdx) % 4) * 8}%`}
-                                height={12}
-                            />
-                        </td>
-                    ))}
-                </tr>
-            ))}
-        </tbody>
-    </table>
-);
-
-const NotesTableSkeleton = ({ isSuperAdmin }) => (
-    <table className="inventory-table notes-table" aria-hidden="true">
-        <thead>
-            <tr>
-                <th style={{ width: 45, textAlign: 'center' }}>Status</th>
-                <th>Task Description</th>
-                {isSuperAdmin && <th style={{ width: 130, textAlign: 'center' }}>Assignee</th>}
-                <th style={{ width: 130, textAlign: 'center' }}>Target Date</th>
-                <th style={{ width: 90, textAlign: 'center' }}>Priority</th>
-                {isSuperAdmin && <th style={{ width: 80, textAlign: 'center' }}>Actions</th>}
-            </tr>
-        </thead>
-        <tbody>
-            {Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i}>
-                    <td style={{ textAlign: 'center' }}><SkeletonBlock variant="icon" width={16} height={16} /></td>
-                    <td><SkeletonBlock variant="text" width={`${70 + (i % 3) * 8}%`} height={12} /></td>
-                    {isSuperAdmin && <td style={{ textAlign: 'center' }}><SkeletonBlock variant="text" width="70%" height={12} /></td>}
-                    <td style={{ textAlign: 'center' }}><SkeletonBlock variant="text" width="80%" height={12} /></td>
-                    <td style={{ textAlign: 'center' }}><SkeletonBlock variant="text" width="60%" height={12} /></td>
-                    {isSuperAdmin && <td style={{ textAlign: 'center' }}><SkeletonBlock variant="icon" width={40} height={16} /></td>}
-                </tr>
-            ))}
-        </tbody>
-    </table>
-);
-
-const QuickNotesCard = () => {
-    const navigate = useNavigate();
-    const authUser = useAuthStore((state) => state.user);
-    const isSuperAdmin = authUser?.roll === 1 || Number(authUser?.roll) === 1;
-
-    const { data: apiResponse, isLoading, isError } = useFetchApi('quickNotes', ENDPOINTS.quickNotes.list);
-    const { data: usersRes } = useFetchApi('usersList', ENDPOINTS.admin.users, { enabled: isSuperAdmin });
-
-    const createMutation = usePostApiRequest(ENDPOINTS.quickNotes.create, 'quickNotes');
-    const updateMutation = usePutApiRequest(ENDPOINTS.quickNotes.update, 'quickNotes');
-    const deleteMutation = useDeleteApiRequest(ENDPOINTS.quickNotes.delete, 'quickNotes');
-
-    const userOptions = useMemo(() => {
-        if (!Array.isArray(usersRes?.Data)) return [];
-        return usersRes.Data.map(u => ({
-            label: `${u.fname || ''} ${u.lname || ''}`.trim() || u.username || `User ${u.id}`,
-            value: u.id
-        }));
-    }, [usersRes]);
-
-    const notes = useMemo(() => {
-        return Array.isArray(apiResponse?.Data) ? apiResponse.Data : [];
-    }, [apiResponse]);
-
-    const [inputText, setInputText] = useState('');
-    const [targetDate, setTargetDate] = useState(() => dayjs().format('YYYY-MM-DD'));
-    const [priority, setPriority] = useState('Medium');
-    const [assignedTo, setAssignedTo] = useState(null);
-
-    const [editingId, setEditingId] = useState(null);
-    const [editText, setEditText] = useState('');
-    const [editTargetDate, setEditTargetDate] = useState('');
-    const [editPriority, setEditPriority] = useState('Medium');
-    const [editAssignedTo, setEditAssignedTo] = useState(null);
-
-    const handleAdd = () => {
-        if (!inputText.trim()) {
-            toast.error('Please enter a task before adding');
-            return;
-        }
-        createMutation.mutate(
-            {
-                text: inputText.trim(),
-                target_date: targetDate || dayjs().format('YYYY-MM-DD'),
-                priority: priority || 'Medium',
-                assigned_to: assignedTo,
-            },
-            {
-                onSuccess: () => {
-                    setInputText('');
-                    setTargetDate(dayjs().format('YYYY-MM-DD'));
-                    setPriority('Medium');
-                    setAssignedTo(null);
-                },
-            }
-        );
-    };
-
-    const handleDelete = (id) => {
-        deleteMutation.mutate(id);
-    };
-
-    const handleToggleComplete = (note) => {
-        updateMutation.mutate({
-            id: note.id,
-            payload: { completed: !note.completed },
-        });
-    };
-
-    const startEditing = (note) => {
-        setEditingId(note.id);
-        setEditText(note.text);
-        setEditTargetDate(note.target_date || dayjs().format('YYYY-MM-DD'));
-        setEditPriority(note.priority || 'Medium');
-        setEditAssignedTo(note.assigned_to || note.user_id);
-    };
-
-    const cancelEditing = () => {
-        setEditingId(null);
-        setEditText('');
-        setEditTargetDate('');
-        setEditPriority('Medium');
-        setEditAssignedTo(null);
-    };
-
-    const saveEditing = (id) => {
-        if (!editText.trim()) {
-            toast.error('Task text cannot be empty');
-            return;
-        }
-        updateMutation.mutate(
-            {
-                id,
-                payload: {
-                    text: editText.trim(),
-                    target_date: editTargetDate,
-                    priority: editPriority,
-                    assigned_to: editAssignedTo,
-                },
-            },
-            {
-                onSuccess: () => {
-                    cancelEditing();
-                },
-            }
-        );
-    };
-
-    const renderPriorityBadge = (p) => {
-        switch (p?.toLowerCase()) {
-            case 'high':
-                return <Tag color="red" style={{ fontWeight: 600, borderRadius: 6, margin: 0 }}>High</Tag>;
-            case 'medium':
-                return <Tag color="gold" style={{ fontWeight: 600, borderRadius: 6, margin: 0 }}>Medium</Tag>;
-            case 'low':
-            default:
-                return <Tag color="green" style={{ fontWeight: 600, borderRadius: 6, margin: 0 }}>Low</Tag>;
-        }
-    };
-
-    const renderTargetDateTag = (tDate, completed) => {
-        const todayStr = dayjs().format('YYYY-MM-DD');
-        if (!tDate) return null;
-
-        if (completed) {
-            return <span style={{ color: '#64748b', fontSize: '0.78rem' }}>{dayjs(tDate).format('DD MMM YYYY')}</span>;
-        }
-
-        if (tDate < todayStr) {
-            return (
-                <Tag color="volcano" style={{ borderRadius: 6, fontWeight: 600, margin: 0 }}>
-                    Overdue ({dayjs(tDate).format('DD MMM')})
-                </Tag>
-            );
-        }
-
-        if (tDate === todayStr) {
-            return (
-                <Tag color="cyan" style={{ borderRadius: 6, fontWeight: 600, margin: 0 }}>
-                    Today ({dayjs(tDate).format('DD MMM')})
-                </Tag>
-            );
-        }
-
-        return <span style={{ color: '#0f172a', fontWeight: 500, fontSize: '0.78rem' }}>{dayjs(tDate).format('DD MMM YYYY')}</span>;
-    };
-
-    const pendingCount = notes.filter((n) => !n.completed).length;
-
-    return (
-        <Card bordered={false} id="quick-notes-section" className="dashboard-card dashboard-card--luxury quick-notes-card dashboard-fill-card">
-            <div className="card-header">
-                <div className="card-title-group">
-                    <span className="card-icon-badge card-icon-badge--primary">
-                        <NotebookPen size={18} />
-                    </span>
-                    <div>
-                        <span className="card-title-text">Quick Notes & Tasks</span>
-                        <span className="card-subtitle-text">Manage reminders, target dates & follow-ups</span>
-                    </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div className="notes-counter-badge">
-                        {isLoading ? '...' : `${pendingCount} Pending`}
-                    </div>
-                    <a
-                        href="#"
-                        className="view-all-link"
-                        onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            navigate('/task-manager');
-                        }}
-                        style={{ cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, color: '#6655DD', textDecoration: 'none' }}
-                    >
-                        View All
-                    </a>
-                </div>
-            </div>
-
-            {isSuperAdmin && (
-                <div className="notes-input-bar-stacked">
-                    <div className="notes-textarea-wrap">
-                        <textarea
-                            className="notes-textarea"
-                            rows={2}
-                            placeholder="Add a new task or note..."
-                            value={inputText}
-                            onChange={(e) => setInputText(e.target.value)}
-                        />
-                    </div>
-                    <div className="notes-meta-bar">
-                        <div className="notes-meta-fields">
-                            <div className="input-group-assignee" style={{
-                                minWidth: 140,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '4px'
-                            }}>
-                                <label className="input-label-mini" style={{ color: '#64748B' }}>Assign To</label>
-                                <Select
-                                    value={assignedTo}
-                                    onChange={(val) => setAssignedTo(val)}
-                                    placeholder="Assign User"   
-                                    size="small"
-                                    style={{ width: '100%', padding: '4px 10px', borderRadius: '8px' }}
-                                    options={userOptions}
-                                    allowClear
-                                />
-                            </div>
-                            <div className="input-group-date">
-                                <label className="input-label-mini">Target Date</label>
-                                <input
-                                    type="date"
-                                    className="notes-date-picker"
-                                    value={targetDate}
-                                    onChange={(e) => setTargetDate(e.target.value)}
-                                />
-                            </div>
-                            <div className="input-group-priority">
-                                <label className="input-label-mini">Priority</label>
-                                <Select
-                                    value={priority}
-                                    onChange={(val) => setPriority(val)}
-                                    size="small"
-                                    className="priority-select"
-                                    options={[
-                                        { label: 'High', value: 'High' },
-                                        { label: 'Medium', value: 'Medium' },
-                                        { label: 'Low', value: 'Low' },
-                                    ]}
-                                />
-                            </div>
-                        </div>
-                        <button
-                            type="button"
-                            className="notes-add-btn"
-                            onClick={handleAdd}
-                            disabled={createMutation.isPending}
-                        >
-                            <Plus size={16} /> Add Task
-                        </button>
-                    </div>
-                </div>
-            )
-            }
-
-            <div className="table-wrapper notes-table-wrapper">
-                {isLoading ? (
-                    <NotesTableSkeleton isSuperAdmin={isSuperAdmin} />
-                ) : (
-                    <table className="inventory-table notes-table">
-                        <thead>
-                            <tr>
-                                <th style={{ width: 45, textAlign: 'center' }}>Status</th>
-                                <th>Task Description</th>
-                                {isSuperAdmin && <th style={{ width: 130, textAlign: 'center' }}>Assignee</th>}
-                                <th style={{ width: 130, textAlign: 'center' }}>Target Date</th>
-                                <th style={{ width: 90, textAlign: 'center' }}>Priority</th>
-                                {isSuperAdmin && <th style={{ width: 80, textAlign: 'center' }}>Actions</th>}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {notes.length > 0 ? (
-                                notes.map((note) => (
-                                    <tr
-                                        key={note.id}
-                                        className={note.completed ? 'completed-note-row' : ''}
-                                        onClick={() => navigate('/task-manager')}
-                                        style={{ cursor: 'pointer' }}
-                                    >
-                                        <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                                            <input
-                                                type="checkbox"
-                                                checked={!!note.completed}
-                                                onChange={() => handleToggleComplete(note)}
-                                                className="note-checkbox"
-                                            />
-                                        </td>
-                                        <td>
-                                            {editingId === note.id ? (
-                                                <input
-                                                    type="text"
-                                                    className="edit-note-input"
-                                                    value={editText}
-                                                    onChange={(e) => setEditText(e.target.value)}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') saveEditing(note.id);
-                                                        if (e.key === 'Escape') cancelEditing();
-                                                    }}
-                                                    autoFocus
-                                                />
-                                            ) : (
-                                                <span className={`note-text ${note.completed ? 'text-strikethrough' : ''}`}>
-                                                    {note.text}
-                                                </span>
-                                            )}
-                                        </td>
-                                        {isSuperAdmin && (
-                                            <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                                                {editingId === note.id ? (
-                                                    <Select
-                                                        value={editAssignedTo}
-                                                        onChange={(v) => setEditAssignedTo(v)}
-                                                        size="small"
-                                                        style={{ width: 120 }}
-                                                        options={userOptions}
-                                                    />
-                                                ) : (
-                                                    <Tag color="purple" style={{ borderRadius: 6, fontWeight: 500, margin: 0 }}>
-                                                        {note.assigned_to_name?.trim() || 'Self'}
-                                                    </Tag>
-                                                )}
-                                            </td>
-                                        )}
-                                        <td style={{ textAlign: 'center' }}>
-                                            {editingId === note.id ? (
-                                                <input
-                                                    type="date"
-                                                    className="edit-date-input"
-                                                    value={editTargetDate}
-                                                    onChange={(e) => setEditTargetDate(e.target.value)}
-                                                />
-                                            ) : (
-                                                renderTargetDateTag(note.target_date, note.completed)
-                                            )}
-                                        </td>
-                                        <td style={{ textAlign: 'center' }}>
-                                            {editingId === note.id ? (
-                                                <Select
-                                                    value={editPriority}
-                                                    onChange={(v) => setEditPriority(v)}
-                                                    size="small"
-                                                    options={[
-                                                        { label: 'High', value: 'High' },
-                                                        { label: 'Medium', value: 'Medium' },
-                                                        { label: 'Low', value: 'Low' },
-                                                    ]}
-                                                />
-                                            ) : (
-                                                renderPriorityBadge(note.priority)
-                                            )}
-                                        </td>
-                                        {isSuperAdmin && (
-                                            <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                                                <div className="note-actions">
-                                                    {editingId === note.id ? (
-                                                        <>
-                                                            <button
-                                                                type="button"
-                                                                className="action-btn action-btn--save"
-                                                                onClick={() => saveEditing(note.id)}
-                                                                title="Save Task"
-                                                            >
-                                                                <Check size={14} />
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                className="action-btn action-btn--cancel"
-                                                                onClick={cancelEditing}
-                                                                title="Cancel"
-                                                            >
-                                                                <X size={14} />
-                                                            </button>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <button
-                                                                type="button"
-                                                                className="action-btn action-btn--edit"
-                                                                onClick={() => startEditing(note)}
-                                                                title="Edit Task"
-                                                            >
-                                                                <Edit2 size={14} />
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                className="action-btn action-btn--delete"
-                                                                onClick={() => handleDelete(note.id)}
-                                                                title="Delete Task"
-                                                            >
-                                                                <Trash2 size={14} />
-                                                            </button>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        )}
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={isSuperAdmin ? 6 : 4} style={{ textAlign: 'center', padding: '24px 16px', color: '#94a3b8' }}>
-                                        {isSuperAdmin ? "No tasks found. Add a new task above with target date & priority." : "No tasks assigned to you."}
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                )}
-            </div>
-        </Card >
-    );
-};
-
-const fmtMoney = (value) =>
-    `$${Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-
-const fmtCaratPcs = (carat, pcs) =>
-    `${Number(carat || 0).toFixed(2)} (${Number(pcs || 0).toLocaleString()})`;
-
-const fmtCompact = (value) => {
-    const n = Number(value) || 0;
-    if (n >= 1000) return `${(n / 1000).toFixed(2)}k`;
-    return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
-};
-
-const STAT_VARIANTS = ['emerald', 'sapphire', 'amber', 'violet'];
-
-const StatSummaryCard = ({ title, subtitle, value, icon, footerText, link, isLoading, onNavigate, variant = 'emerald' }) => (
-    <Card bordered={false} className={`stat-card stat-card--${variant}`} styles={{ body: { padding: 0, height: '100%' } }}>
-        <div className="stat-card-shine" aria-hidden="true" />
-        <div className="stat-card-body">
-            <div className="stat-card-top">
-                <div className="stat-icon">{icon}</div>
-                <h3 className="stat-value">
-                    {isLoading ? <SkeletonBlock variant="heading" width={72} height={22} shape="round" /> : value}
-                </h3>
-            </div>
-            <div className="stat-info">
-                <p className="stat-title">{title}</p>
-                <p className="stat-subtitle">{subtitle}</p>
-            </div>
-        </div>
-        <button
-            type="button"
-            className="stat-card-footer"
-            onClick={() => link && onNavigate(link)}
-        >
-            <span>{footerText}</span>
-            <ChevronRight size={14} strokeWidth={2.5} />
-        </button>
-    </Card>
-);
-
-const columns = [
-    {
-        title: 'Party',
-        dataIndex: 'party',
-        key: 'party',
-        render: (text) => <a>{text}</a>,
-        width: 120,
-    },
-    {
-        title: 'Entry',
-        dataIndex: 'entry',
-        key: 'entry',
-        align: 'center',
-        width: 120,
-    },
-    {
-        title: 'Total',
-        dataIndex: 'total',
-        key: 'total',
-        width: 120,
-        align: 'center',
-        render: (v) => fmtMoney(v),
-    },
-    {
-        title: 'Paid',
-        dataIndex: 'paid',
-        key: 'paid',
-        align: 'center',
-        width: 120,
-        render: (v) => fmtMoney(v),
-    },
-    {
-        title: 'Balance',
-        dataIndex: 'balance',
-        key: 'balance',
-        align: 'center',
-        width: 120,
-        render: (v) => fmtMoney(v),
-    },
-];
+const STAT_VARIANTS = ["emerald", "sapphire", "amber", "violet"];
 
 const quickActionsForTheme = (t) => [
-    { title: 'Add Inventory', subtitle: 'Add new stock', leftIcon: <Plus size={18} />, rightIcon: <PlusCircle size={22} />, leftColor: t.primary, rightColor: t.primary, link: '/inventory/my-inventory' },
-    { title: 'Lab Entry', subtitle: 'Send to lab', leftIcon: <Send size={18} />, rightIcon: <FileText size={22} />, leftColor: t.danger, rightColor: t.danger, link: '/transaction/gia-memo' },
-    { title: 'On Memo', subtitle: 'Send on memo', leftIcon: <ClipboardList size={18} />, rightIcon: <FileText size={22} />, leftColor: t.primaryMedium, rightColor: t.warning, link: '/outward' },
-    { title: 'Sale Invoice', subtitle: 'Create invoice', leftIcon: <FileText size={18} />, rightIcon: <ClipboardList size={22} />, leftColor: t.primary, rightColor: t.violet, link: '/outward' },
-    { title: 'Reports', subtitle: 'View reports', leftIcon: <BarChart3 size={18} />, rightIcon: <BarChart3 size={22} />, leftColor: t.primaryLight, rightColor: t.primaryLight, link: '/report/transaction' },
+  { title: "Add Inventory", subtitle: "Add new stock", leftIcon: <Plus size={18} />, leftColor: t.primary, link: "/inventory/my-inventory" },
+  { title: "Lab Entry", subtitle: "Send to lab", leftIcon: <Send size={18} />, leftColor: t.danger, link: "/transaction/gia-memo" },
+  { title: "On Memo", subtitle: "Send on memo", leftIcon: <ClipboardList size={18} />, leftColor: t.warning, link: "/outward" },
+  { title: "Sale Invoice", subtitle: "Create invoice", leftIcon: <FileText size={18} />, leftColor: t.primary, link: "/outward" },
+  { title: "Reports", subtitle: "View reports", leftIcon: <BarChart3 size={18} />, leftColor: t.info, link: "/report/transaction" },
 ];
 
 const txnMetaForTheme = (t) => ({
-    'Sale Invoice': { icon: <Receipt size={18} />, iconColor: t.primary, iconBg: t.mintPale },
-    Purchase: { icon: <FileText size={18} />, iconColor: t.warning, iconBg: t.warningLight || t.mintPale },
-    default: { icon: <TrendingUp size={18} />, iconColor: t.primarySoft, iconBg: t.mint },
+  "Sale Invoice": { icon: <Receipt size={18} />, iconColor: t.primary, iconBg: t.mintPale },
+  Purchase: { icon: <FileText size={18} />, iconColor: t.warning, iconBg: t.warningLight || t.mintPale },
+  default: { icon: <TrendingUp size={18} />, iconColor: t.primarySoft, iconBg: t.mint },
 });
 
-const DonutChart = ({ data: chartData, total, fallbackColor }) => {
-    const safeData = chartData?.length ? chartData : [{ label: 'N/A', percentage: 100, count: 0, color: fallbackColor }];
-    let cumulative = 0;
-    const segments = safeData.map(item => {
-        const start = cumulative;
-        cumulative += item.percentage;
-        return `${item.color} ${start}% ${cumulative}%`;
-    });
-
-    return (
-        <div className="donut-chart-container">
-            <div className="donut-chart" style={{ background: `conic-gradient(${segments.join(', ')})` }}>
-                <div className="donut-hole">
-                    <span className="donut-label">Total</span>
-                    <span className="donut-value">{Number(total || 0).toLocaleString()}</span>
-                </div>
-            </div>
-            <div className="donut-legend">
-                {safeData.map((item, i) => (
-                    <div key={i} className="legend-item">
-                        <span className="legend-dot" style={{ backgroundColor: item.color }} />
-                        <span className="legend-name">{item.label}</span>
-                        <span className="legend-stats">{item.percentage}% ({item.count.toLocaleString()})</span>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-};
-
 const Dashboard = () => {
-    const navigate = useNavigate();
-    const theme = useThemeColors();
-    const user = useAuthStore(state => state.user);
-    const companyName = useAuthStore(state => state.companyName);
-    const [taskInput, setTaskInput] = useState("");
-    const { data: summaryRes, isLoading } = useFetchApi(
-        'dashboardSummary',
-        ENDPOINTS.dashboard.summary,
-        {}
-    );
+  const navigate = useNavigate();
+  const theme = useThemeColors();
+  const [trendRange, setTrendRange] = useState("1m");
 
-    const summary = summaryRes?.Data;
-    const widgets = summary?.widgets;
-    const breakdowns = summary?.breakdowns;
-    const duePayments = summary?.duePayments || [];
-    const purchaseDuePayments = summary?.purchaseDuePayments || [];
+  const { data: summaryRes, isLoading } = useFetchApi(
+    "dashboardSummary",
+    ENDPOINTS.dashboard.summary,
+    {}
+  );
+  const { data: trendsRes, isLoading: trendsLoading } = useFetchApi(
+    "dashboardTrends",
+    ENDPOINTS.dashboard.trends,
+    { range: trendRange }
+  );
 
-    const statCards = useMemo(() => {
-        if (!widgets) return [];
-        return [
-            {
-                title: 'Total Stock Value',
-                subtitle: `On hand: ${fmtCaratPcs(widgets.onHand?.carat, widgets.onHand?.pcs)}`,
-                value: fmtMoney(widgets.onHand?.amount),
-                icon: <Diamond size={22} strokeWidth={2} />,
-                footerText: 'View Stock',
-                link: '/inventory/my-inventory',
-            },
-            {
-                title: 'Total In Lab',
-                subtitle: 'Diamonds in laboratory',
-                value: fmtCaratPcs(widgets.lab?.carat, widgets.lab?.pcs),
-                icon: <FlaskConical size={22} strokeWidth={2} />,
-                footerText: 'View Lab',
-                link: '/transaction/gia-memo',
-            },
-            {
-                title: 'Out On Memo / Consignment',
-                subtitle: `${summary?.memoPercent || '0.00'}% of on-hand pcs`,
-                value: fmtCaratPcs(widgets.memo?.carat, widgets.memo?.pcs),
-                icon: <ClipboardList size={22} strokeWidth={2} />,
-                footerText: 'View Memo',
-                link: '/transaction/out-memo',
-            },
-            {
-                title: 'Total Sale / Export',
-                subtitle: 'Sale and export stock',
-                value: fmtCompact(widgets.saleExport?.amount || widgets.saleExport?.carat),
-                icon: <TagIcon size={22} strokeWidth={2} />,
-                footerText: 'View Sales',
-                link: '/transaction/sale',
-            },
-        ];
-    }, [widgets, summary?.memoPercent]);
+  const summary = summaryRes?.Data;
+  const widgets = summary?.widgets;
+  const breakdowns = summary?.breakdowns;
+  const duePayments = summary?.duePayments || [];
+  const purchaseDuePayments = summary?.purchaseDuePayments || [];
+  const trends = trendsRes?.Data;
+  const stockSeries = trends?.stockValueSeries;
+  const saleSeries = trends?.saleSeries || [];
+  const labCaratSeries = trends?.labCaratSeries;
+  const memoCaratSeries = trends?.memoCaratSeries;
+  const usingStockFallback = !Array.isArray(stockSeries) || stockSeries.length < 2;
+  const donutColors = [theme.success, theme.violet, theme.info, theme.warning, theme.danger];
 
-    const quickActions = useMemo(() => quickActionsForTheme(theme), [theme]);
+  const statCards = useMemo(() => {
+    if (!widgets) return [];
+    return [
+      {
+        title: "Total Stock Value",
+        subtitle: `On hand: ${fmtCaratPcs(widgets.onHand?.carat, widgets.onHand?.pcs)}`,
+        value: fmtMoney(widgets.onHand?.amount),
+        icon: <Diamond size={22} strokeWidth={2} />,
+        footerText: "View Stock",
+        link: "/inventory/my-inventory",
+        trend: trends?.compare?.stock?.changePct != null
+          ? { changePct: trends.compare.stock.changePct }
+          : null,
+        sparkline: usingStockFallback ? null : stockSeries,
+        sparkColor: theme.primary,
+      },
+      {
+        title: "Total In Lab",
+        subtitle: "Diamonds in laboratory",
+        value: fmtCaratPcs(widgets.lab?.carat, widgets.lab?.pcs),
+        icon: <FlaskConical size={22} strokeWidth={2} />,
+        footerText: "View Lab",
+        link: "/transaction/gia-memo",
+        trend: trends?.compare?.labCarat?.changePct != null
+          ? { changePct: trends.compare.labCarat.changePct }
+          : null,
+        sparkline: labCaratSeries,
+        sparkColor: theme.info,
+        sparkKey: "carat",
+      },
+      {
+        title: "Out On Memo / Consignment",
+        subtitle: `${summary?.memoPercent || "0.00"}% of on-hand pcs`,
+        value: fmtCaratPcs(widgets.memo?.carat, widgets.memo?.pcs),
+        icon: <ClipboardList size={22} strokeWidth={2} />,
+        footerText: "View Memo",
+        link: "/transaction/out-memo",
+        trend: trends?.compare?.memoCarat?.changePct != null
+          ? { changePct: trends.compare.memoCarat.changePct }
+          : null,
+        sparkline: memoCaratSeries,
+        sparkColor: theme.warning,
+        sparkKey: "carat",
+      },
+      {
+        title: "Total Sale / Export",
+        subtitle: `${Number(widgets.saleExportLedger?.count || 0).toLocaleString()} sale / export invoices`,
+        value: fmtMoney(widgets.saleExportLedger?.amount),
+        icon: <TagIcon size={22} strokeWidth={2} />,
+        footerText: "View Sales",
+        link: "/transaction/sale",
+        trend: trends?.compare?.sale
+          ? { changePct: trends.compare.sale.changePct }
+          : null,
+        sparkline: saleSeries,
+        sparkColor: theme.primaryMedium,
+      },
+    ];
+  }, [
+    widgets,
+    summary?.memoPercent,
+    trends,
+    usingStockFallback,
+    stockSeries,
+    saleSeries,
+    labCaratSeries,
+    memoCaratSeries,
+    theme.primary,
+    theme.primaryMedium,
+    theme.info,
+    theme.warning,
+  ]);
 
-    const dueTotals = useMemo(
-        () =>
-            duePayments.reduce(
-                (acc, row) => ({
-                    entry: acc.entry + 1,
-                    total: acc.total + Number(row.total || 0),
-                    paid: acc.paid + Number(row.paid || 0),
-                    balance: acc.balance + Number(row.balance || 0),
-                }),
-                { entry: 0, total: 0, paid: 0, balance: 0 }
-            ),
-        [duePayments]
-    );
+  const quickActions = useMemo(() => quickActionsForTheme(theme), [theme]);
 
-    const purchaseDueTotals = useMemo(
-        () =>
-            purchaseDuePayments.reduce(
-                (acc, row) => ({
-                    entry: acc.entry + 1,
-                    total: acc.total + Number(row.total || 0),
-                    paid: acc.paid + Number(row.paid || 0),
-                    balance: acc.balance + Number(row.balance || 0),
-                }),
-                { entry: 0, total: 0, paid: 0, balance: 0 }
-            ),
-        [purchaseDuePayments]
-    );
+  const dueTotals = useMemo(
+    () =>
+      duePayments.reduce(
+        (acc, row) => ({
+          entry: acc.entry + 1,
+          total: acc.total + Number(row.total || 0),
+          paid: acc.paid + Number(row.paid || 0),
+          balance: acc.balance + Number(row.balance || 0),
+        }),
+        { entry: 0, total: 0, paid: 0, balance: 0 }
+      ),
+    [duePayments]
+  );
 
-    // const purchaseDueTotals = useMemo(
-    //     () =>
-    //         purchaseDuePayments.reduce(
-    //             (acc, row) => ({
-    //                 entry: acc.entry + 1,
-    //                 total: acc.total + Number(row.total || 0),
-    //                 paid: acc.paid + Number(row.paid || 0),
-    //                 balance: acc.balance + Number(row.balance || 0),
-    //             }),
-    //             { entry: 0, total: 0, paid: 0, balance: 0 }
-    //         ),
-    //     [purchaseDuePayments]
-    // );
+  const purchaseDueTotals = useMemo(
+    () =>
+      purchaseDuePayments.reduce(
+        (acc, row) => ({
+          entry: acc.entry + 1,
+          total: acc.total + Number(row.total || 0),
+          paid: acc.paid + Number(row.paid || 0),
+          balance: acc.balance + Number(row.balance || 0),
+        }),
+        { entry: 0, total: 0, paid: 0, balance: 0 }
+      ),
+    [purchaseDuePayments]
+  );
 
-    // const duePayments = summary?.duePayments || [];
-    // const dueTotals = useMemo(() => duePayments.reduce(
-    //     (acc, row) => ({
-    //         entry: acc.entry + 1,
-    //         total: acc.total + Number(row.total || 0),
-    //         paid: acc.paid + Number(row.paid || 0),
-    //         balance: acc.balance + Number(row.balance || 0),
-    //     }),
-    //     { entry: 0, total: 0, paid: 0, balance: 0 }
-    // ), [duePayments]);
+  const recentTransactions = useMemo(() => {
+    const TXN_META = txnMetaForTheme(theme);
+    return (summary?.recentTransactions || []).map((txn) => {
+      const meta = TXN_META[txn.type] || TXN_META.default;
+      return {
+        ...txn,
+        ...meta,
+        time: txn.date ? dayjs(txn.date).format("DD MMM YYYY") : "-",
+        amount: fmtMoney(txn.amount),
+        statusColor: theme.primaryMedium,
+      };
+    });
+  }, [summary?.recentTransactions, theme]);
 
-    const recentTransactions = useMemo(() => {
-        const TXN_META = txnMetaForTheme(theme);
-        return (summary?.recentTransactions || []).map((txn) => {
-            const meta = TXN_META[txn.type] || TXN_META.default;
-            return {
-                ...txn,
-                ...meta,
-                time: txn.date ? dayjs(txn.date).format('DD MMM YYYY') : '-',
-                amount: txn.type === 'Purchase' ? fmtMoney(txn.amount) : fmtMoney(txn.amount),
-                statusColor: theme.primaryMedium,
-            };
-        });
-    }, [summary?.recentTransactions, theme]);
+  const topParties = useMemo(
+    () => (summary?.topParties || []).map((p) => ({
+      name: p.name,
+      amount: fmtMoney(p.amount),
+    })),
+    [summary?.topParties]
+  );
 
-    const topParties = useMemo(() => (summary?.topParties || []).map((p) => ({
-        name: p.name,
-        amount: fmtMoney(p.amount),
-    })), [summary?.topParties]);
+  const openOnHand = () => navigate("/inventory/on-hand-stock");
 
-    const taskHandler = () => {
-        if (!taskInput.trim()) {
-            toast.error("Validation Error", {
-                description: "Please enter a task before adding.",
-            });
-            return;
-        }
-        toast.success("Task Added", {
-            description: `New task: "${taskInput}" created successfully.`,
-        });
-        setTaskInput("");
-    };
+  return (
+    <div className="dashboard-page">
+      <div className="cardGroup dashboard-grid">
+        <Row gutter={[10, 10]} align="stretch">
+          {(statCards.length ? statCards : Array.from({ length: 4 })).map((item, index) => (
+            <Col xs={24} sm={12} lg={6} key={item?.title || index} className="dashboard-grid__col">
+              {item?.title ? (
+                <KpiCard
+                  {...item}
+                  variant={STAT_VARIANTS[index % STAT_VARIANTS.length]}
+                  isLoading={isLoading}
+                  onNavigate={navigate}
+                />
+              ) : (
+                <SkeletonStatCard />
+              )}
+            </Col>
+          ))}
+        </Row>
+      </div>
 
-    const keyPressTaskHandler = (e) => {
-        if (e.key === 'Enter') taskHandler();
-    };
+      <Row gutter={[10, 10]} className="charts-section dashboard-grid" align="stretch">
+        <Col xs={24} lg={12} xl={9} className="dashboard-grid__col">
+          <StockValueTrendCard
+            series={stockSeries}
+            fallbackSeries={saleSeries}
+            usingFallback={usingStockFallback}
+            isLoading={trendsLoading}
+            range={trendRange}
+            onRangeChange={setTrendRange}
+            color={theme.primary}
+            muted={theme.muted}
+          />
+        </Col>
+        <Col xs={24} lg={12} xl={9} className="dashboard-grid__col">
+          <FlowBarCard
+            data={trends?.flow}
+            isLoading={trendsLoading}
+            range={trendRange}
+            onRangeChange={setTrendRange}
+            saleColor={theme.primary}
+            purchaseColor={theme.info}
+            memoColor={theme.warning}
+            muted={theme.muted}
+          />
+        </Col>
+        <Col xs={24} lg={24} xl={6} className="dashboard-grid__col">
+          <TopPartiesPanel
+            parties={topParties}
+            isLoading={isLoading}
+            onViewReport={() => navigate("/report/outstanding")}
+            textMuted={theme.textMuted}
+          />
+        </Col>
+      </Row>
 
-    return (
-        <div className='dashboard-page'>
-            {/* <div className="dashboard-header">
-                <div className="header-left">
-                    <Title level={3} className="page-title">Inventory Dashboard</Title>
-                    <Text className="welcome-text">
-                        Welcome back, {companyName || user?.company_name || user?.username || user?.name || 'User'}
-                    </Text>
-                </div>
-                <div className="header-right">
-                    <span className="header-date">
-                        <CalendarDays size={14} />
-                        {dayjs().format('DD MMM, YYYY')}
-                    </span>
-                </div>
-            </div> */}
+      <Row gutter={[20, 20]} className="middle-section dashboard-grid" align="stretch">
+        <Col xs={24} lg={12} xl={8} className="dashboard-grid__col">
+          <DuePaymentsPanel
+            duePayments={duePayments}
+            purchaseDuePayments={purchaseDuePayments}
+            dueTotals={dueTotals}
+            purchaseDueTotals={purchaseDueTotals}
+            isLoading={isLoading}
+            onViewAll={() => navigate("/report/outstanding", {
+              state: {
+                dateRange: [dayjs().format("YYYY-MM-DD"), dayjs().add(7, "day").format("YYYY-MM-DD")],
+              },
+            })}
+          />
+        </Col>
+        <Col xs={24} lg={12} xl={8} className="dashboard-grid__col">
+          <RecentTransactionsPanel
+            transactions={recentTransactions}
+            isLoading={isLoading}
+            onViewAll={() => navigate("/accounting/account-transaction")}
+            onAddNew={() => navigate("/transaction/inward")}
+          />
+        </Col>
+        <Col xs={24} lg={24} xl={8} className="dashboard-grid__col">
+          <QuickNotesCard />
+        </Col>
+      </Row>
 
-            <div className='cardGroup dashboard-grid'>
-                <Row gutter={[20, 20]} align="stretch">
-                    {(statCards.length ? statCards : Array.from({ length: 4 })).map((item, index) => (
-                        <Col xs={24} sm={12} lg={6} key={index} className="dashboard-grid__col">
-                            {item?.title ? (
-                                <StatSummaryCard
-                                    {...item}
-                                    variant={STAT_VARIANTS[index % STAT_VARIANTS.length]}
-                                    isLoading={isLoading}
-                                    onNavigate={navigate}
-                                />
-                            ) : (
-                                <SkeletonStatCard />
-                            )}
-                        </Col>
-                    ))}
-                </Row>
-            </div>
+      <div className="section-heading">
+        <span className="section-heading__label">Analytics</span>
+        <h2 className="section-heading__title">Stock Intelligence</h2>
+      </div>
 
-            {/* <Row gutter={[16, 16]}>
-                <Col span={24}>
-                    <AIInsightCard />
-                </Col>
-            </Row> */}
+      <Row gutter={[20, 20]} className="charts-section dashboard-grid" align="stretch">
+        <Col xs={24} sm={12} xl={6} className="dashboard-grid__col">
+          <StockBreakdownCard
+            title="Stock by Shape"
+            data={breakdowns?.byShape}
+            total={breakdowns?.total}
+            isLoading={isLoading}
+            onViewReport={openOnHand}
+            fallbackColor={theme.muted}
+            colors={donutColors}
+          />
+        </Col>
+        <Col xs={24} sm={12} xl={6} className="dashboard-grid__col">
+          <StockBreakdownCard
+            title="Stock by Color"
+            data={breakdowns?.byColor}
+            total={breakdowns?.total}
+            isLoading={isLoading}
+            onViewReport={openOnHand}
+            fallbackColor={theme.muted}
+            colors={donutColors}
+          />
+        </Col>
+        <Col xs={24} sm={12} xl={6} className="dashboard-grid__col">
+          <StockBreakdownCard
+            title="Stock by Clarity"
+            data={breakdowns?.byClarity}
+            total={breakdowns?.total}
+            isLoading={isLoading}
+            onViewReport={openOnHand}
+            fallbackColor={theme.muted}
+            colors={donutColors}
+          />
+        </Col>
+        <Col xs={24} sm={12} xl={6} className="dashboard-grid__col">
+          <StockBreakdownCard
+            title="Stock by Type"
+            data={breakdowns?.byType}
+            total={breakdowns?.total}
+            isLoading={isLoading}
+            onViewReport={openOnHand}
+            fallbackColor={theme.muted}
+            colors={donutColors}
+          />
+        </Col>
+      </Row>
 
-            <Row gutter={[20, 20]} className="middle-section dashboard-grid" align="stretch">
-                <Col xs={24} lg={12} xl={8} className="dashboard-grid__col">
-                    <Card bordered={false} className="dashboard-card dashboard-card--luxury due-payments-card dashboard-fill-card">
-                        <div className="card-header">
-                            <div className="card-title-group">
-                                <span className="card-icon-badge card-icon-badge--danger">
-                                    <Wallet size={18} />
-                                </span>
-                                <div>
-                                    <span className="card-title-text">Sale Due Payments</span>
-                                    <span className="card-subtitle-text">Outstanding within 7 days</span>
-                                </div>
-                            </div>
-                            <a className="view-all-link" onClick={() => navigate('/report/outstanding', {
-                                state: {
-                                    dateRange: [dayjs().format('YYYY-MM-DD'), dayjs().add(7, 'day').format('YYYY-MM-DD')]
-                                }
-                            })}>View All</a>
-                        </div>
-                        <Tabs
-                            defaultActiveKey="sale"
-                            items={[
-                                {
-                                    key: "sale",
-                                    label: "Sale Due Payments",
-                                    children: (
-                                        <div className="table-wrapper due-payments-table-wrapper" >
-                                            {isLoading ? (
-                                                <DueTableSkeleton columns={columns} />
-                                            ) : duePayments.length > 0 ? (
-                                                <table className="inventory-table">
-                                                    <thead>
-                                                        <tr>
-                                                            {columns.map((col) => (
-                                                                <th key={col.key} style={{ textAlign: col.align || "left" }}>
-                                                                    {col.title}
-                                                                </th>
-                                                            ))}
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {duePayments.map((row, idx) => (
-                                                            <tr key={`${row.entry}-${idx}`}>
-                                                                <td>{row.party}</td>
-                                                                <td style={{ textAlign: "center" }}>{row.entry}</td>
-                                                                <td style={{ textAlign: "center" }}>{fmtMoney(row.total)}</td>
-                                                                <td style={{ textAlign: "center" }}>{fmtMoney(row.paid)}</td>
-                                                                <td className="balance-cell" style={{ textAlign: "center" }}>
-                                                                    {fmtMoney(row.balance)}
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                        <tr className="total-row">
-                                                            <td><strong>Total</strong></td>
-                                                            <td style={{ textAlign: "center" }}><strong>{dueTotals.entry}</strong></td>
-                                                            <td style={{ textAlign: "center" }}><strong>{fmtMoney(dueTotals.total)}</strong></td>
-                                                            <td style={{ textAlign: "center" }}><strong>{fmtMoney(dueTotals.paid)}</strong></td>
-                                                            <td className="balance-cell" style={{ textAlign: "center" }}>
-                                                                <strong>{fmtMoney(dueTotals.balance)}</strong>
-                                                            </td>
-                                                        </tr>
-                                                    </tbody>
-                                                </table>
-                                            ) : (
-                                                <div className="card-empty-fill">
-                                                    No due payments in the next 7 days.
-                                                </div>
-                                            )}
-                                        </div>
-                                    ),
-                                },
-                                {
-                                    key: "purchase",
-                                    label: "Purchase Due Payments",
-                                    children: (
-                                        <div className="table-wrapper due-payments-table-wrapper" >
-                                            {isLoading ? (
-                                                <DueTableSkeleton columns={columns} />
-                                            ) : purchaseDuePayments.length > 0 ? (
-                                                <table className="inventory-table">
-                                                    <thead>
-                                                        <tr>
-                                                            {columns.map((col) => (
-                                                                <th key={col.key} style={{ textAlign: col.align || "left" }}>
-                                                                    {col.title}
-                                                                </th>
-                                                            ))}
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {purchaseDuePayments.map((row, idx) => (
-                                                            <tr key={`${row.entry}-${idx}`}>
-                                                                <td>{row.party}</td>
-                                                                <td style={{ textAlign: "center" }}>{row.entry}</td>
-                                                                <td style={{ textAlign: "center" }}>{fmtMoney(row.total)}</td>
-                                                                <td style={{ textAlign: "center" }}>{fmtMoney(row.paid)}</td>
-                                                                <td className="balance-cell" style={{ textAlign: "center" }}>
-                                                                    {fmtMoney(row.balance)}
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                        <tr className="total-row">
-                                                            <td><strong>Total</strong></td>
-                                                            <td style={{ textAlign: "center" }}><strong>{purchaseDueTotals.entry}</strong></td>
-                                                            <td style={{ textAlign: "center" }}><strong>{fmtMoney(purchaseDueTotals.total)}</strong></td>
-                                                            <td style={{ textAlign: "center" }}><strong>{fmtMoney(purchaseDueTotals.paid)}</strong></td>
-                                                            <td className="balance-cell" style={{ textAlign: "center" }}>
-                                                                <strong>{fmtMoney(purchaseDueTotals.balance)}</strong>
-                                                            </td>
-                                                        </tr>
-                                                    </tbody>
-                                                </table>
-                                            ) : (
-                                                <div className="card-empty-fill">
-                                                    No purchase due payments in the next 7 days.
-                                                </div>
-                                            )}
-                                        </div>
-                                    ),
-                                },
-                            ]}
-                        />
-                    </Card>
-                </Col>
+      <div className="section-heading section-heading--compact">
+        <span className="section-heading__label">Shortcuts</span>
+        <h2 className="section-heading__title">Quick Actions</h2>
+      </div>
 
-                <Col xs={24} lg={12} xl={8} className="dashboard-grid__col">
-                    <Card bordered={false} className="dashboard-card dashboard-card--luxury recent-txn-card dashboard-fill-card">
-                        <div className="card-header">
-                            <div className="card-title-group">
-                                <span className="card-icon-badge card-icon-badge--primary">
-                                    <Activity size={18} />
-                                </span>
-                                <div>
-                                    <span className="card-title-text">Recent Transactions</span>
-                                    <span className="card-subtitle-text">Latest sale & purchase activity</span>
-                                </div>
-                            </div>
-                            <div className="card-header-actions">
-                                <a className="view-all-link" onClick={() => navigate('/accounting/account-transaction')}>View All</a>
-                                <a className="add-new-link" onClick={() => navigate('/transaction/inward')}>
-                                    <Plus size={14} /> Add New
-                                </a>
-                            </div>
-                        </div>
-                        <div className="transactions-list">
-                            {isLoading ? (
-                                <div style={{ padding: '8px 4px' }}>
-                                    <SkeletonList rows={5} withAvatar />
-                                </div>
-                            ) : recentTransactions.length > 0 ? (
-                                recentTransactions.map((txn, i) => (
-                                    <div key={i} className="transaction-item">
-                                        <div className="txn-icon" style={{ backgroundColor: txn.iconBg, color: txn.iconColor }}>
-                                            {txn.icon}
-                                        </div>
-                                        <div className="txn-details">
-                                            <span className="txn-type">{txn.type}</span>
-                                            <span className="txn-ref">{txn.ref}</span>
-                                        </div>
-                                        <div className="txn-party">{txn.party}</div>
-                                        <div className="txn-time">{txn.time}</div>
-                                        <div className="txn-amount">{txn.amount}</div>
-                                        <span className="txn-status" style={{
-                                            color: txn.statusColor,
-                                            backgroundColor: `${txn.statusColor}15`
-                                        }}>
-                                            {txn.status}
-                                        </span>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="card-empty-fill">No recent transactions found.</div>
-                            )}
-                        </div>
-                    </Card>
-                </Col>
-
-                <Col xs={24} lg={24} xl={8} className="dashboard-grid__col">
-                    <QuickNotesCard />
-                </Col>
-            </Row>
-
-            <div className="section-heading">
-                <span className="section-heading__label">Analytics</span>
-                <h2 className="section-heading__title">Stock Intelligence</h2>
-            </div>
-
-            <Row gutter={[20, 20]} className="charts-section dashboard-grid" align="stretch">
-                <Col xs={24} sm={12} xl={6} className="dashboard-grid__col">
-                    <Card bordered={false} className="dashboard-card chart-card chart-card--luxury">
-                        <div className="card-header">
-                            <span className="card-title-text">Stock by Shape</span>
-                            <a className="view-report-link" onClick={() => navigate('/inventory/on-hand-stock')}>View Report</a>
-                        </div>
-                        {isLoading ? (
-                            <div style={{ padding: '12px 0' }}><SkeletonChart height={180} /></div>
-                        ) : (
-                            <DonutChart data={breakdowns?.byShape} total={breakdowns?.total} fallbackColor={theme.muted} />
-                        )}
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} xl={6} className="dashboard-grid__col">
-                    <Card bordered={false} className="dashboard-card chart-card chart-card--luxury">
-                        <div className="card-header">
-                            <span className="card-title-text">Stock by Color</span>
-                            <a className="view-report-link" onClick={() => navigate('/inventory/on-hand-stock')}>View Report</a>
-                        </div>
-                        {isLoading ? (
-                            <div style={{ padding: '12px 0' }}><SkeletonChart height={180} /></div>
-                        ) : (
-                            <DonutChart data={breakdowns?.byColor} total={breakdowns?.total} fallbackColor={theme.muted} />
-                        )}
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} xl={6} className="dashboard-grid__col">
-                    <Card bordered={false} className="dashboard-card chart-card chart-card--luxury">
-                        <div className="card-header">
-                            <span className="card-title-text">Stock by Clarity</span>
-                            <a className="view-report-link" onClick={() => navigate('/inventory/on-hand-stock')}>View Report</a>
-                        </div>
-                        {isLoading ? (
-                            <div style={{ padding: '12px 0' }}><SkeletonChart height={180} /></div>
-                        ) : (
-                            <DonutChart data={breakdowns?.byClarity} total={breakdowns?.total} fallbackColor={theme.muted} />
-                        )}
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} xl={6} className="dashboard-grid__col">
-                    <Card bordered={false} className="dashboard-card chart-card chart-card--luxury">
-                        <div className="card-header">
-                            <span className="card-title-text">Top Parties</span>
-                            <a className="view-report-link" onClick={() => navigate('/report/outstanding')}>View Report</a>
-                        </div>
-                        <div className="top-parties-list">
-                            {isLoading ? (
-                                <SkeletonList rows={5} withAvatar={false} />
-                            ) : topParties.length ? topParties.map((party, i) => (
-                                <div key={i} className="party-item">
-                                    <span className="party-name">{party.name}</span>
-                                    <span className="party-amount">{party.amount}</span>
-                                </div>
-                            )) : (
-                                <div style={{ padding: 12, color: theme.textMuted }}>No party data yet.</div>
-                            )}
-                        </div>
-                    </Card>
-                </Col>
-            </Row>
-
-            <div className="section-heading section-heading--compact">
-                <span className="section-heading__label">Shortcuts</span>
-                <h2 className="section-heading__title">Quick Actions</h2>
-            </div>
-
-            <div className="quick-actions-wrap">
-                <div className="quick-actions">
-                    {quickActions.map((action, i) => (
-                        <div
-                            key={i}
-                            className={`quick-action-btn quick-action-btn--${i + 1}`}
-                            onClick={() => navigate(action.link)}
-                        >
-                            <div className="quick-action-btn__shine" aria-hidden="true" />
-                            <div className="action-left-icon" style={{ color: action.leftColor }}>
-                                {action.leftIcon}
-                            </div>
-                            <div className="action-text">
-                                <span className="action-title">{action.title}</span>
-                                <span className="action-subtitle">{action.subtitle}</span>
-                            </div>
-                            <div className="action-right-icon" style={{ color: action.rightColor }}>
-                                {action.rightIcon}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </div>
-    );
+      <QuickActionsBar actions={quickActions} onNavigate={navigate} />
+    </div>
+  );
 };
 
 export default Dashboard;

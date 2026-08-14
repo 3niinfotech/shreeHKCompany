@@ -159,9 +159,8 @@
   .addLineBtn,
   .submitBtn {
     flex-shrink: 0;
-    height: 40px !important;
-    padding-inline: 16px !important;
-    border-radius: 8px !important;
+    padding-inline: 10px !important;
+    border-radius: var(--radius-control) !important;
     font-weight: 600 !important;
     display: inline-flex !important;
     align-items: center !important;

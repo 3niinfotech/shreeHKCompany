@@ -143,14 +143,23 @@
       min-width: 0;
     }
 
+    .totalStoneLabel {
+      color: #6B7285 !important;
+    }
+
+    .totalStoneValue {
+      color: #1A1840;
+      font-weight: 700;
+    }
+
     .totalsGroup {
       justify-content: flex-end;
 
       .statItem {
         label {
           font-size: 14px;
-          font-weight: 700;
-          color: #1A1840;
+          // font-weight: 700;
+          color: #6B7285;
         }
 
         span {
@@ -159,13 +168,6 @@
       }
     }
 
-    .statsBarCenter {
-      flex-shrink: 0;
-      text-align: center;
-      font-size: 12px;
-      color: var(--color-text-muted);
-      white-space: nowrap;
-    }
   }
 
   // Keep table body height fixed even with few rows (Ant scroll.y is max-height only)
@@ -204,26 +206,19 @@
       height: var(--table-scroll-y) !important;
       max-height: var(--table-scroll-y) !important;
       overflow-y: auto !important;
+      scrollbar-gutter: stable;
     }
 
     :global(.ant-table-sticky-scroll) {
       display: none !important;
     }
 
-    :global(.ant-table-empty .ant-table-body) {
-      overflow: hidden !important;
-    }
-
-    :global(.ant-table-empty .ant-table-body table) {
-      height: 100%;
-    }
-
     :global(.ant-table-wrapper .ant-table-placeholder) {
-      height: 100% !important;
+      height: auto !important;
     }
 
     :global(.ant-table-wrapper .ant-table-tbody > tr.ant-table-placeholder > td) {
-      height: 100% !important;
+      height: auto !important;
       vertical-align: middle;
     }
 
@@ -551,6 +546,76 @@
       cursor: not-allowed;
     }
   }
+}
+
+.actionButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+}
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 8px;
+  border-radius: var(--radius-control);
+  border: 1px solid transparent;
+  font-weight: 700;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  line-height: 1;
+
+  :global(.anticon) {
+    font-size: 13px;
+  }
+}
+
+.actionDisabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.actionReturn {
+  color: #873800;
+  background: #fff7e6;
+  border-color: #ad4e00;
+}
+
+.actionSale {
+  color: #135200;
+  background: #f6ffed;
+  border-color: #237804;
+}
+
+.actionPurchase {
+  color: #531dab;
+  background: #f9f0ff;
+  border-color: #d3adf7;
+}
+
+.actionConsign {
+  color: #c41d7f;
+  background: #fff0f6;
+  border-color: #ffadd2;
+}
+
+.actionExport {
+  color: #0958d9;
+  background: #e6f4ff;
+  border-color: #91caff;
+}
+
+.actionImport {
+  color: #08979c;
+  background: #e6fffb;
+  border-color: #87e8de;
 }
 
 .stockEditForm {

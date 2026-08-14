@@ -75,17 +75,76 @@ h6,
 }
 
 // ---------------------------------------------------------------------------
-// Buttons
+// Buttons — 32px baseline (Inventory quick-link reference)
 // ---------------------------------------------------------------------------
+$btn-height: 32px;
+$btn-padding-x: 10px;
+$btn-font-size: 12px;
+$btn-font-weight: 600;
+$btn-line-height: 30px;
+$btn-icon-size: 14px;
+
+// Filter bars share the same 32px control height as buttons
+:root {
+  --filter-control-height: #{$btn-height};
+  --filter-control-line-height: #{$btn-line-height};
+  --filter-control-font-size: #{$btn-font-size};
+}
+
+.ant-btn:not(.ant-btn-link):not(.ant-btn-text) {
+  height: $btn-height !important;
+  min-height: $btn-height !important;
+  padding: 0 $btn-padding-x !important;
+  font-size: $btn-font-size !important;
+  font-weight: $btn-font-weight !important;
+  line-height: $btn-line-height !important;
+  border-radius: var(--radius-control) !important;
+  gap: 6px !important;
+
+  &.ant-btn-icon-only,
+  &.ant-btn-circle {
+    width: $btn-height !important;
+    min-width: $btn-height !important;
+    padding: 0 !important;
+  }
+
+  .ant-btn-icon,
+  .anticon {
+    font-size: $btn-icon-size !important;
+    line-height: 1 !important;
+  }
+
+  svg {
+    width: $btn-icon-size;
+    height: $btn-icon-size;
+  }
+}
+
 .ant-btn-primary:not(:disabled) {
   background: var(--color-btn-primary-bg) !important;
   border-color: var(--color-btn-primary-bg) !important;
   border-radius: var(--radius-control) !important;
   color: var(--color-btn-primary-text) !important;
 
-  &:hover:not(:disabled) {
+  &,
+  .ant-btn-icon,
+  .anticon,
+  svg {
+    color: var(--color-btn-primary-text) !important;
+  }
+
+  &:hover:not(:disabled),
+  &:focus:not(:disabled),
+  &:active:not(:disabled) {
     background: var(--color-btn-primary-hover) !important;
     border-color: var(--color-btn-primary-hover) !important;
+    color: var(--color-btn-primary-text) !important;
+
+    .ant-btn-icon,
+    .anticon,
+    svg {
+      color: var(--color-btn-primary-text) !important;
+    }
   }
 }
 
@@ -95,10 +154,95 @@ h6,
   border-radius: var(--radius-control) !important;
   background: var(--color-btn-secondary-bg) !important;
 
-  &:hover:not(:disabled) {
+  &,
+  .ant-btn-icon,
+  .anticon,
+  svg {
+    color: var(--color-btn-secondary-text) !important;
+  }
+
+  &:hover:not(:disabled),
+  &:focus:not(:disabled),
+  &:active:not(:disabled) {
     color: var(--color-text-heading) !important;
     border-color: var(--color-border) !important;
     background: var(--color-btn-secondary-hover) !important;
+
+    .ant-btn-icon,
+    .anticon,
+    svg {
+      color: var(--color-text-heading) !important;
+    }
+  }
+}
+
+// Shared utility actions — Search / Refresh / Reload / Clear
+.btnSearch,
+.btnRefresh,
+.btnReload,
+.btnClear {
+  height: $btn-height !important;
+  min-height: $btn-height !important;
+  padding: 0 $btn-padding-x !important;
+  font-size: $btn-font-size !important;
+  font-weight: $btn-font-weight !important;
+  line-height: $btn-line-height !important;
+  border-radius: var(--radius-control) !important;
+}
+
+.btnSearch,
+.btnRefresh,
+.btnReload {
+  background: var(--color-btn-primary-bg) !important;
+  border-color: var(--color-btn-primary-bg) !important;
+  color: var(--color-btn-primary-text) !important;
+
+  &,
+  .ant-btn-icon,
+  .anticon,
+  svg {
+    color: var(--color-btn-primary-text) !important;
+  }
+
+  &:hover:not(:disabled),
+  &:focus:not(:disabled),
+  &:active:not(:disabled) {
+    background: var(--color-btn-primary-hover) !important;
+    border-color: var(--color-btn-primary-hover) !important;
+    color: var(--color-btn-primary-text) !important;
+
+    .ant-btn-icon,
+    .anticon,
+    svg {
+      color: var(--color-btn-primary-text) !important;
+    }
+  }
+}
+
+.btnClear {
+  color: var(--color-btn-primary-bg) !important;
+  border: var(--border-width-thin) solid var(--color-btn-primary-bg) !important;
+  background: var(--color-btn-secondary-bg) !important;
+
+  &,
+  .ant-btn-icon,
+  .anticon,
+  svg {
+    color: var(--color-btn-primary-bg) !important;
+  }
+
+  &:hover:not(:disabled),
+  &:focus:not(:disabled),
+  &:active:not(:disabled) {
+    color: var(--color-btn-primary-text) !important;
+    border-color: var(--color-btn-primary-hover) !important;
+    background: var(--color-btn-primary-hover) !important;
+
+    .ant-btn-icon,
+    .anticon,
+    svg {
+      color: var(--color-btn-primary-text) !important;
+    }
   }
 }
 
@@ -249,6 +393,9 @@ h6,
 // Pagination
 // ---------------------------------------------------------------------------
 .ant-pagination-item {
+  min-width: $btn-height !important;
+  height: $btn-height !important;
+  line-height: $btn-line-height !important;
   border: 0.5px solid var(--color-border) !important;
   border-radius: var(--radius-control) !important;
   background: var(--color-card-bg) !important;
@@ -269,6 +416,9 @@ h6,
 
 .ant-pagination-prev .ant-pagination-item-link,
 .ant-pagination-next .ant-pagination-item-link {
+  min-width: $btn-height !important;
+  height: $btn-height !important;
+  line-height: $btn-line-height !important;
   border: 0.5px solid var(--color-border) !important;
   border-radius: var(--radius-control) !important;
 }
@@ -329,24 +479,34 @@ $inv-not: ":not(.diamond-inventory-table):not(.custom-ant-table):not(.erp-table)
 
 // Modal footer buttons (shared modal.module.scss classes)
 .btnSave {
+  height: $btn-height !important;
+  min-height: $btn-height !important;
+  padding: 0 14px !important;
+  font-size: $btn-font-size !important;
+  font-weight: $btn-font-weight !important;
   background-color: var(--color-btn-save-bg) !important;
   border-color: var(--color-btn-save-bg) !important;
   border-radius: var(--radius-control) !important;
   color: var(--color-btn-primary-text) !important;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background-color: var(--color-btn-save-hover) !important;
     border-color: var(--color-btn-save-hover) !important;
   }
 }
 
 .btnCancel {
+  height: $btn-height !important;
+  min-height: $btn-height !important;
+  padding: 0 14px !important;
+  font-size: $btn-font-size !important;
+  font-weight: $btn-font-weight !important;
   background-color: var(--color-btn-cancel-bg) !important;
   border-color: var(--color-btn-cancel-bg) !important;
   border-radius: var(--radius-control) !important;
   color: var(--color-btn-primary-text) !important;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background-color: var(--color-btn-cancel-hover) !important;
     border-color: var(--color-btn-cancel-hover) !important;
   }

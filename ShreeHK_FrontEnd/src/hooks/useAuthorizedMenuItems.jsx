@@ -1,10 +1,11 @@
 import { useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { House, Settings, Package, Repeat, Book, BarChart, ExternalLink, User, Users, Shield } from "lucide-react";
+import { House, Settings, Package, Repeat, Book, BarChart, ExternalLink, User, Users, Shield, NotebookPen } from "lucide-react";
 import { getAuthorizedRouteMeta } from "../routes/Routes";
+import { prefetchRoute, prefetchRouteTree } from "../routes/routePrefetch";
 import useAuthStore from "../store/Auth.Store";
 
-const ICON_MAP = { House, Settings, Package, Repeat, Book, BarChart, ExternalLink, User, Users, Shield };
+const ICON_MAP = { House, Settings, Package, Repeat, Book, BarChart, ExternalLink, User, Users, Shield, NotebookPen };
 
 const renderIcon = (iconName) => {
   if (!iconName) return null;
@@ -13,11 +14,6 @@ const renderIcon = (iconName) => {
     return <IconComponent size={18} strokeWidth={2} style={{ marginRight: 8 }} />;
   }
   return null;
-};
-
-const USER_MGMT_ICONS = {
-  "Manage User": "Users",
-  Roll: "Shield",
 };
 
 export default function useAuthorizedMenuItems(onItemClick) {
@@ -63,43 +59,22 @@ export default function useAuthorizedMenuItems(onItemClick) {
             children: hasChildren
               ? buildMenuItems(item.children, index)
               : null,
+            onMouseEnter: () => prefetchRouteTree(item),
             onClick: hasChildren
               ? null
               : () => {
-                  if (item.path) handleNavigate(item.path);
+                  if (item.path) {
+                    prefetchRoute(item.path);
+                    handleNavigate(item.path);
+                  }
                 },
           };
         }),
     [handleNavigate]
   );
 
-  return useMemo(() => {
-    const items = buildMenuItems(authorizedRoutes);
-
-    const adminRoute = authorizedRoutes.find((r) => r.name === "Admin");
-    if (adminRoute?.children?.length > 0) {
-      const userMgmtChildren = adminRoute.children
-        .filter((child) => child.name)
-        .map((child) => ({
-          key: `user-mgmt-${child.path}`,
-          label: child.name,
-          icon: renderIcon(USER_MGMT_ICONS[child.name] || "User"),
-          onClick: () => {
-            if (child.path) handleNavigate(child.path);
-          },
-        }));
-
-      if (userMgmtChildren.length > 0) {
-        items.push({ type: "divider", key: "user-mgmt-divider" });
-        items.push({
-          type: "group",
-          label: "USER MANAGEMENT",
-          key: "user-management-group",
-          children: userMgmtChildren,
-        });
-      }
-    }
-
-    return items;
-  }, [authorizedRoutes, buildMenuItems, handleNavigate]);
+  return useMemo(
+    () => buildMenuItems(authorizedRoutes),
+    [authorizedRoutes, buildMenuItems],
+  );
 }

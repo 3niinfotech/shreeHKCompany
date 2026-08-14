@@ -1,3 +1,50 @@
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import relativeTime from "dayjs/plugin/relativeTime";
+
+dayjs.extend(utc);
+dayjs.extend(relativeTime);
+
+/**
+ * Activity log stores created_at via UTC_TIMESTAMP.
+ * MySQL often returns "YYYY-MM-DD HH:mm:ss[.SSS]" without a timezone —
+ * treat that as UTC, then show the user's local exact date + time.
+ */
+export function parseActivityAt(val) {
+  if (val == null || val === "") return null;
+  if (val instanceof Date) return dayjs(val);
+  const raw = String(val).trim();
+  if (!raw) return null;
+  if (/Z$/i.test(raw) || /[+-]\d{2}:?\d{2}$/.test(raw)) return dayjs(raw);
+  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
+  return dayjs.utc(normalized).local();
+}
+
+export function formatActivityDate(val) {
+  const d = parseActivityAt(val);
+  return d?.isValid() ? d.format("DD-MM-YYYY") : "—";
+}
+
+export function formatActivityTime(val) {
+  const d = parseActivityAt(val);
+  return d?.isValid() ? d.format("hh:mm:ss A") : "—";
+}
+
+export function formatActivityDateTime(val) {
+  const d = parseActivityAt(val);
+  return d?.isValid() ? d.format("DD-MM-YYYY hh:mm:ss A") : "—";
+}
+
+export function formatActivityRelativeTime(val) {
+  const d = parseActivityAt(val);
+  return d?.isValid() ? d.fromNow() : "—";
+}
+
+export function formatActivityIso(val) {
+  const d = parseActivityAt(val);
+  return d?.isValid() ? d.toISOString() : "";
+}
+
 /** Human-readable labels for audit field keys */
 const FIELD_LABELS = {
   sku: "SKU",
@@ -119,6 +166,7 @@ export function formatActionTypeLabel(actionType) {
     DELETE: "Delete",
     LOGIN: "Login",
     LOGOUT: "Logout",
+    LOGIN_FAILED: "Failed login",
     VIEW: "Visit",
     STOCK_IN: "Add",
     STOCK_OUT: "Delete",
@@ -136,6 +184,12 @@ export function formatActionTypeLabel(actionType) {
 }
 
 export function getModulePageLabel(record) {
+  // Prefer business module for mutations so stale page labels (e.g. Dashboard)
+  // cannot override Company / Stock / etc.
+  const action = String(record?.actionType || "").toUpperCase();
+  const isMutation = action && !action.startsWith("UI_") && action !== "VIEW" && action !== "API_READ";
+  if (isMutation && record?.moduleName) return record.moduleName;
+
   const { pageMeta } = extractBusinessData(record);
   if (pageMeta?.label) return pageMeta.label;
   if (record?.moduleName) return record.moduleName;
@@ -434,6 +488,15 @@ export function buildActivityNarrative(record) {
   const mod = record?.moduleName || "Record";
   const ref = record?.recordReference;
 
+  if (actionType === "LOGIN") return `${user}${role} logged in`;
+  if (actionType === "LOGOUT") return `${user}${role} logged out`;
+  if (actionType === "LOGIN_FAILED") {
+    const reason = record?.newValue?.reason;
+    return reason
+      ? `${user}${role} failed to log in — ${reason}`
+      : `${user}${role} failed to log in`;
+  }
+
   const verbMap = {
     CREATE: "added new",
     STOCK_IN: "stocked in",
@@ -470,6 +533,9 @@ export function getActionTone(actionType) {
   if (actionType === "DELETE" || actionType === "STOCK_OUT") return "delete";
   if (actionType === "MEMO_CREATE" || actionType === "MEMO_RETURN") return "memo";
   if (actionType === "UPDATE" || actionType === "TRANSFER") return "edit";
+  if (actionType === "LOGIN") return "login";
+  if (actionType === "LOGOUT") return "logout";
+  if (actionType === "LOGIN_FAILED") return "failed";
   return "default";
 }
 
@@ -562,6 +628,9 @@ export function getActionHeadline(actionType) {
     TRANSFER: "Transfer",
     EXPORT: "Export",
     PRINT: "Print",
+    LOGIN: "User logged in",
+    LOGOUT: "User logged out",
+    LOGIN_FAILED: "Login failed",
   };
   return map[actionType] || formatActionTypeLabel(actionType);
 }

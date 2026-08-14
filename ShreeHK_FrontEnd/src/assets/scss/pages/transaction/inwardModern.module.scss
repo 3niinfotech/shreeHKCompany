@@ -68,11 +68,11 @@
 }
 
 .resetBtn {
-  height: 34px;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   font-weight: 600;
-  padding-inline: 14px;
-  border-color: var(--color-border);
+  padding-inline: 10px;
+  border-color: var(--color-btn-primary-bg);
+  color: var(--color-btn-primary-bg);
 }
 
 .formCard {
@@ -221,15 +221,15 @@
   }
 
   :global(.ant-btn-dashed) {
-    height: 34px;
-    border-radius: 8px;
-    border-color: var(--color-primary) !important;
-    color: var(--color-primary) !important;
+    border-radius: var(--radius-control);
+    border-color: var(--color-btn-primary-bg) !important;
+    color: var(--color-btn-primary-bg) !important;
     font-weight: 600;
+    padding-inline: 10px !important;
 
-    &:hover {
-      border-color: var(--color-primary-dark) !important;
-      color: var(--color-primary-dark) !important;
+    &:hover:not(:disabled) {
+      border-color: var(--color-btn-primary-hover) !important;
+      color: var(--color-btn-primary-hover) !important;
       background: color-mix(in srgb, var(--color-primary) 6%, transparent) !important;
     }
   }
@@ -421,9 +421,8 @@
 .addLineBtn,
 .submitBtn {
   flex-shrink: 0;
-  height: 36px !important;
-  padding-inline: 16px !important;
-  border-radius: 8px !important;
+  padding-inline: 10px !important;
+  border-radius: var(--radius-control) !important;
   font-weight: 600 !important;
   display: inline-flex !important;
   align-items: center !important;

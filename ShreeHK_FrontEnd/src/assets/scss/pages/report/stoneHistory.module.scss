@@ -36,7 +36,7 @@
     font-size: 13px;
     font-weight: 600;
     color: var(--color-text-secondary, #5f7383);
-    line-height: 38px;
+    line-height: var(--filter-control-height);
     white-space: nowrap;
 }
 
@@ -62,7 +62,7 @@
     min-width: 220px;
 
     &:global(.ant-input) {
-        height: 38px !important;
+        height: var(--filter-control-height) !important;
         border-radius: 8px !important;
         font-size: 13px !important;
         color: var(--color-text-body) !important;
@@ -71,24 +71,24 @@
 }
 
 .iconBtn {
-    height: 36px !important;
-    min-width: 108px;
-    border: 1px solid var(--color-primary) !important;
-    border-radius: 8px !important;
-    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-medium) 100%) !important;
-    box-shadow: var(--shadow-md);
-    font-size: 13px !important;
+    min-width: 96px;
+    border: 1px solid var(--color-btn-primary-bg) !important;
+    border-radius: var(--radius-control) !important;
+    background: var(--color-btn-primary-bg) !important;
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
+    font-size: 12px !important;
     font-weight: 600 !important;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 0 14px !important;
+    padding: 0 10px !important;
+    color: var(--color-btn-primary-text) !important;
 
-    &:hover {
-        border-color: var(--color-primary-dark) !important;
-        background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%) !important;
-        box-shadow: var(--shadow-lg);
+    &:hover:not(:disabled) {
+        border-color: var(--color-btn-primary-hover) !important;
+        background: var(--color-btn-primary-hover) !important;
+        color: var(--color-btn-primary-text) !important;
     }
 
     &:focus-visible {
@@ -97,28 +97,19 @@
 }
 
 .resetBtn {
-    height: 36px !important;
-    min-width: 108px;
-    border-radius: 8px !important;
-    border: 1px solid var(--color-chart-muted) !important;
-    background: var(--color-bg-card) !important;
-    color: var(--color-badge-neutral-text) !important;
-    font-size: 13px !important;
+    min-width: 96px;
+    border-radius: var(--radius-control) !important;
+    border: 1px solid var(--color-btn-primary-bg) !important;
+    background: var(--color-btn-secondary-bg) !important;
+    color: var(--color-btn-primary-bg) !important;
+    font-size: 12px !important;
     font-weight: 600 !important;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 0 14px !important;
+    padding: 0 10px !important;
 
-    &:hover {
-        border-color: var(--color-chart-muted) !important;
-        color: var(--color-text-heading) !important;
-        background: var(--color-bg-muted) !important;
-    }
-
-    &:focus-visible {
-        box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-chart-muted) 18%, transparent);
+    &:hover:not(:disabled) {
+        color: var(--color-btn-primary-text) !important;
+        border-color: var(--color-btn-primary-hover) !important;
+        background: var(--color-btn-primary-hover) !important;
     }
 }
 
@@ -189,6 +180,39 @@
         font-size: 13px;
         font-weight: 600;
     }
+}
+
+.historyTabContent {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.historyTabHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+
+    .tabSectionTitle {
+        margin-bottom: 0;
+    }
+}
+
+.historyTabActions {
+    display: inline-flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.oldHistoryBlock {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--color-table-border);
 }
 
 .tabLabel {

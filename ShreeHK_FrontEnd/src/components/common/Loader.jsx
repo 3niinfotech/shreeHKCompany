@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import brandLogo from "../../assets/loader/ChatGPT Image Aug 12, 2026, 11_07_33 AM.png";
+import brandLogo from "../../assets/loader/icon.png";
 import styles from "../../assets/scss/loader.module.scss";
 
 /** Strip near-white pixels so the baked logo background disappears. */
@@ -20,6 +20,18 @@ function stripWhiteBackground(src) {
       ctx.drawImage(img, 0, 0);
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const { data } = imageData;
+
+      const lastRow = (canvas.height - 1) * canvas.width * 4;
+      const lastCol = (canvas.width - 1) * 4;
+      const cornersTransparent =
+        data[3] === 0 &&
+        data[lastCol + 3] === 0 &&
+        data[lastRow + 3] === 0 &&
+        data[lastRow + lastCol + 3] === 0;
+      if (cornersTransparent) {
+        resolve(src);
+        return;
+      }
 
       for (let i = 0; i < data.length; i += 4) {
         const r = data[i];

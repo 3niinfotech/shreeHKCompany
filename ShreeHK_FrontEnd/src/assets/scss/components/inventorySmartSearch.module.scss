@@ -370,8 +370,8 @@
         color: var(--color-navy) !important;
 
         &::placeholder {
-          color: #fff !important;
-          -webkit-text-fill-color: #fff !important;
+          color: var(--color-neutral) !important;
+          -webkit-text-fill-color: var(--color-neutral) !important;
           opacity: 1 !important;
         }
       }

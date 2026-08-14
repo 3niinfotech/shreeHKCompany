@@ -413,7 +413,10 @@ const TenantCompanyList = () => {
             <Row gutter={[16, 0]} align="top">
               <Col span={12}>
                 <Form.Item name="rapnet_password" label="RapNet Password">
-                  <Input placeholder="Enter RapNet Password..." />
+                  <Input.Password
+                    autoComplete="new-password"
+                    placeholder={editing ? "Leave blank to keep current password" : "Enter RapNet Password..."}
+                  />
                 </Form.Item>
               </Col>
               <Col span={12}>

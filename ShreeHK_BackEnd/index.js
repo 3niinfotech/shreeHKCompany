@@ -41,7 +41,7 @@ const portalRouter = require("./routes/portal/portalRoutes.js");
 const integrationRouter = require("./routes/integration/integrationRoutes.js");
 const tenantCompanyRouter = require("./routes/admin/tenantCompanyRoutes.js");
 const legacyApps = require("./config/legacyApps.js");
-const { enforceApiPermission } = require("./authMiddleware.js");
+const { authenticateToken, isSuperAdmin, enforceApiPermission } = require("./authMiddleware.js");
 const { proxyStoneMedia, MEDIA_PREFIX } = require("./routes/media/stoneMediaProxy.js");
 const { attachAuditContext } = require("./middleware/auditContext.js");
 const { auditPreSnapshot } = require("./middleware/auditPreSnapshot.js");
@@ -141,7 +141,12 @@ app.use("/", BulkRouter);
 app.use("/rapnet", RapnetRouter);
 app.use("/ai", aiRouter);
 
-app.get("/config/legacy-apps", (req, res) => res.json({ status: true, Data: legacyApps.outOfScopeApps }));
+app.get(
+  "/config/legacy-apps",
+  authenticateToken,
+  isSuperAdmin,
+  (req, res) => res.json({ status: true, Data: legacyApps.outOfScopeApps }),
+);
 
 const { ensureActivityLogTableOnMeta } = require("./scripts/ensureActivityLogTable.js");
 const { ensureUserActiveColumn } = require("./services/userActiveColumnService.js");

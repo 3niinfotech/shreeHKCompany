@@ -6,8 +6,10 @@ import {
   EditOutlined,
   DeleteOutlined,
   FileTextOutlined,
+  LoginOutlined,
+  LogoutOutlined,
+  CloseCircleOutlined,
 } from "@ant-design/icons";
-import dayjs from "dayjs";
 import {
   extractBusinessData,
   getDisplayChanges,
@@ -15,6 +17,7 @@ import {
   getActionHeadline,
   getActionTone,
   formatActionTypeLabel,
+  formatActivityDateTime,
 } from "../../utils/activityLogFormatters";
 import styles from "../../assets/scss/pages/admin/activityHistory.module.scss";
 
@@ -25,8 +28,13 @@ const TONE_ICON = {
   edit: EditOutlined,
   delete: DeleteOutlined,
   memo: FileTextOutlined,
+  login: LoginOutlined,
+  logout: LogoutOutlined,
+  failed: CloseCircleOutlined,
   default: EditOutlined,
 };
+
+const AUTH_ACTIONS = new Set(["LOGIN", "LOGOUT", "LOGIN_FAILED"]);
 
 const ChangeList = ({ items, mode }) => {
   if (!items?.length) return null;
@@ -90,6 +98,8 @@ const ActivityLogDetail = ({ record, compact = false }) => {
   const narrative = buildActivityNarrative(record);
   const { mode, items } = getDisplayChanges(record);
   const headline = getActionHeadline(actionType);
+  const isAuthEvent = AUTH_ACTIONS.has(actionType);
+  const showAccessMeta = !compact || isAuthEvent;
 
   return (
     <div className={`${styles.detailWrap} ${styles[`detailWrap--${tone}`]}`}>
@@ -121,7 +131,7 @@ const ActivityLogDetail = ({ record, compact = false }) => {
             {record.createdAt ? (
               <Text type="secondary">
                 {" · "}
-                {dayjs(record.createdAt).format("DD-MM-YYYY hh:mm A")}
+                {formatActivityDateTime(record.createdAt)}
               </Text>
             ) : null}
             {pageMeta?.label ? (
@@ -131,7 +141,7 @@ const ActivityLogDetail = ({ record, compact = false }) => {
         </div>
       </div>
 
-      {items.length > 0 ? (
+      {items.length > 0 && !isAuthEvent ? (
         <div className={styles.detailSection}>
           <Text className={styles.detailSectionTitle}>
             {mode === "changes" && "What Is Change"}
@@ -141,21 +151,28 @@ const ActivityLogDetail = ({ record, compact = false }) => {
           </Text>
           <ChangeList items={items} mode={mode} />
         </div>
-      ) : (
+      ) : !isAuthEvent ? (
         <Text type="secondary" className={styles.noDataHint}>
           Is action ka detail data capture nahi hua. Dubara save/update karke check karein.
         </Text>
-      )}
+      ) : null}
+
+      {showAccessMeta ? (
+        <div className={styles.detailMeta}>
+          {record.ipAddress ? <Text type="secondary">IP: {record.ipAddress}</Text> : null}
+            {isAuthEvent && record.userAgent ? (
+              <Text type="secondary" className={styles.deviceMeta} ellipsis={{ tooltip: record.userAgent }}>
+                Device: {record.userAgent}
+              </Text>
+            ) : null}
+          {record.status ? (
+            <Tag color={record.status === "SUCCESS" ? "green" : "orange"}>{record.status}</Tag>
+          ) : null}
+        </div>
+      ) : null}
 
       {!compact ? (
         <>
-          <div className={styles.detailMeta}>
-            {record.ipAddress ? <Text type="secondary">IP: {record.ipAddress}</Text> : null}
-            {record.status ? (
-              <Tag color={record.status === "SUCCESS" ? "green" : "orange"}>{record.status}</Tag>
-            ) : null}
-          </div>
-
           <button
             type="button"
             className={styles.technicalToggle}

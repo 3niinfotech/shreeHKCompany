@@ -29,6 +29,29 @@ const getClientIp = (req) => {
   );
 };
 
+const logFailedLogin = async (req, { username, user = null, reason }) => {
+  try {
+    await logAudit({
+      actionType: "LOGIN_FAILED",
+      moduleName: "User Management",
+      recordId: user?.user_id || null,
+      recordReference: String(username || "unknown").slice(0, 150),
+      userId: user?.user_id || null,
+      userName: user?.user_name || String(username || "Unknown user").slice(0, 150),
+      userRole: user?.role_name || "",
+      userRoleId: user?.roll || null,
+      companyId: 1,
+      newValue: { reason },
+      description: `Failed login attempt for ${String(username || "unknown").slice(0, 150)}: ${reason}`,
+      ipAddress: getClientIp(req),
+      userAgent: String(req.headers["user-agent"] || "").slice(0, 512),
+      status: "ATTEMPTED",
+    });
+  } catch (auditError) {
+    console.error("Failed login audit error:", auditError);
+  }
+};
+
 userRouter.use(bodyParser.json());
 
 // ─────────────────────────────────────────────────────────
@@ -62,15 +85,18 @@ userRouter.post('/user/login', async (req, res) => {
     });
 
     if (!user) {
+      await logFailedLogin(req, { username, reason: "User not found" });
       return res.status(401).json({ status: false, message: 'User not found.' });
     }
 
     if (Number(user.is_active) === 0) {
+      await logFailedLogin(req, { username, user, reason: "Account inactive" });
       return res.status(403).json({ status: false, message: 'Your account is inactive. Contact administrator.' });
     }
 
     const hash = md5(password);
     if (hash !== user.pass) {
+      await logFailedLogin(req, { username, user, reason: "Invalid password" });
       return res.status(401).json({ status: false, message: 'Invalid password.' });
     }
 
@@ -122,9 +148,11 @@ userRouter.post('/user/login', async (req, res) => {
         moduleName: "User Management",
         recordId: user.user_id,
         recordReference: user.user_name,
+        userId: user.user_id,
         userName: user.user_name,
         userRole: user.role_name || "",
         userRoleId: user.roll,
+        companyId: 1,
         newValue: {
           user_id: user.user_id,
           user_name: user.user_name,
@@ -189,8 +217,12 @@ userRouter.post('/user/logout', authenticateToken, async (req, res) => {
       moduleName: "User Management",
       recordId: req.user?.user_id,
       recordReference: req.user?.username,
+      userId: req.user?.user_id,
       userName: req.user?.username || "User",
       userRoleId: req.user?.roll,
+      companyId: Number(req.companyId || req.user?.companyId) || 1,
+      ipAddress: getClientIp(req),
+      userAgent: String(req.headers["user-agent"] || "").slice(0, 512),
     });
   } catch (auditErr) {
     console.error("Logout audit error:", auditErr);

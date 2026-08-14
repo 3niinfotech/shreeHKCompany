@@ -8,6 +8,7 @@ const { buildExcelBuffer, buildPdfBuffer } = require("../../services/auditExport
 const { logActivity } = require("../../services/auditService.js");
 const { PAGE_BY_KEY } = require("../../config/permissionRegistry.js");
 const { refreshAuditContextFromReq } = require("../../middleware/auditContext.js");
+const { isUserOnline } = require("../../services/userPresenceService.js");
 
 const activityLogRouter = express.Router();
 
@@ -30,10 +31,24 @@ const canDeleteAudit = async (req) => {
   return hasPerm(permissions, "admin.activity_history");
 };
 
+const getAuditCompanyScope = (req) => {
+  if (Number(req.user?.roll) === 1) return null;
+  return Number(req.companyId || req.user?.companyId) || -1;
+};
+
+const AUTH_ACTION_TYPES = ["LOGIN", "LOGOUT", "LOGIN_FAILED"];
+
+const resolveUserId = (row) => {
+  const direct = Number(row?.user_id);
+  if (direct) return direct;
+  const fromRecord = Number(row?.record_id);
+  return fromRecord || null;
+};
+
 const mapRow = (row) => ({
   id: row.id,
   companyId: row.company_id,
-  userId: row.user_id,
+  userId: resolveUserId(row),
   userName: row.user_name,
   userRole: row.user_role,
   userRoleId: row.user_role_id,
@@ -66,6 +81,7 @@ const NOISE_ACTION_TYPES = [
   "API_READ",
   "LOGIN",
   "LOGOUT",
+  "LOGIN_FAILED",
   "ATTEMPTED",
   "UI_CLICK",
   "UI_FILTER",
@@ -75,11 +91,36 @@ const NOISE_ACTION_TYPES = [
   "UI_ACTION",
 ];
 
-function buildFilters(query) {
+function buildFilters(query, companyScope = null) {
   const where = ["1=1"];
   const values = [];
+  const authEventsOnly =
+    query.authEventsOnly === "1" ||
+    query.authEventsOnly === "true";
+
+  if (companyScope !== null) {
+    if (companyScope > 0) {
+      if (authEventsOnly) {
+        // Login happens before company context, so those rows live on company 1.
+        where.push("(company_id = ? OR company_id = 1)");
+        values.push(companyScope);
+      } else if (query.includeGlobalAuth === "1" || query.includeGlobalAuth === "true") {
+        where.push(
+          `(company_id = ? OR (company_id = 1 AND action_type IN (${AUTH_ACTION_TYPES.map(() => "?").join(", ")})))`,
+        );
+        values.push(companyScope, ...AUTH_ACTION_TYPES);
+      } else {
+        where.push("company_id = ?");
+        values.push(companyScope);
+      }
+    } else {
+      // Fail closed if a non-super-admin token has no valid company context.
+      where.push("1=0");
+    }
+  }
 
   const showAll =
+    authEventsOnly ||
     query.mutationsOnly === "0" ||
     query.mutationsOnly === "false" ||
     query.showAll === "1";
@@ -88,10 +129,15 @@ function buildFilters(query) {
     where.push(`action_type NOT IN (${NOISE_ACTION_TYPES.map(() => "?").join(",")})`);
     values.push(...NOISE_ACTION_TYPES);
   }
+  if (authEventsOnly) {
+    where.push(`action_type IN (${AUTH_ACTION_TYPES.map(() => "?").join(", ")})`);
+    values.push(...AUTH_ACTION_TYPES);
+  }
 
   if (query.userId) {
-    where.push("user_id = ?");
-    values.push(Number(query.userId));
+    const userId = Number(query.userId);
+    where.push("(user_id = ? OR record_id = ?)");
+    values.push(userId, String(userId));
   }
   if (query.role) {
     where.push("user_role LIKE ?");
@@ -115,29 +161,42 @@ function buildFilters(query) {
   }
   if (query.search) {
     where.push(
-      "(record_reference LIKE ? OR description LIKE ? OR user_name LIKE ? OR module_name LIKE ?)",
+      `(record_reference LIKE ? OR description LIKE ? OR user_name LIKE ?
+        OR module_name LIKE ? OR ip_address LIKE ? OR user_agent LIKE ?)`,
     );
     const term = `%${query.search}%`;
-    values.push(term, term, term, term);
+    values.push(term, term, term, term, term, term);
   }
 
   return { where: where.join(" AND "), values };
 }
 
-function buildGroupDetailFilters(query, userId, userName, activityDate) {
+const mapLoginRow = (row) => {
+  const mapped = mapRow(row);
+  const details = mapped.newValue && typeof mapped.newValue === "object"
+    ? mapped.newValue
+    : {};
+  return {
+    ...mapped,
+    loginAt: details.loginAt || mapped.createdAt,
+    isOnline: isUserOnline(mapped.userId),
+  };
+};
+
+function buildGroupDetailFilters(query, userId, userName, activityDate, companyScope = null) {
   const scoped = { ...query };
   delete scoped.userId;
   delete scoped.limit;
   delete scoped.offset;
   delete scoped.from;
   delete scoped.to;
-  const { where, values } = buildFilters(scoped);
+  const { where, values } = buildFilters(scoped, companyScope);
   const clauses = [where];
   const params = [...values];
 
   if (userId) {
-    clauses.push("user_id = ?");
-    params.push(Number(userId));
+    clauses.push("(user_id = ? OR record_id = ?)");
+    params.push(Number(userId), String(userId));
   } else if (userName) {
     clauses.push("user_name = ?");
     params.push(String(userName));
@@ -313,7 +372,7 @@ activityLogRouter.get(
 
       const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
       const offset = parseInt(req.query.offset, 10) || 0;
-      const { where, values } = buildFilters(req.query);
+      const { where, values } = buildFilters(req.query, getAuditCompanyScope(req));
 
       const countRows = await auditQuery(
         `SELECT COUNT(*) AS total FROM dai_activity_log WHERE ${where}`,
@@ -338,6 +397,104 @@ activityLogRouter.get(
 );
 
 activityLogRouter.get(
+  "/admin/activity-log/summary",
+  authenticateToken,
+  loadUserPermissions,
+  async (req, res) => {
+    try {
+      if (!(await canViewAudit(req))) {
+        return res.status(403).json({ status: false, message: "Access denied." });
+      }
+
+      const summaryQuery = { ...req.query, showAll: "1", includeGlobalAuth: "1" };
+      delete summaryQuery.actionType;
+      delete summaryQuery.authEventsOnly;
+      const { where, values } = buildFilters(summaryQuery, getAuditCompanyScope(req));
+      const rows = await auditQuery(
+        `SELECT
+          COUNT(*) AS total,
+          COUNT(DISTINCT COALESCE(
+            user_id,
+            IF(action_type IN ('LOGIN', 'LOGOUT', 'LOGIN_FAILED'), record_id, NULL)
+          )) AS unique_users,
+          COALESCE(SUM(action_type = 'LOGIN'), 0) AS logins,
+          COALESCE(SUM(action_type = 'LOGOUT'), 0) AS logouts,
+          COALESCE(SUM(action_type = 'LOGIN_FAILED'), 0) AS failed_logins,
+          COALESCE(SUM(action_type IN (
+            'CREATE', 'UPDATE', 'DELETE', 'TRANSFER', 'STOCK_IN', 'STOCK_OUT',
+            'MEMO_CREATE', 'MEMO_RETURN'
+          )), 0) AS changes,
+          MAX(created_at) AS latest_at
+        FROM dai_activity_log
+        WHERE ${where}`,
+        values,
+      );
+      const row = rows[0] || {};
+
+      return res.json({
+        status: true,
+        Data: {
+          total: Number(row.total) || 0,
+          uniqueUsers: Number(row.unique_users) || 0,
+          logins: Number(row.logins) || 0,
+          logouts: Number(row.logouts) || 0,
+          failedLogins: Number(row.failed_logins) || 0,
+          changes: Number(row.changes) || 0,
+          latestAt: row.latest_at || null,
+        },
+      });
+    } catch (err) {
+      console.error("activity-log summary:", err);
+      return res.status(500).json({
+        status: false,
+        message: err.message || "Failed to load activity summary.",
+      });
+    }
+  },
+);
+
+activityLogRouter.get(
+  "/admin/activity-log/login-history",
+  authenticateToken,
+  loadUserPermissions,
+  async (req, res) => {
+    try {
+      if (!(await canViewAudit(req))) {
+        return res.status(403).json({ status: false, message: "Access denied." });
+      }
+
+      const limit = Math.min(parseInt(req.query.limit, 10) || 25, 200);
+      const offset = parseInt(req.query.offset, 10) || 0;
+      const query = { ...req.query, authEventsOnly: "1" };
+      const { where, values } = buildFilters(query, getAuditCompanyScope(req));
+      const countRows = await auditQuery(
+        `SELECT COUNT(*) AS total FROM dai_activity_log WHERE ${where}`,
+        values,
+      );
+      const rows = await auditQuery(
+        `SELECT * FROM dai_activity_log
+         WHERE ${where}
+         ORDER BY created_at DESC, id DESC
+         LIMIT ? OFFSET ?`,
+        [...values, limit, offset],
+      );
+
+      return res.json({
+        status: true,
+        TotalItems: Number(countRows[0]?.total) || 0,
+        Data: rows.map(mapLoginRow),
+      });
+    } catch (err) {
+      console.error("activity-log login-history:", err);
+      return res.status(500).json({
+        status: false,
+        message: err.message || "Failed to load login history.",
+      });
+    }
+  },
+);
+
+activityLogRouter.get(
   "/admin/activity-log/grouped",
   authenticateToken,
   loadUserPermissions,
@@ -349,7 +506,7 @@ activityLogRouter.get(
 
       const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
       const offset = parseInt(req.query.offset, 10) || 0;
-      const { where, values } = buildFilters(req.query);
+      const { where, values } = buildFilters(req.query, getAuditCompanyScope(req));
 
       const countRows = await auditQuery(
         `SELECT COUNT(*) AS total FROM (
@@ -414,7 +571,13 @@ activityLogRouter.get(
         });
       }
 
-      const { where, values } = buildGroupDetailFilters(req.query, userId, userName, activityDate);
+      const { where, values } = buildGroupDetailFilters(
+        req.query,
+        userId,
+        userName,
+        activityDate,
+        getAuditCompanyScope(req),
+      );
 
       const rows = await auditQuery(
         `SELECT * FROM dai_activity_log WHERE ${where} ORDER BY created_at ASC, id ASC LIMIT 2000`,
@@ -444,7 +607,7 @@ activityLogRouter.get(
       }
 
       const format = (req.query.format || "xlsx").toLowerCase();
-      const { where, values } = buildFilters(req.query);
+      const { where, values } = buildFilters(req.query, getAuditCompanyScope(req));
       const rows = await auditQuery(
         `SELECT * FROM dai_activity_log WHERE ${where} ORDER BY created_at DESC, id DESC LIMIT 5000`,
         values,
@@ -482,7 +645,7 @@ activityLogRouter.delete(
         return res.status(403).json({ status: false, message: "Access denied." });
       }
 
-      const { where, values } = buildFilters(req.query);
+      const { where, values } = buildFilters(req.query, getAuditCompanyScope(req));
       const countRows = await auditQuery(
         `SELECT COUNT(*) AS total FROM dai_activity_log WHERE ${where}`,
         values,
@@ -522,12 +685,18 @@ activityLogRouter.delete(
         return res.status(400).json({ status: false, message: "Invalid or missing deleteId." });
       }
 
-      const rows = await auditQuery("SELECT * FROM dai_activity_log WHERE id = ? LIMIT 1", [id]);
+      const companyScope = getAuditCompanyScope(req);
+      const idWhere = companyScope === null ? "id = ?" : "id = ? AND company_id = ?";
+      const idValues = companyScope === null ? [id] : [id, companyScope];
+      const rows = await auditQuery(
+        `SELECT * FROM dai_activity_log WHERE ${idWhere} LIMIT 1`,
+        idValues,
+      );
       if (!rows.length) {
         return res.status(404).json({ status: false, message: "Record not found." });
       }
 
-      await auditQuery("DELETE FROM dai_activity_log WHERE id = ?", [id]);
+      await auditQuery(`DELETE FROM dai_activity_log WHERE ${idWhere}`, idValues);
 
       res.status(200).json({
         status: true,
@@ -555,7 +724,13 @@ activityLogRouter.get(
         return res.status(400).json({ status: false, message: "Invalid id." });
       }
 
-      const rows = await auditQuery("SELECT * FROM dai_activity_log WHERE id = ? LIMIT 1", [id]);
+      const companyScope = getAuditCompanyScope(req);
+      const idWhere = companyScope === null ? "id = ?" : "id = ? AND company_id = ?";
+      const idValues = companyScope === null ? [id] : [id, companyScope];
+      const rows = await auditQuery(
+        `SELECT * FROM dai_activity_log WHERE ${idWhere} LIMIT 1`,
+        idValues,
+      );
       if (!rows.length) {
         return res.status(404).json({ status: false, message: "Not found." });
       }

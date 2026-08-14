@@ -2,12 +2,26 @@ import { useEffect, useState } from "react";
 
 export const TABLE_BODY_MIN_HEIGHT = 160;
 
+const VIEWPORT_BOTTOM_GAP = 8;
+
 /** Scroll body height from a flex table container (fills remaining viewport). */
 export function measureTableBodyScrollHeight(containerEl) {
   if (!containerEl) return TABLE_BODY_MIN_HEIGHT;
 
-  const containerHeight = containerEl.getBoundingClientRect().height;
+  const rect = containerEl.getBoundingClientRect();
+  let containerHeight = rect.height;
   if (containerHeight <= 0) return TABLE_BODY_MIN_HEIGHT;
+
+  // A container that is not height-bounded by its parent grows with the body
+  // height we set, which would feed back into the next measurement. Cap it at
+  // the space left below the container inside the viewport.
+  const viewportHeight = window.innerHeight || 0;
+  if (viewportHeight > 0) {
+    const available = viewportHeight - rect.top - VIEWPORT_BOTTOM_GAP;
+    if (available > TABLE_BODY_MIN_HEIGHT && available < containerHeight) {
+      containerHeight = available;
+    }
+  }
 
   const tableHeader = containerEl.querySelector(".ant-table-header");
   const tableFooter = containerEl.querySelector(".ant-table-footer");

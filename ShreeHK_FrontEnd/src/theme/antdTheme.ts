@@ -28,6 +28,14 @@ export function getAntdThemeConfig(mode: ThemeMode, viewMode: ViewMode = "web") 
     },
     components: {
       Button: {
+        controlHeight: 32,
+        controlHeightSM: 32,
+        controlHeightLG: 40,
+        paddingInline: 10,
+        paddingInlineSM: 8,
+        paddingInlineLG: 14,
+        fontSize: 12,
+        fontWeight: 600,
         borderRadius: parseInt(t.radiusControl, 10),
         colorPrimary: t.colorBtnPrimaryBg,
         colorPrimaryHover: t.colorBtnPrimaryHover,

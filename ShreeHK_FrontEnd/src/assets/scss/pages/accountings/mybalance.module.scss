@@ -159,9 +159,10 @@
 }
 
 .iconBtn {
-    width: 30px;
-    height: 30px;
-    border-radius: 6px;
+    width: 32px;
+    height: 32px;
+    min-height: 32px;
+    border-radius: var(--radius-control);
     border: none;
     display: inline-flex;
     align-items: center;
@@ -375,18 +376,21 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 6px 16px;
-    border: 1.5px solid $border-color;
-    border-radius: 6px;
-    background: var(--color-bg-card);
-    color: $navy;
-    font-size: 13px;
-    font-weight: 500;
+    height: 32px;
+    min-height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--color-btn-primary-bg);
+    border-radius: var(--radius-control);
+    background: var(--color-btn-primary-bg);
+    color: var(--color-btn-primary-text);
+    font-size: 12px;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
 
-    &:hover {
-        border-color: $primary;
-        color: $primary;
+    &:hover:not(:disabled) {
+        border-color: var(--color-btn-primary-hover);
+        background: var(--color-btn-primary-hover);
+        color: var(--color-btn-primary-text);
     }
 }

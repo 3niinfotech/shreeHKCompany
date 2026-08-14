@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useRef, useMemo, useCallback, useLayoutEffect, useContext, startTransition } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback, useContext, Suspense, lazy } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { SelectionContext } from "./SelectionContext";
 import { SkuLink } from "../../hooks/useSkuModalAction";
-import { Table, Button, Dropdown, Tag, Form, Input } from "antd";
+import { Button, Dropdown, Tag, Form, Input } from "antd";
 import { toastSuccess, toastWarning, toastInfo } from "../../utils/toastNotify";
 import { DownOutlined, DownloadOutlined, ReloadOutlined } from "@ant-design/icons";
 import InventorySmartSearch from "../../components/inventory/InventorySmartSearch";
@@ -16,12 +16,9 @@ import InventoryFilterPanel from "../../components/inventory/InventoryFilterPane
 import InventoryFilterGroups from "../../components/inventory/InventoryFilterGroups";
 import InventoryCompactFilterRow from "../../components/inventory/InventoryCompactFilterRow";
 import InventoryActionPanel from "../../components/inventory/InventoryActionPanel";
-import InventoryBulkActionModal from "../../components/inventory/InventoryBulkActionModal";
-import InventoryStoneDetailModal from "../../components/inventory/InventoryStoneDetailModal";
 import InventoryQuickLinks from "../../components/inventory/InventoryQuickLinks";
 import InventorySummaryToolbar from "../../components/inventory/InventorySummaryToolbar";
 import InventoryFilterPresets from "../../components/inventory/InventoryFilterPresets";
-import InventoryPageModals from "./InventoryPageModals";
 import useInventoryHoldActions from "../../hooks/useInventoryHoldActions";
 import useInventoryChangePriceActions from "../../hooks/useInventoryChangePriceActions";
 import useInventoryLabelA4Actions from "../../hooks/useInventoryLabelA4Actions";
@@ -31,19 +28,44 @@ import useInventoryExportActions from "../../hooks/useInventoryExportActions";
 import useInventoryMailActions from "../../hooks/useInventoryMailActions";
 import { resolveDiaPair } from "../../utils/resolveDiaPair";
 import { renderLocationWithFlag } from "../../components/inventory/LocationWithFlag";
-import AIResultPanel from "../../components/ai/AIResultPanel";
 import useAiStockAlert from "../../components/ai/useAiStockAlert";
-import { Sparkles } from "lucide-react";
 import InventoryCaratCell from "../../components/inventory/InventoryCaratCell";
 import { buildInventoryApiFilters } from "../../utils/inventoryApiFilters";
 import useTableSkeleton from "../../components/common/skeleton/useTableSkeleton";
 import { StoneActionSuccessModal } from "./components/ShopTopActionFilter";
+import InventoryTableSection from "./InventoryTableSection";
+import { InventoryFooterDataContext } from "./InventoryFooterDataContext";
+import {
+  useInventorySelection,
+  useRowSelectionState,
+  useSelectAllState,
+  useSelectedRowKeys,
+} from "./useInventorySelection";
+import { measureInventoryTableHeight } from "../../utils/measureInventoryTableHeight";
 import "../../assets/scss/pages/inventory/onHand_module.scss";
 import "../../assets/scss/pages/inventory/diamondInventoryTable.scss";
 
+const InventoryPageModals = lazy(() => import("./InventoryPageModals"));
+const AIResultPanel = lazy(() => import("../../components/ai/AIResultPanel"));
+const InventoryBulkActionModal = lazy(() => import("../../components/inventory/InventoryBulkActionModal"));
+
 const EMPTY_ARRAY = [];
-const getRowKey = (record) => String(record.id);
-const TABLE_LOCALE = { emptyText: "No data found" };
+
+const DOWNLOAD_EXCEL_PRESETS = {
+  export: { fileName: "Stock_List", sheetName: "Stock List", mode: "export" },
+  iExport: { fileName: "Import_Format", mode: "iExport" },
+  sell: { fileName: "Sell_Diamond", sheetName: "Sell Diamond", mode: "export" },
+  memo: { fileName: "Memo_Diamond", sheetName: "Memo Diamond", mode: "export" },
+  consignment: { fileName: "Consignment_Diamond", sheetName: "Consignment", mode: "export" },
+};
+
+const DOWNLOAD_MENU_ITEMS = [
+  { key: "export", label: "Export Excel", icon: <DownloadOutlined /> },
+  { key: "iExport", label: "I.Export Excel", icon: <DownloadOutlined /> },
+  { key: "sell", label: "Sell Diamond Excel", icon: <DownloadOutlined /> },
+  { key: "memo", label: "Memo Diamond Excel", icon: <DownloadOutlined /> },
+  { key: "consignment", label: "Consignment Excel", icon: <DownloadOutlined /> },
+];
 
 const mapInventoryProductRow = (item, index, offset = 1) => ({
   id: String(item.id), no: (offset - 1) * 100 + index + 1, mfgCode: item.mfg_code,
@@ -119,28 +141,17 @@ const mapInventoryProductRow = (item, index, offset = 1) => ({
 
 const SelectionCheckbox = React.memo(function SelectionCheckbox({ id }) {
   const context = useContext(SelectionContext);
-  const isSelectedInContext = context?.selectedRowKeysSet?.has(String(id)) ?? false;
-  const [checked, setChecked] = useState(isSelectedInContext);
-
-  useLayoutEffect(() => {
-    setChecked(isSelectedInContext);
-  }, [isSelectedInContext]);
+  const isSelected = useRowSelectionState(context?.store, id);
 
   const handleChange = (e) => {
-    const nextChecked = e.target.checked;
-    setChecked(nextChecked);
-    if (context?.handleToggleRowSelection) {
-      startTransition(() => {
-        context.handleToggleRowSelection(id, nextChecked);
-      });
-    }
+    context?.handleToggleRowSelection?.(id, e.target.checked);
   };
 
   return (
     <input
       type="checkbox"
       className="inventory-custom-checkbox"
-      checked={checked}
+      checked={isSelected}
       onChange={handleChange}
       onClick={(e) => e.stopPropagation()}
     />
@@ -149,29 +160,19 @@ const SelectionCheckbox = React.memo(function SelectionCheckbox({ id }) {
 
 const SelectAllCheckbox = React.memo(function SelectAllCheckbox() {
   const context = useContext(SelectionContext);
-  const isAllSelectedInContext = context?.isAllSelected ?? false;
-  const isIndeterminate = context?.isIndeterminate ?? false;
-  const [checked, setChecked] = useState(isAllSelectedInContext);
+  const selectAllState = useSelectAllState(context?.store);
+  const isAllSelected = selectAllState?.isAllSelected ?? false;
+  const isIndeterminate = selectAllState?.isIndeterminate ?? false;
   const checkboxRef = useRef(null);
 
-  useLayoutEffect(() => {
-    setChecked(isAllSelectedInContext);
-  }, [isAllSelectedInContext]);
-
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (checkboxRef.current) {
       checkboxRef.current.indeterminate = isIndeterminate;
     }
   }, [isIndeterminate]);
 
   const handleChange = (e) => {
-    const nextChecked = e.target.checked;
-    setChecked(nextChecked);
-    if (context?.handleSelectAllToggle) {
-      startTransition(() => {
-        context.handleSelectAllToggle(nextChecked);
-      });
-    }
+    context?.handleSelectAllToggle?.(e.target.checked);
   };
 
   return (
@@ -179,7 +180,7 @@ const SelectAllCheckbox = React.memo(function SelectAllCheckbox() {
       ref={checkboxRef}
       type="checkbox"
       className="inventory-custom-checkbox"
-      checked={checked}
+      checked={isAllSelected}
       onChange={handleChange}
       onClick={(e) => e.stopPropagation()}
     />
@@ -263,6 +264,34 @@ const InventoryTableFooter = React.memo(function InventoryTableFooter({ showTota
         </span>
       </div>
     </div>
+  );
+});
+
+const EMPTY_TOTAL_STATS = { totalPcs: 0, totalCts: "0.00", askRate: "0.00", askAmt: "0.00" };
+
+const InventoryTableFooterConnected = React.memo(function InventoryTableFooterConnected() {
+  const selection = useContext(SelectionContext);
+  const footerData = useContext(InventoryFooterDataContext);
+  const selectedRowKeys = useSelectedRowKeys(selection?.store);
+
+  const selectedStats = useMemo(() => {
+    const rowsById = footerData?.tableDataById;
+    if (!rowsById || selectedRowKeys.length === 0) {
+      return computeSelectedStockCalculationStats(EMPTY_ARRAY);
+    }
+    const rows = [];
+    for (let i = 0; i < selectedRowKeys.length; i += 1) {
+      const row = rowsById.get(selectedRowKeys[i]);
+      if (row) rows.push(row);
+    }
+    return computeSelectedStockCalculationStats(rows);
+  }, [selectedRowKeys, footerData]);
+
+  return (
+    <InventoryTableFooter
+      showTotalStats={footerData?.showTotalStats ?? EMPTY_TOTAL_STATS}
+      selectedStats={selectedStats}
+    />
   );
 });
 
@@ -378,33 +407,12 @@ const INTENSITY_OPTIONS = [
   "Fancy Vivid", "Fancy Deep", "Fancy Dark",
 ].map((value) => ({ label: value, value }));
 
-const TABLE_BODY_MIN_HEIGHT = 160;
-
 const INVENTORY_ENTRY_ROUTES = {
   memo: '/transaction/out-memo/entry',
   sale: '/transaction/sale/entry',
   lab: '/transaction/gia-memo/entry',
   export: '/outward',
   consign: '/outward',
-};
-
-const measureTableBodyScrollHeight = (containerEl) => {
-  if (!containerEl) return TABLE_BODY_MIN_HEIGHT;
-
-  const containerHeight = containerEl.getBoundingClientRect().height;
-  if (containerHeight <= 0) return TABLE_BODY_MIN_HEIGHT;
-
-  const tableHeader = containerEl.querySelector(".ant-table-header");
-  const tableFooter = containerEl.querySelector(".ant-table-footer");
-  const stickyScroll = containerEl.querySelector(".ant-table-sticky-scroll");
-
-  let reserved = 0;
-  if (tableHeader instanceof HTMLElement) reserved += tableHeader.offsetHeight;
-  if (tableFooter instanceof HTMLElement) reserved += tableFooter.offsetHeight;
-  if (stickyScroll instanceof HTMLElement) reserved += stickyScroll.offsetHeight;
-
-  const bodyHeight = Math.floor(containerHeight - reserved);
-  return bodyHeight > TABLE_BODY_MIN_HEIGHT ? bodyHeight : TABLE_BODY_MIN_HEIGHT;
 };
 
 const InventoryHeaderActions = React.memo(function InventoryHeaderActions({
@@ -462,7 +470,14 @@ const InventoryQuickLinksWrapper = React.memo(function InventoryQuickLinksWrappe
 const DiamondInventoryTable = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+  const {
+    store: selectionStore,
+    selectedRowKeys,
+    setSelectedRowKeys,
+    handleToggleRowSelection,
+    handleSelectAllToggle,
+    clearSelection,
+  } = useInventorySelection();
   const [offset, setOffset] = useState(1);
   const [searchText, setSearchText] = useState("");
   const [appliedFilters, setAppliedFilters] = useState({});
@@ -493,38 +508,28 @@ const DiamondInventoryTable = () => {
     count: 0,
   });
 
-  const selectedRowKeysSet = useMemo(() => new Set(selectedRowKeys.map(String)), [selectedRowKeys]);
-
-  const isAllSelected = useMemo(
-    () => tableData.length > 0 && selectedRowKeys.length === tableData.length && tableData.every((r) => selectedRowKeysSet.has(String(r.id))),
-    [tableData, selectedRowKeysSet, selectedRowKeys.length]
-  );
-
-  const isIndeterminate = useMemo(
-    () => selectedRowKeys.length > 0 && !isAllSelected,
-    [selectedRowKeys.length, isAllSelected]
-  );
-
-  const handleToggleRowSelection = useCallback((id, checked) => {
-    const strId = String(id);
-    setSelectedRowKeys((prev) => {
-      if (checked) {
-        if (prev.includes(strId)) return prev;
-        return [...prev, strId];
+  useEffect(() => {
+    const idleId = window.requestIdleCallback
+      ? window.requestIdleCallback(() => {
+          import("./InventoryPageModals");
+          import("../../components/inventory/InventoryBulkActionModal");
+        }, { timeout: 2500 })
+      : window.setTimeout(() => {
+          import("./InventoryPageModals");
+          import("../../components/inventory/InventoryBulkActionModal");
+        }, 1200);
+    return () => {
+      if (window.cancelIdleCallback && typeof idleId === "number") {
+        window.cancelIdleCallback(idleId);
       } else {
-        if (!prev.includes(strId)) return prev;
-        return prev.filter((item) => String(item) !== strId);
+        window.clearTimeout(idleId);
       }
-    });
+    };
   }, []);
 
-  const handleSelectAllToggle = useCallback((checked) => {
-    if (checked) {
-      setSelectedRowKeys(tableData.map((r) => String(r.id)));
-    } else {
-      setSelectedRowKeys([]);
-    }
-  }, [tableData]);
+  useEffect(() => {
+    selectionStore.setVisibleIds(tableData.map((row) => row.id));
+  }, [tableData, selectionStore]);
 
   const showSuccessModal = (actionType, rows) => {
     const first = rows[0] || {};
@@ -856,42 +861,57 @@ const DiamondInventoryTable = () => {
 
   const pageRef = useRef(null);
   const tableRef = useRef(null);
+  const tableHeightRef = useRef(tableHeight);
 
   useEffect(() => {
+    tableHeightRef.current = tableHeight;
+  }, [tableHeight]);
+
+  useEffect(() => {
+    let rafId = 0;
+
     const updateTableHeight = () => {
-      if (!tableRef.current) return;
-      setTableHeight(measureTableBodyScrollHeight(tableRef.current));
+      if (!pageRef.current) return;
+      const nextHeight = measureInventoryTableHeight(pageRef.current, tableHeightRef.current);
+      if (nextHeight !== tableHeightRef.current) {
+        tableHeightRef.current = nextHeight;
+        setTableHeight(nextHeight);
+      }
     };
 
-    updateTableHeight();
-    const timer = window.setTimeout(updateTableHeight, 120);
-    const rafId = window.requestAnimationFrame(updateTableHeight);
-    window.addEventListener("resize", updateTableHeight);
+    const scheduleUpdate = () => {
+      if (rafId) window.cancelAnimationFrame(rafId);
+      rafId = window.requestAnimationFrame(updateTableHeight);
+    };
+
+    scheduleUpdate();
+    window.addEventListener("resize", scheduleUpdate);
 
     let resizeObserver;
     if (typeof ResizeObserver !== "undefined") {
-      resizeObserver = new ResizeObserver(updateTableHeight);
-      if (tableRef.current) resizeObserver.observe(tableRef.current);
+      resizeObserver = new ResizeObserver(scheduleUpdate);
       if (pageRef.current) resizeObserver.observe(pageRef.current);
       const filterEl = pageRef.current?.querySelector(".inventory-filter-wrapper");
       if (filterEl) resizeObserver.observe(filterEl);
     }
 
     return () => {
-      window.removeEventListener("resize", updateTableHeight);
-      window.clearTimeout(timer);
-      window.cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", scheduleUpdate);
+      if (rafId) window.cancelAnimationFrame(rafId);
       resizeObserver?.disconnect();
     };
   }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      if (tableRef.current) {
-        setTableHeight(measureTableBodyScrollHeight(tableRef.current));
+    const rafId = window.requestAnimationFrame(() => {
+      if (!pageRef.current) return;
+      const nextHeight = measureInventoryTableHeight(pageRef.current, tableHeightRef.current);
+      if (nextHeight !== tableHeightRef.current) {
+        tableHeightRef.current = nextHeight;
+        setTableHeight(nextHeight);
       }
-    }, 0);
-    return () => window.clearTimeout(timer);
+    });
+    return () => window.cancelAnimationFrame(rafId);
   }, [tableData.length, isLoading, isFetching]);
 
   useEffect(() => {
@@ -1283,6 +1303,10 @@ const DiamondInventoryTable = () => {
     setBulkActionModal({ open: true, actionKey: mapped });
   };
 
+  const handleInventoryPanelAction = (key) => {
+    openBulkActionModal(key);
+  };
+
   const closeBulkActionModal = () => {
     setBulkActionModal({ open: false, actionKey: null });
   };
@@ -1324,21 +1348,15 @@ const DiamondInventoryTable = () => {
     closeBulkActionModal();
   };
 
-  const DOWNLOAD_EXCEL_PRESETS = {
-    export: { fileName: "Stock_List", sheetName: "Stock List", mode: "export" },
-    iExport: { fileName: "Import_Format", mode: "iExport" },
-    sell: { fileName: "Sell_Diamond", sheetName: "Sell Diamond", mode: "export" },
-    memo: { fileName: "Memo_Diamond", sheetName: "Memo Diamond", mode: "export" },
-    consignment: { fileName: "Consignment_Diamond", sheetName: "Consignment", mode: "export" },
-  };
+  const DOWNLOAD_EXCEL_PRESETS_REF = DOWNLOAD_EXCEL_PRESETS;
 
-  const handleDownloadMenuClick = async ({ key }) => {
+  const handleDownloadMenuClick = useCallback(async ({ key }) => {
     if (!selectedRowKeys.length) {
       toastWarning("Please select at least one diamond");
       return;
     }
 
-    const preset = DOWNLOAD_EXCEL_PRESETS[key];
+    const preset = DOWNLOAD_EXCEL_PRESETS_REF[key];
     if (!preset) return;
 
     if (preset.mode === "iExport") {
@@ -1350,21 +1368,9 @@ const DiamondInventoryTable = () => {
       fileName: preset.fileName,
       sheetName: preset.sheetName,
     });
-  };
+  }, [selectedRowKeys, submitExport, submitIExport]);
 
-  const menuItems = [
-    { key: "export", label: "Export Excel", icon: <DownloadOutlined /> },
-    { key: "iExport", label: "I.Export Excel", icon: <DownloadOutlined /> },
-    { key: "sell", label: "Sell Diamond Excel", icon: <DownloadOutlined /> },
-    { key: "memo", label: "Memo Diamond Excel", icon: <DownloadOutlined /> },
-    { key: "consignment", label: "Consignment Excel", icon: <DownloadOutlined /> },
-  ];
-
-  const handleInventoryPanelAction = (key) => {
-    openBulkActionModal(key);
-  };
-
-  const applyInventoryFilters = (overrides = {}) => {
+  const applyInventoryFilters = useCallback((overrides = {}) => {
     const compactValues = filterForm.getFieldsValue();
     let advancedValues = advancedFilterForm.getFieldsValue();
 
@@ -1396,9 +1402,9 @@ const DiamondInventoryTable = () => {
     setIsFetching(false);
     setAppliedFilters(nextFilters);
     setSelectedRowKeys([]);
-  };
+  }, [filterForm, advancedFilterForm, searchText, caratFrom, caratTo, setSelectedRowKeys]);
 
-  const handleSearchSuggestionSelect = (suggestion) => {
+  const handleSearchSuggestionSelect = useCallback((suggestion) => {
     const { type, value } = suggestion;
 
     switch (type) {
@@ -1421,7 +1427,7 @@ const DiamondInventoryTable = () => {
         applyInventoryFilters({ searchText: value });
         break;
     }
-  };
+  }, [applyInventoryFilters]);
 
   useEffect(() => {
     const suggestion = location.state?.inventorySmartFilter;
@@ -1452,12 +1458,7 @@ const DiamondInventoryTable = () => {
     queryClient.invalidateQueries({ queryKey: ["myInventorySummary"] });
   };
 
-  const cachedMappedRows = useMemo(() => {
-    if (offset !== 1 || !productData?.Data?.length) return EMPTY_ARRAY;
-    return productData.Data.map((item, index) => mapInventoryProductRow(item, index, offset));
-  }, [productData, offset]);
-
-  const filteredTableData = tableData.length > 0 ? tableData : cachedMappedRows;
+  const filteredTableData = tableData;
   const initialListLoading = isLoading && filteredTableData.length === 0;
   const {
     columns: tableColumnsSk,
@@ -1497,11 +1498,6 @@ const DiamondInventoryTable = () => {
     };
   }, [tableData, productData]);
 
-  const selectedStats = useMemo(
-    () => computeSelectedStockCalculationStats(selectedRows),
-    [selectedRows],
-  );
-
   const totalItemsDisplay =
     productData?.TotalData?.TotalItems?.toLocaleString() ??
     tableData.length.toLocaleString();
@@ -1531,29 +1527,99 @@ const DiamondInventoryTable = () => {
     },
   }), []);
 
-  const renderTableFooter = useCallback(() => (
-    <InventoryTableFooter showTotalStats={showTotalStats} selectedStats={selectedStats} />
-  ), [showTotalStats, selectedStats]);
-
-  const tableScroll = useMemo(
-    () => ({ x: "max-content", y: tableHeight }),
-    [tableHeight]
-  );
+  const renderTableFooter = useCallback(() => <InventoryTableFooterConnected />, []);
 
   const selectionContextValue = useMemo(() => ({
-    selectedRowKeysSet,
+    store: selectionStore,
     handleToggleRowSelection,
-    isAllSelected,
-    isIndeterminate,
     handleSelectAllToggle,
-  }), [selectedRowKeysSet, handleToggleRowSelection, isAllSelected, isIndeterminate, handleSelectAllToggle]);
+  }), [selectionStore, handleToggleRowSelection, handleSelectAllToggle]);
+
+  const footerDataContextValue = useMemo(
+    () => ({ showTotalStats, tableDataById }),
+    [showTotalStats, tableDataById],
+  );
+
+  const advancedFiltersContent = useMemo(() => (
+    <Form form={advancedFilterForm} layout="vertical" component={false}>
+      <InventoryFilterPresets
+        pageKey="my-inventory"
+        compactForm={filterForm}
+        advancedForm={advancedFilterForm}
+        onApply={applyInventoryFilters}
+      />
+      <InventoryFilterGroups
+        groups={INVENTORY_FILTER_GROUPS}
+        allFields={filterFields}
+      />
+    </Form>
+  ), [advancedFilterForm, filterForm, applyInventoryFilters, filterFields]);
 
   const handleOpenCompareModal = useCallback(() => {
     pageModalsRef.current?.openCompare();
   }, []);
 
+  const latestHandlersRef = useRef({});
+  useEffect(() => {
+    latestHandlersRef.current.panelAction = handleInventoryPanelAction;
+    latestHandlersRef.current.downloadMenuClick = handleDownloadMenuClick;
+    latestHandlersRef.current.refreshInventory = refreshInventory;
+  });
+
+  const stablePanelAction = useCallback((key) => {
+    latestHandlersRef.current.panelAction?.(key);
+  }, []);
+
+  const stableDownloadMenuClick = useCallback((info) => {
+    latestHandlersRef.current.downloadMenuClick?.(info);
+  }, []);
+
+  const stableResetClick = useCallback(() => {
+    latestHandlersRef.current.refreshInventory?.({ reset: true });
+  }, []);
+
+  const searchSlot = useMemo(() => (
+    <InventorySmartSearch
+      className="search-input"
+      value={searchText}
+      onChange={setSearchText}
+      onSearch={applyInventoryFilters}
+      onSuggestionSelect={handleSearchSuggestionSelect}
+      placeholder="SKU · Mfg · Report No (comma for multiple)"
+    />
+  ), [searchText, applyInventoryFilters, handleSearchSuggestionSelect]);
+
+  const compactFiltersSlot = useMemo(() => (
+    <InventoryCompactFilterRow
+      form={filterForm}
+      fields={compactFilterFields}
+      caratFrom={caratFrom}
+      caratTo={caratTo}
+      onCaratFromChange={setCaratFrom}
+      onCaratToChange={setCaratTo}
+      onSearch={applyInventoryFilters}
+    />
+  ), [filterForm, compactFilterFields, caratFrom, caratTo, applyInventoryFilters]);
+
+  const headerActionsLeftSlot = useMemo(() => (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+      <Button size="small" type="primary" onClick={applyInventoryFilters}>
+        Search
+      </Button>
+      <Button
+        size="small"
+        icon={<ReloadOutlined />}
+        loading={isLoading || isInventoryFetching}
+        onClick={stableResetClick}
+      >
+        Reset
+      </Button>
+    </span>
+  ), [applyInventoryFilters, isLoading, isInventoryFetching, stableResetClick]);
+
   return (
     <SelectionContext.Provider value={selectionContextValue}>
+      <InventoryFooterDataContext.Provider value={footerDataContextValue}>
       <div ref={pageRef} className="inventory-page-wrapper page-shell">
         <div className="inventory-filter-wrapper">
           <InventoryFilterPanel
@@ -1562,77 +1628,20 @@ const DiamondInventoryTable = () => {
                 Total: <b>{totalItemsDisplay}</b>
               </>
             }
-            searchSlot={
-              <InventorySmartSearch
-                className="search-input"
-                value={searchText}
-                onChange={setSearchText}
-                onSearch={applyInventoryFilters}
-                onSuggestionSelect={handleSearchSuggestionSelect}
-                placeholder="SKU · Mfg · Report No (comma for multiple)"
-              />
-            }
-            compactFilters={
-              <InventoryCompactFilterRow
-                form={filterForm}
-                fields={compactFilterFields}
-                caratFrom={caratFrom}
-                caratTo={caratTo}
-                onCaratFromChange={setCaratFrom}
-                onCaratToChange={setCaratTo}
-                onSearch={applyInventoryFilters}
-              />
-            }
-            headerActionsLeft={
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                <Button size="small" type="primary" onClick={applyInventoryFilters}>
-                  Search
-                </Button>
-                {/* <Button size="small" onClick={() => refreshInventory({ reset: true })}>
-                  Reset
-                </Button> */}
-                <Button
-                  size="small"
-                  icon={<ReloadOutlined />}
-                  loading={isLoading || isInventoryFetching}
-                  onClick={() => refreshInventory({ reset: true })}
-                >
-                  Refresh
-                </Button>
-                {/* <Button
-                  size="small"
-                  icon={<Sparkles size={14} />}
-                  onClick={runStockAlert}
-                  loading={aiAlertLoading}
-                >
-                  AI Alert Check
-                </Button> */}
-              </span>
-            }
+            searchSlot={searchSlot}
+            compactFilters={compactFiltersSlot}
+            headerActionsLeft={headerActionsLeftSlot}
             headerActions={
               <InventoryHeaderActions
                 selectedCount={selectedRowKeys.length}
-                onAction={handleInventoryPanelAction}
-                menuItems={menuItems}
-                handleDownloadMenuClick={handleDownloadMenuClick}
+                onAction={stablePanelAction}
+                menuItems={DOWNLOAD_MENU_ITEMS}
+                handleDownloadMenuClick={stableDownloadMenuClick}
                 exportLoading={exportLoading}
                 iExportLoading={iExportLoading}
               />
             }
-            advancedFilters={
-              <Form form={advancedFilterForm} layout="vertical" component={false}>
-                <InventoryFilterPresets
-                  pageKey="my-inventory"
-                  compactForm={filterForm}
-                  advancedForm={advancedFilterForm}
-                  onApply={applyInventoryFilters}
-                />
-                <InventoryFilterGroups
-                  groups={INVENTORY_FILTER_GROUPS}
-                  allFields={filterFields}
-                />
-              </Form>
-            }
+            advancedFilters={advancedFiltersContent}
           />
           <InventorySummaryToolbar totals={summaryTotals}>
             <InventoryQuickLinksWrapper
@@ -1644,86 +1653,74 @@ const DiamondInventoryTable = () => {
               syncLoading={syncLoading}
             />
           </InventorySummaryToolbar>
-          <AIResultPanel
-            title="AI Stock Alerts"
-            loading={aiAlertLoading}
-            result={aiAlertResult}
-            error={aiAlertError}
-            open={aiPanelOpen}
-            onOpenChange={setAiPanelOpen}
-          />
+          <Suspense fallback={null}>
+            <AIResultPanel
+              title="AI Stock Alerts"
+              loading={aiAlertLoading}
+              result={aiAlertResult}
+              error={aiAlertError}
+              open={aiPanelOpen}
+              onOpenChange={setAiPanelOpen}
+            />
+          </Suspense>
         </div>
 
-        <div
-          ref={tableRef}
-          className="erp-table-container"
-          style={{ height: tableHeight, overflowY: 'hidden', overflowX: 'hidden' }}
-        >
-          <Table
-            className="diamond-inventory-table"
-            columns={tableColumnsSk}
-            dataSource={tableDataSk}
-            rowKey={isTableSkeleton ? "_skeletonKey" : getRowKey}
-            size="small"
-            tableLayout="fixed"
-            rowClassName={isTableSkeleton ? undefined : getInventoryRowClass}
-            onRow={isTableSkeleton ? undefined : handleOnRow}
-            loading={overlayLoading}
-            pagination={false}
-            bordered
-            scroll={tableScroll}
-            components={isTableSkeleton ? undefined : tableComponents}
-            locale={TABLE_LOCALE}
-            footer={isTableSkeleton ? undefined : renderTableFooter}
+        <InventoryTableSection
+          tableRef={tableRef}
+          tableHeight={tableHeight}
+          tableColumnsSk={tableColumnsSk}
+          tableDataSk={tableDataSk}
+          isTableSkeleton={isTableSkeleton}
+          overlayLoading={overlayLoading}
+          tableScrollX="max-content"
+          tableComponents={tableComponents}
+          getInventoryRowClass={getInventoryRowClass}
+          handleOnRow={handleOnRow}
+          renderTableFooter={renderTableFooter}
+        />
+
+        <Suspense fallback={null}>
+          <InventoryBulkActionModal
+            open={bulkActionModal.open || holdActionState.open}
+            actionKey={
+              holdActionState.open ? holdActionState.actionKey : bulkActionModal.actionKey
+            }
+            selectedCount={
+              holdActionState.open
+                ? (holdActionState.selectedIds?.length ?? 0)
+                : selectedRowKeys.length
+            }
+            loading={
+              holdLoading ||
+              changePriceLoading ||
+              labelA4Loading ||
+              labelLoading ||
+              iExportLoading ||
+              exportLoading ||
+              mailLoading
+            }
+            onClose={() => {
+              if (holdActionState.open) closeHoldModal();
+              else closeBulkActionModal();
+            }}
+            onSubmit={handleBulkActionSubmit}
           />
-        </div>
 
-        {/* <InventoryStoneDetailModal
-          open={stoneDetailModal.open}
-          stone={stoneDetailModal.data}
-          onClose={() => setStoneDetailModal({ open: false, data: null })}
-        /> */}
-
-        <InventoryBulkActionModal
-          open={bulkActionModal.open || holdActionState.open}
-          actionKey={
-            holdActionState.open ? holdActionState.actionKey : bulkActionModal.actionKey
-          }
-          selectedCount={
-            holdActionState.open
-              ? (holdActionState.selectedIds?.length ?? 0)
-              : selectedRowKeys.length
-          }
-          loading={
-            holdLoading ||
-            changePriceLoading ||
-            labelA4Loading ||
-            labelLoading ||
-            iExportLoading ||
-            exportLoading ||
-            mailLoading
-          }
-          onClose={() => {
-            if (holdActionState.open) closeHoldModal();
-            else closeBulkActionModal();
-          }}
-          onSubmit={handleBulkActionSubmit}
-        />
-
-        <InventoryPageModals
-          ref={pageModalsRef}
-          selectedRows={selectedRows}
-          selectedRowKeys={selectedRowKeys}
-          onMemoSubmit={handleMemoSubmit}
-          onSaleSubmit={handleSaleSubmit}
-          onConsignSubmit={handleConsignSubmit}
-          onLabSubmit={handleLabSubmit}
-          onExportSubmit={handleExportSubmit}
-          onAfterPackageOrReservation={() => {
-            setSelectedRowKeys([]);
-            queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
-          }}
-        />
+          <InventoryPageModals
+            ref={pageModalsRef}
+            selectedRows={selectedRows}
+            selectedRowKeys={selectedRowKeys}
+            onMemoSubmit={handleMemoSubmit}
+            onSaleSubmit={handleSaleSubmit}
+            onConsignSubmit={handleConsignSubmit}
+            onLabSubmit={handleLabSubmit}
+            onExportSubmit={handleExportSubmit}
+            onAfterPackageOrReservation={() => {
+              clearSelection();
+              queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
+            }}
+          />
+        </Suspense>
 
         <StoneActionSuccessModal
           isOpen={successModal.open}
@@ -1733,6 +1730,7 @@ const DiamondInventoryTable = () => {
           count={successModal.count}
         />
       </div>
+      </InventoryFooterDataContext.Provider>
     </SelectionContext.Provider>
   );
 };

@@ -18,6 +18,9 @@ const COMPANY_COLUMNS = [
   "vatno", "vwef", "cstno", "cwef", "period", "startdate", "enddate",
   "rapnet_id", "rapnet_password", "shortcutName", "logo",
 ];
+const COMPANY_SAFE_SELECT = ["id", ...COMPANY_COLUMNS.filter((column) => column !== "rapnet_password")]
+  .map((column) => `\`${column}\``)
+  .join(", ");
 
 const logoStorage = multer.diskStorage({
   destination: (_req, _file, cb) => {
@@ -110,7 +113,7 @@ tenantCompanyRouter.get("/admin/tenant-company", authenticateToken, isSuperAdmin
   try {
     await ensureLogoColumn();
     const { searchInput = "" } = req.query;
-    let sql = "SELECT * FROM company";
+    let sql = `SELECT ${COMPANY_SAFE_SELECT} FROM company`;
     const params = [];
     if (searchInput) {
       sql += " WHERE name LIKE ? OR address LIKE ? OR number LIKE ?";
@@ -130,7 +133,10 @@ tenantCompanyRouter.get("/admin/tenant-company/:id", authenticateToken, isSuperA
     await ensureLogoColumn();
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ status: false, message: "Invalid id" });
-    const rows = await metaQuery("SELECT * FROM company WHERE id = ? LIMIT 1", [id]);
+    const rows = await metaQuery(
+      `SELECT ${COMPANY_SAFE_SELECT} FROM company WHERE id = ? LIMIT 1`,
+      [id],
+    );
     if (!rows.length) {
       return res.status(404).json({ status: false, message: "Company not found" });
     }

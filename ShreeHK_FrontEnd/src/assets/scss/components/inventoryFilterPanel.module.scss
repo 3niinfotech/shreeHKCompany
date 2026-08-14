@@ -44,7 +44,7 @@ $compact-accent-hover: var(--color-primary-dark);
 }
 
 .header {
-  padding: 12px 14px;
+  padding: 6px 14px;
   border-bottom: 1px solid transparent;
   overflow: visible;
 }
@@ -166,7 +166,8 @@ $compact-accent-hover: var(--color-primary-dark);
 
   :global(.ant-input-affix-wrapper),
   :global(.ant-input) {
-    // height: 32px !important;
+    height: $filter-control-height !important;
+    min-height: $filter-control-height !important;
     font-size: 12px;
     border-radius: 6px;
     border-color: #9fa2ae !important;
@@ -279,25 +280,25 @@ $compact-accent-hover: var(--color-primary-dark);
 }
 
 .searchBtn {
-  height: 32px !important;
-  padding: 0 14px !important;
+  padding: 0 10px !important;
   font-size: 12px !important;
   font-weight: 600 !important;
   border-radius: 6px !important;
-  background: $compact-accent-bg !important;
-  border-color: $compact-accent-bg !important;
-  color: $compact-accent-text !important;
+  background: var(--color-btn-primary-bg) !important;
+  border-color: var(--color-btn-primary-bg) !important;
+  color: var(--color-btn-primary-text) !important;
   box-shadow: 0 1px 2px color-mix(in srgb, var(--color-primary) 35%, transparent) !important;
   flex-shrink: 0;
 
-  :global(.anticon) {
-    color: $compact-accent-text !important;
+  :global(.anticon),
+  :global(svg) {
+    color: var(--color-btn-primary-text) !important;
   }
 
-  &:hover {
-    background: $compact-accent-hover !important;
-    border-color: $compact-accent-hover !important;
-    color: $compact-accent-text !important;
+  &:hover:not(:disabled) {
+    background: var(--color-btn-primary-hover) !important;
+    border-color: var(--color-btn-primary-hover) !important;
+    color: var(--color-btn-primary-text) !important;
   }
 }
 
@@ -389,10 +390,8 @@ $compact-accent-hover: var(--color-primary-dark);
   display: inline-flex !important;
   align-items: center;
   gap: 6px !important;
-  height: 29px !important;
   padding: 0 10px !important;
   font-size: 12px !important;
-  line-height: 29px !important;
   --ant-button-default-border-color: #9fa2ae;
   --ant-color-border: #9fa2ae;
   border: 0.5px solid #9fa2ae !important;
@@ -440,10 +439,8 @@ $compact-accent-hover: var(--color-primary-dark);
   white-space: nowrap;
 
   :global(.ant-btn) {
-    height: 29px !important;
     padding: 0 10px !important;
     font-size: 12px !important;
-    line-height: 29px !important;
     border: 0.5px solid #9fa2ae !important;
   }
 
@@ -827,15 +824,12 @@ $compact-accent-hover: var(--color-primary-dark);
   white-space: nowrap;
 
   :global(.ant-btn) {
-    height: 29px !important;
     padding: 0 10px !important;
     font-size: 12px !important;
-    line-height: 29px !important;
   }
 
   :global(.ant-btn-group) {
     :global(.ant-btn) {
-      height: 29px !important;
       padding: 0 10px !important;
     }
   }
@@ -897,6 +891,7 @@ $compact-accent-hover: var(--color-primary-dark);
   :global(.ant-form-item) {
     margin-bottom: 6px !important;
     width: 100%;
+    position: relative;
   }
 
   :global(.ant-form-item-control) {
@@ -932,8 +927,8 @@ $compact-accent-hover: var(--color-primary-dark);
   }
 
   :global(.ant-form-item-label) {
-    display: block !important;
-    padding-bottom: 2px !important;
+    @include visually-hidden-label;
+    padding-bottom: 0 !important;
 
     >label {
       height: auto !important;

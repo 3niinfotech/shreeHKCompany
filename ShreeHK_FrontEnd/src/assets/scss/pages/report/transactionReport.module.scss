@@ -104,7 +104,7 @@
     display: inline-flex;
     align-items: center;
     gap: 14px;
-    height: 38px;
+    height: 32px;
     padding: 0 4px;
     flex: 0 0 auto;
     white-space: nowrap;
@@ -112,7 +112,7 @@
     :global(.ant-checkbox-wrapper) {
         margin-inline-start: 0 !important;
         font-size: 13px;
-        line-height: 38px;
+        line-height: 32px;
     }
 }
 
@@ -120,14 +120,14 @@
     :global(.ant-select),
     :global(.ant-picker),
     :global(.ant-input-affix-wrapper) {
-        height: 38px !important;
+        height: var(--filter-control-height) !important;
     }
 
     :global(.ant-select-selector),
     :global(.ant-picker),
     :global(.ant-input-affix-wrapper) {
-        height: 38px !important;
-        min-height: 38px !important;
+        height: var(--filter-control-height) !important;
+        min-height: var(--filter-control-height) !important;
         border-radius: 8px !important;
         display: flex;
         align-items: center;
@@ -137,7 +137,7 @@
     :global(.ant-select-selection-placeholder),
     :global(.ant-picker-input > input) {
         font-size: 13px;
-        line-height: 36px !important;
+        line-height: var(--filter-control-line-height) !important;
     }
 }
 

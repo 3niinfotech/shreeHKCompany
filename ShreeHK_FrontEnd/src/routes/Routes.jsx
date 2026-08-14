@@ -1,7 +1,6 @@
 import React from "react";
 import { hasPagePermission } from "../config/permissionRegistry";
 import { Navigate, useLocation } from "react-router-dom";
-import ContactSupport from "../pages/contactSupport/ContactSupport";
 
 // ----**** Login/SignIn Page ****----
 const Login = React.lazy(() => import("../pages/auth/Login"));

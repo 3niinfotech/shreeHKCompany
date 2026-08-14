@@ -152,6 +152,7 @@ export const ENDPOINTS = {
     },
     dashboard: {
         summary: "/dashboard/summary",
+        trends: "/dashboard/trends",
     },
     rapnet: {
         prices: "/rapnet/prices",
@@ -204,6 +205,8 @@ export const ENDPOINTS = {
         saveUser: "/admin-manage-user",
         deleteUser: "/manage-user/delete",
         activityLog: "/admin/activity-log",
+        activityLogSummary: "/admin/activity-log/summary",
+        activityLoginHistory: "/admin/activity-log/login-history",
         activityLogGrouped: "/admin/activity-log/grouped",
         activityLogGroupDetail: "/admin/activity-log/group-detail",
         activityLogExport: "/admin/activity-log/export",

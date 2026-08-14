@@ -47,7 +47,7 @@ export const spacing: SpacingTokens = {
   radiusXl: "16px",
   radiusFull: "9999px",
   radiusCard: "12px",
-  radiusControl: "6px",
+  radiusControl: "4px",
   layoutHeaderHeight: "64px",
   layoutSidebarWidth: "240px",
   layoutSidebarCollapsed: "72px",

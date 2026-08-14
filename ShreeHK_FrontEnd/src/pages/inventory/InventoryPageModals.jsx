@@ -1,8 +1,9 @@
-import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
-import OnMemoModal from "../../components/inventory/OnMemoModal";
-import InventoryCompareModal from "../../components/inventory/InventoryCompareModal";
-import ReservationModal from "../../components/inventory/ReservationModal";
-import AddToPackageModal from "../../components/inventory/AddToPackageModal";
+import { forwardRef, Suspense, lazy, useCallback, useImperativeHandle, useState } from "react";
+
+const OnMemoModal = lazy(() => import("../../components/inventory/OnMemoModal"));
+const InventoryCompareModal = lazy(() => import("../../components/inventory/InventoryCompareModal"));
+const ReservationModal = lazy(() => import("../../components/inventory/ReservationModal"));
+const AddToPackageModal = lazy(() => import("../../components/inventory/AddToPackageModal"));
 
 const EMPTY_ARRAY = [];
 
@@ -43,7 +44,7 @@ const InventoryPageModals = forwardRef(function InventoryPageModals(
   }, [stockAction, onMemoSubmit, onSaleSubmit, onConsignSubmit, onLabSubmit, onExportSubmit]);
 
   return (
-    <>
+    <Suspense fallback={null}>
       {stockAction ? (
         <OnMemoModal
           open
@@ -85,7 +86,7 @@ const InventoryPageModals = forwardRef(function InventoryPageModals(
           }}
         />
       ) : null}
-    </>
+    </Suspense>
   );
 });
 

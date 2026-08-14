@@ -317,9 +317,9 @@ $toast-brand-dark: var(--color-primary-dark);
   right: 10px !important;
   left: auto !important;
   transform: translateY(-50%) !important;
-  width: 26px !important;
-  height: 26px !important;
-  border-radius: 8px !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: var(--radius-control) !important;
   border: 0.5px solid var(--color-border) !important;
   background: var(--color-card-bg) !important;
   color: var(--color-text-muted) !important;
@@ -340,13 +340,14 @@ $toast-brand-dark: var(--color-primary-dark);
 // Action buttons
 [data-sonner-toast][data-styled="true"] [data-button],
 .shreehk-toast__action {
-  border-radius: 8px !important;
+  border-radius: var(--radius-control) !important;
   font-size: 12px !important;
   font-weight: 600 !important;
-  height: 30px !important;
-  padding: 0 12px !important;
-  background: linear-gradient(145deg, #{$toast-brand}, #{$toast-brand-dark}) !important;
-  color: #fff !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 10px !important;
+  background: var(--color-btn-primary-bg) !important;
+  color: var(--color-btn-primary-text) !important;
   margin-top: 8px !important;
   border: none !important;
 }

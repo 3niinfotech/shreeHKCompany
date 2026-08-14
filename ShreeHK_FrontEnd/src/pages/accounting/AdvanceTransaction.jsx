@@ -73,8 +73,9 @@ const AdvanceTransaction = () => {
     return (
         <div className={styles.container}>
             <AdvancedFilterPanel
-                title="Filter Advance Transactions"
-                subtitle="Select party, book, and date range to load advance transaction records."
+                title="Advance Transactions"
+                // subtitle="Select party, book, and date range to load advance transaction records."
+                subtitle=""
                 activeCount={activeFilterCount}
                 onClear={handleClearFilters}
                 clearDisabled={!activeFilterCount}

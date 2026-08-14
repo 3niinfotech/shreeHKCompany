@@ -24,6 +24,7 @@ const NOISY_GET_PREFIXES = [
   "/admin/activity-log",
   "/uploads/",
   "/dashboard/summary",
+  "/dashboard/trends",
   "/common/getIncrement",
   "/product/inventory",
   "/config/",
@@ -121,11 +122,14 @@ function auditHttpLogger(req, res, next) {
   const path = (req.path || req.url.split("?")[0] || "").trim();
   if (shouldSkipRequest(method, path)) return next();
 
+  // Capture ALS store now — wasAuditLogged() alone can miss after await / finish.
+  const ctxRef = getAuditContext();
+
   res.on("finish", () => {
-    if (wasAuditLogged()) return;
+    if (ctxRef?.auditLogged || wasAuditLogged()) return;
     if (res.statusCode < 200 || res.statusCode >= 300) return;
 
-    const ctx = getAuditContext() || {};
+    const ctx = ctxRef || getAuditContext() || {};
     if (!ctx.userId) return;
 
     const body = sanitizeBody(req.body);

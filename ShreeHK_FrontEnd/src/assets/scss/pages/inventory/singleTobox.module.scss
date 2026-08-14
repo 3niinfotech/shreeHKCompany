@@ -18,15 +18,14 @@
   }
 
   .box-action-button {
-    background-color: v.$primary-color;
-    border-color: v.$primary-color;
-    font-weight: 500;
-    height: 36px;
-    padding: 0 20px;
+    background-color: var(--color-btn-primary-bg);
+    border-color: var(--color-btn-primary-bg);
+    font-weight: 600;
+    padding: 0 10px;
 
-    &:hover {
-      background-color: var(--color-primary-dark) !important;
-      border-color: var(--color-primary-dark) !important;
+    &:hover:not(:disabled) {
+      background-color: var(--color-btn-primary-hover) !important;
+      border-color: var(--color-btn-primary-hover) !important;
     }
   }
 }
@@ -89,15 +88,14 @@
 }
 
 .addToBoxBtn {
-  background-color: v.$primary-color;
-  border-color: v.$primary-color;
-  font-weight: 500;
-  height: 36px;
-  padding: 0 20px;
+  background-color: var(--color-btn-primary-bg);
+  border-color: var(--color-btn-primary-bg);
+  font-weight: 600;
+  padding: 0 10px;
 
-  &:hover {
-    background-color: var(--color-primary-dark) !important;
-    border-color: var(--color-primary-dark) !important;
+  &:hover:not(:disabled) {
+    background-color: var(--color-btn-primary-hover) !important;
+    border-color: var(--color-btn-primary-hover) !important;
   }
 }
 
@@ -176,15 +174,14 @@
   }
 
   .parcel-action-btn {
-    background-color: v.$primary-color;
-    border-color: v.$primary-color;
-    font-weight: 500;
-    height: 36px;
-    padding: 0 20px;
+    background-color: var(--color-btn-primary-bg);
+    border-color: var(--color-btn-primary-bg);
+    font-weight: 600;
+    padding: 0 10px;
 
-    &:hover {
-      background-color: var(--color-primary-dark) !important;
-      border-color: var(--color-primary-dark) !important;
+    &:hover:not(:disabled) {
+      background-color: var(--color-btn-primary-hover) !important;
+      border-color: var(--color-btn-primary-hover) !important;
     }
   }
 }

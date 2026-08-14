@@ -34,6 +34,15 @@ const DynamicForm = ({ fields, forceFullWidth, layout = 'grid' }) => {
                 return <InputNumber placeholder={`0.00`} style={inputStyle} disabled={field.disabled} min={0} />;
             case 'textarea':
                 return <TextArea rows={field.rows || 3} placeholder={`Enter ${field.label}...`} style={inputStyle} disabled={field.disabled} />;
+            case 'password':
+                return (
+                    <Input.Password
+                        autoComplete="new-password"
+                        placeholder={field.placeholder || `Enter ${field.label}...`}
+                        style={inputStyle}
+                        disabled={field.disabled}
+                    />
+                );
             case 'checkbox':
                 return <Checkbox disabled={field.disabled}>{field.label}</Checkbox>;
             default:

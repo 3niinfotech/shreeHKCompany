@@ -770,15 +770,15 @@ $ai-assistant-bg: linear-gradient(145deg, color-mix(in srgb, var(--color-bg-elev
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  width: 36px !important;
-  height: 36px !important;
-  min-width: 36px !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
   padding: 0 !important;
   border: none !important;
-  border-radius: 12px !important;
-  background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
-  color: #ffffff !important;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35) !important;
+  border-radius: var(--radius-control) !important;
+  background: var(--color-btn-primary-bg) !important;
+  color: var(--color-btn-primary-text) !important;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--color-primary) 25%, transparent) !important;
   transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
 
   &:hover:not(:disabled) {

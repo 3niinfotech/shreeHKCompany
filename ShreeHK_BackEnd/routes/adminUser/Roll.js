@@ -1,6 +1,6 @@
 const express = require('express');
 const helper = require('../../helper.js');
-const { authenticateToken } = require('../../authMiddleware.js');
+const { authenticateToken, isSuperAdmin } = require('../../authMiddleware.js');
 const { logAuditInTx } = require('../../services/auditIntegration.js');
 const {
     normalizeResource,
@@ -33,7 +33,7 @@ const mapRoleRow = (row) => {
 };
 
 // GET /permission-registry — full page catalog for admin UI
-Roll.get('/permission-registry', authenticateToken, (req, res) => {
+Roll.get('/permission-registry', authenticateToken, isSuperAdmin, (req, res) => {
     res.status(200).json({
         status: true,
         data: buildPagesCatalog(),
@@ -41,7 +41,7 @@ Roll.get('/permission-registry', authenticateToken, (req, res) => {
 });
 
 // GET /role-list — roles + full page catalog + companies for Roll admin
-Roll.get('/role-list', authenticateToken, async (req, res) => {
+Roll.get('/role-list', authenticateToken, isSuperAdmin, async (req, res) => {
     try {
         const [rolesRows, companies] = await Promise.all([
             helper.query(`SELECT id, name, resource, date, company FROM roll ORDER BY id ASC`),
@@ -69,7 +69,7 @@ Roll.get('/role-list', authenticateToken, async (req, res) => {
 });
 
 // POST /role-add
-Roll.post('/role-add', authenticateToken, async (req, res) => {
+Roll.post('/role-add', authenticateToken, isSuperAdmin, async (req, res) => {
     const { name, resource, company } = req.body;
 
     if (!name || !company || resource === undefined) {
@@ -140,12 +140,18 @@ Roll.post('/role-add', authenticateToken, async (req, res) => {
 });
 
 // PUT /role-update/:id
-Roll.put('/role-update/:id', authenticateToken, async (req, res) => {
+Roll.put('/role-update/:id', authenticateToken, isSuperAdmin, async (req, res) => {
     const { id } = req.params;
     const { name, resource, company } = req.body;
 
     if (!id || isNaN(id)) {
         return res.status(400).json({ status: false, message: 'Invalid role ID' });
+    }
+    if (parseInt(id, 10) === SUPER_ADMIN_ROLL_ID) {
+        return res.status(403).json({
+            status: false,
+            message: 'The built-in Super Admin role cannot be modified',
+        });
     }
 
     if (!name || resource === undefined) {
@@ -270,12 +276,12 @@ const deleteRoleById = async (id, res) => {
     }
 };
 
-Roll.delete('/role-delete', authenticateToken, (req, res) => {
+Roll.delete('/role-delete', authenticateToken, isSuperAdmin, (req, res) => {
     const id = req.query.deleteId || req.query.id;
     deleteRoleById(id, res);
 });
 
-Roll.delete('/role-delete/:id', authenticateToken, (req, res) => {
+Roll.delete('/role-delete/:id', authenticateToken, isSuperAdmin, (req, res) => {
     const { id } = req.params;
     deleteRoleById(id, res);
 });

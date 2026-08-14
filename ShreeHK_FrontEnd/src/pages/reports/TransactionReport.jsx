@@ -167,7 +167,7 @@ const TransactionReport = () => {
                         <Button type="default" icon={<ReloadOutlined />} className={filterPanelStyles.btnClear} onClick={handleSearch} loading={tableLoading}>
                             Reload
                         </Button>
-                        <Button type="primary" icon={<FileUp />} className={styles.exportBtn} loading={exporting} onClick={handleExport} disabled={!tableData.length} style={{padding:"18px", background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff"}}>
+                        <Button type="primary" icon={<FileUp />} className={styles.exportBtn} loading={exporting} onClick={handleExport} disabled={!tableData.length} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff" }}>
                             Export to Excel
                         </Button>
                     </>
