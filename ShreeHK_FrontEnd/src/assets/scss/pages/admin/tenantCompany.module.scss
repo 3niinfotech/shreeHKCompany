@@ -130,7 +130,7 @@
 }
 
 .searchInput {
-  height: 42px;
+  height: var(--filter-control-height);
   border-radius: 10px;
 }
 

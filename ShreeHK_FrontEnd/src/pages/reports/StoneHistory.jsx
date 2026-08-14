@@ -270,7 +270,7 @@ const StoneHistory = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const [showForm, setShowForm] = useState(false);
-    const [activeTab, setActiveTab] = useState('general');
+    const [activeTab, setActiveTab] = useState('history');
     const [historyRows, setHistoryRows] = useState([]);
     const [oldHistoryRows, setOldHistoryRows] = useState([]);
     const [status, setStatus] = useState('');
@@ -294,7 +294,7 @@ const StoneHistory = () => {
         setStatus(st || '');
         setLastUpdated(detail?.last_updated_display || '');
         setHiddenImages({});
-        setActiveTab('general');
+        setActiveTab('history');
         setShowForm(true);
         setHoldInfo(null);
         if (isFlagOn(detail.hold) && detail.id) {
@@ -521,7 +521,7 @@ const StoneHistory = () => {
         setStoneDetail(null);
         setHoldInfo(null);
         setHiddenImages({});
-        setActiveTab('general');
+        setActiveTab('history');
         setShowForm(false);
     };
 
@@ -585,6 +585,71 @@ const StoneHistory = () => {
                             onChange={setActiveTab}
                             className={styles.detailTabs}
                             items={[
+                                {
+                                    key: 'history',
+                                    label: (
+                                        <span className={styles.tabLabel}>
+                                            <History size={14} />
+                                            History
+                                        </span>
+                                    ),
+                                    children: (
+                                        <div className={styles.historyTabContent}>
+                                            <div className={styles.historyTabHeader}>
+                                                <div className={styles.tabSectionTitle}>
+                                                    <History size={13} />
+                                                    Transaction History
+                                                </div>
+                                                <span className={styles.historyTabActions}>
+                                                    <Button
+                                                        size="small"
+                                                        icon={<History size={14} />}
+                                                        loading={oldLoading}
+                                                        onClick={handleLoadOld}
+                                                    >
+                                                        Load Old
+                                                    </Button>
+                                                    <Button
+                                                        type="primary"
+                                                        size="small"
+                                                        icon={<FileUp size={14} />}
+                                                        loading={exporting}
+                                                        onClick={handleExport}
+                                                        disabled={!historyRows.length}
+                                                    >
+                                                        Export
+                                                    </Button>
+                                                </span>
+                                            </div>
+                                            <SkeletonAwareTable
+                                                columns={historyColumns}
+                                                dataSource={historyRows}
+                                                loading={loading}
+                                                size="small"
+                                                bordered
+                                                pagination={{ pageSize: 20 }}
+                                                scroll={{ x: 'max-content' }}
+                                            />
+                                            {oldHistoryRows.length ? (
+                                                <div className={styles.oldHistoryBlock}>
+                                                    <div className={styles.tabSectionTitle}>
+                                                        <History size={13} />
+                                                        Old History
+                                                    </div>
+                                                    <SkeletonAwareTable
+                                                        columns={historyColumns}
+                                                        dataSource={oldHistoryRows}
+                                                        loading={oldLoading}
+                                                        size="small"
+                                                        bordered
+                                                        pagination={{ pageSize: 20 }}
+                                                        scroll={{ x: 'max-content' }}
+                                                    />
+                                                </div>
+                                            ) : null}
+                                        </div>
+                                    ),
+                                },
                                 {
                                     key: 'general',
                                     label: (
@@ -681,55 +746,6 @@ const StoneHistory = () => {
                     </Card>
                 </div>
             )}
-
-            <Card
-                className={`${styles.detailsCard} ${styles.historyTableCard}`}
-                title="Transaction History"
-                extra={(
-                    <span style={{ display: 'inline-flex', gap: 8 }}>
-                        <Button
-                            size="small"
-                            icon={<History size={14} />}
-                            loading={oldLoading}
-                            onClick={handleLoadOld}
-                            disabled={!showForm}
-                        >
-                            Load Old
-                        </Button>
-                        <Button type="primary" size="small" icon={<FileUp size={14} />} loading={exporting} onClick={handleExport} disabled={!historyRows.length}>
-                            Export
-                        </Button>
-                    </span>
-                )}
-            >
-                <SkeletonAwareTable
-                    columns={historyColumns}
-                    dataSource={historyRows}
-                    loading={loading}
-                    size="small"
-                    bordered
-                    pagination={{ pageSize: 20 }}
-                    scroll={{ x: 'max-content' }}
-                />
-            </Card>
-
-            {oldHistoryRows.length ? (
-                <Card
-                    className={`${styles.detailsCard} ${styles.historyTableCard}`}
-                    title="Old History"
-                    style={{ marginTop: 12 }}
-                >
-                    <SkeletonAwareTable
-                        columns={historyColumns}
-                        dataSource={oldHistoryRows}
-                        loading={oldLoading}
-                        size="small"
-                        bordered
-                        pagination={{ pageSize: 20 }}
-                        scroll={{ x: 'max-content' }}
-                    />
-                </Card>
-            ) : null}
         </div>
     );
 };

@@ -4,7 +4,10 @@ import {
   CalendarOutlined,
   BankOutlined,
   RightOutlined,
-  SwapOutlined,
+  IdcardOutlined,
+  TeamOutlined,
+  CheckCircleFilled,
+  SafetyOutlined,
 } from "@ant-design/icons";
 import { api } from "../../api/axiosInstance";
 import { ENDPOINTS } from "../../constants/endpoints";
@@ -14,6 +17,94 @@ import { toastApiSuccess, toastApiError } from "../../utils/apiToast";
 import styles from "../../assets/scss/pages/admin/companyYearPicker.module.scss";
 
 const { Text, Title } = Typography;
+
+const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+const formatDayMonthYear = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return `${date.getDate()} ${MONTH_LABELS[date.getMonth()]} ${date.getFullYear()}`;
+};
+
+/** Expands a shortened fiscal segment ("24") against a reference year ("2023" -> 2024). */
+const expandYear = (segment, reference) => {
+  if (segment.length >= 4) return Number(segment);
+  const prefix = String(reference || new Date().getFullYear()).slice(0, 4 - segment.length);
+  return Number(`${prefix}${segment}`);
+};
+
+/** Fiscal labels arrive as "2023-24" or "2020-21-22-23"; segments drive the range and span badge. */
+const getYearMeta = (item) => {
+  const segments = String(item?.yearLabel || "").split(/[^0-9]+/).filter(Boolean);
+  const startYear = segments.length ? expandYear(segments[0], new Date().getFullYear()) : null;
+  const endYear = segments.length > 1
+    ? expandYear(segments[segments.length - 1], startYear)
+    : startYear
+      ? startYear + 1
+      : null;
+
+  const fromLabel = formatDayMonthYear(item?.fromDate) || (startYear ? `1 Apr ${startYear}` : null);
+  const toLabel = formatDayMonthYear(item?.toDate) || (endYear ? `31 Mar ${endYear}` : null);
+
+  const today = new Date();
+  const currentFiscalStart = today.getMonth() >= 3 ? today.getFullYear() : today.getFullYear() - 1;
+  const isCurrent = startYear === currentFiscalStart;
+
+  return {
+    rangeLabel: fromLabel && toLabel ? `${fromLabel} - ${toLabel}` : fromLabel || toLabel || "",
+    badge: segments.length > 2
+      ? `${segments.length} Years`
+      : isCurrent
+        ? "Current Year"
+        : "Previous Year",
+    isCurrent,
+  };
+};
+
+const CompanyHeaderArt = () => (
+  <svg className={styles.headerArt} viewBox="0 0 240 110" aria-hidden="true">
+    <g fill="#ffffff" fillOpacity="0.16">
+      <rect x="148" y="16" width="48" height="82" rx="7" />
+      <rect x="118" y="46" width="26" height="52" rx="5" />
+      <rect x="200" y="38" width="24" height="60" rx="5" />
+    </g>
+    <g fill="#ffffff" fillOpacity="0.3">
+      <rect x="158" y="26" width="9" height="9" rx="2" />
+      <rect x="176" y="26" width="9" height="9" rx="2" />
+      <rect x="158" y="43" width="9" height="9" rx="2" />
+      <rect x="176" y="43" width="9" height="9" rx="2" />
+      <rect x="158" y="60" width="9" height="9" rx="2" />
+      <rect x="176" y="60" width="9" height="9" rx="2" />
+    </g>
+    <g fill="#ffffff" fillOpacity="0.12">
+      <circle cx="98" cy="32" r="9" />
+      <circle cx="112" cy="30" r="12" />
+      <rect x="88" y="32" width="38" height="10" rx="5" />
+    </g>
+  </svg>
+);
+
+const YearHeaderArt = () => (
+  <svg className={styles.headerArt} viewBox="0 0 240 110" aria-hidden="true">
+    <rect x="132" y="18" width="76" height="68" rx="11" fill="#ffffff" fillOpacity="0.18" />
+    <rect x="132" y="18" width="76" height="17" rx="8" fill="#ffffff" fillOpacity="0.3" />
+    <g fill="#ffffff" fillOpacity="0.32">
+      <rect x="142" y="44" width="11" height="9" rx="2" />
+      <rect x="159" y="44" width="11" height="9" rx="2" />
+      <rect x="176" y="44" width="11" height="9" rx="2" />
+      <rect x="142" y="60" width="11" height="9" rx="2" />
+      <rect x="159" y="60" width="11" height="9" rx="2" />
+      <rect x="176" y="60" width="11" height="9" rx="2" />
+    </g>
+    <circle cx="200" cy="78" r="15" fill="#ffffff" fillOpacity="0.34" />
+    <path d="M200 70v8l6 4" stroke="#ffffff" strokeOpacity="0.85" strokeWidth="2" strokeLinecap="round" fill="none" />
+    <g fill="#ffffff" fillOpacity="0.14">
+      <rect x="218" y="70" width="16" height="20" rx="4" />
+      <circle cx="226" cy="64" r="8" />
+    </g>
+  </svg>
+);
 
 const CompanyYearPicker = ({ open, onClose, force = false }) => {
   const [loading, setLoading] = useState(false);
@@ -30,6 +121,8 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
     : [];
   const login = useAuthStore((s) => s.login);
   const user = useAuthStore((s) => s.user);
+  const activeCompanyId = useAuthStore((s) => s.companyId);
+  const activeYearId = useAuthStore((s) => s.yearId);
 
   useEffect(() => {
     if (!open) return;
@@ -50,6 +143,9 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
             companies.push({
               companyId: item.companyId,
               companyName: item.companyName,
+              companyShortcutName: item.companyShortcutName,
+              companyAddress: item.companyAddress,
+              companyNumber: item.companyNumber,
             });
           }
         });
@@ -140,22 +236,19 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
   const modalTitle = (
     <div className={styles.modalTitle}>
       <div className={styles.titleIcon}>
-        <SwapOutlined />
+        {selectedCompany ? <CalendarOutlined /> : <BankOutlined />}
       </div>
-      <div>
-        {/* <div className={styles.titleText}>Select Company & Year</div> */}
+      <div className={styles.titleTextWrap}>
         <div className={styles.titleText}>
           {selectedCompany ? "Select Financial Year" : "Select Company"}
         </div>
-        {/* <Text className={styles.titleSubtext}>
-          Choose a workspace to continue. You can switch context anytime from the header.
-        </Text> */}
         <Text className={styles.titleSubtext}>
           {selectedCompany
             ? `Company : ${selectedCompany.companyName}`
             : "Choose your company to continue"}
         </Text>
       </div>
+      {selectedCompany ? <YearHeaderArt /> : <CompanyHeaderArt />}
     </div>
   );
 
@@ -181,44 +274,6 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
         <Empty description="No company/year mapping found" className={styles.emptyState} />
       ) : (
         <>
-          {/* <div className={styles.resultMeta}>
-            <Text type="secondary">{options.length} context{options.length === 1 ? "" : "s"} available</Text>
-          </div> */}
-          {/* <div className={styles.cardGrid}>
-            {options.map((item, idx) => {
-              const itemKey = `${item.companyId}-${item.yearId}-${idx}`;
-              const isSelecting = selectingKey === `${item.companyId}-${item.yearId}`;
-
-              return (
-                <button
-                  key={itemKey}
-                  type="button"
-                  className={`${styles.contextCard} ${isSelecting ? styles.contextCardSelecting : ""}`}
-                  onClick={() => selectContext(item)}
-                  disabled={Boolean(selectingKey)}
-                  aria-label={`Select ${item.companyName}, fiscal year ${item.yearLabel}`}
-                >
-                  <div className={styles.cardTop}>
-                    <span className={styles.cardHeadIcon}>
-                      <BankOutlined />
-                    </span>
-                    <span className={styles.cardArrow}>
-                      {isSelecting ? <Spin size="small" /> : <RightOutlined />}
-                    </span>
-                  </div>
-
-                  <Title level={5} className={styles.companyName} title={item.companyName}>
-                    {item.companyName}
-                  </Title>
-
-                  <span className={styles.yearTag}>
-                    <CalendarOutlined />
-                    <span>{item.yearLabel}</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div> */}
           {selectedCompany && (
             <div className={styles.backWrapper}>
               <button
@@ -231,71 +286,117 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
               </button>
             </div>
           )}
-          <div className={styles.cardGrid}>
-            {!selectedCompany &&
-              companyOptions.map((item) => {
+
+          {!selectedCompany && (
+            <div className={styles.companyGrid}>
+              {companyOptions.map((item) => {
+                const isActive = activeCompanyId != null
+                  && String(item.companyId) === String(activeCompanyId);
+
                 return (
                   <button
                     key={item.companyId}
                     type="button"
-                    className={styles.contextCard}
+                    className={`${styles.companyCard} ${isActive ? styles.companyCardActive : ""}`}
                     onClick={() => handleCompanySelect(item)}
+                    aria-label={`Select ${item.companyName}`}
                   >
-                    <div className={styles.cardTop}>
-                      <span className={styles.cardHeadIcon}>
-                        <BankOutlined />
+                    <span className={styles.companyIcon}>
+                      <BankOutlined />
+                    </span>
+
+                    <span className={styles.companyBody}>
+                      <Title level={5} className={styles.companyName} title={item.companyName}>
+                        {item.companyName}
+                      </Title>
+
+                      <span className={styles.companyTag}>
+                        <IdcardOutlined />
+                        <span>{item.companyShortcutName || "Company"}</span>
                       </span>
-                      <span className={styles.cardArrow}>
-                        <RightOutlined />
+
+                      <span className={styles.companyMeta}>
+                        <TeamOutlined />
+                        <span>{item.companyAddress || item.companyNumber || "Workspace access"}</span>
                       </span>
-                    </div>
-                    <Title
-                      level={5}
-                      className={styles.companyName}
-                    >
-                      {item.companyName}
-                    </Title>
+                    </span>
+
+                    <span className={styles.companyArrow}>
+                      <RightOutlined />
+                    </span>
                   </button>
-                )
-              })
-            }
-            {selectedCompany &&
-              yearOptions.map((item) => {
-                const isSelecting =
-                  selectingKey === `${item.companyId}-${item.yearId}`;
-                return (
-                  <button
-                    key={item.yearId}
-                    type="button"
-                    disabled={Boolean(selectingKey)}
-                    className={`${styles.contextCard} ${isSelecting
-                      ? styles.contextCardSelecting
-                      : ""
-                      }`}
-                    onClick={() => selectContext(item)}
-                  >
-                    <div className={styles.cardTop}>
-                      <span className={styles.cardHeadIcon}>
-                        <CalendarOutlined />
-                      </span>
-                      <span className={styles.cardArrow}>
-                        {isSelecting
-                          ? <Spin size="small" />
-                          : <RightOutlined />
-                        }
-                      </span>
-                    </div>
-                    <Title
-                      level={5}
-                      className={styles.companyName}
+                );
+              })}
+            </div>
+          )}
+
+          {selectedCompany && (
+            <>
+              <div className={styles.yearGrid}>
+                {yearOptions.map((item) => {
+                  const isSelecting = selectingKey === `${item.companyId}-${item.yearId}`;
+                  const meta = getYearMeta(item);
+                  const isActive = activeYearId != null
+                    ? String(item.yearId) === String(activeYearId)
+                    : meta.isCurrent;
+
+                  return (
+                    <button
+                      key={item.yearId}
+                      type="button"
+                      disabled={Boolean(selectingKey)}
+                      className={`${styles.yearCard} ${isActive ? styles.yearCardActive : ""} ${isSelecting ? styles.yearCardSelecting : ""}`}
+                      onClick={() => selectContext(item)}
+                      aria-label={`Select fiscal year ${item.yearLabel}`}
                     >
-                      {item.yearLabel}
-                    </Title>
-                  </button>
-                )
-              })
-            }
-          </div>
+                      <span className={styles.yearTop}>
+                        <span className={styles.yearIcon}>
+                          <CalendarOutlined />
+                        </span>
+
+                        <span className={styles.yearBody}>
+                          <Title level={5} className={styles.yearLabel}>
+                            {item.yearLabel}
+                          </Title>
+                          <span
+                            className={`${styles.yearBadge} ${meta.isCurrent ? styles.yearBadgeCurrent : ""}`}
+                          >
+                            {meta.badge}
+                          </span>
+                        </span>
+
+                        {isSelecting ? (
+                          <span className={styles.yearArrow}>
+                            <Spin size="small" />
+                          </span>
+                        ) : isActive ? (
+                          <span className={styles.yearCheck}>
+                            <CheckCircleFilled />
+                          </span>
+                        ) : (
+                          <span className={styles.yearArrow}>
+                            <RightOutlined />
+                          </span>
+                        )}
+                      </span>
+
+                      {meta.rangeLabel && (
+                        <span className={styles.yearRange}>
+                          <CalendarOutlined />
+                          <span>{meta.rangeLabel}</span>
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className={styles.secureNote}>
+                <SafetyOutlined />
+                <span>Your data is safe and secure with end-to-end encryption</span>
+              </div>
+            </>
+          )}
         </>
       )}
     </Modal>

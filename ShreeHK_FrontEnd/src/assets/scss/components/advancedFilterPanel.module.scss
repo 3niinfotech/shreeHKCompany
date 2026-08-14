@@ -1,8 +1,9 @@
+@use "../variables" as *;
+
 .filterPanel {
     border-radius: 14px;
     border: 1px solid var(--color-border);
     background: linear-gradient(180deg, #ffffff 0%, var(--color-bg-muted) 100%);
-    // box-shadow: 0 10px 28px rgba(10, 30, 45, 0.07);
     overflow: hidden;
     flex-shrink: 0;
 }
@@ -25,13 +26,13 @@
 }
 
 .filterPanelIcon {
-    width: 38px;
-    height: 38px;
+    width: $filter-control-height;
+    height: $filter-control-height;
     border-radius: 10px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
+    font-size: 16px;
     color: var(--color-primary);
     background: color-mix(in srgb, var(--color-primary) 12%, transparent);
     flex-shrink: 0;
@@ -69,8 +70,8 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 12px 16px;
-    padding: 12px 18px;
+    gap: 8px 12px;
+    padding: 6px 14px;
     background: linear-gradient(90deg, color-mix(in srgb, var(--color-primary) 5%, transparent), transparent);
 }
 
@@ -79,12 +80,13 @@
     flex-wrap: wrap;
     align-items: flex-end;
     justify-content: flex-start;
-    gap: 12px 14px;
+    gap: 8px;
     flex: 1 1 auto;
     min-width: 0;
 }
 
 .filterField {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -95,12 +97,8 @@
 }
 
 .fieldLabel {
-    display: inline-flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 6px;
-    width: 100%;
-    font-size: 12px;
+    @include visually-hidden-label;
+    font-size: $filter-control-font-size;
     font-weight: 600;
     color: var(--color-text-secondary, #5f7383);
     line-height: 1.2;
@@ -112,28 +110,52 @@
     }
 }
 
+.keepFieldLabel {
+    .fieldLabel {
+        position: static !important;
+        width: 100% !important;
+        height: auto !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        overflow: visible !important;
+        clip: unset !important;
+        clip-path: none !important;
+        white-space: normal !important;
+        border: 0 !important;
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 6px;
+    }
+}
+
 .filterControl {
     width: 100% !important;
 
     &:global(.ant-select),
     &:global(.ant-picker),
     &:global(.ant-input-affix-wrapper),
-    &:global(.ant-input) {
+    &:global(.ant-input),
+    &:global(.ant-input-number) {
         width: 100%;
     }
 
     :global(.ant-select-selector),
     &:global(.ant-picker),
     &:global(.ant-input-affix-wrapper),
-    &:global(.ant-input) {
+    &:global(.ant-input),
+    &:global(.ant-input-number) {
         border-radius: 8px !important;
-        min-height: 38px !important;
+        @include filter-control-size;
+        display: flex;
+        align-items: center;
     }
 
     :global(.ant-select-selection-item),
     :global(.ant-select-selection-placeholder),
     :global(.ant-picker-input > input) {
-        font-size: 13px;
+        font-size: $filter-control-font-size;
+        line-height: $filter-control-line-height;
     }
 }
 
@@ -141,7 +163,7 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 10px;
+    gap: 8px;
     flex: 0 0 auto;
     flex-shrink: 0;
     flex-wrap: wrap;
@@ -149,19 +171,14 @@
 }
 
 .btnClear {
-    height: 38px;
-    border-radius: 10px;
     font-weight: 600;
-    padding-inline: 16px;
-    border-color: var(--color-border);
+    padding-inline: 10px;
 }
 
 .btnSearch {
-    height: 38px;
-    border-radius: 10px;
     font-weight: 600;
-    padding-inline: 20px;
-    box-shadow: 0 8px 18px color-mix(in srgb, var(--color-primary) 16%, transparent);
+    padding-inline: 12px;
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
 
 .filterFormWide {
@@ -171,14 +188,17 @@
 
     :global(.ant-row) {
         justify-content: flex-start !important;
+        align-items: center !important;
     }
 
     :global(.ant-form-item) {
-        margin-bottom: 10px;
+        margin-bottom: 0;
         text-align: left;
+        position: relative;
     }
 
     :global(.ant-form-item-label) {
+        @include visually-hidden-label;
         text-align: left !important;
     }
 
@@ -188,7 +208,7 @@
         justify-content: flex-start;
         gap: 6px;
         width: 100%;
-        font-size: 12px;
+        font-size: $filter-control-font-size;
         font-weight: 600;
         color: var(--color-text-secondary, #5f7383);
         line-height: 1.2;
@@ -202,9 +222,12 @@
     :global(.ant-input),
     :global(.ant-input-number),
     :global(.ant-select-selector),
-    :global(.ant-picker) {
+    :global(.ant-picker),
+    :global(.ant-input-affix-wrapper) {
         border-radius: 8px !important;
-        min-height: 38px !important;
+        @include filter-control-size;
+        display: flex;
+        align-items: center;
     }
 }
 
@@ -216,14 +239,14 @@
     flex-wrap: wrap;
     justify-content: flex-start;
     align-items: center;
-    gap: 12px 14px;
+    gap: 8px 12px;
 
     :global(.filter-form-container) {
         display: flex;
         flex-wrap: wrap;
         justify-content: flex-start;
         align-items: center;
-        gap: 12px 14px;
+        gap: 8px 12px;
         width: 100%;
     }
 
@@ -236,9 +259,12 @@
 
     :global(.filter-form-container .filter-item .ant-select-selector),
     :global(.filter-form-container .filter-item .ant-input-affix-wrapper),
-    :global(.filter-form-container .filter-item .ant-picker) {
-        height: 38px !important;
-        min-height: 38px !important;
+    :global(.filter-form-container .filter-item .ant-picker),
+    :global(.ant-select-selector),
+    :global(.ant-picker),
+    :global(.ant-input-affix-wrapper),
+    :global(.ant-input) {
+        @include filter-control-size;
         border-radius: 8px !important;
         display: flex;
         align-items: center;
@@ -247,8 +273,8 @@
     :global(.filter-form-container .filter-item .ant-select-selection-item),
     :global(.filter-form-container .filter-item .ant-select-selection-placeholder),
     :global(.filter-form-container .filter-item .ant-picker-input > input) {
-        font-size: 13px;
-        line-height: 36px;
+        font-size: $filter-control-font-size;
+        line-height: $filter-control-line-height;
     }
 
     :global(.ant-select),

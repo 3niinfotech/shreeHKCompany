@@ -308,6 +308,8 @@ import {
   Building2,
   LogOut,
   ChevronDown,
+  ChevronRight,
+  ShieldCheck,
   Gem,
   Sparkles,
 } from 'lucide-react';
@@ -315,7 +317,10 @@ import useAuthStore from '../../store/Auth.Store';
 import { api } from '../../api/axiosInstance';
 import { Link, useNavigate } from 'react-router-dom';
 import { resolveUploadUrl } from '../../utils/uploadBaseUrl';
+import { formatLastActive } from '../../utils/relativeTime';
 import styles from '../../assets/scss/components/profileDropdown.module.scss';
+
+const LAST_ACTIVE_REFRESH_MS = 30 * 1000;
 
 const getRoleLabel = (user) => {
   if (!user) return 'Admin';
@@ -352,17 +357,20 @@ const ProfileMenuPanel = ({
   yearId,
   userInitial,
   profileImage,
+  lastActiveLabel,
   onSwitchContext,
   onLogout,
   onNavigate,
 }) => (
   <div
     className={styles.panel}
+    data-activity-ignore="true"
     onMouseDown={preventDropdownClose}
     onClick={(e) => e.stopPropagation()}
   >
     <div className={styles.panelHero}>
       <div className={styles.heroGlow} aria-hidden="true" />
+      <div className={styles.heroDots} aria-hidden="true" />
       <div className={styles.heroShine} aria-hidden="true" />
 
       <div className={styles.heroContent}>
@@ -371,12 +379,12 @@ const ProfileMenuPanel = ({
           <Avatar
             className={styles.heroAvatar}
             src={profileImage ? resolveUploadUrl(profileImage) : null}
-            size={52}
+            size={64}
           >
             {!profileImage && userInitial}
           </Avatar>
           <span className={styles.heroBadge} aria-hidden="true">
-            <Gem size={11} strokeWidth={2.2} />
+            <Gem size={12} strokeWidth={2.2} />
           </span>
         </div>
 
@@ -389,6 +397,7 @@ const ProfileMenuPanel = ({
           <p className={styles.heroMeta}>
             {displayCompany ? (
               <span className={styles.companyChip} title={displayCompany}>
+                <Building2 size={12} strokeWidth={2} className={styles.chipIcon} />
                 {displayCompany}
               </span>
             ) : null}
@@ -412,7 +421,7 @@ const ProfileMenuPanel = ({
           <span className={styles.menuLabel}>My Account</span>
           <span className={styles.menuHint}>Profile & preferences</span>
         </span>
-        <ChevronDown size={14} className={styles.menuArrow} />
+        <ChevronRight size={16} className={styles.menuArrow} />
       </Link>
 
       <Link
@@ -427,7 +436,7 @@ const ProfileMenuPanel = ({
           <span className={styles.menuLabel}>Settings</span>
           <span className={styles.menuHint}>System configuration</span>
         </span>
-        <ChevronDown size={14} className={styles.menuArrow} />
+        <ChevronRight size={16} className={styles.menuArrow} />
       </Link>
 
       <button
@@ -442,7 +451,7 @@ const ProfileMenuPanel = ({
           <span className={styles.menuLabel}>Switch Company / Year</span>
           <span className={styles.menuHint}>Change active session</span>
         </span>
-        <ChevronDown size={14} className={styles.menuArrow} />
+        <ChevronRight size={16} className={styles.menuArrow} />
       </button>
     </nav>
 
@@ -453,6 +462,19 @@ const ProfileMenuPanel = ({
         </span>
         <span>Sign Out</span>
       </button>
+    </div>
+
+    <div className={styles.sessionNote}>
+      <ShieldCheck size={13} strokeWidth={2} className={styles.sessionIcon} />
+      <span>Secure session</span>
+      {lastActiveLabel ? (
+        <>
+          <span className={styles.sessionDot}>•</span>
+          <span>
+            Last active <span className={styles.sessionValue}>{lastActiveLabel}</span>
+          </span>
+        </>
+      ) : null}
     </div>
   </div>
 );
@@ -467,6 +489,7 @@ const ProfileDropdown = () => {
   const setShowContextPicker = useAuthStore((state) => state.setShowContextPicker);
   const logout = useAuthStore((state) => state.logout);
   const yearId = useAuthStore((state) => state.yearId);
+  const [lastActiveLabel, setLastActiveLabel] = useState(null);
   const userDisplayName = getUserDisplayName(user);
   const displayCompany = getCompanyLabel(user, companyName);
   const userInitial = user?.first_name
@@ -479,6 +502,17 @@ const ProfileDropdown = () => {
   //   .join(" · ");
 
   const profileSubtitle = "";
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const refresh = () =>
+      setLastActiveLabel(formatLastActive(useAuthStore.getState().lastActiveAt));
+
+    refresh();
+    const timer = window.setInterval(refresh, LAST_ACTIVE_REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, [open]);
 
   useEffect(() => {
     if (!companyId || companyName) return undefined;
@@ -551,6 +585,7 @@ const ProfileDropdown = () => {
           yearId={yearId}
           userInitial={userInitial}
           profileImage={user?.profile_image}
+          lastActiveLabel={lastActiveLabel}
           onSwitchContext={handleSwitchContext}
           onLogout={handleLogout}
           onNavigate={() => setOpen(false)}
@@ -561,6 +596,7 @@ const ProfileDropdown = () => {
         onClick={(e) => e.preventDefault()}
         className={`profile-dropdown-link ${styles.profileLink} ${open ? styles.profileLinkActive : ''}`}
         aria-expanded={open}
+        data-activity-ignore="true"
       >
         <Avatar
           className={styles.avatar}

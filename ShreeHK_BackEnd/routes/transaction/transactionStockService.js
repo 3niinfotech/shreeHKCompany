@@ -92,8 +92,29 @@ async function loadProductsByIds(ids) {
   if (!ids || !ids.length) return [];
   const placeholders = ids.map(() => "?").join(",");
   return query(
-    `SELECT p.*, pv.* FROM dai_product p
-     JOIN dai_product_value pv ON p.id = pv.product_id
+    `SELECT
+       p.*,
+       p.id AS id,
+       pv.report_no AS report_no,
+       pv.shape AS shape,
+       pv.color AS color,
+       pv.clarity AS clarity,
+       pv.size AS size,
+       pv.polish AS polish,
+       pv.f_intensity AS f_intensity,
+       pv.symmentry AS symmentry,
+       pv.cut AS cut,
+       pv.mesurment AS mesurment,
+       pv.table_pc AS table_pc,
+       pv.depth_pc AS depth_pc,
+       pv.gridle AS gridle,
+       pv.intensity AS intensity,
+       pv.overtone AS overtone,
+       pv.package AS package,
+       pv.bgm AS bgm,
+       pv.eyeclean AS eyeclean
+     FROM dai_product p
+     LEFT JOIN dai_product_value pv ON p.id = pv.product_id
      WHERE p.id IN (${placeholders})`,
     ids
   );
@@ -108,11 +129,35 @@ const PARTY_FIELDS = `
   p.fax AS party_fax,
   p.contact_person AS contact_person`;
 
+function formatMeasurement(value) {
+  return String(value || "").replace(/mm/gi, "").replace(/\s+/g, "");
+}
+
+function buildProductLabel(product) {
+  const shape = String(product.shape || "").trim().split(/\s+/)[0] || "";
+  const carat = product.polish_carat ?? "";
+  const color = product.color || product.main_color || "";
+  const clarity = product.clarity || "";
+  const fluro = product.f_intensity || "";
+  const lwh = formatMeasurement(product.mesurment);
+  const lab = String(product.lab || "").trim();
+  const main = [shape, carat, color, clarity, fluro, lwh]
+    .map((part) => String(part ?? "").trim())
+    .filter(Boolean)
+    .join("-");
+  if (main && lab) return `${main}, ${lab}`;
+  return main || lab || "";
+}
+
 function mapProducts(products) {
   return products.map((p) => ({
     ...p,
+    id: p.id,
     sell_price: p.sell_price || p.price,
     sell_amount: p.sell_amount || p.amount,
+    report_no: p.report_no || "",
+    certificate: p.report_no || "",
+    label: buildProductLabel(p),
   }));
 }
 
@@ -339,7 +384,7 @@ async function listOutwardStock(post, stockType, userContext = {}) {
       typeClause = " AND o.type = 'consign' AND o.status = 'on_consign'";
       break;
     case "memo":
-      typeClause = " AND o.type = 'memo' AND o.status = 'on_memo'";
+      typeClause = " AND o.type IN ('memo','consign') AND o.status IN ('on_memo','on_consign')";
       break;
     default:
       typeClause = " AND o.type IN ('memo','consign') AND o.status IN ('on_memo','on_consign')";
@@ -359,18 +404,34 @@ async function listOutwardStock(post, stockType, userContext = {}) {
     typeFilterClause = " AND o.type = ?";
     params.push(String(post.type).toLowerCase());
   }
+  let skuClause = "";
+  if (post.sku) {
+    const skuLike = `%${String(post.sku).trim()}%`;
+    skuClause = ` AND EXISTS (
+      SELECT 1 FROM dai_product pr
+      LEFT JOIN dai_product_value pv ON pr.id = pv.product_id
+      WHERE FIND_IN_SET(pr.id, o.products) > 0
+        AND (
+          pr.sku LIKE ?
+          OR pr.mfg_code LIKE ?
+          OR pr.diamond_no LIKE ?
+          OR pv.report_no LIKE ?
+        )
+    )`;
+    params.push(skuLike, skuLike, skuLike, skuLike);
+  }
   const dateClause = buildDateFilterClause("o", post, params);
   const countRows = await query(
     `SELECT COUNT(*) AS total FROM dai_outward o
      WHERE o.company = ? ${typeClause}
-     ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${dateClause}`,
+     ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${skuClause} ${dateClause}`,
     params
   );
   const rows = await query(
     `SELECT o.*, ${PARTY_FIELDS} FROM dai_outward o
      LEFT JOIN dai_party p ON o.party = p.id
      WHERE o.company = ? ${typeClause}
-     ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${dateClause}
+     ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${skuClause} ${dateClause}
      ORDER BY o.date DESC, o.id DESC LIMIT ? OFFSET ?`,
     [...params, limit, offset]
   );

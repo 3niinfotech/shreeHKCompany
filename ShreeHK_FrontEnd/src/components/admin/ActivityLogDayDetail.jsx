@@ -9,6 +9,7 @@ import {
   buildActivityNarrative,
   formatActionTypeLabel,
   getActionTone,
+  formatActivityTime,
 } from "../../utils/activityLogFormatters";
 import { SkeletonList } from "../common/skeleton";
 import styles from "../../assets/scss/pages/admin/activityHistory.module.scss";
@@ -101,7 +102,7 @@ const ActivityLogDayDetail = ({
               >
                 <div className={styles.dayEntryHeader}>
                   <Text strong className={styles.dayEntryTime}>
-                    {dayjs(entry.createdAt).format("HH:mm:ss")}
+                    {formatActivityTime(entry.createdAt)}
                   </Text>
                   <Tag className={`${styles.actionTag} ${styles[`actionTag--${tone}`]}`}>
                     {formatActionTypeLabel(entry.actionType)}

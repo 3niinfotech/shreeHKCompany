@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import useUIStore from "../../store/Ui.Store";
 import useAuthStore from "../../store/Auth.Store";
 import useSessionKeepalive from "../../hooks/useSessionKeepalive";
+import useActivityTracker from "../../hooks/useActivityTracker";
 import MainLayout from "./MainLayout";
 import DashboardLayout from "./DashboardLayout";
 import CompanyYearPicker from "./CompanyYearPicker";
@@ -22,6 +23,7 @@ const LayoutShell = () => {
   const yearId = useAuthStore((state) => state.yearId);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   useSessionKeepalive();
+  useActivityTracker();
   useCopyableTableIdentifiers();
 
   const contextReady = companyId != null && yearId != null;

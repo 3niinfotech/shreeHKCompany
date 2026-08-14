@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Button, Typography } from "antd";
 import { ChevronDown, ChevronUp, SlidersHorizontal } from "lucide-react";
 import styles from "../../assets/scss/components/inventoryFilterPanel.module.scss";
@@ -21,9 +21,26 @@ const InventoryFilterPanel = ({
 }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [pinned, setPinned] = useState(defaultExpanded);
+  const [prewarmAdvanced, setPrewarmAdvanced] = useState(defaultExpanded);
   const leaveTimer = useRef(null);
-
   const hasAdvanced = Boolean(advancedFilters);
+
+  useEffect(() => {
+    if (prewarmAdvanced || !hasAdvanced) return undefined;
+    const idleId = window.requestIdleCallback
+      ? window.requestIdleCallback(() => setPrewarmAdvanced(true), { timeout: 1500 })
+      : window.setTimeout(() => setPrewarmAdvanced(true), 800);
+    return () => {
+      if (window.cancelIdleCallback && typeof idleId === "number") {
+        window.cancelIdleCallback(idleId);
+      } else {
+        window.clearTimeout(idleId);
+      }
+    };
+  }, [hasAdvanced, prewarmAdvanced]);
+
+  const shouldRenderAdvanced = hasAdvanced && (expanded || prewarmAdvanced);
+
   const hasCompactRow =
     Boolean(searchSlot) ||
     Boolean(compactFilters) ||
@@ -39,7 +56,10 @@ const InventoryFilterPanel = ({
 
   const openAdvanced = useCallback(() => {
     clearLeaveTimer();
-    if (hasAdvanced) setExpanded(true);
+    if (hasAdvanced) {
+      setPrewarmAdvanced(true);
+      setExpanded(true);
+    }
   }, [clearLeaveTimer, hasAdvanced]);
 
   const scheduleClose = useCallback(() => {
@@ -53,6 +73,7 @@ const InventoryFilterPanel = ({
     const next = !expanded;
     setExpanded(next);
     setPinned(next);
+    if (next) setPrewarmAdvanced(true);
   };
 
   const handleAdvancedHoverEnter = () => {
@@ -122,9 +143,11 @@ const InventoryFilterPanel = ({
         </div>
       </div>
 
-      {hasAdvanced && expanded ? (
+      {shouldRenderAdvanced ? (
         <div
           className={styles.advancedBody}
+          style={expanded ? undefined : { display: "none" }}
+          aria-hidden={!expanded}
           onMouseEnter={clearLeaveTimer}
           onMouseLeave={handleAdvancedHoverLeave}
         >

@@ -73,10 +73,9 @@
 }
 
 .actionBtn {
-  height: 34px;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   font-weight: 600;
-  padding-inline: 14px;
+  padding-inline: 10px;
   border-color: var(--color-border);
 }
 

@@ -106,6 +106,7 @@ async function getWidgetCounts(companyId) {
     parcel,
     pair,
     purchase,
+    saleExportLedger,
   ] = await Promise.all([
     aggregateProducts(companyId, ON_HAND_BASE),
     aggregateProducts(companyId, `${ON_HAND_BASE} ${GIA_LAB}`),
@@ -149,6 +150,7 @@ async function getWidgetCounts(companyId) {
       ` AND p.visibility = 1 AND p.pair <> '' AND p.pair IS NOT NULL `
     ),
     getPurchaseSummary(companyId),
+    getSaleExportSummary(companyId),
   ]);
 
   return {
@@ -167,6 +169,32 @@ async function getWidgetCounts(companyId) {
     parcel,
     pair,
     purchase,
+    saleExportLedger,
+  };
+}
+
+/**
+ * Sale/export totals from the outward ledger (one row per invoice), which is
+ * the same source the dashboard trend series uses. dai_product.amount cannot be
+ * used here: it holds the inward cost, and sold rows include retired
+ * (visibility = 0) and box/parcel container duplicates.
+ */
+async function getSaleExportSummary(companyId) {
+  const sql = `
+    SELECT
+      COUNT(o.id) AS count,
+      COALESCE(SUM(o.final_amount), 0) AS amount
+    FROM dai_outward o
+    WHERE o.company = ?
+      AND (o.type = 'sale' OR o.type = 'export')
+  `;
+  const rows = await helper.query(sql, [companyId]);
+  const row = rows[0] || {};
+  return {
+    pcs: 0,
+    carat: 0,
+    amount: Number(row.amount) || 0,
+    count: Number(row.count) || 0,
   };
 }
 
@@ -421,6 +449,7 @@ async function getInventorySummary(req) {
       lab: widgets.lab,
       memo: widgets.memo,
       saleExport: widgets.saleExport,
+      saleExportLedger: widgets.saleExportLedger,
       purchase: widgets.purchase,
     },
   };

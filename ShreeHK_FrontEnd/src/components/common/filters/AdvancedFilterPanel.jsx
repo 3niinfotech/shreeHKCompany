@@ -66,7 +66,7 @@ const AdvancedFilterPanel = ({
                         icon={<SearchOutlined />}
                         loading={searchLoading}
                         onClick={onSearch}
-                        className={styles.btnSearch}
+                        className={`btnSearch ${styles.btnSearch}`}
                         >
                             {searchLabel}
                         </Button>
@@ -75,7 +75,7 @@ const AdvancedFilterPanel = ({
                     {showClear && onClear ? (
                         <Button
                         onClick={onClear}
-                        className={styles.btnClear}
+                        className={`btnClear ${styles.btnClear}`}
                         disabled={clearDisabled}
                         >
                             {clearLabel}

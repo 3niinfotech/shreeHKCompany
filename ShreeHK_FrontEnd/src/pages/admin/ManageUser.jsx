@@ -22,7 +22,7 @@ const ManageUser = () => {
 
     const { data: rolesData } = useFetchApi('getRolesList', ENDPOINTS.role.list);
 
-    const { mutate: saveUser } = usePostApiRequest(ENDPOINTS.admin.saveUser, 'getUsersAdmin');
+    const { mutateAsync: saveUser } = usePostApiRequest(ENDPOINTS.admin.saveUser, 'getUsersAdmin');
     const { mutate: deleteUser, isPending: isDeleting } = useDeleteApiRequest(ENDPOINTS.admin.deleteUser, 'getUsersAdmin');
 
     const [deleteModal, setDeleteModal] = useState({ open: false, record: null });
@@ -41,10 +41,20 @@ const ManageUser = () => {
     }, [rolesData]);
 
     const formFields = useMemo(() => {
-        return manageUserFromAdmin.map((field) =>
-            field.name === "userroll" ? { ...field, options: roleOptions } : field
-        );
-    }, [roleOptions]);
+        return manageUserFromAdmin.map((field) => {
+            if (field.name === "userroll") return { ...field, options: roleOptions };
+            if (field.name === "password") {
+                return {
+                    ...field,
+                    required: !editRecord?.id,
+                    placeholder: editRecord?.id
+                        ? "Leave blank to keep the current password"
+                        : "Minimum 8 characters",
+                };
+            }
+            return field;
+        });
+    }, [roleOptions, editRecord?.id]);
 
     // --- Table Columns Configuration ---
     const columns = [
@@ -138,7 +148,7 @@ const ManageUser = () => {
         setEditRecord(record ? mapApiToForm(record) : { is_active: 1 });
     };
 
-    const handleSave = (values) => {
+    const handleSave = async (values) => {
         const payload = {
             id: editRecord?.id || 0,
             fname: values.fname,
@@ -151,7 +161,7 @@ const ManageUser = () => {
             password: values.password,
         };
 
-        saveUser(payload, {
+        return saveUser(payload, {
             onSuccess: () => {
                 setEditRecord(null);
                 setOffset(0);
@@ -160,31 +170,8 @@ const ManageUser = () => {
     };
 
     useEffect(() => {
-        if (data?.Data) {
-            if (offset === 0) {
-                setCombinedData(data.Data);
-            } else {
-                setCombinedData((prev) => [...prev, ...data.Data]);
-            }
-        }
-    }, [data, offset]);
-
-    useEffect(() => {
-        const handleScroll = () => {
-            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-            const windowHeight = window.innerHeight;
-            const fullHeight = document.documentElement.scrollHeight;
-
-            if (fullHeight - (scrollTop + windowHeight) < 200) {
-                if (!isFetching && combinedData.length < (data?.TotalItems || 0)) {
-                    setOffset((prev) => prev + 1);
-                }
-            }
-        };
-
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, [isFetching, combinedData.length, data?.TotalItems]);
+        setCombinedData(data?.Data || []);
+    }, [data]);
 
     return (
         <>

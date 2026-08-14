@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import { Popover, Badge } from "antd";
 import {
   Undo2,
@@ -54,12 +54,12 @@ const InventoryActionPanel = ({
   const [open, setOpen] = React.useState(false);
   const hasSelection = selectedCount > 0;
 
-  const handleClick = (key) => {
+  const handleClick = useCallback((key) => {
     setOpen(false);
     onAction?.(key);
-  };
+  }, [onAction]);
 
-  const panelContent = (
+  const panelContent = useMemo(() => (
     <div className={styles.actionPanelBody}>
       <div className={styles.actionPanelHeader}>
         <Sparkles size={14} />
@@ -87,7 +87,7 @@ const InventoryActionPanel = ({
         })}
       </div>
     </div>
-  );
+  ), [handleClick, selectedCount, theme.info]);
 
   return (
     <div className={styles.actionPanelWrap}>

@@ -131,13 +131,13 @@ $finance-empty: var(--color-chart-muted);
         // Ant Design 6: th/td use .ant-table-cell — align header + body together
         .ant-table-thead>tr>th.ant-table-cell,
         .ant-table-tbody>tr>td.ant-table-cell {
-          padding: 4px !important;
           vertical-align: middle !important;
           line-height: 1.35;
           box-sizing: border-box;
         }
 
         .ant-table-thead>tr>th.ant-table-cell {
+          padding: 4px !important;
           height: 40px;
           font-size: 11px;
           font-weight: 600;
@@ -209,6 +209,8 @@ $finance-empty: var(--color-chart-muted);
         }
 
         .ant-table-tbody>tr>td.ant-table-cell {
+          // Top/bottom padding reduced 30% (4px → 2.8px); left/right unchanged
+          padding: 0px 4px !important;
           color: $body-text;
           border-color: $border-cell !important;
           min-height: $row-height;

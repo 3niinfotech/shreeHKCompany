@@ -108,7 +108,7 @@ const DashboardLayout = () => {
               className={styles.sideMenu}
             />
 
-            {!collapsed && (
+            {/* {!collapsed && (
               <div className={styles.helpCard}>
                 <div className={styles.helpDecor} aria-hidden="true" />
                 <div className={styles.helpTitle}>Need Help?</div>
@@ -118,7 +118,7 @@ const DashboardLayout = () => {
                   <a href="/contact-support">Contact Support</a>
                 </button>
               </div>
-            )}
+            )} */}
           </div>
 
           <div

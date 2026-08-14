@@ -55,8 +55,8 @@ const AdvancedRollPage = () => {
 
   const { data: rolesData, isLoading: isRolesLoading } = useFetchApi('getRoleList', ENDPOINTS.role.list);
   const { data: companyOptionsData } = useFetchApi('tenantCompanyOptions', ENDPOINTS.tenantCompany.options);
-  const { mutate: updateRole, isLoading: isSaving } = usePutApiRequest(ENDPOINTS.role.update, 'getRoleList');
-  const { mutate: createRole, isLoading: isCreating } = usePostApiRequest(ENDPOINTS.role.add, 'getRoleList');
+  const { mutate: updateRole, isPending: isSaving } = usePutApiRequest(ENDPOINTS.role.update, 'getRoleList');
+  const { mutate: createRole, isPending: isCreating } = usePostApiRequest(ENDPOINTS.role.add, 'getRoleList');
   const { mutate: deleteRole, isPending: isDeleting } = useDeleteApiRequest(ENDPOINTS.role.delete, 'getRoleList');
 
   const roles = rolesData?.data || [];
@@ -301,7 +301,7 @@ const AdvancedRollPage = () => {
                   icon={<SaveOutlined />}
                   htmlType="submit"
                   loading={isSaving}
-                  disabled={!selectedRoleId}
+                  disabled={!selectedRoleId || selectedRoleId === 1}
                 >
                   Save Permissions
                 </Button>

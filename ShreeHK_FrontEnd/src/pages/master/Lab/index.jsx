@@ -69,7 +69,7 @@ const LabPage = () => {
         try {
             const values = await form.validateFields();
             setModalLoading(true);
-            const payload = { id: editRecord?.id || 0, ...mapFormToApi(values), date: new Date().toISOString(),  };
+            const payload = { id: editRecord?.id || 0, ...mapFormToApi(values), date: new Date().toISOString(), };
             saveLabMutation(payload, {
                 onSuccess: () => {
                     setEditRecord(null);

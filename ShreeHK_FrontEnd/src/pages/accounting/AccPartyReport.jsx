@@ -144,7 +144,7 @@ const AccPartyReport = () => {
             <Button type="default" icon={<ReloadOutlined />} className={filterPanelStyles.btnClear} onClick={handleSearch} loading={isLoading}>
               Reload
             </Button>
-            <Button type="primary" icon={<FileUp size={16} />} loading={exporting} onClick={handleExport} disabled={!dataSource.length} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff", padding: "18px" }}>
+            <Button type="primary" icon={<FileUp size={16} />} loading={exporting} onClick={handleExport} disabled={!dataSource.length} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff" }}>
               Export to Excel
             </Button>
           </>
@@ -161,7 +161,6 @@ const AccPartyReport = () => {
             onChange={(v) => setPartyId(v || '')}
             options={partyOptions}
             virtual
-            style={{ padding: "7px" }}
           />
         </FilterField>
         <FilterField label="Book" icon={<BookOutlined />}>
@@ -172,10 +171,9 @@ const AccPartyReport = () => {
             value={selectedBook || undefined}
             onChange={(v) => setSelectedBook(v || '')}
             options={bookOptions}
-            style={{ padding: "7px" }}
           />
         </FilterField>
-        <FilterField label="From" icon={<CalendarOutlined />}>
+        <FilterField label="From" icon={<CalendarOutlined />} className={filterPanelStyles.keepFieldLabel}>
           <DatePicker
             className={filterPanelStyles.filterControl}
             value={fromDate}
@@ -183,7 +181,7 @@ const AccPartyReport = () => {
             format="DD-MM-YYYY"
           />
         </FilterField>
-        <FilterField label="To" icon={<CalendarOutlined />}>
+        <FilterField label="To" icon={<CalendarOutlined />} className={filterPanelStyles.keepFieldLabel}>
           <DatePicker
             className={filterPanelStyles.filterControl}
             value={toDate}

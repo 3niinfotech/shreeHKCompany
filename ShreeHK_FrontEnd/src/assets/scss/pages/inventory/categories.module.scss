@@ -74,10 +74,9 @@
   gap: 6px;
 
   :global(.ant-btn) {
-    height: 34px;
-    border-radius: 8px;
+    border-radius: var(--radius-control);
     font-weight: 600;
-    font-size: 13px;
+    font-size: 12px;
   }
 
   :global(.ant-btn-primary) {
@@ -151,7 +150,7 @@
   border-radius: 8px;
 
   :global(.ant-input) {
-    min-height: 34px;
+    min-height: var(--filter-control-height);
     border-radius: 8px;
     font-size: 13px;
   }

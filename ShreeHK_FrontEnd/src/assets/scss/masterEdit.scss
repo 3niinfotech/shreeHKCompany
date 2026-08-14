@@ -150,8 +150,7 @@ $edit-gap: 12px;
   }
 
   .master-edit-modal__btn-close {
-    height: 32px !important;
-    padding: 0 14px !important;
+    padding: 0 10px !important;
     border-radius: 6px !important;
     background: #fff !important;
     border: 1px solid var(--color-border, #d9dee7) !important;
@@ -167,8 +166,7 @@ $edit-gap: 12px;
   }
 
   .master-edit-modal__btn-save {
-    height: 32px !important;
-    padding: 0 14px !important;
+    padding: 0 10px !important;
     border-radius: 6px !important;
     display: inline-flex !important;
     align-items: center !important;

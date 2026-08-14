@@ -3,9 +3,9 @@
     max-height: 100%;
     min-height: 0;
     display: flex;
+    gap: 15px;
     flex-direction: column;
     overflow: hidden;
-    padding: 14px 18px 16px;
     background: var(--color-page-bg);
     box-sizing: border-box;
 }
@@ -71,31 +71,30 @@
 }
 
 .primaryBtn {
-    border-radius: 10px;
-    height: 38px;
-    padding-inline: 16px;
+    border-radius: var(--radius-control);
+    padding-inline: 10px;
     font-weight: 600;
-    box-shadow: 0 8px 18px color-mix(in srgb, var(--color-primary) 16%, transparent);
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
 
 .secondaryBtn {
-    border-radius: 10px;
-    height: 38px;
+    border-radius: var(--radius-control);
     font-weight: 600;
-    border-color: var(--color-border);
+    padding-inline: 10px;
+    border-color: var(--color-btn-outline-border);
 }
 
 .rowLayout {
     display: flex;
     justify-content: center;
-    flex: 1;
+    // flex: 1;
     min-height: 0;
     overflow: hidden;
 }
 
 .formCol {
     width: 100%;
-    max-width: 1100px;
+    max-width: 1400px;
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -176,7 +175,7 @@
     :global(.ant-form-item-label) {
         padding-bottom: 2px !important;
 
-        > label {
+        >label {
             font-size: 12px;
             font-weight: 600;
             height: auto;
@@ -231,26 +230,24 @@
     flex-shrink: 0;
 
     .btnReset {
-        background-color: var(--color-nav-text);
+        background-color: var(--color-btn-cancel-bg);
         color: var(--color-text-inverse);
         border: none;
-        height: 38px;
-        padding: 0 20px;
+        padding: 0 10px;
         font-weight: 600;
-        border-radius: 10px;
+        border-radius: var(--radius-control);
 
-        &:hover {
-            background-color: var(--color-badge-neutral-text) !important;
+        &:hover:not(:disabled) {
+            background-color: var(--color-btn-cancel-hover) !important;
             color: var(--color-text-inverse) !important;
         }
     }
 
     .btnSave {
-        height: 38px;
-        padding: 0 22px;
+        padding: 0 10px;
         font-weight: 600;
-        border-radius: 10px;
-        box-shadow: 0 8px 18px color-mix(in srgb, var(--color-primary) 16%, transparent);
+        border-radius: var(--radius-control);
+        box-shadow: 0 1px 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
     }
 }
 

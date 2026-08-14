@@ -86,6 +86,13 @@
       :global(.ant-menu-item-icon),
       :global(.anticon) {
         color: inherit !important;
+        margin-right: 5px !important;
+      }
+
+      // Ant Design's default 10px label offset, reduced by 30%
+      :global(.ant-menu-item-icon + span),
+      :global(.anticon + span) {
+        margin-inline-start: 7px !important;
       }
     }
 

@@ -166,7 +166,7 @@ const GroupReport = () => {
                             loading={exporting}
                             onClick={handleExport}
                             disabled={!tableData.length}
-                            style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff", height:"38px" }}
+                            style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff" }}
                         >
                             Export to Excel
                         </Button>

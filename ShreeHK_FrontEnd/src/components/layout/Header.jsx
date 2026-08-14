@@ -8,10 +8,27 @@ import NavBar from "./NavBar";
 import SkuActionModal from "../../hooks/useSkuModalAction";
 import styles from "../../assets/scss/layout/header.module.scss";
 import { Link, useNavigate } from "react-router-dom";
-import { Gem, Menu, Wifi, WifiOff, RefreshCw, CheckCircle2, Database, FileCheck, Send, ShoppingCart, ShoppingBag } from "lucide-react";
+import { Gem, Menu, Wifi, WifiOff, RefreshCw, CheckCircle2, Database, FileCheck, Send, ShoppingCart, ShoppingBag, Package, FlaskConical } from "lucide-react";
 import useAuthStore from "../../store/Auth.Store";
+import logo from "../../assets/loader/softWare_Header_white.svg";
+import { prefetchRoute } from "../../routes/routePrefetch";
 
 const { Header: AntHeader } = Layout;
+
+const HEADER_QUICK_ROUTES = {
+  inventory: "/inventory/my-inventory",
+  inMemo: "/transaction/in-memo",
+  outMemo: "/transaction/out-memo",
+  sale: "/transaction/sale",
+  purchase: "/transaction/purchase",
+  consign: "/transaction/out-memo?type=consign",
+  lab: "/transaction/gia-memo",
+};
+
+const prefetchHeaderRoute = (path) => {
+  const routePath = String(path || "").split("?")[0];
+  prefetchRoute(routePath);
+};
 
 const HEALTH_DEDUPE_MS = 1500;
 let healthInFlight = false;
@@ -288,7 +305,8 @@ const Header = ({
           {!hideLogo && (
             <Link to="/dashboard" className={styles.logoLink}>
               <span className={styles.logoIcon}>
-                <Gem size={20} strokeWidth={2.2} />
+                {/* <Gem size={20} strokeWidth={2.2} /> */}
+                <img src={logo} alt="logo" className={styles.logoImage} />
               </span>
               {/* <span className={styles.logoText}>Smart DIA</span> */}
               <span className={styles.logoText}>{companyName}</span>
@@ -308,47 +326,100 @@ const Header = ({
           <div className={styles.topQuickActions}>
             <Tooltip title="My Inventory">
               <Button
-                icon={<Database size={14} />}
+                icon={<Database size={20} />}
                 className={`${styles.topQuickBtn} ${styles.myInventoryBtn}`}
-                onClick={() => navigate('/inventory/my-inventory')}
+                onMouseEnter={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.inventory)}
+                onFocus={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.inventory)}
+                onClick={() => {
+                  prefetchHeaderRoute(HEADER_QUICK_ROUTES.inventory);
+                  navigate(HEADER_QUICK_ROUTES.inventory);
+                }}
               >
-                {/* My Inventory */}
+                <span className={styles.topQuickLabel}>Inventory</span>
               </Button>
             </Tooltip>
             <Tooltip title="In Memo">
               <Button
-                icon={<FileCheck size={14} />}
+                icon={<FileCheck size={20} />}
                 className={`${styles.topQuickBtn} ${styles.inMemoBtn}`}
-                onClick={() => navigate('/transaction/in-memo')}
+                onMouseEnter={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.inMemo)}
+                onFocus={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.inMemo)}
+                onClick={() => {
+                  prefetchHeaderRoute(HEADER_QUICK_ROUTES.inMemo);
+                  navigate(HEADER_QUICK_ROUTES.inMemo);
+                }}
               >
-                {/* In Memo */}
+                <span className={styles.topQuickLabel}>InMemo</span>
               </Button>
             </Tooltip>
             <Tooltip title="Out Memo">
               <Button
-                icon={<Send size={14} />}
-                className={`${styles.topQuickBtn} ${styles.outMemoBtn}`}
-                onClick={() => navigate('/transaction/out-memo')}
+                icon={<Send size={20} />}
+                className={`${styles.topQuickBtn} ${styles.purchaseBtn}`}
+                onMouseEnter={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.outMemo)}
+                onFocus={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.outMemo)}
+                onClick={() => {
+                  prefetchHeaderRoute(HEADER_QUICK_ROUTES.outMemo);
+                  navigate(HEADER_QUICK_ROUTES.outMemo);
+                }}
               >
-                {/* Out Memo */}
+                <span className={styles.topQuickLabel}>OutMemo</span>
               </Button>
             </Tooltip>
             <Tooltip title="Sale">
               <Button
-                icon={<ShoppingCart size={14} />}
+                icon={<ShoppingCart size={20} />}
                 className={`${styles.topQuickBtn} ${styles.saleBtn}`}
-                onClick={() => navigate('/transaction/sale')}
+                onMouseEnter={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.sale)}
+                onFocus={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.sale)}
+                onClick={() => {
+                  prefetchHeaderRoute(HEADER_QUICK_ROUTES.sale);
+                  navigate(HEADER_QUICK_ROUTES.sale);
+                }}
               >
-                {/* Sale */}
+                <span className={styles.topQuickLabel}>Sale</span>
               </Button>
             </Tooltip>
             <Tooltip title="Purchase">
               <Button
-                icon={<ShoppingBag size={14} />}
-                className={`${styles.topQuickBtn} ${styles.purchaseBtn}`}
-                onClick={() => navigate('/transaction/purchase')}
+                icon={<ShoppingBag size={20} />}
+                className={`${styles.topQuickBtn} ${styles.outMemoBtn}`}
+                onMouseEnter={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.purchase)}
+                onFocus={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.purchase)}
+                onClick={() => {
+                  prefetchHeaderRoute(HEADER_QUICK_ROUTES.purchase);
+                  navigate(HEADER_QUICK_ROUTES.purchase);
+                }}
               >
-                {/* Purchase */}
+                <span className={styles.topQuickLabel}>Purchase</span>
+              </Button>
+            </Tooltip>
+            <Tooltip title="Consignment">
+              <Button
+                icon={<Package size={20} />}
+                className={`${styles.topQuickBtn} ${styles.consignBtn}`}
+                onMouseEnter={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.outMemo)}
+                onFocus={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.outMemo)}
+                onClick={() => {
+                  prefetchHeaderRoute(HEADER_QUICK_ROUTES.outMemo);
+                  navigate(HEADER_QUICK_ROUTES.consign);
+                }}
+              >
+                <span className={styles.topQuickLabel}>Consign</span>
+              </Button>
+            </Tooltip>
+            <Tooltip title="Lab">
+              <Button
+                icon={<FlaskConical size={20} />}
+                className={`${styles.topQuickBtn} ${styles.labBtn}`}
+                onMouseEnter={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.lab)}
+                onFocus={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.lab)}
+                onClick={() => {
+                  prefetchHeaderRoute(HEADER_QUICK_ROUTES.lab);
+                  navigate(HEADER_QUICK_ROUTES.lab);
+                }}
+              >
+                <span className={styles.topQuickLabel}>Lab</span>
               </Button>
             </Tooltip>
           </div>

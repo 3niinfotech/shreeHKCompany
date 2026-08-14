@@ -88,7 +88,7 @@ companyRouter.post("/company/save", authenticateToken, async (req, res) => {
         message = "New Company has been addedd successfully!";
         await logAuditInTx(q, {
           actionType: "CREATE",
-          moduleName: "Party",
+          moduleName: "Company",
           recordId: newId,
           recordReference: newRows[0]?.name || String(newId),
           newValue: newRows[0],
@@ -101,7 +101,7 @@ companyRouter.post("/company/save", authenticateToken, async (req, res) => {
         message = "Company has been updated successfully!";
         await logAuditInTx(q, {
           actionType: "UPDATE",
-          moduleName: "Party",
+          moduleName: "Company",
           recordId: id,
           recordReference: newRows[0]?.name || String(id),
           oldValue: oldRow,
@@ -132,7 +132,7 @@ companyRouter.delete("/company/delete", authenticateToken, async (req, res) => {
       await q("DELETE FROM dai_party WHERE id=? AND company=?", [id, companyId]);
       await logAuditInTx(q, {
         actionType: "DELETE",
-        moduleName: "Party",
+        moduleName: "Company",
         recordId: id,
         recordReference: oldRow?.name || String(id),
         oldValue: oldRow,

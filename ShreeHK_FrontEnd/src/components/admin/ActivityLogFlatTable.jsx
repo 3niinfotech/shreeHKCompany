@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
-import { Tag, Button, Switch, Space } from "antd";
+import { Alert, Tag, Button, Tooltip } from "antd";
 import { EyeOutlined, EyeInvisibleOutlined } from "@ant-design/icons";
-import dayjs from "dayjs";
 import { api } from "../../api/axiosInstance";
 import { ENDPOINTS } from "../../constants/endpoints";
 import ActivityUnifiedDataCell from "./ActivityUnifiedDataCell";
@@ -11,6 +10,11 @@ import {
   buildActivityNarrative,
   getActionTone,
   getModulePageLabel,
+  formatActivityDate,
+  formatActivityTime,
+  formatActivityDateTime,
+  formatActivityRelativeTime,
+  formatActivityIso,
 } from "../../utils/activityLogFormatters";
 import useTableBodyScrollHeight from "../../hooks/useTableBodyScrollHeight";
 import SkeletonAwareTable from "../common/skeleton/SkeletonAwareTable";
@@ -20,17 +24,27 @@ const ActivityLogFlatTable = ({
   filterParams = {},
   refreshKey = 0,
   onLoaded,
+  autoRefreshMs = 0,
+  onSynced,
+  showDataColumns = false,
 }) => {
   const [data, setData] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
-  const [showDataColumns, setShowDataColumns] = useState(false);
   const [expandedRowKeys, setExpandedRowKeys] = useState([]);
+  const [error, setError] = useState("");
+  const fetchSeqRef = useRef(0);
+  const onLoadedRef = useRef(onLoaded);
+  const onSyncedRef = useRef(onSynced);
+  onLoadedRef.current = onLoaded;
+  onSyncedRef.current = onSynced;
 
   const fetchRows = useCallback(async (pageNum, size) => {
+    const seq = ++fetchSeqRef.current;
     setLoading(true);
+    setError("");
     try {
       const params = {
         ...filterParams,
@@ -39,24 +53,40 @@ const ActivityLogFlatTable = ({
         mutationsOnly: filterParams.mutationsOnly ?? "1",
       };
       const res = await api.get(ENDPOINTS.admin.activityLog, { params });
+      if (seq !== fetchSeqRef.current) return;
       const rows = (res.data?.Data || []).map((row) => ({ ...row, key: row.id }));
       setData(rows);
       setTotal(res.data?.TotalItems || 0);
-      onLoaded?.(res.data?.TotalItems || 0);
-    } catch {
+      onLoadedRef.current?.(res.data?.TotalItems || 0);
+      onSyncedRef.current?.(Date.now());
+    } catch (err) {
+      if (seq !== fetchSeqRef.current) return;
       setData([]);
       setTotal(0);
-      onLoaded?.(0);
+      onLoadedRef.current?.(0);
+      setError(err.response?.data?.message || "Unable to load activity records.");
     } finally {
-      setLoading(false);
+      if (seq === fetchSeqRef.current) setLoading(false);
     }
-  }, [filterParams, onLoaded]);
+  }, [filterParams]);
 
   useEffect(() => {
     setPage(1);
     setExpandedRowKeys([]);
+    // Drop stale rows immediately so deleted/empty results never flash old data
+    setData([]);
     fetchRows(1, pageSize);
   }, [refreshKey, filterParams, fetchRows, pageSize]);
+
+  useEffect(() => {
+    if (!autoRefreshMs) return undefined;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchRows(page, pageSize);
+      }
+    }, autoRefreshMs);
+    return () => window.clearInterval(timer);
+  }, [autoRefreshMs, fetchRows, page, pageSize]);
 
   const toggleRowDetail = (record, e) => {
     e?.stopPropagation();
@@ -72,14 +102,25 @@ const ActivityLogFlatTable = ({
       title: "When",
       dataIndex: "createdAt",
       key: "when",
-      width: 118,
+      width: 138,
       fixed: "left",
       render: (val) => (
         val ? (
-          <div className={styles.whenCell}>
-            <span>{dayjs(val).format("DD-MM-YYYY")}</span>
-            <span className={styles.whenTime}>{dayjs(val).format("hh:mm A")}</span>
-          </div>
+          <Tooltip
+            title={(
+              <span>
+                {formatActivityDateTime(val)}
+                <br />
+                {formatActivityIso(val)}
+              </span>
+            )}
+          >
+            <div className={styles.whenCell}>
+              <span>{formatActivityDate(val)}</span>
+              <span className={styles.whenTime}>{formatActivityTime(val)}</span>
+              <span className={styles.whenRelative}>{formatActivityRelativeTime(val)}</span>
+            </div>
+          </Tooltip>
         ) : "—"
       ),
     },
@@ -192,21 +233,16 @@ const ActivityLogFlatTable = ({
 
   return (
     <>
-      <div className={styles.tableToolbar}>
-        <p className={styles.tableHint}>
-          Summary by default. &quot;Show&quot; per row or toggle Before/After columns Show.
-        </p>
-        <Space className={styles.tableToolbarActions}>
-          <span className={styles.toolbarLabel}>Before / After columns</span>
-          <Switch
-            checked={showDataColumns}
-            onChange={setShowDataColumns}
-            checkedChildren="Show"
-            unCheckedChildren="Hide"
-          />
-        </Space>
-      </div>
       <div ref={tableRef} className="erp-table-container">
+      {error ? (
+        <Alert
+          type="error"
+          showIcon
+          message={error}
+          className={styles.tableError}
+          action={<Button size="small" onClick={() => fetchRows(page, pageSize)}>Retry</Button>}
+        />
+      ) : null}
       <SkeletonAwareTable
         className={styles.unifiedTable}
         columns={columns}

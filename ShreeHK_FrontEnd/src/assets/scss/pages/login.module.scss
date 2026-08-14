@@ -42,11 +42,34 @@
     }
 
     .logoWrapper {
-      margin-bottom: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 2.25rem;
 
       .logoIcon {
-        height: 160px;
+        display: block;
+        height: 52px;
         width: auto;
+        max-width: 230px;
+        object-fit: contain;
+
+        // Logo ink is navy/blue, so it needs a light plate on dark surfaces.
+        :global([data-theme="dark"]) & {
+          box-sizing: content-box;
+          padding: 8px 14px;
+          border-radius: var(--radius-control);
+          background: #ffffff;
+        }
+      }
+
+      .brandTagline {
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-semibold);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--color-neutral);
       }
     }
 
@@ -81,10 +104,11 @@
     }
 
     .signInBtn {
-      height: 45px;
+      height: 40px !important;
       background-color: var(--color-primary);
       border-color: var(--color-primary);
       font-weight: 600;
+      font-size: 14px !important;
       margin-top: 1rem;
       border-radius: var(--radius-control);
 

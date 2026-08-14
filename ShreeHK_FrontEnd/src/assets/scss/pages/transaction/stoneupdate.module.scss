@@ -63,19 +63,26 @@
 
 .stoneResetBtn,
 .stoneSearchBtn {
-  height: 42px !important;
-  min-height: 42px !important;
-  border-radius: 10px !important;
+  border-radius: var(--radius-control) !important;
   font-weight: 600;
-  padding-inline: 18px !important;
+  padding-inline: 10px !important;
 }
 
 .stoneResetBtn {
-  border-color: var(--color-border-strong, #d0dbe3);
+  border-color: var(--color-btn-primary-bg) !important;
+  color: var(--color-btn-primary-bg) !important;
 }
 
 .stoneSearchBtn {
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--color-primary) 16%, transparent);
+  background: var(--color-btn-primary-bg) !important;
+  border-color: var(--color-btn-primary-bg) !important;
+  color: var(--color-btn-primary-text) !important;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
+
+  &:hover:not(:disabled) {
+    background: var(--color-btn-primary-hover) !important;
+    border-color: var(--color-btn-primary-hover) !important;
+  }
 }
 
 .stoneSearchIcon {
@@ -93,8 +100,8 @@
   }
 
   :global(.ant-input-affix-wrapper) {
-    height: 42px !important;
-    min-height: 42px !important;
+    height: var(--filter-control-height) !important;
+    min-height: var(--filter-control-height) !important;
     padding: 0 14px;
     border-radius: 10px !important;
     border: 1px solid var(--color-border-strong, #d0dbe3);

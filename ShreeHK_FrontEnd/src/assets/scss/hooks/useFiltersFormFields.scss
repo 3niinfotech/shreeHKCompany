@@ -1,3 +1,5 @@
+@use "../variables" as *;
+
 .filter-form-container {
   display: flex;
   flex-wrap: wrap;
@@ -10,19 +12,16 @@
     .ant-select-selector,
     .ant-input-affix-wrapper,
     .ant-picker {
-      height: 30px !important;
-      min-height: 30px !important;
+      @include filter-control-size;
       display: flex;
       align-items: center;
       border-radius: 6px;
-      font-size: 12px;
+      font-size: $filter-control-font-size;
     }
   }
 
-  // Exact widths from your inline styles
   .width-type {
     width: 160px;
-    padding: 7px 10px;
   }
 
   .width-invoice {
@@ -35,7 +34,6 @@
 
   .width-party {
     width: 250px;
-    padding: 7px 10px;
   }
 
   .filter-checks {
@@ -45,20 +43,19 @@
 
     .ant-checkbox-wrapper {
       margin-inline-start: 0 !important;
-      font-size: 12px;
+      font-size: $filter-control-font-size;
     }
   }
 
   .filter-radios {
     .ant-radio-button-wrapper {
-      height: 30px;
-      line-height: 28px;
+      height: $filter-control-height;
+      line-height: $filter-control-line-height;
       padding: 0 10px;
-      font-size: 12px;
+      font-size: $filter-control-font-size;
     }
   }
 
-  // Hover effect for a better ERP feel
   .ant-select:hover .ant-select-selector,
   .ant-input-affix-wrapper:hover,
   .ant-picker:hover {

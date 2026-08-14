@@ -4,6 +4,9 @@ import { normalizeAuthUser } from "../utils/authUtils";
 import { api } from "../api/axiosInstance";
 import { ENDPOINTS } from "../constants/endpoints";
 
+/** Coarse granularity keeps persisted writes and subscriber re-renders infrequent. */
+const ACTIVITY_WRITE_INTERVAL_MS = 30 * 1000;
+
 const useAuthStore = create(
   persist(
     (set, get) => ({
@@ -18,8 +21,17 @@ const useAuthStore = create(
       companyLogo: null,
       dbName: null,
       showContextPicker: false,
+      lastActiveAt: null,
 
       setShowContextPicker: (show) => set({ showContextPicker: show }),
+
+      markActivity: () => {
+        if (!get().isAuthenticated) return;
+        const now = Date.now();
+        const previous = get().lastActiveAt;
+        if (previous && now - previous < ACTIVITY_WRITE_INTERVAL_MS) return;
+        set({ lastActiveAt: now });
+      },
 
       getUserInitial: () => {
         const name = get().user?.username || get().user?.name || "Admin";
@@ -49,6 +61,7 @@ const useAuthStore = create(
           companyLogo: context.companyLogo ?? get().companyLogo ?? null,
           dbName: context.dbName ?? get().dbName ?? null,
           showContextPicker: context.showContextPicker ?? get().showContextPicker ?? false,
+          lastActiveAt: Date.now(),
         });
       },
 
@@ -117,6 +130,7 @@ const useAuthStore = create(
           companyLogo: null,
           dbName: null,
           showContextPicker: false,
+          lastActiveAt: null,
         });
       },
     }),

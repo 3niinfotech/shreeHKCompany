@@ -82,6 +82,8 @@ function buildDescription({
       return `${who} logged in`;
     case "LOGOUT":
       return `${who} logged out`;
+    case "LOGIN_FAILED":
+      return `${who} had a failed login attempt`;
     case "EXPORT":
       return `${who} exported ${mod}${ref}`;
     case "PRINT":
@@ -118,7 +120,8 @@ function buildDescription({
 }
 
 async function logActivityTx(q, payload) {
-  const ctx = getAuditContext() || {};
+  const ctxStore = getAuditContext();
+  const ctx = ctxStore || {};
   const user = payload.system ? SYSTEM_USER : {
     userId: payload.userId ?? ctx.userId ?? null,
     userName: payload.userName ?? ctx.userName ?? "SYSTEM",
@@ -186,6 +189,9 @@ async function logActivityTx(q, payload) {
   ];
 
   await auditQuery(sql, values);
+  // Mark on the real ALS store object so HTTP fallback still sees the flag
+  // even if getStore() is null later in res.finish.
+  if (ctxStore) ctxStore.auditLogged = true;
   markAuditLogged();
 }
 

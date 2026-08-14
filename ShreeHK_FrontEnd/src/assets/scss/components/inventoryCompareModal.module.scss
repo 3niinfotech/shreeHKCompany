@@ -354,9 +354,8 @@
 }
 
 .footerBtn {
-  min-width: 108px;
-  height: 38px;
-  border-radius: 10px;
+  min-width: 96px;
+  border-radius: var(--radius-control);
   font-weight: 600;
 }
 

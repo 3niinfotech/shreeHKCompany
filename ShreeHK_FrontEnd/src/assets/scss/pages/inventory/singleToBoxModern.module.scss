@@ -68,7 +68,7 @@
   border-radius: 8px;
 
   :global(.ant-input) {
-    min-height: 34px;
+    min-height: var(--filter-control-height);
     border-radius: 8px;
     font-size: 13px;
   }

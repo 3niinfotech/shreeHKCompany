@@ -7,7 +7,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding: 10px 14px;
+  padding: 6px 14px;
   margin: 6px 0 0px 0;
   background: var(--color-bg-card, #ffffff);
   border: 1px solid var(--color-border, #e2e8f0);
@@ -34,7 +34,7 @@
 .onhand-stat-badge {
   display: inline-flex !important;
   align-items: center !important;
-  height: 38px !important;
+  height: 30px !important;
   line-height: 36px !important;
   padding: 0 14px !important;
   font-size: 13px !important;
@@ -90,7 +90,7 @@
   }
 }
 
-// ── Quick Links Action Buttons ──
+// ── Quick Links Action Buttons (inherits global 32px baseline) ──
 .inventory-quick-links {
   display: inline-flex;
   align-items: center;
@@ -100,30 +100,8 @@
   .ant-btn,
   .ant-btn-default:not(:disabled),
   .ant-btn:disabled {
-    height: 32px !important;
-    padding: 0 10px !important;
-    font-size: 12px !important;
-    font-weight: 600 !important;
-    border-radius: 6px !important;
-    line-height: 30px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 6px !important;
-    background: var(--color-bg-card, #ffffff) !important;
-    border: 0.5px solid #9fa2ae !important;
-    border-width: 0.5px !important;
-    border-style: solid !important;
-    border-color: #9fa2ae !important;
-    color: #3A3F55 !important;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
     transition: all 0.2s ease-in-out !important;
-
-    a,
-    .anticon,
-    svg,
-    span {
-      color: #3A3F55 !important;
-    }
 
     a {
       text-decoration: none !important;
@@ -134,19 +112,8 @@
     &:hover,
     &:focus,
     &:hover:not(:disabled) {
-      background: var(--color-bg-muted, #f8fafc) !important;
-      border: 0.5px solid #9fa2ae !important;
-      border-color: #9fa2ae !important;
-      color: #3A3F55 !important;
       box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08) !important;
       transform: translateY(-1px);
-
-      a,
-      .anticon,
-      svg,
-      span {
-        color: #3A3F55 !important;
-      }
     }
 
     &:active {
@@ -157,8 +124,6 @@
       opacity: 0.7 !important;
       transform: none !important;
       box-shadow: none !important;
-      color: #3A3F55 !important;
-      border: 0.5px solid #9fa2ae !important;
     }
   }
 }

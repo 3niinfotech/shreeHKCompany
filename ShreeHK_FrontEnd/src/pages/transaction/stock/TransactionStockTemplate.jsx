@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Table, Card, Typography, Space, Button, Tag, Checkbox, Select, Input, InputNumber, Empty, Form, Spin, Tooltip, DatePicker, Dropdown, Row, Col } from 'antd';
+import { Table, Card, Typography, Space, Button, Tag, Checkbox, Select, Input, InputNumber, Empty, Form, Tooltip, DatePicker, Row, Col } from 'antd';
 import {
   EditOutlined,
   PrinterOutlined,
@@ -13,7 +13,6 @@ import {
   SwapOutlined,
   ExportOutlined,
   ImportOutlined,
-  EllipsisOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { toastApiSuccess, toastApiError } from '../../../utils/apiToast';
@@ -69,6 +68,13 @@ const typeColors = {
   import: 'cyan',
 };
 
+const skuMatchesProduct = (product, sku) => {
+  const needle = String(sku || '').trim().toLowerCase();
+  if (!needle) return true;
+  return [product?.sku, product?.parent_sku, product?.mfg_code, product?.diamond_no]
+    .some((value) => String(value || '').toLowerCase().includes(needle));
+};
+
 const TransactionStockTemplate = ({
   title,
   queryKey,
@@ -83,6 +89,7 @@ const TransactionStockTemplate = ({
   invoiceTitle = 'Purchase Invoice',
   infiniteScroll = false,
   typeFilterOptions = [],
+  showSkuFilter = false,
 }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -90,7 +97,8 @@ const TransactionStockTemplate = ({
   const companyLogo = useAuthStore((s) => s.companyLogo);
   const [party, setParty] = useState('');
   const [invoice, setInvoice] = useState(() => (searchParams.get('invoice') || '').trim());
-  const [filterType, setFilterType] = useState('');
+  const [filterType, setFilterType] = useState(() => (searchParams.get('type') || '').trim());
+  const [skuSearch, setSkuSearch] = useState('');
   const [fromDate, setFromDate] = useState(null);
   const [toDate, setToDate] = useState(null);
   const [page, setPage] = useState(1);
@@ -125,9 +133,10 @@ const TransactionStockTemplate = ({
     ...listPayload,
     ...(stockType ? { stockType } : {}),
     ...(filterType ? { type: filterType } : {}),
+    ...(showSkuFilter && skuSearch.trim() ? { sku: skuSearch.trim() } : {}),
     ...(fromDate ? { fromDate: dayjs(fromDate).format('YYYY-MM-DD') } : {}),
     ...(toDate ? { toDate: dayjs(toDate).format('YYYY-MM-DD') } : {}),
-  }), [party, invoice, page, listLimit, listStart, listPayload, stockType, infiniteScroll, filterType, fromDate, toDate]);
+  }), [party, invoice, page, listLimit, listStart, listPayload, stockType, infiniteScroll, filterType, showSkuFilter, skuSearch, fromDate, toDate]);
 
   const queryClient = useQueryClient();
   const [actionLoading, setActionLoading] = useState(false);
@@ -268,6 +277,7 @@ const TransactionStockTemplate = ({
   ], [partyOptions]);
 
   const invoiceFromUrl = (searchParams.get('invoice') || '').trim();
+  const typeFromUrl = (searchParams.get('type') || '').trim();
 
   const resetList = useCallback(() => {
     if (infiniteScroll) {
@@ -283,8 +293,9 @@ const TransactionStockTemplate = ({
 
   useEffect(() => {
     setInvoice(invoiceFromUrl);
+    setFilterType(typeFromUrl);
     resetList();
-  }, [invoiceFromUrl, resetList]);
+  }, [invoiceFromUrl, typeFromUrl, resetList]);
 
   useEffect(() => {
     if (!infiniteScroll || !listData) return;
@@ -311,6 +322,11 @@ const TransactionStockTemplate = ({
     const d = listData?.Data || listData?.data;
     return Array.isArray(d) ? d : [];
   }, [infiniteScroll, allGroups, listData]);
+
+  useEffect(() => {
+    if (!showSkuFilter || !skuSearch.trim() || !groups.length) return;
+    setExpandedRowKeys(groups.map((group) => group.id));
+  }, [showSkuFilter, skuSearch, groups]);
 
   const totalItems = useMemo(() => {
     const fromApi = Number(listData?.TotalItems ?? listData?.total ?? 0);
@@ -554,7 +570,7 @@ const TransactionStockTemplate = ({
   ], [productColumns, selectedProducts]);
 
   const renderExpandedRow = (group) => {
-    const products = group.products || [];
+    const products = (group.products || []).filter((product) => skuMatchesProduct(product, skuSearch));
     const columns = buildGroupColumns(group);
     const childTotals = products.reduce((acc, p) => {
       acc.pcs += Number(p.polish_pcs || 0);
@@ -679,6 +695,39 @@ const TransactionStockTemplate = ({
       render: (_, record) => (record.products || []).length,
     },
     {
+      title: 'Pcs',
+      key: 'totalPcs',
+      width: 70,
+      align: 'center',
+      render: (_, record) => (record.products || []).reduce(
+        (sum, p) => sum + Number(p.polish_pcs || 0),
+        0
+      ),
+    },
+    {
+      title: 'Carat',
+      key: 'totalCarat',
+      width: 90,
+      align: 'center',
+      render: (_, record) => (record.products || []).reduce(
+        (sum, p) => sum + Number(p.polish_carat || 0),
+        0
+      ).toFixed(2),
+    },
+    {
+      title: 'Price',
+      key: 'totalPrice',
+      width: 90,
+      align: 'right',
+      render: (_, record) => {
+        const price = (record.products || []).reduce(
+          (sum, p) => sum + Number(p.sell_price ?? p.price ?? 0),
+          0
+        );
+        return Number(price || 0).toLocaleString();
+      },
+    },
+    {
       title: 'Amount',
       dataIndex: 'final_amount',
       key: 'final_amount',
@@ -692,122 +741,125 @@ const TransactionStockTemplate = ({
         return <Text strong>${Number(amount || 0).toLocaleString()}</Text>;
       },
     },
+    ...(actions.showReturn || actions.showMemoToSale || actions.showMemoToPurchase || actions.showToConsign || actions.showToExport || actions.showToPurchase || actions.showToImport
+      ? [{
+        title: 'Operations',
+        key: 'buttons',
+        width: 260,
+        align: 'center',
+        render: (_, record) => {
+          const selectedCount = getSelected(record.id).length;
+          const displayType = record.type || record.inward_type;
+          const needsSelectionDisabled = !selectedCount || actionLoading;
+
+          return (
+            <div className={styles.actionButtons}>
+              {actions.showReturn && (
+                <button
+                  type="button"
+                  className={`${styles.actionBtn} ${styles.actionReturn} ${needsSelectionDisabled ? styles.actionDisabled : ''}`}
+                  onClick={() => { if (!needsSelectionDisabled) handleReturn(record); }}
+                >
+                  <RollbackOutlined />
+                  Return
+                </button>
+              )}
+              {actions.showMemoToSale && (
+                <button
+                  type="button"
+                  className={`${styles.actionBtn} ${styles.actionSale} ${needsSelectionDisabled ? styles.actionDisabled : ''}`}
+                  onClick={() => { if (!needsSelectionDisabled) handleMemoToSale(record); }}
+                >
+                  <DollarOutlined />
+                  Sale
+                </button>
+              )}
+              {actions.showMemoToPurchase && (
+                <button
+                  type="button"
+                  className={`${styles.actionBtn} ${styles.actionPurchase} ${needsSelectionDisabled ? styles.actionDisabled : ''}`}
+                  onClick={() => { if (!needsSelectionDisabled) handleMemoToPurchase(record); }}
+                >
+                  <ShoppingCartOutlined />
+                  Purchase
+                </button>
+              )}
+              {actions.showToConsign && displayType === 'memo' && (
+                <button
+                  type="button"
+                  className={`${styles.actionBtn} ${styles.actionConsign} ${actionLoading ? styles.actionDisabled : ''}`}
+                  onClick={() => { if (!actionLoading) handleToExport(record, 'consign'); }}
+                >
+                  <SwapOutlined />
+                  To Consign
+                </button>
+              )}
+              {actions.showToExport && displayType === 'sale' && (
+                <button
+                  type="button"
+                  className={`${styles.actionBtn} ${styles.actionExport} ${actionLoading ? styles.actionDisabled : ''}`}
+                  onClick={() => { if (!actionLoading) handleToExport(record, 'export'); }}
+                >
+                  <ExportOutlined />
+                  To Export
+                </button>
+              )}
+              {actions.showToPurchase && displayType === 'import' && (
+                <button
+                  type="button"
+                  className={`${styles.actionBtn} ${styles.actionPurchase} ${actionLoading ? styles.actionDisabled : ''}`}
+                  onClick={() => { if (!actionLoading) handleToggle(record, 'purchase'); }}
+                >
+                  <ShoppingCartOutlined />
+                  To Purchase
+                </button>
+              )}
+              {actions.showToImport && displayType === 'purchase' && (
+                <button
+                  type="button"
+                  className={`${styles.actionBtn} ${styles.actionImport} ${actionLoading ? styles.actionDisabled : ''}`}
+                  onClick={() => { if (!actionLoading) handleToggle(record, 'import'); }}
+                >
+                  <ImportOutlined />
+                  To Import
+                </button>
+              )}
+            </div>
+          );
+        },
+      }]
+      : []),
     {
       title: 'Action',
       key: 'action',
-      width: 160,
+      width: 120,
       fixed: 'right',
       align: 'center',
-      render: (_, record) => {
-        const selectedCount = getSelected(record.id).length;
-        const displayType = record.type || record.inward_type;
-        const needsSelectionDisabled = !selectedCount || actionLoading;
-
-        const moreItems = [];
-        if (actions.showReturn) {
-          moreItems.push({
-            key: 'return',
-            icon: <RollbackOutlined className={styles.actionReturn} />,
-            label: 'Return',
-            disabled: needsSelectionDisabled,
-          });
-        }
-        if (actions.showMemoToSale) {
-          moreItems.push({
-            key: 'sale',
-            icon: <DollarOutlined className={styles.actionSale} />,
-            label: 'Sale',
-            disabled: needsSelectionDisabled,
-          });
-        }
-        if (actions.showMemoToPurchase) {
-          moreItems.push({
-            key: 'purchase',
-            icon: <ShoppingCartOutlined className={styles.actionPurchase} />,
-            label: 'Purchase',
-            disabled: needsSelectionDisabled,
-          });
-        }
-        if (actions.showToConsign && displayType === 'memo') {
-          moreItems.push({
-            key: 'toConsign',
-            icon: <SwapOutlined className={styles.actionConsign} />,
-            label: 'To Consign',
-            disabled: actionLoading,
-          });
-        }
-        if (actions.showToExport && displayType === 'sale') {
-          moreItems.push({
-            key: 'toExport',
-            icon: <ExportOutlined className={styles.actionExport} />,
-            label: 'To Export',
-            disabled: actionLoading,
-          });
-        }
-        if (actions.showToPurchase && displayType === 'import') {
-          moreItems.push({
-            key: 'toPurchase',
-            icon: <ShoppingCartOutlined className={styles.actionPurchase} />,
-            label: 'To Purchase',
-            disabled: actionLoading,
-          });
-        }
-        if (actions.showToImport && displayType === 'purchase') {
-          moreItems.push({
-            key: 'toImport',
-            icon: <ImportOutlined className={styles.actionImport} />,
-            label: 'To Import',
-            disabled: actionLoading,
-          });
-        }
-
-        const handleMoreClick = ({ key }) => {
-          if (key === 'return' && !needsSelectionDisabled) handleReturn(record);
-          if (key === 'sale' && !needsSelectionDisabled) handleMemoToSale(record);
-          if (key === 'purchase' && !needsSelectionDisabled) handleMemoToPurchase(record);
-          if (key === 'toConsign' && !actionLoading) handleToExport(record, 'consign');
-          if (key === 'toExport' && !actionLoading) handleToExport(record, 'export');
-          if (key === 'toPurchase' && !actionLoading) handleToggle(record, 'purchase');
-          if (key === 'toImport' && !actionLoading) handleToggle(record, 'import');
-        };
-
-        return (
-          <div className={styles.actionIcons}>
-            {moreItems.length > 0 && (
-              <Dropdown
-                menu={{ items: moreItems, onClick: handleMoreClick }}
-                trigger={['click']}
-                placement="bottomRight"
-              >
-                <Tooltip title="More">
-                  <EllipsisOutlined className={styles.actionMore} />
-                </Tooltip>
-              </Dropdown>
-            )}
-            {actions.showEdit && (
-              <Tooltip title="Edit">
-                <EditOutlined className={styles.edit} onClick={() => handleEditClick(record)} />
-              </Tooltip>
-            )}
-            {actions.showPrint && (
-              <Tooltip title="Print">
-                <PrinterOutlined className={styles.print} onClick={() => handlePrint(record)} />
-              </Tooltip>
-            )}
-            {actions.showDelete && (
-              <Tooltip title="Delete">
-                <DeleteOutlined className={styles.delete} onClick={() => openDelete(record)} />
-              </Tooltip>
-            )}
-          </div>
-        );
-      },
+      render: (_, record) => (
+        <div className={styles.actionIcons}>
+          {actions.showEdit && (
+            <Tooltip title="Edit">
+              <EditOutlined className={styles.edit} onClick={() => handleEditClick(record)} />
+            </Tooltip>
+          )}
+          {actions.showPrint && (
+            <Tooltip title="Print">
+              <PrinterOutlined className={styles.print} onClick={() => handlePrint(record)} />
+            </Tooltip>
+          )}
+          {actions.showDelete && (
+            <Tooltip title="Delete">
+              <DeleteOutlined className={styles.delete} onClick={() => openDelete(record)} />
+            </Tooltip>
+          )}
+        </div>
+      ),
     },
   ];
 
   const listLoading = infiniteScroll
-    ? (isLoading && offset === 0)
-    : isLoading;
+    ? ((isLoading || isFetching) && offset === 0)
+    : (isLoading || isFetching);
 
   const {
     columns: skeletonAwareColumns,
@@ -854,16 +906,17 @@ const TransactionStockTemplate = ({
       <AdvancedFilterPanel
         title={`${title}`}
         // subtitle="Filter records by company and invoice number."
-        activeCount={[party, invoice, filterType, fromDate, toDate].filter(Boolean).length}
+        activeCount={[party, invoice, filterType, skuSearch, fromDate, toDate].filter(Boolean).length}
         onClear={() => {
           setParty('');
           setInvoice('');
           setFilterType('');
+          setSkuSearch('');
           setFromDate(null);
           setToDate(null);
           resetList();
         }}
-        clearDisabled={!party && !invoice && !filterType && !fromDate && !toDate}
+        clearDisabled={!party && !invoice && !filterType && !skuSearch && !fromDate && !toDate}
         showSearch={false}
         extraActions={
           <Space>
@@ -888,6 +941,18 @@ const TransactionStockTemplate = ({
           </Space>
         }
       >
+        {showSkuFilter && (
+          <FilterField>
+            <Input
+              className={filterPanelStyles.filterControl}
+              value={skuSearch}
+              onChange={(e) => { setSkuSearch(e.target.value); resetList(); }}
+              onPressEnter={refreshList}
+              placeholder="Enter Stone / SKU"
+              allowClear
+            />
+          </FilterField>
+        )}
         {/* <FilterField label="Company" icon={<TeamOutlined />}> */}
         <FilterField>
           <Select
@@ -900,7 +965,6 @@ const TransactionStockTemplate = ({
             onChange={(v) => { setParty(v || ''); resetList(); }}
             options={partyOptions}
             virtual
-            style={{ padding: "6px 11px" }}
           />
         </FilterField>
         {/* <FilterField label="Invoice"> */}
@@ -923,7 +987,7 @@ const TransactionStockTemplate = ({
               value={filterType || undefined}
               onChange={(v) => { setFilterType(v || ''); resetList(); }}
               options={typeFilterOptions}
-              style={{ padding: "6px 11px", minWidth: 140 }}
+              style={{ minWidth: 140 }}
             />
           </FilterField>
         )}
@@ -966,7 +1030,7 @@ const TransactionStockTemplate = ({
             size="small"
             bordered
             tableLayout="fixed"
-            scroll={{ x: 1200, y: tableHeight }}
+            scroll={{ x: 1710, y: tableHeight }}
             onScroll={infiniteScroll && !showSkeleton ? handleTableScroll : undefined}
             locale={{
               emptyText: (
@@ -997,19 +1061,15 @@ const TransactionStockTemplate = ({
               <div className={styles.statsBarFooter}>
                 <div className={styles.statsBar}>
                   <div className={styles.legendGroup}>
-                    <Text strong>Total Records: {totalItems.toLocaleString()}</Text>
-                    <Text type="secondary" style={{ marginLeft: 12 }}>
+                    <Text strong>
                       {infiniteScroll
                         ? `Total ${groups.length.toLocaleString()} ${groups.length === 1 ? 'entry' : 'entries'}`
                         : `Showing page ${page} · ${groups.length} ${groups.length === 1 ? 'entry' : 'entries'}`}
                     </Text>
+                    <Text type="secondary" className={styles.totalStoneLabel} style={{ marginLeft: 12 }}>
+                      Total Stone: <span className={styles.totalStoneValue}>{totalItems.toLocaleString()}</span>
+                    </Text>
                   </div>
-                  {infiniteScroll && groups.length > 0 && (
-                    <div className={styles.statsBarCenter}>
-                      {(isFetching || scrollFetching) ? <Spin size="small" /> :
-                        hasMore ? 'Scroll down for more...' : `All ${groups.length} entries loaded`}
-                    </div>
-                  )}
                   <div className={styles.totalsGroup}>
                     <div className={styles.statItem}>
                       <label>{infiniteScroll ? 'Total Pcs' : 'Page Pcs'}</label>

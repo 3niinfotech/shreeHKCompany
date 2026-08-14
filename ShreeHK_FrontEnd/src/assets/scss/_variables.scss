@@ -51,6 +51,29 @@ $cancel-btn-color: var(--color-btn-cancel-bg);
 $cancel-btn-border: var(--border-width-thin) solid $border-color;
 $reload-btn-color: $info;
 
+// Filter bar controls — 32px inventory / Ant Design button baseline
+$filter-control-height: 32px;
+$filter-control-line-height: 30px;
+$filter-control-font-size: 12px;
+
+@mixin visually-hidden-label {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+@mixin filter-control-size {
+  height: $filter-control-height !important;
+  min-height: $filter-control-height !important;
+  box-sizing: border-box;
+}
+
 // Radii
 $radius-card: var(--radius-card);
 $radius-control: var(--radius-control);
