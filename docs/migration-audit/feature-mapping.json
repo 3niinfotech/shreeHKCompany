@@ -1,0 +1,478 @@
+{
+  "generatedAt": "2026-08-15",
+  "statusLegend": {
+    "FULLY_MIGRATED": "Same or better logic found in FE+BE with evidence",
+    "PARTIALLY_MIGRATED": "Exists but missing validation/edge case/field/automation vs legacy",
+    "MISSING": "Present in active legacy scope, not found in new stack",
+    "INTENTIONALLY_EXCLUDED": "Out of scope per legacyApps.js or commented dead in PHP menu",
+    "RUNTIME_VERIFICATION_REQUIRED": "Static code present; DB/SMTP/external behavior not executed in this audit",
+    "EXTRA_NEW": "Present in new stack with no active PHP equivalent (or significantly expanded)"
+  },
+  "features": [
+    {
+      "id": "auth.login",
+      "name": "Login",
+      "status": "FULLY_MIGRATED",
+      "old": { "files": ["venya/index.php", "venya/controller/user/login.php"], "inputs": ["username", "password"], "tables": ["user", "roll"] },
+      "new": { "fe": "ShreeHK_FrontEnd/src/pages/auth/Login.jsx", "be": "ShreeHK_BackEnd/routes/user/userRoutes.js", "route": "POST /user/login" },
+      "notes": "JWT+MD5 password parity; rate limit added (EXTRA hardening)."
+    },
+    {
+      "id": "auth.logout",
+      "name": "Logout",
+      "status": "FULLY_MIGRATED",
+      "old": { "files": ["venya/logout.php"] },
+      "new": { "fe": "auth store clear", "be": "POST /user/logout", "notes": "token blacklist" }
+    },
+    {
+      "id": "auth.session_keepalive",
+      "name": "Session keepalive (s0/s1/s2)",
+      "status": "FULLY_MIGRATED",
+      "old": { "files": ["venya/dai/checkSession.php"] },
+      "new": { "fe": "useSessionKeepalive", "be": "GET /session/keepalive" }
+    },
+    {
+      "id": "auth.company_year_context",
+      "name": "Company + fiscal year context switch",
+      "status": "FULLY_MIGRATED",
+      "old": { "files": ["venya/dashboard.php", "venya/dai/setSession.php"], "session": ["companyId", "current_year", "current_db"] },
+      "new": { "fe": "CompanyYearPicker", "be": ["POST /session/context", "GET /portal/company-years"] }
+    },
+    {
+      "id": "admin.tenant_company",
+      "name": "Tenant company CRUD",
+      "status": "FULLY_MIGRATED",
+      "old": { "files": ["venya/company.php", "venya/saveCompany.php"] },
+      "new": { "fe": "TenantCompanyList.jsx", "be": "tenantCompanyRoutes.js", "tables": ["company", "dai_incrementid"] }
+    },
+    {
+      "id": "admin.users",
+      "name": "Manage users",
+      "status": "FULLY_MIGRATED",
+      "old": { "files": ["venya/user.php"] },
+      "new": { "fe": "ManageUser.jsx", "be": "AddAdminUser.js" }
+    },
+    {
+      "id": "admin.roles",
+      "name": "Roles / roll.resource permissions",
+      "status": "FULLY_MIGRATED",
+      "old": { "files": ["venya/roll.php", "venya/checkResource.php"], "storage": "roll.resource JSON module keys" },
+      "new": { "fe": "AdvancedRollPage.jsx", "be": "Roll.js + permissionRegistry.js", "notes": "Dual legacy+page-key expansion via LEGACY_MODULE_MAP" }
+    },
+    {
+      "id": "admin.fiscal_year",
+      "name": "Fiscal year create + DB clone + inventory transfer",
+      "status": "PARTIALLY_MIGRATED",
+      "old": {
+        "files": ["venya/addYear.php", "venya/saveYear.php"],
+        "behavior": ["INSERT company_year", "CREATE DATABASE", "copy table structures", "copy selected master data", "transfer on-hand inventory/history", "rollback DROP DATABASE"]
+      },
+      "new": {
+        "fe": "FiscalYearAdmin.jsx",
+        "be": "POST /portal/year",
+        "behavior": "Metadata CRUD only; requires pre-existing dbName; message says full DB transfer must be run separately"
+      },
+      "gaps": ["No CREATE DATABASE", "No table copy", "No inventory year-transfer", "No saveYear progress UI"]
+    },
+    {
+      "id": "admin.portal_settings",
+      "name": "Portal Setting page",
+      "status": "MISSING",
+      "old": { "files": ["venya/dashMenu.php links setting.php"], "perm": ["setting"] },
+      "new": { "fe": "/settings exists as myAccount/Setting.jsx but not legacy portal setting.php equivalent", "notes": "setting.php not readable/missing at venya/setting.php; treat portal settings as MISSING unless found elsewhere" },
+      "severity": "Confirm whether setting.php existed only on staging or was removed"
+    },
+    {
+      "id": "profile.me",
+      "name": "My Profile",
+      "status": "FULLY_MIGRATED",
+      "old": { "files": ["venya/profile.php"], "tables": ["user"] },
+      "new": { "fe": "MyAccount.jsx", "be": "/api/profile/*" }
+    },
+    {
+      "id": "master.party",
+      "name": "Party / Company master (dai_party)",
+      "status": "FULLY_MIGRATED",
+      "old": { "files": ["venya/dai/module/party/"], "tables": ["dai_party"] },
+      "new": { "fe": "/master/company-details", "be": "companyRoutes.js" }
+    },
+    {
+      "id": "master.attribute",
+      "name": "Attribute master",
+      "status": "PARTIALLY_MIGRATED",
+      "old": { "files": ["venya/dai/module/attribute/"], "perm": ["attribute"], "tables": ["dai_attribute", "dai_attribute_value"] },
+      "new": {
+        "fe": "Attribute.jsx exists but route /master/attribute COMMENTED in Routes.jsx",
+        "be": "attributeRoutes.js FULL (GET/POST/DELETE)",
+        "endpoints": "still in endpoints.js"
+      },
+      "gaps": ["UI route disabled — users cannot manage attributes from nav"]
+    },
+    {
+      "id": "master.shipping",
+      "name": "Shipping",
+      "status": "FULLY_MIGRATED",
+      "old": { "php": "module/shipping/" },
+      "new": { "fe": "/master/shipping-details", "be": "shippingRoutes.js", "tables": ["dai_shipping"] }
+    },
+    {
+      "id": "master.origin",
+      "name": "Origin",
+      "status": "FULLY_MIGRATED",
+      "old": { "php": "module/origin/" },
+      "new": { "fe": "/master/origin", "be": "originRoutes.js", "tables": ["dai_origin"] }
+    },
+    {
+      "id": "master.lab",
+      "name": "Lab",
+      "status": "FULLY_MIGRATED",
+      "old": { "php": "module/lab/" },
+      "new": { "fe": "/master/lab", "be": "labRoutes.js", "tables": ["dai_lab"] }
+    },
+    {
+      "id": "master.category",
+      "name": "Category",
+      "status": "FULLY_MIGRATED",
+      "old": { "php": "module/category/" },
+      "new": { "fe": "/master/category", "be": "categoryRoutes.js", "tables": ["category"] }
+    },
+    {
+      "id": "master.bulk_update",
+      "name": "Bulk Update",
+      "status": "FULLY_MIGRATED",
+      "old": { "files": ["bulk/index.php", "bulkController.php", "bulkModel.php"] },
+      "new": { "fe": "/master/bulk-update", "be": "POST /bulk-update", "runtime": "RUNTIME_VERIFICATION_REQUIRED for each bulk type" }
+    },
+    {
+      "id": "master.import_format",
+      "name": "Import Format Excel download",
+      "status": "FULLY_MIGRATED",
+      "old": { "files": ["venya/dai/importFormat.php"], "lib": "PHPExcel" },
+      "new": { "fe": "/master/import-format", "lib": "xlsx-js-style client-side" }
+    },
+    {
+      "id": "master.rapnet",
+      "name": "RapNet price list",
+      "status": "FULLY_MIGRATED",
+      "old": { "php": "module/rapnet/rapnetPrice.php" },
+      "new": { "fe": "/master/rapnet-pricelist", "be": "/rapnet/*", "extras": ["live", "history", "snapshot"] }
+    },
+    {
+      "id": "master.refresh_stock",
+      "name": "Refresh Stock (RapNet flags)",
+      "status": "FULLY_MIGRATED",
+      "old": { "php": "module/refresh/", "controller": "refreshController.php" },
+      "new": { "fe": "RefreshStock.jsx", "be": "POST /integration/refresh-rapnet-stock" }
+    },
+    {
+      "id": "master.integrations",
+      "name": "Integrations (GIA lookup + website sync)",
+      "status": "PARTIALLY_MIGRATED",
+      "old": { "files": ["venya/siteSynchro/"], "behavior": "batch upload progress processing" },
+      "new": {
+        "fe": "Integrations.jsx",
+        "be": ["GET /integration/gia-lookup", "POST /integration/website-sync"],
+        "gaps": ["GIA external API stubbed", "website-sync flips site_upload flags only — not full siteSynchro upload pipeline"]
+      }
+    },
+    {
+      "id": "inventory.main",
+      "name": "My Inventory grid + actions",
+      "status": "FULLY_MIGRATED",
+      "old": { "files": ["inventory/index.php", "inventoryModel.php", "igrid.php", "sendToMemo.php", "changePrice.php", "mailForm.php"] },
+      "new": {
+        "fe": "DiamondInventoryTable.jsx + inventoryActionConfig",
+        "be": ["GET /product/inventory", "POST /outward/sendTo", "POST /outward/hold", "POST /product/change-price", "POST /product/mail", "export/label"]
+      },
+      "runtime": "RUNTIME_VERIFICATION_REQUIRED for every action matrix"
+    },
+    {
+      "id": "inventory.categorize",
+      "name": "Categorize inventory",
+      "status": "FULLY_MIGRATED",
+      "old": { "php": "inventory/category.php" },
+      "new": { "fe": "/inventory/categorize-inventory", "be": "/product/categorize/*" }
+    },
+    {
+      "id": "inventory.onhand",
+      "name": "On Hand Stock",
+      "status": "FULLY_MIGRATED",
+      "old": { "php": "inventory/onhandstock.php" },
+      "new": { "fe": "/inventory/on-hand-stock" }
+    },
+    {
+      "id": "inventory.barcode",
+      "name": "Barcode",
+      "status": "FULLY_MIGRATED",
+      "old": { "php": "inventory/barcode.php" },
+      "new": { "fe": "/inventory/barcode", "be": "label print endpoints + AI barcode-lookup EXTRA" }
+    },
+    {
+      "id": "inventory.single_box_parcel",
+      "name": "Single/Box/Parcel transforms",
+      "status": "FULLY_MIGRATED",
+      "old": { "php": ["single/tobox.php", "single/toparcel.php", "box/tosingle.php", "parcel/tosingle.php"] },
+      "new": { "fe": ["SingleToBox", "SingleToParcel", "Box", "Parcel"], "be": ["/product/box/add-stones", "/product/parcel/add-stones"], "tables": ["dai_boxhistory"] }
+    },
+    {
+      "id": "inventory.package",
+      "name": "Add to Package",
+      "status": "FULLY_MIGRATED",
+      "old": { "php": "addtopackage.php", "ui": "loadAddPackage()" },
+      "new": { "be": "POST /product/package/assign", "fe": "inventory actions" }
+    },
+    {
+      "id": "inventory.pair",
+      "name": "Pair inventory management",
+      "status": "EXTRA_NEW",
+      "old": { "notes": "No dedicated pair.php menu page found; pair field may exist on product" },
+      "new": { "fe": "/inventory/pair", "be": ["/product/pair/assign", "/product/pair/unpair"] }
+    },
+    {
+      "id": "inventory.cycle_count",
+      "name": "Cycle Count / Stock Audit",
+      "status": "EXTRA_NEW",
+      "old": { "php": "inventory/stock.php stocktaking", "menu": "commented in header.php" },
+      "new": { "fe": "/inventory/cycle-count", "notes": "Client-side scan vs on-hand list; supersedes commented stocktaking" }
+    },
+    {
+      "id": "txn.inward",
+      "name": "Inward import/purchase/memo/consign",
+      "status": "FULLY_MIGRATED",
+      "old": { "php": "inward/index.php?t=", "types": ["import", "purchase", "memo", "consign"], "tables": ["dai_inward", "dai_product", "dai_product_value", "dai_history"] },
+      "new": {
+        "fe": "/transaction/inward/import (type dropdown) + entry wrappers",
+        "be": "POST /inward/save",
+        "ui_change": "Separate PHP menu children consolidated; purchase/inmemo/consign routes commented but forms reachable via type/entry pages"
+      },
+      "runtime": "RUNTIME_VERIFICATION_REQUIRED"
+    },
+    {
+      "id": "txn.outward_sendTo",
+      "name": "Outward sendTo (memo/sale/export/lab/consign)",
+      "status": "FULLY_MIGRATED",
+      "old": { "php": "sendToMemo.php + outwardModel", "types": ["memo", "sale", "export", "lab", "consign"] },
+      "new": { "fe": "OnMemoModal / OutwardEntryForm", "be": "outwardService.js POST /outward/sendTo", "tables": ["dai_outward", "dai_product", "dai_hold", "dai_history"] },
+      "gaps_minor": ["ExportEntry/ConsignEntry components imported but not registered as routes — reachable via inventory sendTo"],
+      "runtime": "RUNTIME_VERIFICATION_REQUIRED"
+    },
+    {
+      "id": "txn.stone_update",
+      "name": "Stone Update",
+      "status": "FULLY_MIGRATED",
+      "old": { "php": "inventory/stonedetail.php" },
+      "new": { "fe": "/transaction/stone-update", "be": "POST /product/save" }
+    },
+    {
+      "id": "txn.stock_registers",
+      "name": "GIA / In-Memo / Out-Memo / Sale / Purchase stock lists + returns/conversions",
+      "status": "FULLY_MIGRATED",
+      "old": { "php": ["gia.php", "inmemo.php", "memo.php", "sale.php", "purchase.php", "memoReturn", "memoToSale", "memoToPurchase"] },
+      "new": { "fe": "transaction/stock/*", "be": "transactionStockRoutes.js / transactionStockService.js" },
+      "runtime": "RUNTIME_VERIFICATION_REQUIRED for return/memo-to-sale/memo-to-purchase/to-export/toggle-type"
+    },
+    {
+      "id": "txn.print",
+      "name": "Transaction print / PDF / labels",
+      "status": "PARTIALLY_MIGRATED",
+      "old": { "php": "venya/pdf/ templates + print scripts" },
+      "new": {
+        "fe": ["venyaInvoiceTemplate.js", "approvalMemoTemplate.js", "legacyPrint.js"],
+        "be": ["GET /transaction/print/:type/:id", "label PDF services"],
+        "hybrid": "openLegacyPdf('print/stone-label.php') still depends on VITE_LEGACY_PDF_URL"
+      },
+      "gaps": ["Some label/print paths still hybrid PHP"]
+    },
+    {
+      "id": "outward.list",
+      "name": "Outward list page",
+      "status": "FULLY_MIGRATED",
+      "old": { "php": "outward module list/edit" },
+      "new": { "fe": "/outward", "be": "/outward/list|update|delete|getProducts" }
+    },
+    {
+      "id": "reports.*",
+      "name": "DAI reports suite",
+      "status": "FULLY_MIGRATED",
+      "old": { "php": "module/report/* + salereport.php" },
+      "new": { "fe": "/report/*", "be": "reportRoutes.js + reportService.js" },
+      "runtime": "RUNTIME_VERIFICATION_REQUIRED for filter parity"
+    },
+    {
+      "id": "accounting.expense_advance_balance",
+      "name": "Expense / Advance / My Balance / Currency",
+      "status": "FULLY_MIGRATED",
+      "old": { "php": "account/expense|advance|balance" },
+      "new": { "fe": "/accounting/*", "be": ["Expanse_Payment.js", "Advance_payment.js", "Balance_Book.js", "Currency_Rate.js"] }
+    },
+    {
+      "id": "accounting.groups",
+      "name": "Acc Group / Subgroup",
+      "status": "FULLY_MIGRATED",
+      "old": { "php": "account/group|subgroup" },
+      "new": { "fe": "/accounting/group|/subgroup", "be": "accGroupRoutes|accSubgroupRoutes" }
+    },
+    {
+      "id": "accounting.party_and_reports",
+      "name": "Accounting party + party/advance/transaction reports",
+      "status": "PARTIALLY_MIGRATED",
+      "old": { "php": ["account/party/", "account/report/*"], "perm": ["a_party", "a_report"] },
+      "new": {
+        "fe": ["AccParty", "AccPartyReport", "Transaction", "AdvanceTransaction", "PartyWiseTransaction"],
+        "be": ["PartyWiseTransaction.js", "Transaction.js"],
+        "gaps": [
+          "FE permission keys accounting.party and accounting.party_report missing from BE permissionRegistry",
+          "PartyWiseTransaction queries dai_party (confirm vs legacy acc party table semantics)"
+        ]
+      }
+    },
+    {
+      "id": "ops.hold_cron",
+      "name": "Hold expiry cron",
+      "status": "FULLY_MIGRATED",
+      "old": { "php": "holdcron.php", "tables": ["dai_hold", "dai_product", "dai_history"] },
+      "new": { "be": "jobs/holdCron.js", "enable": "ENABLE_HOLD_CRON=true" },
+      "runtime": "RUNTIME_VERIFICATION_REQUIRED — verify multi year-DB coverage"
+    },
+    {
+      "id": "ops.notifications",
+      "name": "Notifications",
+      "status": "FULLY_MIGRATED",
+      "old": { "php": "dai/ajax.php" },
+      "new": { "be": "notificationRoutes.js", "extras": ["SSE stream", "read-all"] }
+    },
+    {
+      "id": "ops.mail",
+      "name": "Inventory email to customer",
+      "status": "FULLY_MIGRATED",
+      "old": { "php": ["mailForm.php", "awsmail.php"] },
+      "new": { "be": "inventoryMailService.js / nodemailer" },
+      "runtime": "RUNTIME_VERIFICATION_REQUIRED (SMTP)"
+    },
+    {
+      "id": "jewelry",
+      "name": "Jewelry module",
+      "status": "INTENTIONALLY_EXCLUDED",
+      "old": { "php": "module/jewelry/", "menu": "commented" }
+    },
+    {
+      "id": "ems",
+      "name": "Email Marketing System",
+      "status": "INTENTIONALLY_EXCLUDED",
+      "old": { "php": "venya/ems/" }
+    },
+    {
+      "id": "sms",
+      "name": "Stock Management System",
+      "status": "INTENTIONALLY_EXCLUDED",
+      "old": { "php": "venya/sms/" }
+    },
+    {
+      "id": "branch_transfer",
+      "name": "Branch Transfer",
+      "status": "INTENTIONALLY_EXCLUDED",
+      "old": { "php": "module/branch/", "menu": "commented" }
+    },
+    {
+      "id": "extra.ai",
+      "name": "AI chat / OCR / insights",
+      "status": "EXTRA_NEW",
+      "new": { "be": "/ai/*", "fe": "AI floating chat" }
+    },
+    {
+      "id": "extra.activity_history",
+      "name": "Activity History / audit log",
+      "status": "EXTRA_NEW",
+      "new": { "fe": "ActivityHistory.jsx", "be": "activityLogRoutes + audit* services", "tables": ["dai_activity_log"] }
+    },
+    {
+      "id": "extra.task_manager",
+      "name": "Task Manager / Quick Notes",
+      "status": "EXTRA_NEW",
+      "old": { "notes": "Possible dai_note legacy — dedicated note module path not found; saveYear copies dai_note table" },
+      "new": { "fe": "TaskManager.jsx + QuickNotesCard", "be": "quickNotesRoutes", "tables": ["dai_quick_notes"] }
+    },
+    {
+      "id": "extra.legacy_apps_admin",
+      "name": "Legacy Apps scope admin page",
+      "status": "EXTRA_NEW",
+      "new": { "fe": "LegacyAppsScope.jsx", "be": "GET /config/legacy-apps" }
+    },
+    {
+      "id": "extra.dashboard_charts",
+      "name": "Dashboard summary/trends",
+      "status": "EXTRA_NEW",
+      "new": { "fe": "DashBoard.jsx", "be": "/dashboard/summary|/trends" }
+    },
+    {
+      "id": "inventory.onhand_snapshot",
+      "name": "On-hand stock date snapshot save/load",
+      "status": "MISSING",
+      "old": {
+        "files": ["venya/dai/module/inventory/onhandstock.php", "inventoryModel.php"],
+        "tables": ["dai_stockmanage", "dai_product", "dai_product_value"],
+        "behavior": "Save serialized stock snapshot by date; reload prior snapshot via olddate"
+      },
+      "new": {
+        "fe": "OnHandStock.jsx lists live stock only; CycleCount is scan audit — no dai_stockmanage API found"
+      },
+      "gaps": ["No snapshot persist/restore endpoint or UI"]
+    },
+    {
+      "id": "integration.james_nivoda_feeds",
+      "name": "James / Nivoda / global stock CSV+API feeds + SFTP",
+      "status": "MISSING",
+      "old": {
+        "files": ["venya/james/james.php", "nivoda.php", "nivoda_api.php", "global_api.php", "dmarket/uploadFile.php"],
+        "tables": ["dai_product", "dai_product_value"]
+      },
+      "new": { "notes": "No james/nivoda/sftp references in ShreeHK_FrontEnd or ShreeHK_BackEnd" }
+    },
+    {
+      "id": "ops.whatsapp_mail_gateway",
+      "name": "awsmail WhatsApp + unauthenticated mail gateway",
+      "status": "PARTIALLY_MIGRATED",
+      "old": { "files": ["venya/awsmail.php"], "behavior": ["SMTP", "WhatsApp API x3", "GET/POST body", "attachment"] },
+      "new": { "be": "inventoryMailService / nodemailer for inventory mail only" },
+      "gaps": ["WhatsApp sends not migrated", "Public awsmail-style gateway not migrated (security improvement)"]
+    },
+    {
+      "id": "account.book_transfer",
+      "name": "Book balance + currency convert transfers (dai_book)",
+      "status": "PARTIALLY_MIGRATED",
+      "old": {
+        "files": ["venya/dai/account/balance/"],
+        "tables": ["dai_book", "dai_currencyrate", "acc_transaction", "dai_party"],
+        "behavior": "Book CRUD, currency rates, paired debit/credit transfer requiring CURRENCY CONVERT party"
+      },
+      "new": {
+        "fe": "/accounting/my-balance",
+        "be": "Balance_Book.js uses dai_balance; Currency_Rate.js uses dai_currencyrate",
+        "gaps": ["dai_book transfer workflow not found; model shifted to dai_balance cash/bank/credit rows"]
+      }
+    },
+    {
+      "id": "master.lab_schema",
+      "name": "Lab master table naming",
+      "status": "RUNTIME_VERIFICATION_REQUIRED",
+      "old": { "table": "dai_product_lab", "softDelete": "deleted=1" },
+      "new": { "table": "dai_lab", "be": "labRoutes.js" },
+      "notes": "Rename/migration of live year DBs must be confirmed; not a missing UI"
+    },
+    {
+      "id": "portal.password_recovery",
+      "name": "Forgot password UI",
+      "status": "INTENTIONALLY_EXCLUDED",
+      "old": { "files": ["venya/forget.php"], "behavior": "Non-functional placeholder (no POST action)" },
+      "new": { "notes": "Not migrated; legacy was already non-functional — not counted as lost parity" }
+    },
+    {
+      "id": "legacy.missing_controllers",
+      "name": "Referenced *Controller.php files",
+      "status": "INTENTIONALLY_EXCLUDED",
+      "old": {
+        "notes": "Forms POST to *Controller.php but probes found models/pages instead; legacy runtime quirk, not a ShreeHK gap"
+      }
+    }
+  ]
+}

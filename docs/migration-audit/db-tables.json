@@ -1,0 +1,76 @@
+{
+  "generatedAt": "2026-08-15",
+  "updatedAt": "2026-08-15Tfollow-up-probes",
+  "metaDbTablesObservedInCode": [
+    "company",
+    "company_year",
+    "user",
+    "roll",
+    "dai_activity_log",
+    "notification",
+    "notification_read_state",
+    "user_track"
+  ],
+  "yearDbTablesObservedInCode": [
+    "dai_product",
+    "dai_product_value",
+    "dai_inward",
+    "dai_outward",
+    "dai_history",
+    "dai_hold",
+    "dai_incrementid",
+    "dai_party",
+    "dai_attribute",
+    "dai_attribute_value",
+    "category",
+    "dai_lab",
+    "dai_origin",
+    "dai_shipping",
+    "dai_balance",
+    "dai_currencyrate",
+    "dai_boxhistory",
+    "dai_product_return",
+    "dai_gia",
+    "dai_rapnetprice",
+    "dai_rapnet_live_snapshot",
+    "dai_quick_notes",
+    "dai_ai_conversation",
+    "acc_transaction",
+    "acc_advance",
+    "acc_group",
+    "acc_subgroup"
+  ],
+  "legacySaveYearCopyTables": [
+    "dai_party", "company", "user", "resource", "roll",
+    "acc_group", "acc_subgroup", "company_year", "dai_attribute",
+    "dai_attribute_value", "dai_book", "dai_currencyrate", "dai_incrementid",
+    "dai_invoice", "dai_rapnetprice", "category", "dai_origin",
+    "dai_shipping", "dai_hold", "acc_advance", "dai_note"
+  ],
+  "namingMismatches": [
+    { "issue": "audit registry may reference dai_category while live SQL uses category", "verified": true },
+    { "issue": "accounting party UI uses dai_party; registry mentions acc_partywise", "verified": true },
+    { "issue": "tenant companies use company table not dai_company", "verified": true },
+    { "issue": "PHP lab master uses dai_product_lab; Node labRoutes uses dai_lab", "verified": true, "priority": "P2" },
+    { "issue": "PHP My Balance uses dai_book (+ transfers); Node uses dai_balance cash/bank/credit", "verified": true, "priority": "P1" },
+    { "issue": "PHP on-hand snapshots use dai_stockmanage; no Node equivalent found", "verified": true, "priority": "P1" }
+  ],
+  "runtimeDdl": [
+    "dai_quick_notes",
+    "notification_read_state",
+    "dai_rapnet_live_snapshot",
+    "user.is_active ALTER",
+    "dai_activity_log ensure scripts"
+  ],
+  "legacyOnlyTablesNotSeenInNode": [
+    "dai_stockmanage",
+    "dai_book",
+    "dai_product_lab",
+    "dai_note",
+    "chat_history",
+    "dai_mail",
+    "dai_temp",
+    "dai_product_delete",
+    "error"
+  ]
+}

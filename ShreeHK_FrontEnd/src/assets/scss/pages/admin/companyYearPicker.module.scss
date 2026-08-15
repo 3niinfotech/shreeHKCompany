@@ -90,9 +90,8 @@
 
 .headerArt {
   position: absolute;
-  /* Negative inset pulls the art past the header padding to the modal edge. */
-  right: -26px;
-  bottom: -10px;
+  left: 765px;
+  bottom: -25px;
   width: 240px;
   height: 110px;
   margin-left: auto;
@@ -514,6 +513,7 @@
 }
 
 [data-theme="dark"] {
+
   .companyCard,
   .yearCard,
   .backButton {

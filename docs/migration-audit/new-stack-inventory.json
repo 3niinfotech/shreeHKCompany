@@ -1,0 +1,47 @@
+{
+  "generatedAt": "2026-08-15",
+  "newFrontend": "ShreeHK_FrontEnd",
+  "newBackend": "ShreeHK_BackEnd",
+  "fileCounts": {
+    "fe.pages": 106,
+    "fe.components": 111,
+    "fe.routes": 3,
+    "be.routes": 68,
+    "be.services": 27,
+    "be.jobs": 1,
+    "be.migrations": 4
+  },
+  "protectedRoutes": 65,
+  "publicRoutes": 2,
+  "flattenedEndpointKeys": 167,
+  "permissionKeys": {
+    "frontend": 59,
+    "backend": 57,
+    "frontendOnly": ["accounting.party", "accounting.party_report"],
+    "backendOnly": []
+  },
+  "backendMountedRouters": [
+    "labRoutes", "categoryRoutes", "companyRoutes", "shippingRoutes", "originRoutes", "attributeRoutes",
+    "accGroupRoutes", "accSubgroupRoutes", "portalRoutes", "tenantCompanyRoutes", "activityLogRoutes",
+    "integrationRoutes", "productRoutes", "inwardRoutes", "userRoutes", "sessionRoutes", "dashboardRoutes",
+    "quickNotesRoutes", "outwardRoutes", "transactionStockRoutes", "commonRoutes", "notificationRoutes",
+    "reportRoutes", "AddAdminUser", "Expanse_Payment", "Advance_payment", "Balance_Book", "Currency_Rate",
+    "Roll", "Transaction", "PartyWiseTransaction", "myProfile", "bulkRoutes", "rapnetRoutes(/rapnet)", "aiRoutes(/ai)"
+  ],
+  "directIndexEndpoints": ["GET /health", "GET /config/legacy-apps"],
+  "commentedFeRoutes": [
+    "/master/attribute",
+    "/transaction/inward/purchase",
+    "/transaction/inward/inmemo",
+    "/transaction/inward/inconsignment",
+    "/contact-support"
+  ],
+  "importedButUnroutedComponents": [
+    "ExportEntry",
+    "ConsignEntry",
+    "InwardPurchase",
+    "InMemo",
+    "InConsignment",
+    "Attribute"
+  ]
+}

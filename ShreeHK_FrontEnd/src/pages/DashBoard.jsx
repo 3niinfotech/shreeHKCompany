@@ -286,7 +286,7 @@ const Dashboard = () => {
       </Row>
 
       <div className="section-heading">
-        <span className="section-heading__label">Analytics</span>
+        {/* <span className="section-heading__label">Analytics</span> */}
         <h2 className="section-heading__title">Stock Intelligence</h2>
       </div>
 
@@ -338,7 +338,7 @@ const Dashboard = () => {
       </Row>
 
       <div className="section-heading section-heading--compact">
-        <span className="section-heading__label">Shortcuts</span>
+        {/* <span className="section-heading__label">Shortcuts</span> */}
         <h2 className="section-heading__title">Quick Actions</h2>
       </div>
 

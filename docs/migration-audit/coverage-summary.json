@@ -1,0 +1,100 @@
+{
+  "generatedAt": "2026-08-15",
+  "updatedAt": "2026-08-15Tfollow-up-probes",
+  "scope": {
+    "old": "venya (core DAI + portal)",
+    "new": ["ShreeHK_FrontEnd", "ShreeHK_BackEnd"],
+    "excluded": ["venya/ems", "venya/sms", "venya/dai/module/jewelry"]
+  },
+  "countsFromFeatureMapping": {
+    "FULLY_MIGRATED": 32,
+    "PARTIALLY_MIGRATED": 8,
+    "MISSING": 3,
+    "INTENTIONALLY_EXCLUDED": 6,
+    "EXTRA_NEW": 5,
+    "RUNTIME_VERIFICATION_REQUIRED_rows": 9,
+    "note": "Counts updated after follow-up probes (account path correction + james/snapshot/whatsapp/book gaps)"
+  },
+  "priorityGaps": [
+    {
+      "priority": "P0",
+      "id": "admin.fiscal_year",
+      "status": "PARTIALLY_MIGRATED",
+      "summary": "saveYear DB clone + inventory transfer not automated in Node"
+    },
+    {
+      "priority": "P0",
+      "id": "master.attribute",
+      "status": "PARTIALLY_MIGRATED",
+      "summary": "Attribute API exists but FE nav route commented out"
+    },
+    {
+      "priority": "P1",
+      "id": "inventory.onhand_snapshot",
+      "status": "MISSING",
+      "summary": "dai_stockmanage snapshot save/restore not present (OnHand + CycleCount are live-only)"
+    },
+    {
+      "priority": "P1",
+      "id": "integration.james_nivoda_feeds",
+      "status": "MISSING",
+      "summary": "James/Nivoda/global CSV+API+SFTP feed scripts not migrated"
+    },
+    {
+      "priority": "P1",
+      "id": "txn.print",
+      "status": "PARTIALLY_MIGRATED",
+      "summary": "Hybrid legacy PDF dependency for some labels"
+    },
+    {
+      "priority": "P1",
+      "id": "master.integrations",
+      "status": "PARTIALLY_MIGRATED",
+      "summary": "siteSynchro full upload pipeline reduced to flag flip + GIA stub"
+    },
+    {
+      "priority": "P1",
+      "id": "account.book_transfer",
+      "status": "PARTIALLY_MIGRATED",
+      "summary": "dai_book transfer/currency-convert workflow replaced by dai_balance model"
+    },
+    {
+      "priority": "P1",
+      "id": "accounting.party_and_reports",
+      "status": "PARTIALLY_MIGRATED",
+      "summary": "FE-only permission keys; confirm party report parity"
+    },
+    {
+      "priority": "P2",
+      "id": "ops.whatsapp_mail_gateway",
+      "status": "PARTIALLY_MIGRATED",
+      "summary": "Inventory email exists; WhatsApp/public awsmail gateway not migrated"
+    },
+    {
+      "priority": "P2",
+      "id": "admin.portal_settings",
+      "status": "MISSING",
+      "summary": "Legacy portal setting.php not found/migrated"
+    },
+    {
+      "priority": "P2",
+      "id": "permission_registry_sync",
+      "status": "PARTIALLY_MIGRATED",
+      "summary": "accounting.party / accounting.party_report missing on backend registry"
+    },
+    {
+      "priority": "P2",
+      "id": "master.lab_schema",
+      "status": "RUNTIME_VERIFICATION_REQUIRED",
+      "summary": "PHP dai_product_lab vs Node dai_lab — confirm year-DB schema"
+    }
+  ],
+  "verificationNotes": [
+    "No automated test suite in FE/BE package.json",
+    "Shell filesystem enumeration unavailable during audit — manifests use menu+probe methodology",
+    "Credentials in holdcron.php / james / awsmail must not be copied into docs (redacted); rotate in legacy env",
+    "MIGRATION_MAP.md path aliases backend/frontEnd are stale — actual dirs ShreeHK_*",
+    "Follow-up probes confirmed accounting under venya/dai/account/; missing *Controller.php is a legacy pattern, not a ShreeHK gap",
+    "forget.php was already non-functional in PHP — excluded from missing-parity count"
+  ]
+}

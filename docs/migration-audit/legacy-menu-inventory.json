@@ -1,0 +1,142 @@
+{
+  "generatedAt": "2026-08-15",
+  "oldProject": "venya",
+  "exclusions": [
+    { "path": "venya/ems/", "reason": "separate_app", "source": "ShreeHK_BackEnd/config/legacyApps.js" },
+    { "path": "venya/sms/", "reason": "separate_app", "source": "ShreeHK_BackEnd/config/legacyApps.js" },
+    { "path": "venya/dai/module/jewelry/", "reason": "legacy_disabled_menu_commented", "source": "legacyApps.js + left.php jewelry block commented" }
+  ],
+  "inventoryMethod": "Menu-reachability from left.php/header.php/account_left.php/dashMenu.php + direct Read probes of module entrypoints. Full recursive filesystem enumeration was blocked by broken shell runner and Cursor Glob returning 0 under nested venya/.git; every probed application PHP path below was verified via Read.",
+  "portalPages": [
+    { "file": "venya/index.php", "feature": "login_shell" },
+    { "file": "venya/controller/user/login.php", "feature": "login" },
+    { "file": "venya/dashboard.php", "feature": "company_year_picker" },
+    { "file": "venya/dashMenu.php", "feature": "portal_nav" },
+    { "file": "venya/company.php", "feature": "tenant_company" },
+    { "file": "venya/user.php", "feature": "manage_users" },
+    { "file": "venya/roll.php", "feature": "roles" },
+    { "file": "venya/addYear.php", "feature": "fiscal_year_ui" },
+    { "file": "venya/saveYear.php", "feature": "fiscal_year_db_clone_transfer", "probed": true },
+    { "file": "venya/profile.php", "feature": "my_profile", "probed": true },
+    { "file": "venya/logout.php", "feature": "logout" },
+    { "file": "venya/checkResource.php", "feature": "acl" },
+    { "file": "venya/database.php", "feature": "db_connection" },
+    { "file": "venya/variable.php", "feature": "paths_config" },
+    { "file": "venya/holdcron.php", "feature": "hold_expiry_cron", "probed": true },
+    { "file": "venya/awsmail.php", "feature": "email_helper" },
+    { "file": "venya/setting.php", "feature": "portal_settings", "probed": false, "status": "missing_or_unreadable" }
+  ],
+  "daiMenuFeatures": [
+    { "id": "dashboard", "label": "Dashboard", "php": "venya/dai/index.php", "perm": [] },
+    { "id": "master.party", "label": "Company (Party)", "php": "venya/dai/module/party/", "perm": ["party"], "probed": true },
+    { "id": "master.attribute", "label": "Attribute", "php": "venya/dai/module/attribute/", "perm": ["attribute"], "probed": true },
+    { "id": "master.import_format", "label": "Import Formats", "php": "venya/dai/importFormat.php", "perm": ["import"], "probed": true },
+    { "id": "master.bulk", "label": "Bulk Update", "php": "venya/dai/module/bulk/index.php", "perm": ["bulk"], "probed": true },
+    { "id": "master.rapnet", "label": "Rapnet Price", "php": "venya/dai/module/rapnet/rapnetPrice.php", "perm": ["rapnet"] },
+    { "id": "master.shipping", "label": "Shipping", "php": "venya/dai/module/shipping/", "perm": [] },
+    { "id": "master.origin", "label": "Origin", "php": "venya/dai/module/origin/", "perm": [] },
+    { "id": "master.lab", "label": "Lab", "php": "venya/dai/module/lab/", "perm": [] },
+    { "id": "master.category", "label": "Category", "php": "venya/dai/module/category/", "perm": [] },
+    { "id": "master.refresh", "label": "Refresh Stock", "php": "venya/dai/module/refresh/", "perm": ["bulk"], "probed": true },
+    { "id": "inventory.main", "label": "My Inventory", "php": "venya/dai/module/inventory/", "perm": ["inventory"], "probed": true },
+    { "id": "inventory.categorize", "label": "Categorize Inventory", "php": "venya/dai/module/inventory/category.php", "perm": ["inventory"] },
+    { "id": "inventory.onhand", "label": "On Hand Stock", "php": "venya/dai/module/inventory/onhandstock.php", "perm": ["inventory"] },
+    { "id": "inventory.barcode", "label": "Barcode", "php": "venya/dai/module/inventory/barcode.php", "perm": ["inventory"] },
+    { "id": "inventory.single_to_box", "label": "Single To Box", "php": "venya/dai/module/single/tobox.php", "perm": ["single"] },
+    { "id": "inventory.single_to_parcel", "label": "Single To Parcel", "php": "venya/dai/module/single/toparcel.php", "perm": ["single"] },
+    { "id": "inventory.box_to", "label": "Box To", "php": "venya/dai/module/box/tosingle.php", "perm": ["box"] },
+    { "id": "inventory.parcel_to", "label": "Parcel To", "php": "venya/dai/module/parcel/tosingle.php", "perm": ["parcel"] },
+    { "id": "inventory.package", "label": "Add To Package", "php": "venya/dai/module/inventory/addtopackage.php", "perm": ["package"], "probed": true, "ui": "js_onclick_loadAddPackage" },
+    { "id": "txn.inward.import", "label": "Inward Import", "php": "venya/dai/module/inward/index.php?pg=form&t=import", "perm": ["import"], "probed": true },
+    { "id": "txn.inward.purchase", "label": "Inward Purchase", "php": "venya/dai/module/inward/index.php?pg=form&t=purchase", "perm": ["purchase"] },
+    { "id": "txn.inward.memo", "label": "In Memo", "php": "venya/dai/module/inward/index.php?pg=form&t=memo", "perm": ["i_memo"] },
+    { "id": "txn.inward.consign", "label": "In Consignment", "php": "venya/dai/module/inward/index.php?pg=form&t=consign", "perm": ["i_con"] },
+    { "id": "txn.outward.export", "label": "Outward Export", "php": "sendToMemo AJAX type=export", "perm": ["export"], "ui": "loadMemoForm" },
+    { "id": "txn.outward.sale", "label": "Outward Sale", "php": "sendToMemo AJAX type=sale", "perm": ["sale"], "ui": "loadMemoForm" },
+    { "id": "txn.outward.memo", "label": "On Memo", "php": "sendToMemo AJAX type=memo", "perm": ["o_memo"], "ui": "loadMemoForm", "related": "venya/dai/module/outward/memo.php" },
+    { "id": "txn.outward.lab", "label": "LAB", "php": "sendToMemo AJAX type=lab", "perm": ["lab"], "ui": "loadMemoForm" },
+    { "id": "txn.outward.consign", "label": "Out Consignment", "php": "sendToMemo AJAX type=consign", "perm": ["o_con"], "ui": "loadMemoForm" },
+    { "id": "txn.stone_update", "label": "Stone Update", "php": "venya/dai/module/inventory/stonedetail.php", "perm": ["inventory"] },
+    { "id": "stock.gia", "label": "GIA-Memo", "php": "venya/dai/module/inventory/gia.php", "perm": ["gia"], "nav": "header.php" },
+    { "id": "stock.inmemo", "label": "In Memo Stock", "php": "venya/dai/module/inventory/inmemo.php", "perm": ["i_memo"], "nav": "header.php" },
+    { "id": "stock.outmemo", "label": "Out Memo Stock", "php": "venya/dai/module/inventory/memo.php", "perm": ["o_memo"], "nav": "header.php" },
+    { "id": "stock.sale", "label": "Sale Stock", "php": "venya/dai/module/inventory/sale.php", "perm": ["sale"], "nav": "header.php" },
+    { "id": "stock.purchase", "label": "Purchase Stock", "php": "venya/dai/module/inventory/purchase.php", "perm": ["purchase"], "nav": "header.php" },
+    { "id": "report.transaction", "label": "Transaction Report", "php": "venya/dai/module/report/memo.php", "perm": ["transaction"] },
+    { "id": "report.sale_stock", "label": "Sale Stock Report", "php": "venya/dai/module/report/stoneSales.php", "perm": ["transaction"] },
+    { "id": "report.group", "label": "Group Report", "php": "venya/dai/module/report/group.php", "perm": ["transaction"] },
+    { "id": "report.stone_history", "label": "Stone Full History", "php": "venya/dai/module/report/stonedetail.php", "perm": ["stone"] },
+    { "id": "report.transfer_history", "label": "Stone Sale/Memo Separate Info", "php": "venya/dai/module/report/stonedetailHistory.php", "perm": ["stone"] },
+    { "id": "report.stone_info", "label": "Party wise Stone Info", "php": "venya/dai/module/report/stoneInfo.php", "perm": ["stone"] },
+    { "id": "report.sale_stone", "label": "Sale Stone Report", "php": "venya/dai/module/inventory/salereport.php", "perm": ["stone"] },
+    { "id": "report.outstanding", "label": "Outstanding", "php": "venya/dai/module/report/outstanding.php", "perm": ["outstanding"] },
+    { "id": "accounting.link", "label": "Accounting Portal", "php": "venya/dai/account/", "perm": ["account"], "nav": "header.php" }
+  ],
+  "accountingMenuFeatures": [
+    { "id": "acc.group", "label": "Group", "php": "venya/dai/account/group/", "perm": ["group"] },
+    { "id": "acc.subgroup", "label": "Sub Group", "php": "venya/dai/account/subgroup/", "perm": ["subgroup"] },
+    { "id": "acc.party", "label": "Party", "php": "venya/dai/account/party/", "perm": ["a_party"] },
+    { "id": "acc.expense", "label": "Expense", "php": "venya/dai/account/expense/index.php?pg=form", "perm": ["expense"], "probed": true },
+    { "id": "acc.advance", "label": "Advance", "php": "venya/dai/account/advance/index.php?pg=form", "perm": ["expense"] },
+    { "id": "acc.balance", "label": "My Balance", "php": "venya/dai/account/balance/", "perm": ["mybalance"] },
+    { "id": "acc.report.txn", "label": "Accounting Transaction Report", "php": "venya/dai/account/report/index.php", "perm": ["a_report"] },
+    { "id": "acc.report.party", "label": "Accounting Party Report", "php": "venya/dai/account/report/party.php", "perm": ["a_report"] },
+    { "id": "acc.report.advance", "label": "Advance Payment Report", "php": "venya/dai/account/report/advance.php", "perm": ["a_report"] }
+  ],
+  "ajaxAndActions": [
+    { "file": "venya/dai/ajax.php", "purpose": "notification JSON", "probed": true },
+    { "file": "venya/dai/checkSession.php", "purpose": "session keepalive" },
+    { "file": "venya/dai/setSession.php", "purpose": "company/year context", "probed": true },
+    { "file": "venya/dai/module/inventory/sendToMemo.php", "purpose": "outward memo/sale/export/lab/consign form", "probed": true },
+    { "file": "venya/dai/module/inventory/changePrice.php", "purpose": "bulk cost/price update UI", "probed": true },
+    { "file": "venya/dai/module/inventory/mailForm.php", "purpose": "email stones to customer", "probed": true },
+    { "file": "venya/dai/module/inventory/addtopackage.php", "purpose": "package assign", "probed": true },
+    { "file": "venya/dai/module/inventory/stock.php", "purpose": "stocktaking (menu commented)", "probed": true, "menuStatus": "commented_in_header" }
+  ],
+  "commentedOrDeadInMenu": [
+    { "id": "jewelry", "php": "venya/dai/module/jewelry/", "status": "INTENTIONALLY_EXCLUDED" },
+    { "id": "branch_transfer", "php": "venya/dai/module/branch/", "status": "commented_dead" },
+    { "id": "stock_report", "php": "venya/dai/module/report/stock.php", "status": "commented_dead" },
+    { "id": "stocktaking", "php": "venya/dai/module/inventory/stock.php", "status": "commented_in_header_but_file_exists" },
+    { "id": "fancy_white_loose_search", "php": "left.php header-li display:none", "status": "hidden_ui" }
+  ],
+  "integrationsOps": [
+    { "id": "site_synchro", "php": "venya/siteSynchro/index.php", "probed": true, "purpose": "product upload progress / website sync" },
+    { "id": "hold_cron", "php": "venya/holdcron.php", "probed": true },
+    { "id": "mail", "php": "venya/awsmail.php" },
+    { "id": "pdf_print", "php": "venya/pdf/" }
+  ],
+  "moduleFoldersDocumented": [
+    "party", "attribute", "bulk", "rapnet", "shipping", "origin", "lab", "category", "refresh",
+    "inventory", "single", "box", "parcel", "inward", "outward", "report", "jewelry(excluded)"
+  ],
+  "followUpProbe2026_08_15": {
+    "sourceAgents": [
+      "cab169c3-3f0b-462a-b477-7f5a5dc3fc97",
+      "1e6beae3-d7c1-419a-b996-3b6e2959d4b1"
+    ],
+    "pathCorrections": [
+      "Accounting lives at venya/dai/account/ (NOT dai/module/account/). Prior wrong-path probe that reported account missing is invalid.",
+      "Business modules resolve under venya/dai/module/ via $moduleUrl — flat venya/party aliases do not exist."
+    ],
+    "confirmedMissingFiles": [
+      "venya/setting.php",
+      "venya/dai/note/index.php (noteModel.php may still exist)",
+      "venya/dai/module/parcel/tobox.php (menu commented)",
+      "Most *Controller.php files referenced by forms (legacy uses models/pages instead — not a migration gap)"
+    ],
+    "confirmedExistingInventoryAjax": [
+      "sendToMemo.php", "changePrice.php", "mailForm.php", "addtopackage.php", "igrid.php",
+      "memoReturn.php", "memoToSale.php", "memoToPurchase.php", "inmemoReturn.php",
+      "diaDetail.php", "boxDetail.php"
+    ],
+    "additionalLegacySurfaces": [
+      { "id": "portal.password_recovery", "file": "venya/forget.php", "note": "Non-functional UI (no form action / no name on email)" },
+      { "id": "inventory.onhand_snapshot", "tables": ["dai_stockmanage"], "note": "Save/load serialized on-hand snapshots by date" },
+      { "id": "integration.james_nivoda_feeds", "paths": ["venya/james/"], "note": "CSV/API stock feeds + SFTP" },
+      { "id": "ops.awsmail_whatsapp", "file": "venya/awsmail.php", "note": "SMTP + hard-coded WhatsApp API sends" },
+      { "id": "master.lab_table", "phpTable": "dai_product_lab", "note": "Node uses dai_lab — schema rename risk" },
+      { "id": "account.books", "phpTables": ["dai_book"], "note": "Book balance + currency convert transfers; Node My Balance uses dai_balance" }
+    ]
+  }
+}
