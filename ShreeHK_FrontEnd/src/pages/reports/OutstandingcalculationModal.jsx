@@ -36,23 +36,23 @@ const OutstandingCalculationModal = ({ open, onClose, data, onSaved }) => {
     const calculation = useMemo(() => {
         // Use base amount if available, otherwise fallback to final_amount
         const baseAmount = Number(data?.amount || data?.sub_total || data?.total_amount || data?.final_amount) || 0;
-        
+
         const lessAmount = (baseAmount * (Number(lessPercent) || 0)) / 100;
         const afterLess = baseAmount - lessAmount;
-        
+
         const otherLessAmount = (afterLess * (Number(otherLessPercent) || 0)) / 100;
-        
+
         const finalAmount = afterLess - otherLessAmount + (Number(extraCharge) || 0);
         const paidAmount = Number(data?.paid_amount) || 0;
         const dueAmount = finalAmount - paidAmount;
-        
-        return { 
+
+        return {
             baseAmount,
-            lessAmount, 
-            afterLess, 
-            otherLessAmount, 
-            finalAmount, 
-            dueAmount: dueAmount > 0 ? dueAmount : 0 
+            lessAmount,
+            afterLess,
+            otherLessAmount,
+            finalAmount,
+            dueAmount: dueAmount > 0 ? dueAmount : 0
         };
     }, [data, lessPercent, otherLessPercent, extraCharge]);
 
@@ -61,27 +61,27 @@ const OutstandingCalculationModal = ({ open, onClose, data, onSaved }) => {
     }, [calculation.dueAmount]);
 
     const entryType = data?.type === "purchase" || data?.type === "import" ? data.type : "sale";
-    
+
     const resetCharges = () => {
         setLessPercent(Number(data?.less_percent || data?.lessPercent || 0));
         setOtherLessPercent(Number(data?.other_less_percent || data?.otherLessPercent || 0));
         setExtraCharge(Number(data?.extra_charge || data?.extraCharge || 0));
     };
-    
+
     const resetInstallment = () => {
         setPaymentDate(dayjs());
         setBook("");
         setCheque("");
         setPaymentAmount(calculation.dueAmount);
     };
-    
+
     const handleSaveCharge = () => {
         if (!data?.id) return;
-        saveCharge({ 
-            id: data.id, 
-            type: entryType, 
-            lessPercent, 
-            otherLessPercent, 
+        saveCharge({
+            id: data.id,
+            type: entryType,
+            lessPercent,
+            otherLessPercent,
             extraCharge,
             lessAmount: calculation.lessAmount,
             otherLessAmount: calculation.otherLessAmount,
@@ -94,7 +94,7 @@ const OutstandingCalculationModal = ({ open, onClose, data, onSaved }) => {
             }
         });
     };
-    
+
     const handleSaveInstallment = () => {
         if (!data?.id) return;
         saveInstallment({
@@ -105,11 +105,11 @@ const OutstandingCalculationModal = ({ open, onClose, data, onSaved }) => {
             cheque,
             amount: paymentAmount,
             description: `Payment paid of Invoice No:${data?.invoiceno || ""}`,
-        }, { 
+        }, {
             onSuccess: () => {
                 onSaved?.();
                 onClose?.();
-            } 
+            }
         });
     };
 
@@ -141,19 +141,23 @@ const OutstandingCalculationModal = ({ open, onClose, data, onSaved }) => {
                     <div><InputLabel>Other Less Amount</InputLabel><InputNumber value={calculation.otherLessAmount} controls={false} readOnly prefix="$" /></div>
                     <div><InputLabel>Extra Charges</InputLabel><InputNumber value={extraCharge} min={0} controls={false} prefix="$" onChange={(v) => setExtraCharge(v || 0)} /></div>
                 </div>
-                <div className={styles.actionRow}><Button type="primary" icon={<Check size={17} />} loading={isSavingCharge} onClick={handleSaveCharge} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)" }}>Save Change</Button>
-                  <Button
-  className={styles.blackBtn}
-  style={{
-    background: "#000",
-    borderColor: "#000",
-    color: "#fff",
-  }}
-  icon={<RotateCcw size={17} color="#fff" />}
-  onClick={resetCharges}
->
-  Reset
-</Button>
+                <div className={styles.actionRow}>
+                    <Button
+                        className={styles.btnReset}
+                        icon={<RotateCcw size={17} />}
+                        onClick={resetCharges}
+                    >
+                        Reset
+                    </Button>
+                    <Button
+                        type="primary"
+                        className={styles.btnSave}
+                        icon={<Check size={17} />}
+                        loading={isSavingCharge}
+                        onClick={handleSaveCharge}
+                    >
+                        Save Change
+                    </Button>
                 </div>
                 <div className={styles.statsRow}>
                     <Stat icon={WalletCards} label="Final Amount" value={money(calculation.finalAmount)} tone="purple" />
@@ -170,13 +174,24 @@ const OutstandingCalculationModal = ({ open, onClose, data, onSaved }) => {
                     <div><InputLabel>Amount</InputLabel><InputNumber value={paymentAmount} min={0} max={calculation.dueAmount} controls={false} prefix="$" onChange={(v) => setPaymentAmount(v || 0)} /></div>
                     <div><InputLabel>Cheque#</InputLabel><Input value={cheque} prefix={<Hash size={16} />} placeholder="Enter cheque no" onChange={(e) => setCheque(e.target.value)} /></div>
                 </div>
-                <div className={styles.actionRow}><Button type="primary" icon={<Check size={17} />} loading={isSavingInstallment} onClick={handleSaveInstallment} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)" }}>Save Installment</Button><Button
-                    className={styles.blackBtn}
-                    icon={<RotateCcw size={17} />}
-                    onClick={resetInstallment}
-                >
-                    Reset
-                </Button></div>
+                <div className={styles.actionRow}>
+                    <Button
+                        className={styles.btnReset}
+                        icon={<RotateCcw size={17} />}
+                        onClick={resetInstallment}
+                    >
+                        Reset
+                    </Button>
+                    <Button
+                        type="primary"
+                        className={styles.btnSave}
+                        icon={<Check size={17} />}
+                        loading={isSavingInstallment}
+                        onClick={handleSaveInstallment}
+                    >
+                        Save Installment
+                    </Button>
+                </div>
             </section>
             <footer className={styles.footer}><span><ShieldCheck size={25} /><span><b>All changes are secure and logged</b><small>Your data is protected with enterprise-grade security.</small></span></span><Button
                 //  icon={<X size={17} />} 

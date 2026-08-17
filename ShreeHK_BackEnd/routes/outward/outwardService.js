@@ -677,10 +677,10 @@ async function sendTo(rawPost, userContext = {}) {
         oldValue:
           type === "sale"
             ? {
-                outward_status: "memo",
-                skus: Productsku,
-                ...saleCtx,
-              }
+              outward_status: "memo",
+              skus: Productsku,
+              ...saleCtx,
+            }
             : null,
         newValue: {
           ...(outwardRows[0] || { products: productsCsv, skus: sku }),

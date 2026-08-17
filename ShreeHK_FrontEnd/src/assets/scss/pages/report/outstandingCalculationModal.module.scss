@@ -234,24 +234,58 @@
   }
 }
 
-.blackBtn.ant-btn,
-.blackBtn:global(.ant-btn) {
-  background: #000 !important;
-  border-color: #000 !important;
-  color: #fff !important;
+.btnSave.ant-btn,
+.btnSave:global(.ant-btn) {
+  background-color: var(--color-success, #38a169) !important;
+  border-color: var(--color-success, #38a169) !important;
+  color: #ffffff !important;
+  font-weight: 600;
+
+  &:hover:not(:disabled),
+  &:focus:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-success, #38a169) 85%, #000) !important;
+    border-color: color-mix(in srgb, var(--color-success, #38a169) 85%, #000) !important;
+    color: #ffffff !important;
+
+    svg,
+    svg path {
+      color: #ffffff !important;
+      stroke: #ffffff !important;
+    }
+  }
+
+  svg,
+  svg path {
+    color: #ffffff !important;
+    stroke: #ffffff !important;
+  }
 }
 
-.blackBtn.ant-btn:hover,
-.blackBtn:global(.ant-btn:hover),
-.blackBtn.ant-btn:focus,
-.blackBtn:global(.ant-btn:focus) {
-  background: #222 !important;
-  border-color: #222 !important;
-  color: #fff !important;
-}
+.btnReset.ant-btn,
+.btnReset:global(.ant-btn) {
+  background-color: var(--color-btn-cancel-bg, #475569) !important;
+  border-color: var(--color-btn-cancel-bg, #475569) !important;
+  color: #ffffff !important;
+  font-weight: 600;
 
-.blackBtn :global(svg) {
-  color: #fff !important;
+  &:hover:not(:disabled),
+  &:focus:not(:disabled) {
+    background-color: var(--color-btn-cancel-hover, #334155) !important;
+    border-color: var(--color-btn-cancel-hover, #334155) !important;
+    color: #ffffff !important;
+
+    svg,
+    svg path {
+      color: #ffffff !important;
+      stroke: #ffffff !important;
+    }
+  }
+
+  svg,
+  svg path {
+    color: #ffffff !important;
+    stroke: #ffffff !important;
+  }
 }
 
 .statsRow {

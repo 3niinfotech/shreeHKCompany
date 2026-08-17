@@ -154,8 +154,8 @@ router.post('/api/profile/change-password', authenticateToken, (req, res) => {
     if (!oldPass || !newPass) {
         return res.status(400).json({ status: false, message: 'Both passwords required.' });
     }
-    if (newPass.length < 6) {
-        return res.status(400).json({ status: false, message: 'New password must be at least 6 characters.' });
+    if (newPass.length < 3) {
+        return res.status(400).json({ status: false, message: 'New password must be at least 3 characters.' });
     }
 
     // Step 1: Purana password verify karo
@@ -276,8 +276,8 @@ router.post('/api/admin/users/:id/reset-password', authenticateToken, isSuperAdm
     const { id } = req.params;
     const { newPass } = req.body;
 
-    if (!newPass || newPass.length < 6) {
-        return res.status(400).json({ status: false, message: 'Password must be at least 6 characters.' });
+    if (!newPass || newPass.length < 3) {
+        return res.status(400).json({ status: false, message: 'Password must be at least 3 characters.' });
     }
 
     // Super admin apna password yahan se reset nahi kar sakta

@@ -188,11 +188,17 @@ async function logActivityTx(q, payload) {
     payload.status || "SUCCESS",
   ];
 
-  await auditQuery(sql, values);
-  // Mark on the real ALS store object so HTTP fallback still sees the flag
-  // even if getStore() is null later in res.finish.
-  if (ctxStore) ctxStore.auditLogged = true;
-  markAuditLogged();
+  try {
+    await auditQuery(sql, values);
+    if (ctxStore) ctxStore.auditLogged = true;
+    markAuditLogged();
+  } catch (err) {
+    console.error("[AUDIT LOG ERROR] Failed to record activity log entry:", err?.message || err, {
+      actionType: payload.actionType,
+      moduleName: payload.moduleName,
+      recordReference: payload.recordReference,
+    });
+  }
 }
 
 async function logActivity(payload) {

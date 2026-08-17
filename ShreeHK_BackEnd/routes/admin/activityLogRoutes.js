@@ -100,15 +100,11 @@ function buildFilters(query, companyScope = null) {
 
   if (companyScope !== null) {
     if (companyScope > 0) {
-      if (authEventsOnly) {
-        // Login happens before company context, so those rows live on company 1.
-        where.push("(company_id = ? OR company_id = 1)");
-        values.push(companyScope);
-      } else if (query.includeGlobalAuth === "1" || query.includeGlobalAuth === "true") {
+      if (authEventsOnly || query.includeGlobalAuth === "1" || query.includeGlobalAuth === "true") {
         where.push(
-          `(company_id = ? OR (company_id = 1 AND action_type IN (${AUTH_ACTION_TYPES.map(() => "?").join(", ")})))`,
+          `(company_id = ? OR (action_type IN (${AUTH_ACTION_TYPES.map(() => "?").join(", ")}) AND user_id IN (SELECT DISTINCT user_id FROM dai_activity_log WHERE company_id = ? AND user_id IS NOT NULL)))`,
         );
-        values.push(companyScope, ...AUTH_ACTION_TYPES);
+        values.push(companyScope, ...AUTH_ACTION_TYPES, companyScope);
       } else {
         where.push("company_id = ?");
         values.push(companyScope);

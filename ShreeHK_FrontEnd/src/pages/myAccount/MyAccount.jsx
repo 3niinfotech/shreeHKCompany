@@ -183,7 +183,7 @@ const MyAccount = () => {
                             name="newPass"
                             rules={[
                                 { required: true, message: 'New password required' },
-                                { min: 6, message: 'Minimum 6 characters' }
+                                { min: 3, message: 'Minimum 3 characters' }
                             ]}
                         >
                             <Input.Password prefix={<LockOutlined />} placeholder="Enter new password" />

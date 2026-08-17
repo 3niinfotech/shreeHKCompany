@@ -320,6 +320,14 @@ const Header = ({
               onInventoryFilter={handleInventoryFilterFromSearch}
             />
           </div>
+          <Tooltip title="Tasks">
+            <span>
+              <TaskHeaderButton
+                buttonClassName={styles.notificationBtn}
+                badgeClassName={styles.notificationBadge}
+              />
+            </span>
+          </Tooltip>
         </div>
 
         <div className={styles.headerRight}>
@@ -424,14 +432,6 @@ const Header = ({
             </Tooltip>
           </div>
           {/* <ConnectionStatusPill isOnline={isOnline} /> */}
-          <Tooltip title="Tasks">
-            <span>
-              <TaskHeaderButton
-                buttonClassName={styles.notificationBtn}
-                badgeClassName={styles.notificationBadge}
-              />
-            </span>
-          </Tooltip>
           <Tooltip title="Notifications">
             <span>
               <NotificationDropdown

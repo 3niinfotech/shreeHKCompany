@@ -346,9 +346,9 @@ $btn-icon-size: 14px;
   outline: none !important;
 }
 
-.ant-picker .ant-picker-input > input,
-.ant-picker .ant-picker-input > input:focus,
-.ant-picker .ant-picker-input > input:hover {
+.ant-picker .ant-picker-input>input,
+.ant-picker .ant-picker-input>input:focus,
+.ant-picker .ant-picker-input>input:hover {
   border: none !important;
   box-shadow: none !important;
   outline: none !important;
@@ -439,33 +439,34 @@ $inv-not: ":not(.diamond-inventory-table):not(.custom-ant-table):not(.erp-table)
   background: var(--color-card-bg);
 }
 
-.ant-table-wrapper#{$inv-not} .ant-table-thead > tr > th {
+.ant-table-wrapper#{$inv-not} .ant-table-thead>tr>th {
   background: var(--color-table-header-bg) !important;
   color: var(--color-table-header-text) !important;
   font-weight: 600 !important;
   border-bottom: var(--border-width-thin) solid var(--color-table-border) !important;
 }
 
-.ant-table-wrapper#{$inv-not} .ant-table-tbody > tr > td {
+.ant-table-wrapper#{$inv-not} .ant-table-tbody>tr>td {
   background: var(--color-table-row-bg) !important;
   color: var(--color-text-body);
   border-bottom: var(--border-width-thin) solid var(--color-table-border) !important;
 }
 
-.ant-table-wrapper#{$inv-not} .ant-table-tbody > tr:nth-child(even) > td {
+.ant-table-wrapper#{$inv-not} .ant-table-tbody>tr:nth-child(even)>td {
   background: var(--table-row-zebra) !important;
 }
 
-.ant-table-wrapper#{$inv-not} .ant-table-tbody > tr:hover > td {
+.ant-table-wrapper#{$inv-not} .ant-table-tbody>tr:hover>td {
   background: var(--table-row-hover) !important;
 }
 
-.ant-table-wrapper#{$inv-not} .ant-table-tbody > tr.ant-table-row-selected > td {
+.ant-table-wrapper#{$inv-not} .ant-table-tbody>tr.ant-table-row-selected>td {
   background: var(--color-primary-light) !important;
 }
 
 // Table action icons (master / list pages)
 .ant-table-wrapper#{$inv-not} {
+
   .editIcon,
   [class*="editIcon"] {
     color: var(--color-primary) !important;

@@ -4,7 +4,7 @@ import { SkeletonBlock } from '../../../components/common/skeleton';
 import { Coins, Plus, Save, Check, Pencil, Trash2, RefreshCcw } from 'lucide-react';
 import { useFetchApi, usePostApiRequest, useDeleteApiRequest } from '../../../api/ApiFunction';
 import { ENDPOINTS } from '../../../constants/endpoints';
-import { getCurrencyFlag } from './currencyFlags';
+import { CurrencyFlag } from './currencyFlags';
 import styles from '../../../assets/scss/pages/accountings/mybalance.module.scss';
 
 const CurrancyRate = () => {
@@ -13,19 +13,24 @@ const CurrancyRate = () => {
     const { data: apiResponse, isLoading: isFetching, refetch } = useFetchApi('fetchCurrancyData', ENDPOINTS.currency.list);
     const { mutate: createCurrncyRate, isLoading: isSubmitting } = usePostApiRequest(ENDPOINTS.currency.save, 'fetchCurrancyData');
     const { mutate: deleteCurrncyRate, isLoading: isDeleting } = useDeleteApiRequest(ENDPOINTS.currency.delete, 'fetchCurrancyData');
+    console.log("apiResponse :", apiResponse);
+
+    const dataList = apiResponse?.Data;
 
     useEffect(() => {
-        if (apiResponse?.Data && Array.isArray(apiResponse.Data)) {
-            const mappedRows = apiResponse.Data.map(item => ({
+        if (Array.isArray(dataList)) {
+            const mappedRows = dataList.map(item => ({
                 id: item.id,
                 col1: item.currency,
                 col2: item.USD,
                 col3: item.HKD,
                 isEditing: false
             }));
-            setRows(mappedRows);
+            queueMicrotask(() => {
+                setRows(mappedRows);
+            });
         }
-    }, [apiResponse]);
+    }, [dataList]);
 
     const handleAdd = () => {
         const newRow = { id: Date.now(), isEditing: true, col1: '', col2: '', col3: '' };
@@ -129,14 +134,18 @@ const CurrancyRate = () => {
                                                 <Input
                                                     size="small"
                                                     value={row.col1}
+                                                    placeholder="e.g. INR"
                                                     onChange={(e) => setRows(rows.map(r => r.id === row.id ? { ...r, col1: e.target.value } : r))}
                                                 />
                                             </td>
-                                            <td />
+                                            <td style={{ textAlign: 'center' }}>
+                                                <CurrencyFlag currency={row.col1} />
+                                            </td>
                                             <td>
                                                 <Input
                                                     size="small"
                                                     value={row.col2}
+                                                    placeholder="0.00"
                                                     onChange={(e) => setRows(rows.map(r => r.id === row.id ? { ...r, col2: e.target.value } : r))}
                                                 />
                                             </td>
@@ -144,6 +153,7 @@ const CurrancyRate = () => {
                                                 <Input
                                                     size="small"
                                                     value={row.col3}
+                                                    placeholder="0.00"
                                                     onChange={(e) => setRows(rows.map(r => r.id === row.id ? { ...r, col3: e.target.value } : r))}
                                                 />
                                             </td>
@@ -160,9 +170,9 @@ const CurrancyRate = () => {
                                         </>
                                     ) : (
                                         <>
-                                            <td>{row.col1}</td>
+                                            <td style={{ fontWeight: 600 }}>{row.col1}</td>
                                             <td style={{ textAlign: 'center' }}>
-                                                <span className={styles.flagEmoji}>{getCurrencyFlag(row.col1)}</span>
+                                                <CurrencyFlag currency={row.col1} />
                                             </td>
                                             <td style={{ textAlign: 'right' }}>{row.col2}</td>
                                             <td style={{ textAlign: 'right' }}>{row.col3}</td>

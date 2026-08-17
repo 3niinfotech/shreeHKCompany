@@ -1,4 +1,4 @@
-try { require("dotenv").config(); } catch (e) {}
+try { require("dotenv").config(); } catch (e) { }
 const { AsyncLocalStorage } = require("async_hooks");
 const mysql = require("mysql");
 
@@ -37,7 +37,7 @@ function getPoolForDb(dbName) {
       const firstKey = poolCache.keys().next().value;
       if (firstKey && firstKey !== "__meta__") {
         const old = poolCache.get(firstKey);
-        old?.end?.(() => {});
+        old?.end?.(() => { });
         poolCache.delete(firstKey);
       }
     }

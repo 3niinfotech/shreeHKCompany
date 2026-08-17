@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Dropdown, Empty, Spin } from "antd";
 import { Bell, CheckCheck, IndianRupee, LogIn, Package, Sparkles } from "lucide-react";
 import { api } from "../../api/axiosInstance";
+import { playNotificationSound } from "../../utils/soundNotify";
 import styles from "../../assets/scss/components/notificationDropdown.module.scss";
 
 const POLLING_MS = 10000;
@@ -232,6 +233,7 @@ const NotificationDropdown = ({ buttonClassName, badgeClassName }) => {
 
       if (hasFetchedOnceRef.current && nextUnreadCount > previousUnreadCount && !openRef.current) {
         notifyBrowser(nextData[0], nextUnreadCount);
+        playNotificationSound();
       }
 
       setNotifications((prev) => (append ? [...prev, ...nextData] : nextData));
@@ -286,6 +288,7 @@ const NotificationDropdown = ({ buttonClassName, badgeClassName }) => {
           payload = null;
         }
         fetchNotifications({ force: true });
+        playNotificationSound();
         if (payload && !openRef.current) {
           const title = payload.title || "New notification";
           const message = payload.message || "";

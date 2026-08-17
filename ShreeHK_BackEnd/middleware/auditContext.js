@@ -43,44 +43,80 @@ const runWithAuditContext = (req, overrides, fn) => {
 
 /** Express middleware — attaches ALS context for authenticated requests. */
 const attachAuditContext = (req, res, next) => {
-  const ctx = { ...buildAuditContextFromReq(req), auditLogged: false };
+  req._auditLogged = false;
+  if (res) res._auditLogged = false;
+  if (res?.locals) res.locals._auditLogged = false;
+
+  const ctx = {
+    ...buildAuditContextFromReq(req),
+    auditLogged: false,
+    req,
+    res,
+  };
+  req._auditContext = ctx;
+  if (res?.locals) res.locals._auditContext = ctx;
+
   auditStorage.run(ctx, () => next());
 };
 
 /** Refresh context after JWT auth / tenant — keeps user + company accurate for audit rows. */
 const refreshAuditContextFromReq = async (req) => {
   const current = auditStorage.getStore();
-  if (!current) return;
+  if (current) {
+    if (!current.req) current.req = req;
+    req._auditContext = current;
+  }
 
   const roleName = req.user?.roll
     ? await getRoleNameByRollId(req.user.roll)
-    : current.userRole || "";
+    : current?.userRole || "";
 
-  Object.assign(current, {
-    userId: req.user?.user_id ?? current.userId ?? null,
-    userName: req.user?.username ?? current.userName ?? "Unknown",
-    userRoleId: req.user?.roll ?? current.userRoleId ?? null,
-    userRole: roleName || current.userRole || "",
-    companyId: req.companyId ?? req.user?.companyId ?? current.companyId ?? 1,
-    ipAddress: getClientIp(req),
-    userAgent: String(req.headers["user-agent"] ?? current.userAgent ?? "").slice(0, 512),
-    requestPath: String(req.path || req.url?.split("?")[0] || "").slice(0, 255),
-    requestMethod: req.method || "GET",
-    pagePath: req.headers["x-audit-page-path"]
-      ? String(req.headers["x-audit-page-path"]).slice(0, 255)
-      : current.pagePath ?? null,
-    pageLabel: req.headers["x-audit-page-label"]
-      ? String(req.headers["x-audit-page-label"]).slice(0, 100)
-      : current.pageLabel ?? null,
-  });
+  if (current) {
+    Object.assign(current, {
+      userId: req.user?.user_id ?? current.userId ?? null,
+      userName: req.user?.username ?? current.userName ?? "Unknown",
+      userRoleId: req.user?.roll ?? current.userRoleId ?? null,
+      userRole: roleName || current.userRole || "",
+      companyId: req.companyId ?? req.user?.companyId ?? current.companyId ?? 1,
+      ipAddress: getClientIp(req),
+      userAgent: String(req.headers["user-agent"] ?? current.userAgent ?? "").slice(0, 512),
+      requestPath: String(req.path || req.url?.split("?")[0] || "").slice(0, 255),
+      requestMethod: req.method || "GET",
+      pagePath: req.headers["x-audit-page-path"]
+        ? String(req.headers["x-audit-page-path"]).slice(0, 255)
+        : current.pagePath ?? null,
+      pageLabel: req.headers["x-audit-page-label"]
+        ? String(req.headers["x-audit-page-label"]).slice(0, 100)
+        : current.pageLabel ?? null,
+    });
+  }
 };
 
-const markAuditLogged = () => {
+const markAuditLogged = (reqOrRes) => {
   const current = auditStorage.getStore();
-  if (current) current.auditLogged = true;
+  if (current) {
+    current.auditLogged = true;
+    if (current.req) current.req._auditLogged = true;
+    if (current.res) {
+      current.res._auditLogged = true;
+      if (current.res.locals) current.res.locals._auditLogged = true;
+    }
+  }
+  if (reqOrRes) {
+    if (reqOrRes._auditLogged !== undefined) reqOrRes._auditLogged = true;
+    if (reqOrRes.req) reqOrRes.req._auditLogged = true;
+    if (reqOrRes.res) {
+      reqOrRes.res._auditLogged = true;
+      if (reqOrRes.res.locals) reqOrRes.res.locals._auditLogged = true;
+    }
+  }
 };
 
-const wasAuditLogged = () => Boolean(auditStorage.getStore()?.auditLogged);
+const wasAuditLogged = (req, res) => {
+  if (req?._auditLogged || res?._auditLogged || res?.locals?._auditLogged) return true;
+  if (req?._auditContext?.auditLogged || res?._auditContext?.auditLogged || res?.locals?._auditContext?.auditLogged) return true;
+  return Boolean(auditStorage.getStore()?.auditLogged);
+};
 
 const getAuditContext = () => auditStorage.getStore() || null;
 

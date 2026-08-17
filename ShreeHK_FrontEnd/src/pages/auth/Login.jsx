@@ -9,6 +9,7 @@ import { usePostApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../constants/endpoints';
 import useAuthStore from '../../store/Auth.Store';
 import { getPostLoginPath } from '../../routes/Routes';
+import { ShieldCheck } from 'lucide-react';
 
 const { Title, Text } = Typography;
 
@@ -94,6 +95,22 @@ const Login = () => {
               Sign In
             </Button>
           </Form>
+
+          <section className={styles.securitySection}>
+            <div className={styles.securityBadge}>
+              <ShieldCheck
+                size={15}
+                strokeWidth={2}
+                className={styles.sessionIcon}
+              />
+
+              <span>Secure</span>
+              <span className={styles.sessionDot}>•</span>
+              <span>Reliable</span>
+              <span className={styles.sessionDot}>•</span>
+              <span>Efficient</span>
+            </div>
+          </section>
 
           <footer className={styles.footerText}>
             <Text type="secondary">2026 © Smart DIA. All rights reserved. Developed by 3ni Infotech.</Text>

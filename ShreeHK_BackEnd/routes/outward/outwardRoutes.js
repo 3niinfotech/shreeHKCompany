@@ -97,7 +97,7 @@ outwardRouter.post("/outward/list", authenticateToken, async (req, res) => {
     let userFilter = (post.userid === 16 || post.userid === 1) ? "" : " AND o.user != 16";
 
     // 4. Pagination Fix (Offset calculation)
-    const limit = 10;
+    const limit = parseInt(post.limit) || 100;
     const page = parseInt(post.page) || 1;
     const offset = (page - 1) * limit;
 
