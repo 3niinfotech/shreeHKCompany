@@ -10,6 +10,7 @@ const { ensureUserActiveColumn } = require('../../services/userActiveColumnServi
 const { touchUserPresence, clearUserPresence } = require('../../services/userPresenceService.js');
 const helper = require("../../helper.js");
 const { logAudit } = require("../../services/auditIntegration.js");
+const { getRollCompanyIds } = require("../../tenantHelper.js");
 const userRouter = express.Router();
 const md5 = require('md5');
 
@@ -29,8 +30,21 @@ const getClientIp = (req) => {
   );
 };
 
+const resolveUserCompanyId = async (req, userRoll) => {
+  const reqComp = Number(req.companyId || req.headers["x-company-id"]);
+  if (reqComp && reqComp > 0) return reqComp;
+  if (userRoll) {
+    try {
+      const allowed = await getRollCompanyIds(userRoll);
+      if (allowed && allowed.length > 0) return allowed[0];
+    } catch {}
+  }
+  return 1;
+};
+
 const logFailedLogin = async (req, { username, user = null, reason }) => {
   try {
+    const companyId = await resolveUserCompanyId(req, user?.roll);
     await logAudit({
       actionType: "LOGIN_FAILED",
       moduleName: "User Management",
@@ -40,7 +54,7 @@ const logFailedLogin = async (req, { username, user = null, reason }) => {
       userName: user?.user_name || String(username || "Unknown user").slice(0, 150),
       userRole: user?.role_name || "",
       userRoleId: user?.roll || null,
-      companyId: 1,
+      companyId,
       newValue: { reason },
       description: `Failed login attempt for ${String(username || "unknown").slice(0, 150)}: ${reason}`,
       ipAddress: getClientIp(req),
@@ -143,6 +157,7 @@ userRouter.post('/user/login', async (req, res) => {
     }
 
     try {
+      const companyId = await resolveUserCompanyId(req, user.roll);
       await logAudit({
         actionType: "LOGIN",
         moduleName: "User Management",
@@ -152,7 +167,7 @@ userRouter.post('/user/login', async (req, res) => {
         userName: user.user_name,
         userRole: user.role_name || "",
         userRoleId: user.roll,
-        companyId: 1,
+        companyId,
         newValue: {
           user_id: user.user_id,
           user_name: user.user_name,
@@ -212,6 +227,7 @@ userRouter.post('/user/logout', authenticateToken, async (req, res) => {
   }
 
   try {
+    const companyId = await resolveUserCompanyId(req, req.user?.roll);
     await logAudit({
       actionType: "LOGOUT",
       moduleName: "User Management",
@@ -220,7 +236,7 @@ userRouter.post('/user/logout', authenticateToken, async (req, res) => {
       userId: req.user?.user_id,
       userName: req.user?.username || "User",
       userRoleId: req.user?.roll,
-      companyId: Number(req.companyId || req.user?.companyId) || 1,
+      companyId,
       ipAddress: getClientIp(req),
       userAgent: String(req.headers["user-agent"] || "").slice(0, 512),
     });

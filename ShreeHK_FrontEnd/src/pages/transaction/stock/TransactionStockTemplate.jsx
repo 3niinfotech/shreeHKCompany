@@ -964,6 +964,7 @@ const TransactionStockTemplate = ({
             value={party || undefined}
             onChange={(v) => { setParty(v || ''); resetList(); }}
             options={partyOptions}
+            style={{ borderRadius: 8 }}
             virtual
           />
         </FilterField>
@@ -975,6 +976,7 @@ const TransactionStockTemplate = ({
             onChange={(e) => { setInvoice(e.target.value); resetList(); }}
             onPressEnter={refreshList}
             placeholder="Invoice number"
+            borderRadius="8px"
             allowClear
           />
         </FilterField>
@@ -987,7 +989,7 @@ const TransactionStockTemplate = ({
               value={filterType || undefined}
               onChange={(v) => { setFilterType(v || ''); resetList(); }}
               options={typeFilterOptions}
-              style={{ minWidth: 140 }}
+              style={{ minWidth: 140, borderRadius:8}}
             />
           </FilterField>
         )}

@@ -3,6 +3,7 @@ import { Dropdown, Empty, Spin } from "antd";
 import { NotebookPen, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api/axiosInstance";
+import { playNotificationSound } from "../../utils/soundNotify";
 import styles from "../../assets/scss/components/notificationDropdown.module.scss";
 
 const POLLING_MS = 10000;
@@ -91,14 +92,14 @@ const TaskPanel = ({ tasks, loading, onTaskClick, onViewAll }) => {
                           item.priority === "High"
                             ? "#fef2f2"
                             : item.priority === "Medium"
-                            ? "#fffbeb"
-                            : "#ecfdf5",
+                              ? "#fffbeb"
+                              : "#ecfdf5",
                         color:
                           item.priority === "High"
                             ? "#ef4444"
                             : item.priority === "Medium"
-                            ? "#d97706"
-                            : "#10b981",
+                              ? "#d97706"
+                              : "#10b981",
                       }}
                     >
                       {item.priority}
@@ -141,6 +142,8 @@ const TaskHeaderButton = ({ buttonClassName, badgeClassName }) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const isFetchingRef = useRef(false);
+  const hasFetchedOnceRef = useRef(false);
+  const previousPendingCountRef = useRef(0);
 
   const fetchTasks = useCallback(async () => {
     if (isFetchingRef.current) return;
@@ -149,6 +152,14 @@ const TaskHeaderButton = ({ buttonClassName, badgeClassName }) => {
     try {
       const res = await api.get("/dashboard/quick-notes");
       const data = Array.isArray(res?.data?.Data) ? res.data.Data : [];
+      const pendingCount = data.filter((t) => !t.completed).length;
+
+      if (hasFetchedOnceRef.current && pendingCount > previousPendingCountRef.current) {
+        playNotificationSound();
+      }
+
+      previousPendingCountRef.current = pendingCount;
+      hasFetchedOnceRef.current = true;
       setTasks(data);
     } catch {
       // Keep task button usable even if API fails.

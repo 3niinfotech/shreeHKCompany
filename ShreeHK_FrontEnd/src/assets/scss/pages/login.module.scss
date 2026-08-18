@@ -123,6 +123,44 @@
       text-align: center;
       color: var(--color-neutral);
     }
+
+    .securitySection {
+      margin-top: 4.6rem;
+      display: flex;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .securityBadge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+
+      color: var(--color-neutral);
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 1;
+
+      white-space: nowrap;
+
+      .sessionIcon {
+        flex-shrink: 0;
+        color: var(--color-primary);
+        margin-right: 2px;
+      }
+
+      span {
+        color: var(--color-neutral);
+      }
+
+      .sessionDot {
+        color: var(--color-border);
+        font-size: 13px;
+        line-height: 1;
+        margin: 0 1px;
+      }
+    }
   }
 }
 

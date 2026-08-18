@@ -24,7 +24,7 @@ const logPermissionAttempt = (req, path, userPayload = {}) => {
     userName: userPayload.username ?? req.user?.username ?? "Unknown",
     userRoleId: userPayload.roll ?? req.user?.roll ?? null,
     description: `Blocked access to ${path || req.path}`,
-  }).catch(() => {});
+  }).catch(() => { });
 };
 
 const authenticateToken = (req, res, next) => {

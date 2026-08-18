@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { SkeletonBlock } from '../../../components/common/skeleton';
 import { Activity, RefreshCw } from 'lucide-react';
+import { CurrencyFlag } from './currencyFlags';
 import styles from '../../../assets/scss/pages/accountings/mybalance.module.scss';
 import { cssVar } from '../../../theme';
 
 const initialRates = [
-    { id: 1, currency: 'USD - US Dollar', flag: '🇺🇸', usd: '83.25', hkd: '10.65', status: 'LIVE', updatedAt: '25 May 2026, 10:30 AM' },
-    { id: 2, currency: 'EUR - Euro', flag: '🇪🇺', usd: '7.81', hkd: '1.00', status: 'LIVE', updatedAt: '25 May 2026, 10:30 AM' },
+    { id: 1, currency: 'USD - US Dollar', usd: '83.25', hkd: '10.65', status: 'LIVE', updatedAt: '25 May 2026, 10:30 AM' },
+    { id: 2, currency: 'EUR - Euro', usd: '7.81', hkd: '1.00', status: 'LIVE', updatedAt: '25 May 2026, 10:30 AM' },
+    { id: 3, currency: 'INR - Indian Rupee', usd: '0.012', hkd: '0.094', status: 'LIVE', updatedAt: '25 May 2026, 10:30 AM' },
+    { id: 4, currency: 'GBP - British Pound', usd: '1.27', hkd: '9.92', status: 'LIVE', updatedAt: '25 May 2026, 10:30 AM' },
 ];
 
 const LiveRates = () => {
@@ -22,8 +25,8 @@ const LiveRates = () => {
 
             const updatedRates = rates.map(item => ({
                 ...item,
-                usd: (parseFloat(item.usd) + (Math.random() * 0.1)).toFixed(2),
-                hkd: (parseFloat(item.hkd) + (Math.random() * 0.05)).toFixed(2),
+                usd: (parseFloat(item.usd) + (Math.random() * 0.02 - 0.01)).toFixed(2),
+                hkd: (parseFloat(item.hkd) + (Math.random() * 0.01 - 0.005)).toFixed(2),
                 updatedAt: timeStr,
             }));
             setRates(updatedRates);
@@ -80,9 +83,9 @@ const LiveRates = () => {
                             rates.map((row, i) => (
                                 <tr key={row.id}>
                                     <td>{i + 1}</td>
-                                    <td>{row.currency}</td>
+                                    <td style={{ fontWeight: 500 }}>{row.currency}</td>
                                     <td style={{ textAlign: 'center' }}>
-                                        <span className={styles.flagEmoji}>{row.flag}</span>
+                                        <CurrencyFlag currency={row.currency} />
                                     </td>
                                     <td style={{ textAlign: 'right' }}>{row.usd}</td>
                                     <td style={{ textAlign: 'right' }}>{row.hkd}</td>

@@ -272,7 +272,7 @@ const Dashboard = () => {
             })}
           />
         </Col>
-        <Col xs={24} lg={12} xl={8} className="dashboard-grid__col">
+        <Col xs={24} lg={12} xl={8} className="dashboard-grid__col" style={{ paddingInline: 0 }}>
           <RecentTransactionsPanel
             transactions={recentTransactions}
             isLoading={isLoading}

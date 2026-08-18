@@ -1,6 +1,6 @@
 const { PAGE_BY_KEY } = require("../config/permissionRegistry.js");
 const { getApiPermission, isPublicApiPath } = require("../permissionHelper.js");
-const { getAuditContext, wasAuditLogged } = require("./auditContext.js");
+const { getAuditContext, wasAuditLogged, markAuditLogged } = require("./auditContext.js");
 const { logActivity, diffFields, safeJson } = require("../services/auditService.js");
 
 const LOGGED_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE", "GET"]);
@@ -124,10 +124,19 @@ function auditHttpLogger(req, res, next) {
 
   // Capture ALS store now — wasAuditLogged() alone can miss after await / finish.
   const ctxRef = getAuditContext();
+  if (ctxRef) {
+    ctxRef.req = req;
+    ctxRef.res = res;
+  }
 
   res.on("finish", () => {
-    if (ctxRef?.auditLogged || wasAuditLogged()) return;
+    if (req._auditLogged || res._auditLogged || res.locals?._auditLogged || ctxRef?.auditLogged || wasAuditLogged(req, res)) return;
     if (res.statusCode < 200 || res.statusCode >= 300) return;
+
+    req._auditLogged = true;
+    res._auditLogged = true;
+    if (res.locals) res.locals._auditLogged = true;
+    markAuditLogged(res);
 
     const ctx = ctxRef || getAuditContext() || {};
     if (!ctx.userId) return;
@@ -144,10 +153,10 @@ function auditHttpLogger(req, res, next) {
 
     const pageContext = pagePath
       ? {
-          path: String(pagePath).slice(0, 255),
-          label: pageLabel ? String(pageLabel).slice(0, 100) : null,
-          search: pageSearch ? String(pageSearch).slice(0, 255) : null,
-        }
+        path: String(pagePath).slice(0, 255),
+        label: pageLabel ? String(pageLabel).slice(0, 100) : null,
+        search: pageSearch ? String(pageSearch).slice(0, 255) : null,
+      }
       : null;
 
     const businessPayload = method === "GET" ? null : safeJson(body);

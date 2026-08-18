@@ -5,7 +5,7 @@ import { BookOpen, Plus, Save, Check, Pencil, Trash2, RefreshCcw } from 'lucide-
 import { useFetchApi, usePostApiRequest, useDeleteApiRequest } from '../../../api/ApiFunction';
 import { ENDPOINTS } from '../../../constants/endpoints';
 import { ConfirmDeleteModal } from '../../../components/common/modals';
-import { getCurrencyFlag } from './currencyFlags';
+import { CurrencyFlag } from './currencyFlags';
 import styles from '../../../assets/scss/pages/accountings/mybalance.module.scss';
 
 const BalanceBook = () => {
@@ -16,18 +16,22 @@ const BalanceBook = () => {
     const { mutate: createbalanceBook, isLoading: isSubmitting } = usePostApiRequest(ENDPOINTS.balance.book, 'CeateBalance');
     const { mutate: deleteBalance, isLoading: isDeleting } = useDeleteApiRequest(ENDPOINTS.balance.delete, 'deleteBalanceBook');
 
+    const dataList = data?.Data;
+
     useEffect(() => {
-        if (data?.Data) {
-            const mappedRows = data.Data.map(item => ({
+        if (Array.isArray(dataList)) {
+            const mappedRows = dataList.map(item => ({
                 id: item.id,
                 bank: item.bank || '',
                 currency: item.currency || '',
                 cash: item.cash ?? 0,
                 isEditing: false
             }));
-            setRows(mappedRows);
+            queueMicrotask(() => {
+                setRows(mappedRows);
+            });
         }
-    }, [data]);
+    }, [dataList]);
 
     const handleAdd = () => {
         const newRow = { _key: Date.now(), id: 0, isEditing: true, bank: '', currency: '', cash: '' };
@@ -150,12 +154,15 @@ const BalanceBook = () => {
                                                     />
                                                 </td>
                                                 <td>
-                                                    <Input
-                                                        size="small"
-                                                        value={row.currency}
-                                                        placeholder="e.g. INR"
-                                                        onChange={(e) => updateRow(getRowKey(row), 'currency', e.target.value)}
-                                                    />
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <CurrencyFlag currency={row.currency} />
+                                                        <Input
+                                                            size="small"
+                                                            value={row.currency}
+                                                            placeholder="e.g. INR"
+                                                            onChange={(e) => updateRow(getRowKey(row), 'currency', e.target.value)}
+                                                        />
+                                                    </div>
                                                 </td>
                                                 <td>
                                                     <Input
@@ -178,13 +185,11 @@ const BalanceBook = () => {
                                             </>
                                         ) : (
                                             <>
-                                                <td>{row.bank}</td>
+                                                <td style={{ fontWeight: 500 }}>{row.bank}</td>
                                                 <td>
                                                     <div className={styles.currencyCell}>
-                                                        <span className={styles.flagEmoji}>
-                                                            {getCurrencyFlag(row.currency)}
-                                                        </span>
-                                                        {row.currency}
+                                                        <CurrencyFlag currency={row.currency} />
+                                                        <span style={{ fontWeight: 500 }}>{row.currency}</span>
                                                     </div>
                                                 </td>
                                                 <td style={{ textAlign: 'right', fontWeight: 600 }}>

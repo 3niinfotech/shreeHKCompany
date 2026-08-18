@@ -109,7 +109,7 @@ export const APPROVAL_MEMO_STYLES = `
   .approval-memo-root .brand{display:flex;align-items:center;gap:14px;}
   .approval-memo-root .logo{
     width:50px;height:50px;border-radius:50%;
-    background:var(--blue);
+    // background:var(--blue);
     display:flex;align-items:center;justify-content:center;
     color:#fff;font-weight:700;font-size:20px;
     font-family:Georgia,serif;

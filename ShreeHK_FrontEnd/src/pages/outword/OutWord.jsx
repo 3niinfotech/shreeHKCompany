@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Table, Card, Typography, Space, Button, Tag, Checkbox, Badge, Form, Input, Row, Col } from 'antd';
+import { Table, Card, Typography, Space, Button, Tag, Checkbox, Badge, Form, Input, Row, Col, Spin } from 'antd';
 import { EditOutlined, PrinterOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
 import { Pencil, CircleCheck } from 'lucide-react';
 import dayjs from 'dayjs';
@@ -18,6 +18,7 @@ import { SkuLink } from '../../hooks/useSkuModalAction';
 import '../../assets/scss/masterEdit.scss';
 
 const { Title, Text } = Typography;
+const LIMIT = 100;
 
 const ExpandedRowContent = ({ rowId }) => {
     const { data: productData, isLoading } = useFetchApi(
@@ -78,8 +79,11 @@ const OutWord = () => {
     const [editForm] = Form.useForm();
 
     const [payload, setPayload] = useState({
-        party: "", invoiceno: "", type: "", page: 1, from: "", to: ""
+        party: "", invoiceno: "", type: "", page: 1, limit: LIMIT, from: "", to: ""
     });
+    const [mainTableData, setMainTableData] = useState([]);
+    const [hasMore, setHasMore] = useState(true);
+    const [isFetchingMore, setIsFetchingMore] = useState(false);
 
     const { data: companyData, isLoading: isCompanyLoading } = useFetchApi('GetCompany', ENDPOINTS.company.options);
     const { mutate: updateTransaction } = usePostApiRequest(ENDPOINTS.outward.update, 'OutwardList', { showToast: true });
@@ -88,8 +92,8 @@ const OutWord = () => {
 
     const isFilterSelected = useMemo(() => !!(payload.party || payload.invoiceno || payload.type || payload.from || payload.to), [payload]);
 
-    const { data: outwardData, isLoading: outwardLoading, refetch } = useFetchApi(
-        ['OutwardList', payload],
+    const { data: outwardData, isLoading: outwardLoading, isFetching: outwardFetching, refetch } = useFetchApi(
+        ['OutwardList', payload.page, payload.party, payload.invoiceno, payload.type, payload.from, payload.to],
         ENDPOINTS.outward.list,
         payload,
         'POST',
@@ -155,21 +159,69 @@ const OutWord = () => {
             invoiceno: invoiceno || "",
             type: type || "",
             page: 1,
+            limit: LIMIT,
             from: "",
             to: "",
         });
         setSearchParams({}, { replace: true });
     }, [searchParams, form, setSearchParams]);
 
+    useEffect(() => {
+        if (!outwardData) return;
+        const d = outwardData?.Data || outwardData?.data;
+        const newRecords = Array.isArray(d) ? d : [];
+        const total = outwardData?.total || 0;
+
+        if (payload.page === 1) {
+            setMainTableData(newRecords);
+            setHasMore(newRecords.length >= LIMIT && (total === 0 || newRecords.length < total));
+        } else {
+            if (newRecords.length > 0) {
+                setMainTableData(prev => {
+                    const existingIds = new Set(prev.map(item => item.id));
+                    const filtered = newRecords.filter(item => !existingIds.has(item.id));
+                    const updated = [...prev, ...filtered];
+                    if (updated.length >= total || newRecords.length < LIMIT) {
+                        setHasMore(false);
+                    }
+                    return updated;
+                });
+            } else {
+                setHasMore(false);
+            }
+        }
+        setIsFetchingMore(false);
+    }, [outwardData]);
+
+    useEffect(() => {
+        const tableBody = tableRef.current?.querySelector('.ant-table-body');
+        if (!tableBody) return;
+
+        const handleScroll = () => {
+            const { scrollTop, scrollHeight, clientHeight } = tableBody;
+            if (
+                scrollHeight - scrollTop <= clientHeight + 80 &&
+                !outwardLoading &&
+                !outwardFetching &&
+                !isFetchingMore &&
+                hasMore
+            ) {
+                setIsFetchingMore(true);
+                setPayload(prev => ({ ...prev, page: prev.page + 1 }));
+            }
+        };
+
+        tableBody.addEventListener('scroll', handleScroll);
+        return () => tableBody.removeEventListener('scroll', handleScroll);
+    }, [outwardLoading, outwardFetching, isFetchingMore, hasMore]);
+
     const stats = useMemo(() => {
-        const rawData = outwardData?.Data || outwardData?.data;
-        const safeData = Array.isArray(rawData) ? rawData : [];
-        return safeData.reduce((acc, curr) => ({
+        return mainTableData.reduce((acc, curr) => ({
             pcs: acc.pcs + (Number(curr.totalPcs) || 0),
             carats: acc.carats + (Number(curr.totalCarat) || 0),
             amount: acc.amount + (Number(curr.finalAmount) || 0)
         }), { pcs: 0, carats: 0, amount: 0 });
-    }, [outwardData]);
+    }, [mainTableData]);
 
     const avgPrice = stats.carats > 0 ? stats.amount / stats.carats : 0;
 
@@ -301,11 +353,6 @@ const OutWord = () => {
         }
     ];
 
-    const mainTableData = useMemo(() => {
-        const d = outwardData?.Data || outwardData?.data;
-        return Array.isArray(d) ? d : [];
-    }, [outwardData]);
-
     const tableRef = useRef(null);
     const tableHeight = useTableBodyScrollHeight(tableRef, [mainTableData.length, outwardLoading]);
 
@@ -330,14 +377,24 @@ const OutWord = () => {
                 showClear={false}
                 extraActions={(
                     <Space>
-                        <Button type="primary" icon={<ReloadOutlined />} onClick={() => { isFilterSelected && refetch(); }}>
+                        <Button type="primary" icon={<ReloadOutlined />} onClick={() => {
+                            if (isFilterSelected) {
+                                setHasMore(true);
+                                if (payload.page === 1) {
+                                    refetch();
+                                } else {
+                                    setPayload(prev => ({ ...prev, page: 1 }));
+                                }
+                            }
+                        }}>
                             Refresh Data
                         </Button>
                         <Button
                             danger
                             onClick={() => {
                                 handleClear();
-                                setPayload({ party: "", invoiceno: "", type: "", page: 1, from: "", to: "" });
+                                setHasMore(true);
+                                setPayload({ party: "", invoiceno: "", type: "", page: 1, limit: LIMIT, from: "", to: "" });
                             }}
                         >
                             Clear Filters
@@ -348,15 +405,18 @@ const OutWord = () => {
                 <div className={filterPanelStyles.filterInlineRow}>
                     <Form
                         form={form}
-                        onValuesChange={(_, all) => setPayload(p => ({
-                            ...p,
-                            type: all.type || "",
-                            invoiceno: all.invoiceNo || "",
-                            party: all.party || "",
-                            from: all.date ? all.date[0].format('YYYY-MM-DD') : "",
-                            to: all.date ? all.date[1].format('YYYY-MM-DD') : "",
-                            page: 1
-                        }))}
+                        onValuesChange={(_, all) => {
+                            setHasMore(true);
+                            setPayload(p => ({
+                                ...p,
+                                type: all.type || "",
+                                invoiceno: all.invoiceNo || "",
+                                party: all.party || "",
+                                from: all.date ? all.date[0].format('YYYY-MM-DD') : "",
+                                to: all.date ? all.date[1].format('YYYY-MM-DD') : "",
+                                page: 1
+                            }));
+                        }}
                     >
                         {renderFilters()}
                     </Form>
@@ -372,7 +432,7 @@ const OutWord = () => {
                     <Table
                         columns={columns}
                         dataSource={mainTableData}
-                        loading={outwardLoading}
+                        loading={outwardLoading && payload.page === 1}
                         rowKey="id"
                         className={styles.tableWrapper}
                         scroll={{ x: "max-content", y: tableHeight }}
@@ -380,17 +440,16 @@ const OutWord = () => {
                             expandedRowRender: (record) => <ExpandedRowContent rowId={record.id} />,
                             expandedRowClassName: () => styles.expandedRow,
                         }}
-                        pagination={{
-                            total: outwardData?.total || mainTableData.length || 0,
-                            pageSize: 10,
-                            onChange: (page) => setPayload(prev => ({ ...prev, page }))
-                        }}
+                        pagination={false}
                         rowSelection={{ selectedRowKeys, onChange: (keys) => setSelectedRowKeys(keys) }}
                         footer={() => (
                             <div className={styles.statsBarFooter}>
                                 <div className={styles.statsBar}>
                                     <div className={styles.legendGroup}>
-                                        <Text strong>Total Record: {outwardData?.total || mainTableData.length || 0}</Text>
+                                        <Text strong>
+                                            Total Record: {outwardData?.total || mainTableData.length || 0}
+                                            {mainTableData.length > 0 && ` | showing: ${mainTableData.length}`}
+                                        </Text>
                                         <Space size="small" style={{ marginLeft: '15px' }}>
                                             <Tag color="blue">GIA Certified</Tag>
                                             <Tag color="red">On Memo</Tag>
@@ -412,6 +471,11 @@ const OutWord = () => {
                                         </div>
                                     </div>
                                 </div>
+                                {(isFetchingMore || outwardFetching) && (
+                                    <div style={{ textAlign: 'center', padding: '6px 0', fontSize: '13px', color: '#666' }}>
+                                        <Spin size="small" /> <span style={{ marginLeft: '6px' }}>Loading more records...</span>
+                                    </div>
+                                )}
                             </div>
                         )}
                     />

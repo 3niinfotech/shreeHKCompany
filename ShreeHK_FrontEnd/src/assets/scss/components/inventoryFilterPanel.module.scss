@@ -166,8 +166,8 @@ $compact-accent-hover: var(--color-primary-dark);
 
   :global(.ant-input-affix-wrapper),
   :global(.ant-input) {
-    height: $filter-control-height !important;
-    min-height: $filter-control-height !important;
+    // height: $filter-control-height !important;
+    // min-height: $filter-control-height !important;
     font-size: 12px;
     border-radius: 6px;
     border-color: #9fa2ae !important;
@@ -314,6 +314,7 @@ $compact-accent-hover: var(--color-primary-dark);
   border: 0.5px solid #9fa2ae !important;
   --ant-color-text-placeholder: #3A3F55;
   color: #3A3F55 !important;
+  border-radius: 6px;
 
   :global(.ant-select-selector) {
     height: 32px !important;
@@ -337,6 +338,7 @@ $compact-accent-hover: var(--color-primary-dark);
   border: 0.5px solid #9fa2ae !important;
   --ant-color-text-placeholder: #3A3F55;
   color: #3A3F55 !important;
+  border-radius: 6px !important;
 
   :global(.ant-select-selector) {
     height: 32px !important;
@@ -476,7 +478,7 @@ $compact-accent-hover: var(--color-primary-dark);
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 29px;
+  height: 32px;
   padding: 0 10px;
   border: 0.5px solid #9fa2ae;
   border-radius: 6px;
