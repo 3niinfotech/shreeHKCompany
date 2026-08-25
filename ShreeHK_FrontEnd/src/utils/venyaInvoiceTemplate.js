@@ -376,8 +376,54 @@ function buildMemoFooter(data) {
           <hr style="width:100%;height:1px;">
           <p style="margin:0 0 2px;padding-bottom:10px;">Signature &amp; Chop</p>
         </td>
-      </tr>
     </table>`;
+}
+
+export const VENYA_MAX_ROWS = 20;
+
+function buildChunkLineRows(lineItems, startIndex, minRows = VENYA_MAX_ROWS, variant = "purchase", shippingCharge = 0) {
+  const descWidth = variant === "purchase" ? "47%" : variant === "memo" ? "42%" : "43%";
+  const skuWidth = variant === "purchase" ? "12%" : "15%";
+  const pcsWidth = variant === "memo" ? "6%" : variant === "purchase" ? "4%" : "5%";
+
+  let rows = "";
+  for (let i = 1; i <= minRows; i += 1) {
+    const row = lineItems[i - 1];
+    const itemNo = startIndex + i;
+    if (row) {
+      rows += `<tr>
+        <td style="width:5%;text-align:center;padding:4px;">${itemNo}</td>
+        <td style="width:${skuWidth};text-align:left;padding:4px;font-size:10px;">${escapeHtml(row.sku)}</td>
+        <td style="width:${descWidth};text-align:left;padding:4px;font-size:10px;">${escapeHtml(row.description)}</td>
+        <td style="width:${pcsWidth};text-align:right;padding:4px;">${row.pcs}</td>
+        <td style="width:8%;text-align:right;padding:4px;">${fmtCarat(row.carat)}</td>
+        <td style="width:11%;text-align:right;padding:4px;">${fmtMoney(row.price)}</td>
+        <td style="width:13%;text-align:right;padding:4px;">${fmtMoney(row.amount)}</td>
+      </tr>`;
+    } else if (i === 11 && shippingCharge) {
+      rows += `<tr>
+        <td style="width:5%;text-align:center;padding:4px;">${itemNo}</td>
+        <td style="width:${skuWidth};text-align:left;padding:4px;"></td>
+        <td style="width:${descWidth};text-align:left;padding:4px;"></td>
+        <td style="width:${pcsWidth};text-align:right;padding:4px;"></td>
+        <td style="width:8%;text-align:right;padding:4px;"></td>
+        <td style="width:11%;text-align:right;padding:4px;">Shipping</td>
+        <td style="width:13%;text-align:right;padding:4px;">${fmtMoney(shippingCharge)}</td>
+      </tr>`;
+    } else {
+      rows += `<tr>
+        <td style="width:5%;text-align:center;padding:4px;">${itemNo}</td>
+        <td style="width:${skuWidth};text-align:left;padding:4px;"></td>
+        <td style="width:${descWidth};text-align:left;padding:4px;"></td>
+        <td style="width:${pcsWidth};text-align:right;padding:4px;"></td>
+        <td style="width:8%;text-align:right;padding:4px;"></td>
+        <td style="width:11%;text-align:right;padding:4px;"></td>
+        <td style="width:13%;text-align:right;padding:4px;"></td>
+      </tr>`;
+    }
+  }
+
+  return rows;
 }
 
 function buildInvoicePage(data, copyLabel) {
@@ -392,17 +438,21 @@ function buildInvoicePage(data, copyLabel) {
     centerTitle = inwardType === "purchase" || inwardType === "import" ? "Purchase Note" : "Good Receive Note";
   } else if (!isSaleOrExport) centerTitle = "Consignment";
 
-  const maxRows = variant === "memo" ? 14 : variant === "purchase" ? lineItemsLength(data) : 9;
   const lineItems = (data.lineItems || []).map((row) =>
     typeof row.description === "string" ? row : buildLineItem(row),
   );
-  const paddedMax = variant === "purchase" ? Math.max(lineItems.length, 1) : maxRows;
-  const { rows, totalPcs, totalCarat, totalAmount } = buildLineRows(
-    lineItems,
-    paddedMax,
-    variant,
-    data.shippingCharge,
-  );
+
+  let totalPcs = 0;
+  let totalCarat = 0;
+  let totalAmount = 0;
+  lineItems.forEach((row) => {
+    totalPcs += Number(row.pcs || 0);
+    totalCarat += Number(row.carat || 0);
+    totalAmount += Number(row.amount || 0);
+  });
+  if (data.shippingCharge) {
+    totalAmount += Number(data.shippingCharge);
+  }
 
   const grandTotal = Number(data.totals?.finalAmount ?? data.finalAmount ?? totalAmount);
   const vatAmount = Number(data.vatAmount ?? 0);
@@ -410,133 +460,168 @@ function buildInvoicePage(data, copyLabel) {
   const dueDate = fmtDate(data.dueDate || data.date);
   const terms = data.terms ?? "";
 
-  let totalsSection = "";
-  if (variant === "invoice") {
-    totalsSection = `<table cellspacing="0" border="1" cellpadding="5" style="border-collapse:collapse;width:100%;border:solid 1px black;color:${VENYA_BLUE};text-align:center;font-size:10pt;">
-      <tr>
-        <th style="width:5%;"></th><th style="width:15%;"></th>
-        <th style="width:43%;text-align:right;padding:4px;">Total (Before VAT)</th>
-        <th style="width:5%;text-align:right;padding:4px;">${totalPcs}</th>
-        <th style="width:8%;text-align:right;padding:4px;">${fmtCarat(totalCarat)}</th>
-        <th style="width:11%;text-align:right;padding:4px;">US$</th>
-        <th style="width:13%;text-align:right;padding:4px;">${fmtMoney(subTotal)}</th>
-      </tr>
-      ${vatAmount > 0 ? `<tr>
-        <th></th><th></th>
-        <th style="text-align:right;padding:4px;">VAT (${data.vatPercent ?? 7}%)</th>
-        <th></th><th></th><th style="text-align:right;padding:4px;">US$</th>
-        <th style="text-align:right;padding:4px;">${fmtMoney(vatAmount)}</th>
-      </tr>` : ""}
-      <tr>
-        <th></th><th></th>
-        <th style="text-align:right;padding:4px;">Grand Total</th>
-        <th></th><th></th><th style="text-align:right;padding:4px;">US$</th>
-        <th style="text-align:right;padding:4px;">${fmtMoney(grandTotal)}</th>
-      </tr>
-      <tr>
-        <td colspan="7" style="width:100%;text-align:left;font-size:12px;padding:3px;text-transform:capitalize;color:#000">
-          <b style="color:${VENYA_PINK}">in Word : </b> ${escapeHtml(num2words(grandTotal))} Only
-        </td>
-      </tr>
-    </table>`;
-  } else if (variant === "memo") {
-    totalsSection = `<table cellspacing="0" border="1" cellpadding="5" style="border-collapse:collapse;width:100%;border:solid 1px black;color:${VENYA_BLUE};text-align:center;font-size:10pt;">
-      <tr>
-        <th style="width:5%;"></th><th style="width:15%;"></th>
-        <th style="width:42%;text-align:right;padding:4px;">Total</th>
-        <th style="width:6%;text-align:right;padding:4px;">${fmtMoney(totalPcs, 0)}</th>
-        <th style="width:8%;text-align:right;padding:4px;">${fmtCarat(totalCarat)}</th>
-        <th style="width:11%;text-align:right;padding:4px;">US$</th>
-        <th style="width:13%;text-align:right;padding:4px;">${fmtMoney(totalAmount)}</th>
-      </tr>
-    </table>`;
+  const chunks = [];
+  if (lineItems.length === 0) {
+    chunks.push([]);
   } else {
-    totalsSection = `<table cellspacing="0" border="1" cellpadding="5" style="border-collapse:collapse;width:100%;border:solid 1px black;color:${VENYA_BLUE};text-align:center;font-size:10pt;">
-      <tr>
-        <th style="width:5%;"></th><th style="width:12%;"></th>
-        <th style="width:47%;text-align:right;padding:4px;">Total</th>
-        <th style="width:4%;text-align:right;padding:4px;">${totalPcs}</th>
-        <th style="width:8%;text-align:right;padding:4px;">${fmtCarat(totalCarat)}</th>
-        <th style="width:11%;text-align:right;padding:4px;">US$</th>
-        <th style="width:13%;text-align:right;padding:4px;">${fmtMoney(totalAmount)}</th>
-      </tr>
-    </table>`;
+    for (let i = 0; i < lineItems.length; i += VENYA_MAX_ROWS) {
+      chunks.push(lineItems.slice(i, i + VENYA_MAX_ROWS));
+    }
   }
 
-  const paymentSection =
-    variant === "invoice"
-      ? `<table cellspacing="0" style="width:100%;text-align:left;font-size:13px;margin-top:10px;">
-      <tr>
-        <td style="width:50%;text-align:left;">
-          ${data.shippingName ? `<table style="width:100%;"><tr><td style="width:30%;">Shipping By </td><td style="width:60%;border-bottom:1px dotted #000;text-align:center;">${escapeHtml(data.shippingName)}</td><td style="width:10%;"></td></tr></table>` : ""}
-          ${data.originOf ? `<table style="width:100%;"><tr><td style="width:30%;">Origin Of </td><td style="width:60%;border-bottom:1px dotted #000;text-align:center;">${escapeHtml(data.originOf)}</td><td style="width:10%;"></td></tr></table>` : ""}
-          ${data.manufactureOrigin ? `<table style="width:100%;"><tr><td style="width:30%;">Manuf. Origin </td><td style="width:60%;border-bottom:1px dotted #000;text-align:center;">${escapeHtml(data.manufactureOrigin)}</td><td style="width:10%;"></td></tr></table>` : ""}
-          ${data.cif ? `<table style="width:100%;"><tr><td style="width:30%;">C.I.F </td><td style="width:60%;border-bottom:1px dotted #000;text-align:center;">${escapeHtml(data.cif)}</td><td style="width:10%;"></td></tr></table>` : ""}
-        </td>
-        <td style="width:50%;">
-          <table style="width:100%;"><tr><td style="width:30%;">Payment Terms</td><td style="width:60%;border-bottom:1px dotted #000;text-align:center;">${escapeHtml(terms)}</td><td style="width:10%;">Days</td></tr></table>
-          <table style="width:100%;"><tr><td style="width:20%;">Due Date</td><td style="width:80%;border-bottom:1px dotted #000;text-align:center;">${dueDate}</td></tr></table>
-          ${isSaleOrExport ? `<table style="width:100%;"><tr><td style="width:32%;">Received Amount</td><td style="width:58%;border-bottom:1px dotted #000;text-align:center;">${fmtMoney(data.paidAmount ?? 0)}</td><td style="width:10%;">US$</td></tr></table>` : ""}
-          ${isSaleOrExport && Number(data.dueAmount) > 0 ? `<table style="width:100%;"><tr><td style="width:30%;">Remain Amount</td><td style="width:60%;border-bottom:1px dotted #000;text-align:center;">${fmtMoney(data.dueAmount)}</td><td style="width:10%;">US$</td></tr></table>` : ""}
-          <table style="width:100%;"><tr><td style="width:100%;text-align:right;padding-top:10px;">Part Payment Allowed </td></tr></table>
-        </td>
-      </tr>
-    </table>
-    <p style="padding:0;margin:0;color:#ccc">-----------------------------------------------------------------------------------------------------------------------------------------------</p>
-    <table cellspacing="0" style="width:100%;text-align:left;font-size:9px;margin-top:10px;">
-      <tr><td colspan="3"><p style="margin:0 0 2px;padding-bottom:5px;color:${VENYA_PINK}"><b>Payment Detail:</b></p></td></tr>
-      <tr>${buildBankBlock(data.bankFlags || {})}</tr>
-    </table>
-    <table cellspacing="0" style="width:100%;text-align:left;font-size:14px;">
-      <tr>
-        <td style="width:35%;text-align:left;">
-          <p style="margin:0 0 2px;padding-bottom:30px;color:${VENYA_PINK}">For <b>${escapeHtml(BOC_BANK.acName)}</b></p>
-          <hr style="width:100%;height:1px;">
-          <p style="margin:0 0 2px;padding-bottom:10px;">(Authorised Signature)</p>
-        </td>
-        <td style="width:35%;"></td>
-        <td style="width:30%;text-align:left;">
-          <p style="margin:0 0 2px;padding-bottom:30px;color:${VENYA_PINK}"><b>Confirmed By :</b></p>
-          <hr style="width:100%;height:1px;">
-          <p style="margin:0 0 2px;padding-bottom:10px;">(Chop &amp; Buyer's Signature)</p>
-        </td>
-      </tr>
-    </table>
-    ${buildInvoiceFooter(data)}`
-      : buildMemoFooter(data);
+  const totalPages = chunks.length;
 
-  const copyLine =
-    variant === "purchase"
-      ? ""
-      : `<br><span style="font-size:10px;width:100%;margin-top:5px;">${copyLabel}</span>`;
+  return chunks
+    .map((chunk, pageIndex) => {
+      const isLastPage = pageIndex === totalPages - 1;
+      const startIndex = pageIndex * VENYA_MAX_ROWS;
+      const rowsHtml = buildChunkLineRows(
+        chunk,
+        startIndex,
+        VENYA_MAX_ROWS,
+        variant,
+        isLastPage ? data.shippingCharge : 0,
+      );
 
-  return `<div class="venya-invoice-page" style="font-size:12pt;page-break-after:always;">
-    <table cellspacing="0" style="width:100%;text-align:center;font-size:12px;">
-      <tr>
-        ${buildLogoCell(data.company || {})}
-        <td style="width:39%;text-align:center;">
-          <span style="color:${VENYA_BLUE};font-size:18px;">${centerTitle}</span>
-          ${copyLine}
-        </td>
-        <td style="width:31%;text-align:left;">${buildCompanyBlock()}</td>
-      </tr>
-    </table>
-    <hr style="width:100%;height:1px;color:#ccc">
-    <table cellspacing="0" style="width:100%;text-align:left;font-size:12px;">
-      <tr>
-        ${buildPartyBlock(data.party || {}, variant)}
-        <td style="width:10%;"></td>
-        ${buildMetaRight(data, variant)}
-      </tr>
-    </table>
-    ${buildTableHeader(variant)}
-    <table cellspacing="0" border="1" cellpadding="5" style="width:100%;border-collapse:collapse;text-align:center;font-size:10pt;">
-      ${rows}
-    </table>
-    ${totalsSection}
-    ${variant === "memo" ? "<br>" : ""}
-    ${paymentSection}
-  </div>`;
+      const currentCopyLabel =
+        totalPages > 1
+          ? `${copyLabel} (Page ${pageIndex + 1} of ${totalPages})`
+          : copyLabel;
+
+      let totalsSection = "";
+      if (isLastPage) {
+        if (variant === "invoice") {
+          totalsSection = `<table cellspacing="0" border="1" cellpadding="5" style="border-collapse:collapse;width:100%;border:solid 1px black;color:${VENYA_BLUE};text-align:center;font-size:10pt;">
+            <tr>
+              <th style="width:5%;"></th><th style="width:15%;"></th>
+              <th style="width:43%;text-align:right;padding:4px;">Total (Before VAT)</th>
+              <th style="width:5%;text-align:right;padding:4px;">${totalPcs}</th>
+              <th style="width:8%;text-align:right;padding:4px;">${fmtCarat(totalCarat)}</th>
+              <th style="width:11%;text-align:right;padding:4px;">US$</th>
+              <th style="width:13%;text-align:right;padding:4px;">${fmtMoney(subTotal)}</th>
+            </tr>
+            ${vatAmount > 0 ? `<tr>
+              <th></th><th></th>
+              <th style="text-align:right;padding:4px;">VAT (${data.vatPercent ?? 7}%)</th>
+              <th></th><th></th><th style="text-align:right;padding:4px;">US$</th>
+              <th style="text-align:right;padding:4px;">${fmtMoney(vatAmount)}</th>
+            </tr>` : ""}
+            <tr>
+              <th></th><th></th>
+              <th style="text-align:right;padding:4px;">Grand Total</th>
+              <th></th><th></th><th style="text-align:right;padding:4px;">US$</th>
+              <th style="text-align:right;padding:4px;">${fmtMoney(grandTotal)}</th>
+            </tr>
+            <tr>
+              <td colspan="7" style="width:100%;text-align:left;font-size:12px;padding:3px;text-transform:capitalize;color:#000">
+                <b style="color:${VENYA_PINK}">in Word : </b> ${escapeHtml(num2words(grandTotal))} Only
+              </td>
+            </tr>
+          </table>`;
+        } else if (variant === "memo") {
+          totalsSection = `<table cellspacing="0" border="1" cellpadding="5" style="border-collapse:collapse;width:100%;border:solid 1px black;color:${VENYA_BLUE};text-align:center;font-size:10pt;">
+            <tr>
+              <th style="width:5%;"></th><th style="width:15%;"></th>
+              <th style="width:42%;text-align:right;padding:4px;">Total</th>
+              <th style="width:6%;text-align:right;padding:4px;">${fmtMoney(totalPcs, 0)}</th>
+              <th style="width:8%;text-align:right;padding:4px;">${fmtCarat(totalCarat)}</th>
+              <th style="width:11%;text-align:right;padding:4px;">US$</th>
+              <th style="width:13%;text-align:right;padding:4px;">${fmtMoney(totalAmount)}</th>
+            </tr>
+          </table>`;
+        } else {
+          totalsSection = `<table cellspacing="0" border="1" cellpadding="5" style="border-collapse:collapse;width:100%;border:solid 1px black;color:${VENYA_BLUE};text-align:center;font-size:10pt;">
+            <tr>
+              <th style="width:5%;"></th><th style="width:12%;"></th>
+              <th style="width:47%;text-align:right;padding:4px;">Total</th>
+              <th style="width:4%;text-align:right;padding:4px;">${totalPcs}</th>
+              <th style="width:8%;text-align:right;padding:4px;">${fmtCarat(totalCarat)}</th>
+              <th style="width:11%;text-align:right;padding:4px;">US$</th>
+              <th style="width:13%;text-align:right;padding:4px;">${fmtMoney(totalAmount)}</th>
+            </tr>
+          </table>`;
+        }
+      }
+
+      const paymentSection = isLastPage
+        ? (variant === "invoice"
+            ? `<table cellspacing="0" style="width:100%;text-align:left;font-size:13px;margin-top:10px;">
+            <tr>
+              <td style="width:50%;text-align:left;">
+                ${data.shippingName ? `<table style="width:100%;"><tr><td style="width:30%;">Shipping By </td><td style="width:60%;border-bottom:1px dotted #000;text-align:center;">${escapeHtml(data.shippingName)}</td><td style="width:10%;"></td></tr></table>` : ""}
+                ${data.originOf ? `<table style="width:100%;"><tr><td style="width:30%;">Origin Of </td><td style="width:60%;border-bottom:1px dotted #000;text-align:center;">${escapeHtml(data.originOf)}</td><td style="width:10%;"></td></tr></table>` : ""}
+                ${data.manufactureOrigin ? `<table style="width:100%;"><tr><td style="width:30%;">Manuf. Origin </td><td style="width:60%;border-bottom:1px dotted #000;text-align:center;">${escapeHtml(data.manufactureOrigin)}</td><td style="width:10%;"></td></tr></table>` : ""}
+                ${data.cif ? `<table style="width:100%;"><tr><td style="width:30%;">C.I.F </td><td style="width:60%;border-bottom:1px dotted #000;text-align:center;">${escapeHtml(data.cif)}</td><td style="width:10%;"></td></tr></table>` : ""}
+              </td>
+              <td style="width:50%;">
+                <table style="width:100%;"><tr><td style="width:30%;">Payment Terms</td><td style="width:60%;border-bottom:1px dotted #000;text-align:center;">${escapeHtml(terms)}</td><td style="width:10%;">Days</td></tr></table>
+                <table style="width:100%;"><tr><td style="width:20%;">Due Date</td><td style="width:80%;border-bottom:1px dotted #000;text-align:center;">${dueDate}</td></tr></table>
+                ${isSaleOrExport ? `<table style="width:100%;"><tr><td style="width:32%;">Received Amount</td><td style="width:58%;border-bottom:1px dotted #000;text-align:center;">${fmtMoney(data.paidAmount ?? 0)}</td><td style="width:10%;">US$</td></tr></table>` : ""}
+                ${isSaleOrExport && Number(data.dueAmount) > 0 ? `<table style="width:100%;"><tr><td style="width:30%;">Remain Amount</td><td style="width:60%;border-bottom:1px dotted #000;text-align:center;">${fmtMoney(data.dueAmount)}</td><td style="width:10%;">US$</td></tr></table>` : ""}
+                <table style="width:100%;"><tr><td style="width:100%;text-align:right;padding-top:10px;">Part Payment Allowed </td></tr></table>
+              </td>
+            </tr>
+          </table>
+          <p style="padding:0;margin:0;color:#ccc">-----------------------------------------------------------------------------------------------------------------------------------------------</p>
+          <table cellspacing="0" style="width:100%;text-align:left;font-size:9px;margin-top:10px;">
+            <tr><td colspan="3"><p style="margin:0 0 2px;padding-bottom:5px;color:${VENYA_PINK}"><b>Payment Detail:</b></p></td></tr>
+            <tr>${buildBankBlock(data.bankFlags || {})}</tr>
+          </table>
+          <table cellspacing="0" style="width:100%;text-align:left;font-size:14px;">
+            <tr>
+              <td style="width:35%;text-align:left;">
+                <p style="margin:0 0 2px;padding-bottom:30px;color:${VENYA_PINK}">For <b>${escapeHtml(BOC_BANK.acName)}</b></p>
+                <hr style="width:100%;height:1px;">
+                <p style="margin:0 0 2px;padding-bottom:10px;">(Authorised Signature)</p>
+              </td>
+              <td style="width:35%;"></td>
+              <td style="width:30%;text-align:left;">
+                <p style="margin:0 0 2px;padding-bottom:30px;color:${VENYA_PINK}"><b>Confirmed By :</b></p>
+                <hr style="width:100%;height:1px;">
+                <p style="margin:0 0 2px;padding-bottom:10px;">(Chop &amp; Buyer's Signature)</p>
+              </td>
+            </tr>
+          </table>
+          ${buildInvoiceFooter(data)}`
+            : buildMemoFooter(data))
+        : `<div style="text-align:right;padding:10px 15px;font-style:italic;color:#777;font-size:11px;">
+            Continued on Page ${pageIndex + 2}...
+          </div>`;
+
+      const copyLine =
+        variant === "purchase"
+          ? ""
+          : `<br><span style="font-size:10px;width:100%;margin-top:5px;">${currentCopyLabel}</span>`;
+
+      return `<div class="venya-invoice-page" style="font-size:12pt;page-break-after:always;">
+        <table cellspacing="0" style="width:100%;text-align:center;font-size:12px;">
+          <tr>
+            ${buildLogoCell(data.company || {})}
+            <td style="width:39%;text-align:center;">
+              <span style="color:${VENYA_BLUE};font-size:18px;">${centerTitle}</span>
+              ${copyLine}
+            </td>
+            <td style="width:31%;text-align:left;">${buildCompanyBlock()}</td>
+          </tr>
+        </table>
+        <hr style="width:100%;height:1px;color:#ccc">
+        <table cellspacing="0" style="width:100%;text-align:left;font-size:12px;">
+          <tr>
+            ${buildPartyBlock(data.party || {}, variant)}
+            <td style="width:10%;"></td>
+            ${buildMetaRight(data, variant)}
+          </tr>
+        </table>
+        ${buildTableHeader(variant)}
+        <table cellspacing="0" border="1" cellpadding="5" style="width:100%;border-collapse:collapse;text-align:center;font-size:10pt;">
+          ${rowsHtml}
+        </table>
+        ${totalsSection}
+        ${variant === "memo" ? "<br>" : ""}
+        ${paymentSection}
+      </div>`;
+    })
+    .join("");
 }
 
 function lineItemsLength(data) {

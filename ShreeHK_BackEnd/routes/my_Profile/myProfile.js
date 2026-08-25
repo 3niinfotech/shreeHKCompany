@@ -36,7 +36,7 @@ const upload = multer({
 });
 
 // POST: Apni profile update karo (Ab image bhi yahi handle karega)
-// POST: Apni profile update karo (No designation)
+// POST: Apni profile update karo
 router.post('/api/profile/update', authenticateToken, upload.single('profile_image'), async (req, res) => {
     
     // Safety Check: Check if user_id exists in token
@@ -45,7 +45,7 @@ router.post('/api/profile/update', authenticateToken, upload.single('profile_ima
     }
 
     const userId = req.user.user_id;
-    const { fname, lname, phone, address } = req.body;
+    const { fname, lname, phone, address, designation } = req.body;
 
     let oldRow = null;
     try {
@@ -54,8 +54,8 @@ router.post('/api/profile/update', authenticateToken, upload.single('profile_ima
         console.error('Profile audit fetch error:', e);
     }
 
-    let query = `UPDATE user SET first_name = ?, last_name = ?, mobile = ?, address = ?`;
-    let params = [fname, lname, phone, address];
+    let query = `UPDATE user SET first_name = ?, last_name = ?, mobile = ?, address = ?, designation = ?`;
+    let params = [fname, lname, phone, address, designation || null];
 
     if (req.file) {
         query += `, profile_image = ?`;
@@ -76,6 +76,7 @@ router.post('/api/profile/update', authenticateToken, upload.single('profile_ima
             last_name: lname,
             mobile: phone,
             address,
+            designation,
             user_id: userId,
         };
         if (req.file) {
@@ -104,20 +105,23 @@ router.get('/api/profile/me', authenticateToken, (req, res) => {
     const userId = req.user.user_id;
 
     const query = `
-        SELECT user_id, user_name, user_email, first_name, last_name,
-               mobile, profile_image, address, roll,
-               company_name, tel_no
-        FROM user
-        WHERE user_id = ?`;
+        SELECT u.user_id, u.user_name, u.user_email, u.first_name, u.last_name,
+               u.mobile, u.profile_image, u.address, u.roll, u.designation,
+               u.company_name, u.tel_no, r.name AS role_name
+        FROM user u
+        LEFT JOIN roll r ON u.roll = r.id
+        WHERE u.user_id = ?`;
     connection.query(query, [userId], (err, results) => {
         if (err) return res.status(500).json({ status: false, message: err.message });
         if (results.length === 0) return res.status(404).json({ status: false, message: 'User not found.' });
 
         const u = results[0];
+        const computedDesignation = u.designation || u.role_name || (u.roll === 1 ? 'Super Admin' : 'Admin');
         res.json({
             status: true,
             data: {
                 ...u,
+                designation: computedDesignation,
                 // React form ke liye
                 fname: u.first_name,
                 lname: u.last_name,

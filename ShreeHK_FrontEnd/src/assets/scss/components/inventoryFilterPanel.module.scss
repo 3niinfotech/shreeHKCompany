@@ -154,6 +154,16 @@ $compact-accent-hover: var(--color-primary-dark);
   }
 }
 
+.toolbarRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+}
+
 .searchSlot {
   // flex: 0 1 220px;
   flex: 0 0 220px;

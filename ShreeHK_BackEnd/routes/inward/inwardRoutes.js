@@ -50,7 +50,8 @@ inwardRouter.post("/inward/checkExist", authenticateToken, async (req, res) => {
       });
     }
 
-    res.status(201).json({ status, data: existData });
+    const message = status ? "No existing products found" : "Some products already exist";
+    res.status(201).json({ status, message, data: existData });
   } catch (err) {
     console.error(err);
     res.status(500).json({ status: false, error: err.message });
@@ -61,6 +62,22 @@ inwardRouter.post("/inward/checkExist", authenticateToken, async (req, res) => {
 
 
 
+
+const INWARD_TYPE_LABELS = {
+  purchase: "Purchase",
+  import: "Import",
+  memo: "In Memo",
+  in_memo: "In Memo",
+  consign: "In Consignment",
+  in_consign: "In Consignment",
+};
+
+const getInwardTypeLabel = (type) => {
+  if (!type) return "Inward";
+  const lower = String(type).trim().toLowerCase();
+  if (INWARD_TYPE_LABELS[lower]) return INWARD_TYPE_LABELS[lower];
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+};
 
 inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
   const { products, ...body } = req.body;
@@ -289,7 +306,8 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
               newValue: { inward_id: lid, products: iProducts, skus: skuArray },
               companyId,
             }).catch(console.error);
-            res.status(201).json({ status: true, message: "Purchase created successfully." });
+            const typeLabel = getInwardTypeLabel(post.inward_type);
+            res.status(201).json({ status: true, message: `${typeLabel} created successfully.` });
           });
         });
         } catch (innerErr) {

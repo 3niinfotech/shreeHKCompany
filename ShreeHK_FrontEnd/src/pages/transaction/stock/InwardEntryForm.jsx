@@ -122,13 +122,14 @@ const InwardEntryForm = ({
   defaultInwardType = 'purchase',
   showRPcs = false,
   initialLineCount = 1,
-  visibleRowCount = 4,
+  visibleRowCount = 7,
   tableScrollY,
   scrollableTable = false,
 }) => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [existData, setExistData] = useState([]);
+  const [checkMessage, setCheckMessage] = useState('');
 
   const {
     form,
@@ -264,27 +265,13 @@ const InwardEntryForm = ({
   const tableBodyScrollY = useMemo(() => {
     if (tableScrollY != null) return tableScrollY;
     if (!scrollableTable) return 450;
-    const rowCount = Math.max(items.length, 1);
-    return Math.min(rowCount, visibleRowCount) * lineRowHeight;
-  }, [tableScrollY, scrollableTable, items.length, visibleRowCount]);
+    return visibleRowCount * lineRowHeight;
+  }, [tableScrollY, scrollableTable, visibleRowCount]);
 
   const tableBodyScrollX = useMemo(() => {
     if (!scrollableTable) return 'max-content';
     return columns.reduce((sum, col) => sum + (col.width || 100), 0);
   }, [scrollableTable, columns]);
-
-  const addLineItemButton = (inline = false) => (
-    <Button
-      style={inline ? undefined : { borderColor: 'darkorange' }}
-      type="dashed"
-      onClick={() => addRow(INITIAL_ITEM_STATE)}
-      block={!inline}
-      icon={<PlusCircle size={16} />}
-      className={inline ? styles.addLineBtn : undefined}
-    >
-      Add New Line Item
-    </Button>
-  );
 
   const handleCheckAndSubmit = async () => {
     setIsSubmitted(true);
@@ -307,6 +294,7 @@ const InwardEntryForm = ({
           onSuccess: (response) => {
             setItems(normalizedItems);
             setExistData(response?.data || []);
+            setCheckMessage(response?.message || '');
             setIsModalOpen(true);
           },
           onError: (error) => toastApiError(error),
@@ -337,10 +325,11 @@ const InwardEntryForm = ({
         invalidateInventoryCaches(queryClient);
         const skuList = filledItems.map((item) => item.sku).filter(Boolean).join(', ');
         if (skuList) {
-          toast.success(`Stock saved. Open Inventory → My Inventory and search: ${skuList}`);
+          // toast.success(`Stock saved. Open Inventory → My Inventory and search: ${skuList}`);
         }
         setIsModalOpen(false);
         setExistData([]);
+        setCheckMessage('');
         setIsSubmitted(false);
         form.resetFields();
         setItems(createInitialLineItems(initialLineCount));
@@ -377,7 +366,7 @@ const InwardEntryForm = ({
       </Form>
       <div
         className={`${styles.tableSection} ${scrollableTable ? styles.tableSectionScrollable : ''}`}
-        // style={scrollableTable ? { '--inward-visible-rows': visibleRowCount } : undefined}
+        style={scrollableTable ? { '--inward-visible-rows': visibleRowCount } : undefined}
       >
         <Table
           columns={columns}
@@ -385,15 +374,21 @@ const InwardEntryForm = ({
           pagination={false}
           size="small"
           scroll={{ x: tableBodyScrollX, y: tableBodyScrollY }}
-          footer={scrollableTable ? undefined : () => addLineItemButton(false)}
         />
-        <div className={`${styles.footerStats} ${scrollableTable ? styles.footerStatsBar : ''}`}>
+        <div className={`${styles.footerStats} ${styles.footerStatsBar}`}>
           <div className={styles.footerStatsTotals}>
             <div className={styles.statItem}><label>Total Carats</label><span>{totalStats.carats.toFixed(2)}</span></div>
             <div className={styles.statItem}><label>Total Amount</label><span className={styles.amount}>${totalStats.amount.toLocaleString()}</span></div>
           </div>
           <div className={styles.footerStatsActions}>
-            {scrollableTable ? addLineItemButton(true) : null}
+            <Button
+              type="dashed"
+              onClick={() => addRow(INITIAL_ITEM_STATE)}
+              icon={<PlusCircle size={16} />}
+              className={styles.addLineBtn}
+            >
+              Add New Line Item
+            </Button>
             <Button type="primary" icon={<CheckCircle size={18} />} className={styles.submitBtn} onClick={handleCheckAndSubmit}>
               Check & Submit
             </Button>
@@ -405,9 +400,12 @@ const InwardEntryForm = ({
         onClose={() => {
           setIsModalOpen(false);
           setExistData([]);
+          setCheckMessage('');
         }}
         onSave={onFinalSave}
         existData={existData}
+        items={items}
+        message={checkMessage}
         loading={isSaving}
       />
     </div>

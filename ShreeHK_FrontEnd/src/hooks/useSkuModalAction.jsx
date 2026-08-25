@@ -2,11 +2,12 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { Modal, Button, Typography, Tag } from "antd";
+import { Modal, Button, Typography, Tag, Spin } from "antd";
 import {
   DatabaseOutlined,
   HistoryOutlined,
@@ -14,6 +15,8 @@ import {
   SwapOutlined,
   CloseOutlined,
 } from "@ant-design/icons";
+import { api } from "../api/axiosInstance";
+import { ENDPOINTS } from "../constants/endpoints";
 import {
   buildStoneHistoryUrl,
   buildTransferHistoryUrl,
@@ -26,8 +29,102 @@ const SkuModalContext = createContext(null);
 
 export const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
   const navigate = useNavigate();
+  const [apiData, setApiData] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const sku = skuData?.sku;
+
+  useEffect(() => {
+    if (!visible || !sku) {
+      setApiData(null);
+      setLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+    setLoading(true);
+
+    api
+      .get(ENDPOINTS.report.stoneDetail, { params: { sku } })
+      .then((res) => {
+        if (isMounted && res?.data) {
+          setApiData(res.data);
+        }
+      })
+      .catch((err) => {
+        console.error("Error fetching stone details for SKU modal:", err);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [visible, sku]);
 
   if (!skuData) return null;
+
+  const detail = apiData?.detail || {};
+
+  const rawStatus =
+    typeof apiData?.status === "string"
+      ? apiData.status
+      : detail?.outward
+      ? String(detail.outward).toUpperCase()
+      : skuData?.outward
+      ? String(skuData.outward).toUpperCase()
+      : skuData?.status
+      ? String(skuData.status).toUpperCase()
+      : "AVAILABLE";
+
+  const actualStatus = rawStatus && rawStatus.trim() ? rawStatus.toUpperCase() : "AVAILABLE";
+
+  const getStatusTagColor = (status) => {
+    const s = String(status || "").toUpperCase();
+    if (s === "AVAILABLE") return "green";
+    if (s === "MEMO") return "orange";
+    if (s === "SALE" || s === "EXPORT") return "red";
+    if (s === "CONSIGN" || s === "CONSIGNMENT") return "purple";
+    if (s === "LAB") return "cyan";
+    if (s === "HOLD") return "volcano";
+    return "blue";
+  };
+
+  const carat =
+    detail?.polish_carat ??
+    detail?.carat ??
+    skuData?.polish_carat ??
+    skuData?.carat ??
+    skuData?.polishCarat ??
+    skuData?.Pcarat ??
+    "—";
+
+  const color =
+    detail?.main_color ??
+    detail?.color ??
+    skuData?.main_color ??
+    skuData?.color ??
+    skuData?.mainColor ??
+    "—";
+
+  const fluro =
+    detail?.f_intensity ??
+    detail?.fluro ??
+    detail?.fluor_intensity ??
+    detail?.fluorescence ??
+    skuData?.f_intensity ??
+    skuData?.fluro ??
+    skuData?.fluor_intensity ??
+    skuData?.fluorescence ??
+    skuData?.fluro_intensity ??
+    "—";
+
+  const clarity = detail?.clarity ?? skuData?.clarity ?? "—";
+
+  const lab = detail?.lab ?? skuData?.lab ?? "—";
 
   const actionCards = [
     {
@@ -103,14 +200,62 @@ export const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
         </div>
 
         <Tag
-          color="blue"
+          color={getStatusTagColor(actualStatus)}
           style={{ borderRadius: "4px", fontWeight: "bold", marginTop: "6px" }}
         >
-          AVAILABLE
+          {loading ? <Spin size="small" /> : actualStatus}
         </Tag>
       </div>
 
       <div className="sku-action-modal__body">
+        <div className="sku-details-grid">
+          <div className="sku-detail-item">
+            <span className="sku-detail-label">Carat</span>
+            <span className="sku-detail-value">
+              {loading ? <Spin size="small" /> : carat}
+            </span>
+          </div>
+          <div className="sku-detail-item">
+            <span className="sku-detail-label">Color</span>
+            <span className="sku-detail-value">
+              {loading ? <Spin size="small" /> : color}
+            </span>
+          </div>
+          <div className="sku-detail-item">
+            <span className="sku-detail-label">Fluro</span>
+            <span className="sku-detail-value">
+              {loading ? <Spin size="small" /> : fluro}
+            </span>
+          </div>
+          <div className="sku-detail-item">
+            <span className="sku-detail-label">Status</span>
+            <span className="sku-detail-value">
+              {loading ? (
+                <Spin size="small" />
+              ) : (
+                <Tag
+                  color={getStatusTagColor(actualStatus)}
+                  style={{ margin: 0, fontWeight: 600 }}
+                >
+                  {actualStatus}
+                </Tag>
+              )}
+            </span>
+          </div>
+          <div className="sku-detail-item">
+            <span className="sku-detail-label">Clarity</span>
+            <span className="sku-detail-value">
+              {loading ? <Spin size="small" /> : clarity}
+            </span>
+          </div>
+          <div className="sku-detail-item">
+            <span className="sku-detail-label">Lab</span>
+            <span className="sku-detail-value">
+              {loading ? <Spin size="small" /> : lab}
+            </span>
+          </div>
+        </div>
+
         <div className="sku-action-modal__grid">
           {actionCards.map((item) => (
             <div

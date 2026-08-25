@@ -14,7 +14,7 @@
     }
 
     [class*="brandIcon"] {
-      background: var(--color-primary-pale);
+      // background: var(--color-primary-pale);
       color: var(--color-primary);
     }
 
@@ -115,7 +115,7 @@
     [class*="appHeader"] {
       background: var(--color-header-bg) !important;
       border-bottom: var(--border-width-thin) solid var(--color-border);
-      box-shadow: var(--shadow-header);
+      // box-shadow: var(--shadow-header);
     }
   }
 

@@ -8,8 +8,9 @@ const { setAuditContext } = require("./auditContext.js");
 
 const attachTenantContext = async (req, res, next) => {
   try {
-    const companyId = Number(req.user?.companyId) || 0;
-    const yearId = req.user?.yearId != null ? Number(req.user.yearId) : null;
+    const headerCompanyId = req.headers ? Number(req.headers["x-company-id"]) : 0;
+    const companyId = Number(req.user?.companyId || (headerCompanyId > 0 ? headerCompanyId : 0)) || 0;
+    const yearId = req.user?.yearId != null ? Number(req.user.yearId) : (req.headers && req.headers["x-year-id"] ? Number(req.headers["x-year-id"]) : null);
     const path = req.path || req.url?.split("?")[0] || "";
 
     req.companyId = companyId || null;

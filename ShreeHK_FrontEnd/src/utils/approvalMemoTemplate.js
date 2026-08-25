@@ -234,23 +234,28 @@ function buildSenderBlock() {
   return `<strong>${escapeHtml(VENYA_SENDER.name)}</strong>${lines}`;
 }
 
-function buildTableRows(rows, minRows = 5) {
-  const padded = [...rows];
+export const MEMO_MAX_ROWS = 20;
+
+function buildChunkTableRows(chunk, startIndex, minRows = MEMO_MAX_ROWS) {
+  const padded = [...chunk];
   while (padded.length < minRows) {
-    padded.push({ no: padded.length + 1, sku: "", description: "", pcs: "", carats: "", price: "", amount: "" });
+    padded.push({ no: startIndex + padded.length + 1, sku: "", description: "", pcs: "", carats: "", price: "", amount: "" });
   }
 
   return padded
     .map(
-      (row) => `<tr>
-      <td>${row.no}</td>
-      <td>${escapeHtml(row.sku)}</td>
-      <td>${escapeHtml(row.description)}</td>
-      <td>${row.pcs !== "" ? escapeHtml(row.pcs) : ""}</td>
-      <td>${row.carats !== "" && row.carats != null ? fmtCarats(row.carats) : ""}</td>
-      <td>${row.price !== "" && row.price != null ? fmtMoney(row.price) : ""}</td>
-      <td class="amt">${row.amount !== "" && row.amount != null ? fmtMoney(row.amount) : ""}</td>
-    </tr>`,
+      (row, idx) => {
+        const itemNo = row.no || (startIndex + idx + 1);
+        return `<tr>
+        <td>${itemNo}</td>
+        <td>${escapeHtml(row.sku)}</td>
+        <td>${escapeHtml(row.description)}</td>
+        <td>${row.pcs !== "" ? escapeHtml(row.pcs) : ""}</td>
+        <td>${row.carats !== "" && row.carats != null ? fmtCarats(row.carats) : ""}</td>
+        <td>${row.price !== "" && row.price != null ? fmtMoney(row.price) : ""}</td>
+        <td class="amt">${row.amount !== "" && row.amount != null ? fmtMoney(row.amount) : ""}</td>
+      </tr>`;
+      },
     )
     .join("");
 }
@@ -262,82 +267,116 @@ export function buildApprovalMemoPage(data, copyLabel = "(ORIGINAL COPY)") {
   const referenceNo = escapeHtml(data.reference || data.referenceNo || "—");
   const footerNote = escapeHtml(data.footerNote || DEFAULT_FOOTER_NOTE);
 
-  return `<div class="sheet am-page-break">
-    <div class="header">
-      <div class="brand">
-        ${buildCompanyLogoHtml({
-          logo: data.company?.logo,
-          logoUrl: resolveCompanyLogoUrl(data.company?.logoUrl || data.company?.logo),
-          companyName: data.company?.name || "Venya",
-          className: "logo",
-          imgStyle: "max-height:56px;max-width:140px;object-fit:contain;display:block;",
-        })}
-        <div>
-          <div class="brand-name">${escapeHtml((data.company?.name || "VENYA").split(/\s+/)[0].toUpperCase())}</div>
-          <div class="brand-sub">${escapeHtml(data.company?.tagline || "GEMS CO., LTD.")}</div>
+  const chunks = [];
+  if (rows.length === 0) {
+    chunks.push([]);
+  } else {
+    for (let i = 0; i < rows.length; i += MEMO_MAX_ROWS) {
+      chunks.push(rows.slice(i, i + MEMO_MAX_ROWS));
+    }
+  }
+
+  const totalPages = chunks.length;
+
+  return chunks
+    .map((chunk, pageIndex) => {
+      const isLastPage = pageIndex === totalPages - 1;
+      const startIndex = pageIndex * MEMO_MAX_ROWS;
+      const currentCopyLabel =
+        totalPages > 1
+          ? `${escapeHtml(copyLabel)} (Page ${pageIndex + 1} of ${totalPages})`
+          : escapeHtml(copyLabel);
+
+      const tableBody = buildChunkTableRows(chunk, startIndex, MEMO_MAX_ROWS);
+
+      const tfootContent = isLastPage
+        ? `<tfoot>
+            <tr>
+              <td>Total</td><td></td><td></td>
+              <td>${totals.pcs || "0"}</td>
+              <td>${fmtCarats(totals.carats)}</td>
+              <td>US$</td>
+              <td>${fmtMoney(totals.amount)}</td>
+            </tr>
+          </tfoot>`
+        : "";
+
+      const footerSection = isLastPage
+        ? `<div class="footer-note">
+            <div class="approval">Approval No. ${approvalNo}</div>
+            <div class="condition">${footerNote}</div>
+          </div>
+          <div class="signatures">
+            <div class="sig">
+              <div class="line"></div>
+              <div class="label">Issued By</div>
+              <div class="for">For Venya Gems Co., Ltd.</div>
+            </div>
+            <div class="sig">
+              <div class="line"></div>
+              <div class="label">Delivery By</div>
+              <div class="for">For Venya Gems Co., Ltd.</div>
+            </div>
+            <div class="sig">
+              <div class="line"></div>
+              <div class="label">Accepted By</div>
+              <div class="for">Signature &amp; Chop</div>
+            </div>
+          </div>`
+        : `<div style="text-align:right;padding:10px 15px;font-style:italic;color:#777;font-size:11px;">
+            Continued on Page ${pageIndex + 2}...
+          </div>
+          <div style="height:40px;"></div>`;
+
+      return `<div class="sheet am-page-break">
+        <div class="header">
+          <div class="brand">
+            ${buildCompanyLogoHtml({
+              logo: data.company?.logo,
+              logoUrl: resolveCompanyLogoUrl(data.company?.logoUrl || data.company?.logo),
+              companyName: data.company?.name || "Venya",
+              className: "logo",
+              imgStyle: "max-height:56px;max-width:140px;object-fit:contain;display:block;",
+            })}
+            <div>
+              <div class="brand-name">${escapeHtml((data.company?.name || "VENYA").split(/\s+/)[0].toUpperCase())}</div>
+              <div class="brand-sub">${escapeHtml(data.company?.tagline || "GEMS CO., LTD.")}</div>
+            </div>
+          </div>
+          <div class="memo-title">
+            <h1>Approval Memo</h1>
+            <span>${currentCopyLabel}</span>
+          </div>
         </div>
-      </div>
-      <div class="memo-title">
-        <h1>Approval Memo</h1>
-        <span>${escapeHtml(copyLabel)}</span>
-      </div>
-    </div>
 
-    <div class="company-block">
-      <div class="col">${buildBuyerBlock(data.party)}</div>
-      <div class="col right">${buildSenderBlock()}</div>
-    </div>
+        <div class="company-block">
+          <div class="col">${buildBuyerBlock(data.party)}</div>
+          <div class="col right">${buildSenderBlock()}</div>
+        </div>
 
-    <div class="meta-strip">
-      <div class="field"><label>Date</label><div class="val">${escapeHtml(fmtDisplayDate(data.date))}</div></div>
-      <div class="field"><label>Approval No.</label><div class="val">${approvalNo}</div></div>
-      <div class="field"><label>Reference No.</label><div class="val">${referenceNo}</div></div>
-    </div>
+        <div class="meta-strip">
+          <div class="field"><label>Date</label><div class="val">${escapeHtml(fmtDisplayDate(data.date))}</div></div>
+          <div class="field"><label>Approval No.</label><div class="val">${approvalNo}</div></div>
+          <div class="field"><label>Reference No.</label><div class="val">${referenceNo}</div></div>
+        </div>
 
-    <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>No.</th><th>SKU</th><th>Description</th>
-          <th>Pcs</th><th>Carats</th><th>Price (US$)</th><th>Amount (US$)</th>
-        </tr>
-      </thead>
-      <tbody>${buildTableRows(rows, Math.max(rows.length, 20))}</tbody>
-      <tfoot>
-        <tr>
-          <td>Total</td><td></td><td></td>
-          <td>${totals.pcs || "0"}</td>
-          <td>${fmtCarats(totals.carats)}</td>
-          <td>US$</td>
-          <td>${fmtMoney(totals.amount)}</td>
-        </tr>
-      </tfoot>
-    </table>
-    </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>No.</th><th>SKU</th><th>Description</th>
+                <th>Pcs</th><th>Carats</th><th>Price (US$)</th><th>Amount (US$)</th>
+              </tr>
+            </thead>
+            <tbody>${tableBody}</tbody>
+            ${tfootContent}
+          </table>
+        </div>
 
-    <div class="footer-note">
-      <div class="approval">Approval No. ${approvalNo}</div>
-      <div class="condition">${footerNote}</div>
-    </div>
-
-    <div class="signatures">
-      <div class="sig">
-        <div class="line"></div>
-        <div class="label">Issued By</div>
-        <div class="for">For Venya Gems Co., Ltd.</div>
-      </div>
-      <div class="sig">
-        <div class="line"></div>
-        <div class="label">Delivery By</div>
-        <div class="for">For Venya Gems Co., Ltd.</div>
-      </div>
-      <div class="sig">
-        <div class="line"></div>
-        <div class="label">Accepted By</div>
-        <div class="for">Signature &amp; Chop</div>
-      </div>
-    </div>
-  </div>`;
+        ${footerSection}
+      </div>`;
+    })
+    .join("");
 }
 
 export function buildApprovalMemoBody(data, options = {}) {

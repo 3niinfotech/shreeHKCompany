@@ -1,12 +1,13 @@
 import { useState, useCallback, useMemo } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { Layout, Menu, ConfigProvider } from "antd";
+import { Layout, Menu, ConfigProvider, Input } from "antd";
 import {
   Gem,
   ChevronUp,
   Headphones,
   PanelLeftClose,
   PanelLeftOpen,
+  Search,
 } from "lucide-react";
 import Header from "./Header";
 import Footer from "./Footer";
@@ -19,6 +20,8 @@ import { getDashboardMenuTheme } from "../../theme";
 import { resolveTabFromPath } from "../../utils/tabRouteMeta";
 import { getPostLoginPath } from "../../routes/Routes";
 import RoleAccessGuard from "./RoleAccessGuard";
+import { resolveCompanyLogoUrl } from "../../utils/companyLogo";
+import logoHeader from "../../assets/loader/softWare_Header_white.svg";
 import styles from "../../assets/scss/layout/dashboardLayout.module.scss";
 
 const { Sider, Content } = Layout;
@@ -26,6 +29,7 @@ const { Sider, Content } = Layout;
 const DashboardLayout = () => {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const [navSearchText, setNavSearchText] = useState("");
   const isDarkMode = useUIStore((state) => state.isDarkMode);
   const menuTheme = useMemo(
     () => getDashboardMenuTheme(isDarkMode ? "dark" : "light"),
@@ -33,8 +37,12 @@ const DashboardLayout = () => {
   );
   const menuItems = useAuthorizedMenuItems();
   const user = useAuthStore((state) => state.user);
+  const companyLogo = useAuthStore((state) => state.companyLogo);
+  const companyName = useAuthStore((state) => state.companyName);
   const storePermissions = useAuthStore((state) => state.permissions);
   const openTab = useTabsStore((state) => state.openTab);
+
+  const logoUrl = useMemo(() => resolveCompanyLogoUrl(companyLogo), [companyLogo]);
 
   const userWithPerms = useMemo(
     () => ({
@@ -67,6 +75,67 @@ const DashboardLayout = () => {
     [user, openTab]
   );
 
+  const filteredMenuItems = useMemo(() => {
+    if (!navSearchText.trim()) return menuItems;
+
+    const term = navSearchText.trim().toLowerCase();
+
+    const matchesTerm = (text) => {
+      if (!text) return false;
+      if (typeof text === "string") return text.toLowerCase().includes(term);
+      if (typeof text === "object" && text?.props?.children) {
+        return String(text.props.children).toLowerCase().includes(term);
+      }
+      return String(text).toLowerCase().includes(term);
+    };
+
+    const filterItems = (items) => {
+      if (!items || !Array.isArray(items)) return [];
+      return items
+        .map((item) => {
+          if (item.type === "divider") return null;
+
+          const labelStr = item.label || item.name || "";
+          const keyStr = String(item.key || "");
+          const matchesSelf = matchesTerm(labelStr) || matchesTerm(keyStr);
+
+          if (item.children && item.children.length > 0) {
+            const matchingChildren = filterItems(item.children);
+            if (matchingChildren.length > 0) {
+              return {
+                ...item,
+                children: matchingChildren,
+              };
+            }
+            if (matchesSelf) {
+              return item;
+            }
+          } else if (matchesSelf) {
+            return item;
+          }
+          return null;
+        })
+        .filter(Boolean);
+    };
+
+    return filterItems(menuItems);
+  }, [menuItems, navSearchText]);
+
+  const openKeys = useMemo(() => {
+    if (!navSearchText.trim()) return undefined;
+    const keys = [];
+    const collectKeys = (items) => {
+      items?.forEach((item) => {
+        if (item.children && item.children.length > 0) {
+          keys.push(item.key);
+          collectKeys(item.children);
+        }
+      });
+    };
+    collectKeys(filteredMenuItems);
+    return keys;
+  }, [navSearchText, filteredMenuItems]);
+
   return (
     <ConfigProvider theme={menuTheme}>
       <Layout className={styles.dashboardLayout}>
@@ -82,23 +151,39 @@ const DashboardLayout = () => {
           <div className={styles.brand}>
             <Link to={homePath}>
               <span className={styles.brandIcon}>
-                <Gem size={18} />
+                <img
+                  src={logoUrl || logoHeader}
+                  alt={companyName || "ShreeHK"}
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = logoHeader;
+                  }}
+                />
               </span>
-              {!collapsed && <span className={styles.brandText}>ShreeHK</span>}
+              {!collapsed && <span className={styles.brandText}>{"ShreeHK"}</span>}
             </Link>
-            {/* {!collapsed && (
-              <span className={styles.brandBadge}>
-                <ChevronUp size={14} />
-              </span>
-            )} */}
           </div>
 
           <div className={styles.sidebarBody}>
+            {!collapsed && (
+              <div className={styles.navSearchContainer}>
+                <Input
+                  placeholder="Search navigation..."
+                  prefix={<Search size={14} style={{ color: "var(--color-neutral)", opacity: 0.65, marginRight: 4 }} />}
+                  allowClear
+                  value={navSearchText}
+                  onChange={(e) => setNavSearchText(e.target.value)}
+                  size="small"
+                />
+              </div>
+            )}
+
             <Menu
               mode="inline"
               theme={isDarkMode ? "dark" : "light"}
-              items={menuItems}
+              items={filteredMenuItems}
               selectedKeys={selectedKeys}
+              {...(openKeys ? { openKeys } : {})}
               onSelect={handleMenuSelect}
               onMouseDown={(event) => {
                 if (event.target.closest(".ant-menu-item, .ant-menu-submenu-title")) {

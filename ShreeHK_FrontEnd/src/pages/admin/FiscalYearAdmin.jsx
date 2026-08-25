@@ -91,7 +91,7 @@ const FiscalYearAdmin = () => {
       title: "Year",
       dataIndex: "year",
       key: "year",
-      width: 120,
+      width: 150,
       render: (val) => <span className={styles.yearCell}>{val}</span>,
     },
     {

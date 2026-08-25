@@ -150,6 +150,10 @@ app.get(
 
 const { ensureActivityLogTableOnMeta } = require("./scripts/ensureActivityLogTable.js");
 const { ensureUserActiveColumn } = require("./services/userActiveColumnService.js");
+const { ensureCompanyColumns } = require("./services/ensureCompanyColumnsService.js");
+
+ensureCompanyColumns().catch((err) => console.error("ensureCompanyColumns error:", err));
+
 
 if (process.env.ENABLE_HOLD_CRON === "true") {
   const { runHoldCron } = require("./jobs/holdCron.js");

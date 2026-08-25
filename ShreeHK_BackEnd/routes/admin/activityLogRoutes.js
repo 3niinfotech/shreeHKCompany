@@ -167,16 +167,35 @@ function buildFilters(query, companyScope = null) {
   return { where: where.join(" AND "), values };
 }
 
-const mapLoginRow = (row) => {
-  const mapped = mapRow(row);
-  const details = mapped.newValue && typeof mapped.newValue === "object"
-    ? mapped.newValue
-    : {};
-  return {
-    ...mapped,
-    loginAt: details.loginAt || mapped.createdAt,
-    isOnline: isUserOnline(mapped.userId),
-  };
+const mapLoginRows = (rows) => {
+  const latestAuthEventPerUser = new Map();
+
+  for (const row of rows) {
+    const userId = resolveUserId(row);
+    if (userId && !latestAuthEventPerUser.has(userId)) {
+      latestAuthEventPerUser.set(userId, row.id);
+    }
+  }
+
+  return rows.map((row) => {
+    const mapped = mapRow(row);
+    const details = mapped.newValue && typeof mapped.newValue === "object"
+      ? mapped.newValue
+      : {};
+
+    const isLatestForUser = latestAuthEventPerUser.get(mapped.userId) === row.id;
+    const isOnline = Boolean(
+      mapped.actionType === "LOGIN" &&
+      isLatestForUser &&
+      isUserOnline(mapped.userId)
+    );
+
+    return {
+      ...mapped,
+      loginAt: details.loginAt || mapped.createdAt,
+      isOnline,
+    };
+  });
 };
 
 function buildGroupDetailFilters(query, userId, userName, activityDate, companyScope = null) {
@@ -478,7 +497,7 @@ activityLogRouter.get(
       return res.json({
         status: true,
         TotalItems: Number(countRows[0]?.total) || 0,
-        Data: rows.map(mapLoginRow),
+        Data: mapLoginRows(rows),
       });
     } catch (err) {
       console.error("activity-log login-history:", err);

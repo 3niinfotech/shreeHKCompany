@@ -36,7 +36,7 @@ const listColumns = [
     { title: "Shape", dataIndex: "shape", key: "shape", width: 90 },
     { title: "Carat", dataIndex: "polish_carat", key: "polish_carat", width: 80, align: "right" },
     { title: "Price", dataIndex: "price", key: "price", width: 90, align: "right" },
-    { title: "Location", dataIndex: "location", key: "location", width: 110, render: renderLocationWithFlag },
+    { title: "Location", dataIndex: "location", key: "location", width: 110, render: (val, record) => renderLocationWithFlag(val || record.loc) },
 ];
 
 const CategorizeInventory = () => {

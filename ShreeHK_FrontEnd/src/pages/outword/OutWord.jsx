@@ -376,7 +376,9 @@ const OutWord = () => {
                 showSearch={false}
                 showClear={false}
                 extraActions={(
+
                     <Space>
+                        <Checkbox style={{ marginLeft: '15px' }}>Non-GIA Only</Checkbox>
                         <Button type="primary" icon={<ReloadOutlined />} onClick={() => {
                             if (isFilterSelected) {
                                 setHasMore(true);
@@ -455,7 +457,6 @@ const OutWord = () => {
                                             <Tag color="red">On Memo</Tag>
                                             <Tag color="green">Send To Lab</Tag>
                                         </Space>
-                                        <Checkbox style={{ marginLeft: '15px' }}>Non-GIA Only</Checkbox>
                                     </div>
 
                                     <div className={styles.totalsGroup}>

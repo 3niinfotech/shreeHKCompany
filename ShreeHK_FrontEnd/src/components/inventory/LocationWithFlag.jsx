@@ -2,6 +2,10 @@ import ReactCountryFlag from "react-country-flag";
 import React from "react";
 const LOCATION_TO_COUNTRY = {
   hk: "HK",
+  hks: "HK",
+  "hk-s": "HK",
+  "hk s": "HK",
+  hd: "HK",
   "hong kong": "HK",
   ny: "US",
   "new york": "US",
@@ -11,6 +15,7 @@ const LOCATION_TO_COUNTRY = {
   mumbai: "IN",
   surat: "IN",
   india: "IN",
+  ind: "IN",
   delhi: "IN",
   jaipur: "IN",
   chennai: "IN",
@@ -47,7 +52,15 @@ const LOCATION_TO_COUNTRY = {
 
 const getCountryCode = (location) => {
   if (!location) return null;
-  return LOCATION_TO_COUNTRY[String(location).trim().toLowerCase()] || null;
+  const str = String(location).trim().toLowerCase();
+  if (LOCATION_TO_COUNTRY[str]) return LOCATION_TO_COUNTRY[str];
+  if (str.length === 2) return str.toUpperCase();
+  if (str.startsWith("ind")) return "IN";
+  if (str.startsWith("hks") || str.startsWith("hk") || str.startsWith("hd")) return "HK";
+  if (str.startsWith("united states") || str.startsWith("u.s")) return "US";
+  if (str.startsWith("united arab") || str.startsWith("u.a.e")) return "AE";
+  if (str.startsWith("united kingdom") || str.startsWith("u.k")) return "GB";
+  return null;
 };
 
 const LocationWithFlag = ({ location }) => {

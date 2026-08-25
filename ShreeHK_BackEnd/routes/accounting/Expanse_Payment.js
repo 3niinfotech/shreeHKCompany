@@ -2,21 +2,29 @@ const express = require("express");
 const connection = require("../../connection.js");
 const ExpansePayment = express.Router();
 ExpansePayment.use(express.json());
-const {authenticateToken} = require("../../authMiddleware.js");
+const { authenticateToken } = require("../../authMiddleware.js");
 const { logAudit } = require("../../services/auditIntegration.js");
 const { fetchRowById, auditCrud, parseBodyId } = require("../../services/auditMutationHelper.js");
+const { buildUserContext } = require("../../tenantHelper.js");
 
 
 // get expanse payment data api
 
 ExpansePayment.get("/expanse/get", authenticateToken, (req, res) => {
-    // old working like this >>>> const query = `SELECT id, party, other_party, date, type, book ,cheque, amount, description FROM acc_transaction`;
+    const companyId = buildUserContext(req).companyId;
+    if (!companyId || companyId <= 0) {
+        return res.status(200).json({
+            message: "Expanse Payment Data Successfully Fetch",
+            Data: [],
+        });
+    }
 
     const query = `SELECT id, party, other_party, date, type, book, cheque, amount, description
                    FROM acc_transaction
+                   WHERE company = ?
                    ORDER BY id DESC`;
 
-    connection.query(query, (err, result) => {
+    connection.query(query, [companyId], (err, result) => {
         if (err) {
             return res.status(500).json({ err: err.message });
         }
@@ -31,6 +39,7 @@ ExpansePayment.get("/expanse/get", authenticateToken, (req, res) => {
 // expansepayment post api
 
 ExpansePayment.post("/expanse-payment", authenticateToken, (req, res) => {
+    const companyId = buildUserContext(req).companyId;
     const rawId = req.body.id;
     const id =
         typeof rawId === "object" && rawId !== null
@@ -49,26 +58,26 @@ ExpansePayment.post("/expanse-payment", authenticateToken, (req, res) => {
 
     const query = isUpdate
         ? `UPDATE acc_transaction
-           SET party = ?, other_party = ?, date = ?, type = ?, book = ?, cheque = ?, amount = ?, description = ?
+           SET party = ?, other_party = ?, date = ?, type = ?, book = ?, cheque = ?, amount = ?, description = ?, company = ?
            WHERE id = ?`
         : `INSERT INTO acc_transaction
-           (party, other_party, date, type, book, cheque, amount, description) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+           (party, other_party, date, type, book, cheque, amount, description, company) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
     const queryValues = isUpdate
-        ? [party, other_party, date, type, book, cheque, amount, description, id]
-        : [party, other_party, date, type, book, cheque, amount, description];
+        ? [party, other_party, date, type, book, cheque, amount, description, companyId, id]
+        : [party, other_party, date, type, book, cheque, amount, description, companyId];
 
     const newValue = {
-            party,
-            other_party,
-            date,
-            type,
-            book,
-            cheque,
-            amount,
-            description,
-        };
+        party,
+        other_party,
+        date,
+        type,
+        book,
+        cheque,
+        amount,
+        description,
+    };
 
     const finishSave = (oldValue) => {
         connection.query(query, queryValues, (err, result) => {
@@ -88,7 +97,7 @@ ExpansePayment.post("/expanse-payment", authenticateToken, (req, res) => {
                 description: isUpdate
                     ? `Expanse updated — ${description || amount || savedId}`
                     : `Expanse created — ${description || amount || party}`,
-            }).catch(() => {});
+            }).catch(() => { });
 
             res.status(isUpdate ? 200 : 201).json({
                 message: isUpdate ? "Expanse payment updated successfully!" : "Expanse payment created successfully!",

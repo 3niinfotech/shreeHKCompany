@@ -27,7 +27,7 @@ export const BOC_BANK = {
 export const DEFAULT_DISCLAIMER =
   "The diamonds herein invoiced have been (sourced) purchase from legitimate sources not involved in the funding of conflict, in compliance with United Nations resolutions and corresponding national laws (where the invoice is generated). The seller hereby guarantees that these diamonds are conflict free and confirms adherence to the WCD SoW. The diamonds herein invoiced are neither recycled nor sourced from artisanally mined and it is exclusive of natural diamond, free from any synthetic or treated diamonds.";
 
-export const SALE_MAX_ROWS = 9;
+export const SALE_MAX_ROWS = 20;
 
 export const fmtDisplayDate = (value) => {
   if (!value || value === "—") return "—";
@@ -60,19 +60,48 @@ export const normalizeLineItems = (lineItems = []) =>
     amount: row.amount ?? "",
   }));
 
-export const buildTableRows = (lineItems, maxRows) => {
+export const buildChunkRows = (chunkItems, startIndex = 0, minRows = SALE_MAX_ROWS) => {
+  const rows = normalizeLineItems(chunkItems);
+  const bodyRows = [];
+  const totalRowsCount = Math.max(rows.length, minRows);
+
+  for (let i = 1; i <= totalRowsCount; i += 1) {
+    const row = rows[i - 1];
+    if (row) {
+      bodyRows.push({ ...row, no: startIndex + i });
+    } else {
+      bodyRows.push({
+        no: startIndex + i,
+        sku: "",
+        description: "",
+        pcs: "",
+        carats: "",
+        price: "",
+        amount: "",
+      });
+    }
+  }
+
+  return bodyRows;
+};
+
+export const buildTableRows = (lineItems, minRows = SALE_MAX_ROWS) => {
   const rows = normalizeLineItems(lineItems);
   let totalPcs = 0;
   let totalCarat = 0;
   let totalAmount = 0;
 
+  rows.forEach((row) => {
+    totalPcs += Number(row.pcs || 0);
+    totalCarat += Number(row.carats || 0);
+    totalAmount += Number(row.amount || 0);
+  });
+
+  const effectiveMax = Math.max(rows.length, minRows);
   const bodyRows = [];
-  for (let i = 1; i <= maxRows; i += 1) {
+  for (let i = 1; i <= effectiveMax; i += 1) {
     const row = rows[i - 1];
     if (row) {
-      totalPcs += Number(row.pcs || 0);
-      totalCarat += Number(row.carats || 0);
-      totalAmount += Number(row.amount || 0);
       bodyRows.push(row);
     } else {
       bodyRows.push({ no: i, sku: "", description: "", pcs: "", carats: "", price: "", amount: "" });
@@ -190,44 +219,32 @@ const BankBlock = () => (
     <tbody>
       <tr>
         <td style={{ width: "8%" }}>[&nbsp;&nbsp;&nbsp;]</td>
-        <td className="key">
-          A/c. Name
-        </td>
+        <td className="key">A/c. Name</td>
         <td>{BOC_BANK.acName}</td>
       </tr>
       <tr>
         <td />
-        <td className="key">
-          Bank Name
-        </td>
+        <td className="key">Bank Name</td>
         <td>{BOC_BANK.bankName}</td>
       </tr>
       <tr>
         <td />
-        <td className="key">
-          Account No
-        </td>
+        <td className="key">Account No</td>
         <td dangerouslySetInnerHTML={{ __html: BOC_BANK.accountNo }} />
       </tr>
       <tr>
         <td />
-        <td className="key">
-          Bank Code
-        </td>
+        <td className="key">Bank Code</td>
         <td>{BOC_BANK.bankCode}</td>
       </tr>
       <tr>
         <td />
-        <td className="key">
-          Branch Code
-        </td>
+        <td className="key">Branch Code</td>
         <td>{BOC_BANK.branchCode}</td>
       </tr>
       <tr>
         <td />
-        <td className="key">
-          Swift Code
-        </td>
+        <td className="key">Swift Code</td>
         <td>{BOC_BANK.swiftCode}</td>
       </tr>
     </tbody>
@@ -319,7 +336,18 @@ export const SaleInvoicePage = ({ data, copyLabel = "(ORIGINAL COPY)" }) => {
   const docType = String(data.docType || data.type || "").toLowerCase();
   const isSaleOrExport = docType === "sale" || docType === "export";
   const lineItems = data.lineItems || [];
-  const { bodyRows, totalPcs, totalCarat, totalAmount } = buildTableRows(lineItems, SALE_MAX_ROWS);
+
+  // Document totals calculated across all items
+  const allNormalized = normalizeLineItems(lineItems);
+  let totalPcs = 0;
+  let totalCarat = 0;
+  let totalAmount = 0;
+
+  allNormalized.forEach((row) => {
+    totalPcs += Number(row.pcs || 0);
+    totalCarat += Number(row.carats || 0);
+    totalAmount += Number(row.amount || 0);
+  });
 
   const grandTotal = Number(data.totals?.finalAmount ?? data.finalAmount ?? totalAmount);
   const vatAmount = Number(data.vatAmount ?? 0);
@@ -332,136 +360,182 @@ export const SaleInvoicePage = ({ data, copyLabel = "(ORIGINAL COPY)" }) => {
   const pageTitle = resolvePageTitle(data);
   const invoiceNoLabel = resolveInvoiceNoLabel(data);
 
+  // Chunk items into pages of SALE_MAX_ROWS (20)
+  const chunks = [];
+  if (lineItems.length === 0) {
+    chunks.push([]);
+  } else {
+    for (let i = 0; i < lineItems.length; i += SALE_MAX_ROWS) {
+      chunks.push(lineItems.slice(i, i + SALE_MAX_ROWS));
+    }
+  }
+
+  const totalPages = chunks.length;
+
   return (
-    <div className="sheet sale-invoice-sheet am-page-break">
-      <div className="sale-invoice-top">
-        <div className="header">
-          <div className="brand">
-            {resolveCompanyLogoUrl(data.company?.logoUrl || data.company?.logo) ? (
-              <img
-                className="logo"
-                src={resolveCompanyLogoUrl(data.company?.logoUrl || data.company?.logo)}
-                alt={data.company?.name || "Company logo"}
-                style={{ maxHeight: 56, maxWidth: 140, objectFit: "contain", display: "block" }}
-              />
-            ) : (
-              <div className="logo">{(data.company?.name || "V").charAt(0).toUpperCase()}</div>
-            )}
-            <div>
-              <div className="brand-name">
-                {(data.company?.name || "VENYA").split(/\s+/)[0].toUpperCase()}
+    <>
+      {chunks.map((chunk, pageIndex) => {
+        const isLastPage = pageIndex === totalPages - 1;
+        const startIndex = pageIndex * SALE_MAX_ROWS;
+        const bodyRows = buildChunkRows(chunk, startIndex, SALE_MAX_ROWS);
+        const currentCopyLabel =
+          totalPages > 1
+            ? `${copyLabel} (Page ${pageIndex + 1} of ${totalPages})`
+            : copyLabel;
+
+        return (
+          <div key={pageIndex} className="sheet sale-invoice-sheet am-page-break">
+            <div className="sale-invoice-top">
+              <div className="header">
+                <div className="brand">
+                  {resolveCompanyLogoUrl(data.company?.logoUrl || data.company?.logo) ? (
+                    <img
+                      className="logo"
+                      src={resolveCompanyLogoUrl(data.company?.logoUrl || data.company?.logo)}
+                      alt={data.company?.name || "Company logo"}
+                      style={{ maxHeight: 56, maxWidth: 140, objectFit: "contain", display: "block" }}
+                    />
+                  ) : (
+                    <div className="logo">{(data.company?.name || "V").charAt(0).toUpperCase()}</div>
+                  )}
+                  <div>
+                    <div className="brand-name">
+                      {(data.company?.name || "VENYA").split(/\s+/)[0].toUpperCase()}
+                    </div>
+                    <div className="brand-sub">{data.company?.tagline || "GEMS CO., LTD."}</div>
+                  </div>
+                </div>
+                <div className="memo-title">
+                  <h1>{pageTitle}</h1>
+                  <span>{currentCopyLabel}</span>
+                </div>
               </div>
-              <div className="brand-sub">{data.company?.tagline || "GEMS CO., LTD."}</div>
+
+              <div className="company-block">
+                <div className="col">
+                  <BuyerBlock party={data.party} />
+                </div>
+                <div className="col right">
+                  <SenderBlock />
+                </div>
+              </div>
+
+              <div className="meta-strip">
+                <div className="field">
+                  <label>Date</label>
+                  <div className="val">{fmtDisplayDate(data.date)}</div>
+                </div>
+                <div className="field">
+                  <label>Reference No.</label>
+                  <div className="val">{referenceNo}</div>
+                </div>
+                <div className="field">
+                  <label>{invoiceNoLabel}</label>
+                  <div className="val">{invoiceNo}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="sale-invoice-grow">
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>No.</th>
+                      <th>SKU</th>
+                      <th>Description</th>
+                      <th>Pcs</th>
+                      <th>Carats</th>
+                      <th>Price (US$)</th>
+                      <th>Amount (US$)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bodyRows.map((row) => (
+                      <tr key={row.no}>
+                        <td>{row.no}</td>
+                        <td>{row.sku}</td>
+                        <td>{row.description}</td>
+                        <td>{row.pcs !== "" ? row.pcs : ""}</td>
+                        <td>{row.carats !== "" && row.carats != null ? fmtCarats(row.carats) : ""}</td>
+                        <td>{row.price !== "" && row.price != null ? fmtMoney(row.price) : ""}</td>
+                        <td className="amt">
+                          {row.amount !== "" && row.amount != null ? fmtMoney(row.amount) : ""}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  {isLastPage ? (
+                    <tfoot>
+                      <tr>
+                        <td />
+                        <td />
+                        <td className="sale-total-label">Total (Before VAT)</td>
+                        <td>{totalPcs}</td>
+                        <td>{fmtCarats(totalCarat)}</td>
+                        <td>US$</td>
+                        <td className="sale-total-amt">{fmtMoney(subTotal)}</td>
+                      </tr>
+                      {vatAmount > 0 ? (
+                        <tr>
+                          <td />
+                          <td />
+                          <td className="sale-total-label">VAT ({data.vatPercent ?? 7}%)</td>
+                          <td />
+                          <td />
+                          <td>US$</td>
+                          <td className="sale-total-amt">{fmtMoney(vatAmount)}</td>
+                        </tr>
+                      ) : null}
+                      <tr>
+                        <td />
+                        <td />
+                        <td className="sale-total-label">Grand Total</td>
+                        <td />
+                        <td />
+                        <td>US$</td>
+                        <td className="sale-total-amt">{fmtMoney(grandTotal)}</td>
+                      </tr>
+                    </tfoot>
+                  ) : null}
+                </table>
+              </div>
+
+              {isLastPage ? (
+                <div className="sale-in-word">
+                  <b>in Word :</b> {num2words(grandTotal)} Only
+                </div>
+              ) : (
+                <div
+                  style={{
+                    textAlign: "right",
+                    padding: "8px 15px",
+                    fontStyle: "italic",
+                    color: "#777",
+                    fontSize: "11px",
+                  }}
+                >
+                  Continued on Page {pageIndex + 2}...
+                </div>
+              )}
+            </div>
+
+            <div className="sale-invoice-bottom">
+              {isLastPage ? (
+                <SalePaymentSection
+                  data={data}
+                  isSaleOrExport={isSaleOrExport}
+                  dueDate={dueDate}
+                  terms={terms}
+                />
+              ) : (
+                <div style={{ height: "20px" }} />
+              )}
             </div>
           </div>
-          <div className="memo-title">
-            <h1>{pageTitle}</h1>
-            <span>{copyLabel}</span>
-          </div>
-        </div>
-
-        <div className="company-block">
-          <div className="col">
-            <BuyerBlock party={data.party} />
-          </div>
-          <div className="col right">
-            <SenderBlock />
-          </div>
-        </div>
-
-        <div className="meta-strip">
-          <div className="field">
-            <label>Date</label>
-            <div className="val">{fmtDisplayDate(data.date)}</div>
-          </div>
-          <div className="field">
-            <label>Reference No.</label>
-            <div className="val">{referenceNo}</div>
-          </div>
-          <div className="field">
-            <label>{invoiceNoLabel}</label>
-            <div className="val">{invoiceNo}</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="sale-invoice-grow">
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>No.</th>
-                <th>SKU</th>
-                <th>Description</th>
-                <th>Pcs</th>
-                <th>Carats</th>
-                <th>Price (US$)</th>
-                <th>Amount (US$)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bodyRows.map((row) => (
-                <tr key={row.no}>
-                  <td>{row.no}</td>
-                  <td>{row.sku}</td>
-                  <td>{row.description}</td>
-                  <td>{row.pcs !== "" ? row.pcs : ""}</td>
-                  <td>{row.carats !== "" && row.carats != null ? fmtCarats(row.carats) : ""}</td>
-                  <td>{row.price !== "" && row.price != null ? fmtMoney(row.price) : ""}</td>
-                  <td className="amt">
-                    {row.amount !== "" && row.amount != null ? fmtMoney(row.amount) : ""}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td />
-                <td />
-                <td className="sale-total-label">Total (Before VAT)</td>
-                <td>{totalPcs}</td>
-                <td>{fmtCarats(totalCarat)}</td>
-                <td>US$</td>
-                <td className="sale-total-amt">{fmtMoney(subTotal)}</td>
-              </tr>
-              {vatAmount > 0 ? (
-                <tr>
-                  <td />
-                  <td />
-                  <td className="sale-total-label">VAT ({data.vatPercent ?? 7}%)</td>
-                  <td />
-                  <td />
-                  <td>US$</td>
-                  <td className="sale-total-amt">{fmtMoney(vatAmount)}</td>
-                </tr>
-              ) : null}
-              <tr>
-                <td />
-                <td />
-                <td className="sale-total-label">Grand Total</td>
-                <td />
-                <td />
-                <td>US$</td>
-                <td className="sale-total-amt">{fmtMoney(grandTotal)}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-
-        <div className="sale-in-word">
-          <b>in Word :</b> {num2words(grandTotal)} Only
-        </div>
-      </div>
-
-      <div className="sale-invoice-bottom">
-        <SalePaymentSection
-          data={data}
-          isSaleOrExport={isSaleOrExport}
-          dueDate={dueDate}
-          terms={terms}
-        />
-      </div>
-    </div>
+        );
+      })}
+    </>
   );
 };
 

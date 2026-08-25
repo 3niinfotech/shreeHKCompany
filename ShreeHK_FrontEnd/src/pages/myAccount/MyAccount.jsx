@@ -8,7 +8,7 @@ import {
     UserOutlined, MailOutlined, LockOutlined,
     CameraOutlined, SafetyCertificateOutlined,
     BellOutlined, GlobalOutlined, PhoneOutlined,
-    CrownOutlined
+    CrownOutlined, IdcardOutlined
 } from '@ant-design/icons';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../constants/endpoints';
@@ -75,7 +75,7 @@ const MyAccount = () => {
         const formData = new FormData();
 
         Object.keys(values).forEach(key => {
-            formData.append(key, values[key]);
+            formData.append(key, values[key] || '');
         });
 
         if (selectedFile) {
@@ -142,6 +142,11 @@ const MyAccount = () => {
                         <Col xs={24} sm={12}>
                             <Form.Item label="Mobile Number" name="phone">
                                 <Input prefix={<PhoneOutlined />} placeholder="+91 98765 43210" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                            <Form.Item label="Designation" name="designation">
+                                <Input prefix={<IdcardOutlined />} placeholder="Enter designation (e.g. Sales Manager)" />
                             </Form.Item>
                         </Col>
                         <Col xs={24} sm={24}>
@@ -279,21 +284,24 @@ const MyAccount = () => {
                             </div>
                         </div>
 
-                        {/* Name + Role Badge */}
-                        <Title level={3} style={{ marginTop: '16px', marginBottom: 4 }}>
+                        {/* Name + Role & Designation Badges */}
+                        <Title level={3} style={{ marginTop: '16px', marginBottom: 8 }}>
                             {profile?.first_name
                                 ? `${profile.first_name} ${profile.last_name || ''}`.trim()
                                 : profile?.user_name || 'Admin User'}
                         </Title>
 
-                        {isSuperAdmin
-                            ? <Tag icon={<CrownOutlined />} color="gold">Super Admin</Tag>
-                            : <Tag color="blue">Admin</Tag>
-                        }
-
-                        <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
-                            {profile?.designation || '—'}
-                        </Text>
+                        <Space size={6} wrap style={{ marginBottom: 12, justifyContent: 'center', flexDirection: 'column' }}>
+                            {isSuperAdmin
+                                ? <Tag icon={<CrownOutlined />} color="gold" style={{ padding: '2px 10px', borderRadius: '12px', fontWeight: 600 }}>Super Admin</Tag>
+                                : <Tag color="blue" style={{ padding: '2px 10px', borderRadius: '12px', fontWeight: 600 }}>{profile?.role_name || 'Admin'}</Tag>
+                            }
+                            {profile?.designation && (
+                                <Tag icon={<IdcardOutlined />} color="cyan" style={{ padding: '2px 10px', borderRadius: '12px', fontWeight: 600 }}>
+                                    {profile.designation}
+                                </Tag>
+                            )}
+                        </Space>
 
                         <Divider />
 

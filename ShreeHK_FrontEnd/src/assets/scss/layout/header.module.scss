@@ -14,7 +14,7 @@
     position: relative;
     z-index: 1000;
     flex-shrink: 0;
-    box-shadow: v.$shadow-header;
+    // box-shadow: v.$shadow-header;
 
     &.appHeaderCompact {
       .headerLeft {
@@ -543,7 +543,7 @@
   .headerStyle .appHeader {
     background: var(--color-header-bg) !important;
     border-bottom: var(--border-width-thin) solid var(--color-border);
-    box-shadow: var(--shadow-header);
+    // box-shadow: var(--shadow-header);
 
     .connectionStatus {
       background: var(--color-alert-success-bg);

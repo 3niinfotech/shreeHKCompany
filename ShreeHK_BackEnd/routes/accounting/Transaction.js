@@ -1,6 +1,7 @@
 const express = require("express");
 const connection = require("../../connection.js");
 const { authenticateToken } = require("../../authMiddleware.js");
+const { buildUserContext } = require("../../tenantHelper.js");
 const moment = require("moment");
 
 const Transaction = express.Router();
@@ -32,10 +33,15 @@ function mapTxnRow(row, no, balance) {
 
 Transaction.post("/transaction", authenticateToken, async (req, res) => {
   try {
+    const companyId = buildUserContext(req).companyId;
+    if (!companyId || companyId <= 0) {
+      return res.status(200).json({ status: true, message: "Transaction Data Fetched Successfully", data: [] });
+    }
+
     const post = req.body || {};
     let sql = `SELECT id, date, cheque, description, party, type, amount, book, other_party
-      FROM acc_transaction WHERE (deleted = 0 OR deleted IS NULL)`;
-    const values = [];
+      FROM acc_transaction WHERE (deleted = 0 OR deleted IS NULL) AND company = ?`;
+    const values = [companyId];
 
     if (post.book) {
       sql += " AND book = ?";
@@ -77,9 +83,14 @@ Transaction.post("/transaction", authenticateToken, async (req, res) => {
 
 Transaction.post("/transaction/advance-report", authenticateToken, async (req, res) => {
   try {
+    const companyId = buildUserContext(req).companyId;
+    if (!companyId || companyId <= 0) {
+      return res.status(200).json({ status: true, data: [] });
+    }
+
     const post = req.body || {};
-    let sql = `SELECT id, party, date, type, book, cheque, amount, description FROM acc_advance WHERE 1=1`;
-    const values = [];
+    let sql = `SELECT id, party, date, type, book, cheque, amount, description FROM acc_advance WHERE company = ?`;
+    const values = [companyId];
 
     if (post.party && post.party !== "0") {
       sql += " AND party = ?";
@@ -128,8 +139,13 @@ Transaction.post("/transaction/advance-report", authenticateToken, async (req, r
 
 Transaction.get("/transaction/books", authenticateToken, async (req, res) => {
   try {
+    const companyId = buildUserContext(req).companyId;
+    if (!companyId || companyId <= 0) {
+      return res.json({ status: true, Data: [] });
+    }
     const rows = await queryAsync(
-      "SELECT DISTINCT book AS name FROM acc_transaction WHERE book IS NOT NULL AND book <> '' ORDER BY book"
+      "SELECT DISTINCT book AS name FROM acc_transaction WHERE company = ? AND book IS NOT NULL AND book <> '' ORDER BY book",
+      [companyId]
     );
     return res.json({ status: true, Data: rows.map((r) => ({ value: r.name, label: r.name })) });
   } catch (err) {
@@ -138,3 +154,5 @@ Transaction.get("/transaction/books", authenticateToken, async (req, res) => {
 });
 
 module.exports = Transaction;
+
+

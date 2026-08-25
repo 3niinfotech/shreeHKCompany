@@ -11,6 +11,7 @@ import { useFetchApi } from "../../api/ApiFunction";
 import { ENDPOINTS } from "../../constants/endpoints";
 import { api } from "../../api/axiosInstance";
 import { sendToOutward } from "../../api/services/outwardService";
+import { TRANSACTION_STOCK_KEYS } from "../../api/services/transactionStockService";
 import { toastApiSuccess, toastApiError } from "../../utils/apiToast";
 import InventoryFilterPanel from "../../components/inventory/InventoryFilterPanel";
 import InventoryFilterGroups from "../../components/inventory/InventoryFilterGroups";
@@ -511,13 +512,13 @@ const DiamondInventoryTable = () => {
   useEffect(() => {
     const idleId = window.requestIdleCallback
       ? window.requestIdleCallback(() => {
-          import("./InventoryPageModals");
-          import("../../components/inventory/InventoryBulkActionModal");
-        }, { timeout: 2500 })
+        import("./InventoryPageModals");
+        import("../../components/inventory/InventoryBulkActionModal");
+      }, { timeout: 2500 })
       : window.setTimeout(() => {
-          import("./InventoryPageModals");
-          import("../../components/inventory/InventoryBulkActionModal");
-        }, 1200);
+        import("./InventoryPageModals");
+        import("../../components/inventory/InventoryBulkActionModal");
+      }, 1200);
     return () => {
       if (window.cancelIdleCallback && typeof idleId === "number") {
         window.cancelIdleCallback(idleId);
@@ -768,6 +769,7 @@ const DiamondInventoryTable = () => {
     showSuccessModal("memo", selectedRows);
     setSelectedRowKeys([]);
     setOffset(1);
+    queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.outMemo] });
     queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
     queryClient.invalidateQueries({ queryKey: ["OutwardList"] });
     queryClient.invalidateQueries({ queryKey: ["getIncrement"] });
@@ -782,6 +784,7 @@ const DiamondInventoryTable = () => {
     showSuccessModal("sale", selectedRows);
     setSelectedRowKeys([]);
     setOffset(1);
+    queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.sale] });
     queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
     queryClient.invalidateQueries({ queryKey: ["OutwardList"] });
     queryClient.invalidateQueries({ queryKey: ["getIncrement"] });
@@ -796,6 +799,7 @@ const DiamondInventoryTable = () => {
     showSuccessModal("consign", selectedRows);
     setSelectedRowKeys([]);
     setOffset(1);
+    queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.outMemo] });
     queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
     queryClient.invalidateQueries({ queryKey: ["OutwardList"] });
     queryClient.invalidateQueries({ queryKey: ["getIncrement"] });
@@ -810,6 +814,7 @@ const DiamondInventoryTable = () => {
     showSuccessModal("lab", selectedRows);
     setSelectedRowKeys([]);
     setOffset(1);
+    queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.gia] });
     queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
     queryClient.invalidateQueries({ queryKey: ["OutwardList"] });
     queryClient.invalidateQueries({ queryKey: ["getIncrement"] });
@@ -824,6 +829,7 @@ const DiamondInventoryTable = () => {
     showSuccessModal("export", selectedRows);
     setSelectedRowKeys([]);
     setOffset(1);
+    queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.outMemo] });
     queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
     queryClient.invalidateQueries({ queryKey: ["OutwardList"] });
     queryClient.invalidateQueries({ queryKey: ["getIncrement"] });
@@ -1620,116 +1626,116 @@ const DiamondInventoryTable = () => {
   return (
     <SelectionContext.Provider value={selectionContextValue}>
       <InventoryFooterDataContext.Provider value={footerDataContextValue}>
-      <div ref={pageRef} className="inventory-page-wrapper page-shell">
-        <div className="inventory-filter-wrapper">
-          <InventoryFilterPanel
-            totalLabel={
-              <>
-                Total: <b>{totalItemsDisplay}</b>
-              </>
-            }
-            searchSlot={searchSlot}
-            compactFilters={compactFiltersSlot}
-            headerActionsLeft={headerActionsLeftSlot}
-            headerActions={
-              <InventoryHeaderActions
-                selectedCount={selectedRowKeys.length}
-                onAction={stablePanelAction}
-                menuItems={DOWNLOAD_MENU_ITEMS}
-                handleDownloadMenuClick={stableDownloadMenuClick}
-                exportLoading={exportLoading}
-                iExportLoading={iExportLoading}
-              />
-            }
-            advancedFilters={advancedFiltersContent}
-          />
-          <InventorySummaryToolbar totals={summaryTotals}>
-            <InventoryQuickLinksWrapper
-              selectedRows={selectedRows}
-              selectedCount={selectedRowKeys.length}
-              onCompare={handleOpenCompareModal}
-              onRefreshRapnet={handleRefreshRapnetFlags}
-              onWebsiteSync={handleWebsiteSync}
-              syncLoading={syncLoading}
+        <div ref={pageRef} className="inventory-page-wrapper page-shell">
+          <div className="inventory-filter-wrapper">
+            <InventoryFilterPanel
+              totalLabel={
+                <>
+                  Total: <b>{totalItemsDisplay}</b>
+                </>
+              }
+              searchSlot={searchSlot}
+              compactFilters={compactFiltersSlot}
+              headerActionsLeft={headerActionsLeftSlot}
+              headerActions={
+                <InventoryHeaderActions
+                  selectedCount={selectedRowKeys.length}
+                  onAction={stablePanelAction}
+                  menuItems={DOWNLOAD_MENU_ITEMS}
+                  handleDownloadMenuClick={stableDownloadMenuClick}
+                  exportLoading={exportLoading}
+                  iExportLoading={iExportLoading}
+                />
+              }
+              advancedFilters={advancedFiltersContent}
             />
-          </InventorySummaryToolbar>
+            <InventorySummaryToolbar totals={summaryTotals}>
+              <InventoryQuickLinksWrapper
+                selectedRows={selectedRows}
+                selectedCount={selectedRowKeys.length}
+                onCompare={handleOpenCompareModal}
+                onRefreshRapnet={handleRefreshRapnetFlags}
+                onWebsiteSync={handleWebsiteSync}
+                syncLoading={syncLoading}
+              />
+            </InventorySummaryToolbar>
+            <Suspense fallback={null}>
+              <AIResultPanel
+                title="AI Stock Alerts"
+                loading={aiAlertLoading}
+                result={aiAlertResult}
+                error={aiAlertError}
+                open={aiPanelOpen}
+                onOpenChange={setAiPanelOpen}
+              />
+            </Suspense>
+          </div>
+
+          <InventoryTableSection
+            tableRef={tableRef}
+            tableHeight={tableHeight}
+            tableColumnsSk={tableColumnsSk}
+            tableDataSk={tableDataSk}
+            isTableSkeleton={isTableSkeleton}
+            overlayLoading={overlayLoading || isFetching || isInventoryFetching}
+            tableScrollX="max-content"
+            tableComponents={tableComponents}
+            getInventoryRowClass={getInventoryRowClass}
+            handleOnRow={handleOnRow}
+            renderTableFooter={renderTableFooter}
+          />
+
           <Suspense fallback={null}>
-            <AIResultPanel
-              title="AI Stock Alerts"
-              loading={aiAlertLoading}
-              result={aiAlertResult}
-              error={aiAlertError}
-              open={aiPanelOpen}
-              onOpenChange={setAiPanelOpen}
+            <InventoryBulkActionModal
+              open={bulkActionModal.open || holdActionState.open}
+              actionKey={
+                holdActionState.open ? holdActionState.actionKey : bulkActionModal.actionKey
+              }
+              selectedCount={
+                holdActionState.open
+                  ? (holdActionState.selectedIds?.length ?? 0)
+                  : selectedRowKeys.length
+              }
+              loading={
+                holdLoading ||
+                changePriceLoading ||
+                labelA4Loading ||
+                labelLoading ||
+                iExportLoading ||
+                exportLoading ||
+                mailLoading
+              }
+              onClose={() => {
+                if (holdActionState.open) closeHoldModal();
+                else closeBulkActionModal();
+              }}
+              onSubmit={handleBulkActionSubmit}
+            />
+
+            <InventoryPageModals
+              ref={pageModalsRef}
+              selectedRows={selectedRows}
+              selectedRowKeys={selectedRowKeys}
+              onMemoSubmit={handleMemoSubmit}
+              onSaleSubmit={handleSaleSubmit}
+              onConsignSubmit={handleConsignSubmit}
+              onLabSubmit={handleLabSubmit}
+              onExportSubmit={handleExportSubmit}
+              onAfterPackageOrReservation={() => {
+                clearSelection();
+                queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
+              }}
             />
           </Suspense>
+
+          <StoneActionSuccessModal
+            isOpen={successModal.open}
+            onClose={() => setSuccessModal((s) => ({ ...s, open: false }))}
+            actionType={successModal.actionType}
+            stone={successModal.stone}
+            count={successModal.count}
+          />
         </div>
-
-        <InventoryTableSection
-          tableRef={tableRef}
-          tableHeight={tableHeight}
-          tableColumnsSk={tableColumnsSk}
-          tableDataSk={tableDataSk}
-          isTableSkeleton={isTableSkeleton}
-          overlayLoading={overlayLoading}
-          tableScrollX="max-content"
-          tableComponents={tableComponents}
-          getInventoryRowClass={getInventoryRowClass}
-          handleOnRow={handleOnRow}
-          renderTableFooter={renderTableFooter}
-        />
-
-        <Suspense fallback={null}>
-          <InventoryBulkActionModal
-            open={bulkActionModal.open || holdActionState.open}
-            actionKey={
-              holdActionState.open ? holdActionState.actionKey : bulkActionModal.actionKey
-            }
-            selectedCount={
-              holdActionState.open
-                ? (holdActionState.selectedIds?.length ?? 0)
-                : selectedRowKeys.length
-            }
-            loading={
-              holdLoading ||
-              changePriceLoading ||
-              labelA4Loading ||
-              labelLoading ||
-              iExportLoading ||
-              exportLoading ||
-              mailLoading
-            }
-            onClose={() => {
-              if (holdActionState.open) closeHoldModal();
-              else closeBulkActionModal();
-            }}
-            onSubmit={handleBulkActionSubmit}
-          />
-
-          <InventoryPageModals
-            ref={pageModalsRef}
-            selectedRows={selectedRows}
-            selectedRowKeys={selectedRowKeys}
-            onMemoSubmit={handleMemoSubmit}
-            onSaleSubmit={handleSaleSubmit}
-            onConsignSubmit={handleConsignSubmit}
-            onLabSubmit={handleLabSubmit}
-            onExportSubmit={handleExportSubmit}
-            onAfterPackageOrReservation={() => {
-              clearSelection();
-              queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
-            }}
-          />
-        </Suspense>
-
-        <StoneActionSuccessModal
-          isOpen={successModal.open}
-          onClose={() => setSuccessModal((s) => ({ ...s, open: false }))}
-          actionType={successModal.actionType}
-          stone={successModal.stone}
-          count={successModal.count}
-        />
-      </div>
       </InventoryFooterDataContext.Provider>
     </SelectionContext.Provider>
   );

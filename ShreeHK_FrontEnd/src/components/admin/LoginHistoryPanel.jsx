@@ -4,6 +4,9 @@ import {
   LoginOutlined,
   LogoutOutlined,
   WarningOutlined,
+  CrownOutlined,
+  SafetyCertificateOutlined,
+  UserOutlined,
 } from "@ant-design/icons";
 import { api } from "../../api/axiosInstance";
 import { ENDPOINTS } from "../../constants/endpoints";
@@ -60,7 +63,7 @@ const LoginHistoryPanel = ({
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(50);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const fetchSeqRef = useRef(0);
@@ -114,29 +117,92 @@ const LoginHistoryPanel = ({
     return () => window.clearInterval(timer);
   }, [autoRefreshMs, fetchRows, page, pageSize]);
 
-  const columns = useMemo(() => [
+  // Group fetched rows by User for Main Table + Sub Table
+  const userGroupedData = useMemo(() => {
+    const map = new Map();
+
+    (rows || []).forEach((row) => {
+      const userKey = row.userId ? `user-${row.userId}` : `name-${row.userName || "unknown"}`;
+      if (!map.has(userKey)) {
+        map.set(userKey, {
+          key: userKey,
+          userId: row.userId,
+          userName: row.userName,
+          userRole: row.userRole,
+          isOnline: Boolean(row.isOnline && row.actionType === "LOGIN"),
+          latestEvent: row.actionType,
+          latestTimestamp: row.createdAt,
+          latestIp: row.ipAddress,
+          latestDevice: row.userAgent,
+          history: [],
+        });
+      }
+      const group = map.get(userKey);
+      group.history.push(row);
+
+      // If any recent event marked this user as online
+      if (row.isOnline && row.actionType === "LOGIN") {
+        group.isOnline = true;
+      }
+    });
+
+    return Array.from(map.values());
+  }, [rows]);
+
+  // Parent Columns (Main User Summary Table)
+  const parentColumns = useMemo(() => [
     {
       title: "User",
       key: "user",
       fixed: "left",
-      width: 210,
-      render: (_, record) => (
-        <div className={styles.loginUserCell}>
-          <Badge dot status={record.isOnline ? "success" : "default"} offset={[-2, 34]}>
-            <Avatar className={styles.loginAvatar}>{getInitials(record.userName)}</Avatar>
-          </Badge>
-          <div>
-            <strong>{record.userName || "Unknown user"}</strong>
-            <span>{record.userRole || "No role"}</span>
+      width: 220,
+      render: (_, record) => {
+        const roleStr = String(record.userRole || "User").trim();
+        const roleUpper = roleStr.toUpperCase();
+        let roleColor = "default";
+        let RoleIcon = UserOutlined;
+        if (roleUpper.includes("SUPER")) {
+          roleColor = "purple";
+          RoleIcon = CrownOutlined;
+        } else if (roleUpper.includes("ADMIN")) {
+          roleColor = "blue";
+          RoleIcon = SafetyCertificateOutlined;
+        }
+
+        return (
+          <div className={styles.loginUserCell}>
+            <Badge dot status={record.isOnline ? "success" : "default"} offset={[-2, 34]}>
+              <Avatar className={styles.loginAvatar}>{getInitials(record.userName)}</Avatar>
+            </Badge>
+            <div className={styles.loginUserInfo}>
+              <strong className={styles.loginUserName}>{record.userName || "Unknown user"}</strong>
+              <div style={{ marginTop: 2 }}>
+                <Tag icon={<RoleIcon />} color={roleColor} className={styles.roleBadge}>
+                  {roleStr}
+                </Tag>
+              </div>
+            </div>
           </div>
-        </div>
+        );
+      },
+    },
+    {
+      title: "Current Status",
+      dataIndex: "isOnline",
+      key: "status",
+      width: 140,
+      render: (online) => (
+        <Badge
+          status={online ? "success" : "default"}
+          text={online ? "Online now" : "Offline"}
+        />
       ),
     },
     {
-      title: "Event",
-      dataIndex: "actionType",
-      key: "event",
-      width: 120,
+      title: "Latest Event",
+      dataIndex: "latestEvent",
+      key: "latestEvent",
+      width: 130,
       render: (event) => (
         <Tag
           icon={
@@ -154,8 +220,8 @@ const LoginHistoryPanel = ({
       ),
     },
     {
-      title: "Exact timestamp",
-      dataIndex: "createdAt",
+      title: "Latest Timestamp",
+      dataIndex: "latestTimestamp",
       key: "timestamp",
       width: 230,
       render: (value) => (
@@ -176,36 +242,92 @@ const LoginHistoryPanel = ({
       ),
     },
     {
-      title: "Current status",
-      dataIndex: "isOnline",
-      key: "status",
-      width: 130,
-      render: (online) => (
-        <Badge
-          status={online ? "success" : "default"}
-          text={online ? "Online now" : "Offline"}
-        />
-      ),
-    },
-    {
-      title: "IP address",
-      dataIndex: "ipAddress",
+      title: "IP Address",
+      dataIndex: "latestIp",
       key: "ip",
       width: 145,
       render: (value) => <code className={styles.ipAddress}>{value || "—"}</code>,
     },
     {
       title: "Device",
-      dataIndex: "userAgent",
+      dataIndex: "latestDevice",
       key: "device",
       ellipsis: true,
       render: (value) => (
         <span title={value || ""}>{value ? describeDevice(value) : "Unknown device"}</span>
       ),
     },
+    {
+      title: "Total History",
+      key: "totalEvents",
+      width: 120,
+      align: "center",
+      render: (_, record) => (
+        <Tag color="cyan" style={{ fontWeight: 600, borderRadius: 12 }}>
+          {record.history.length} Event(s)
+        </Tag>
+      ),
+    },
   ], []);
 
-  const tableHeight = useTableBodyScrollHeight(tableRef, [rows.length, loading, page]);
+  // Child Columns (Sub-table inside Expandable Row)
+  const childColumns = useMemo(() => [
+    {
+      title: "#",
+      key: "srNo",
+      width: 50,
+      align: "center",
+      render: (_, __, index) => index + 1,
+    },
+    {
+      title: "Event Action",
+      dataIndex: "actionType",
+      key: "actionType",
+      width: 130,
+      render: (event) => (
+        <Tag
+          icon={
+            event === "LOGIN_FAILED"
+              ? <WarningOutlined />
+              : event === "LOGOUT"
+                ? <LogoutOutlined />
+                : <LoginOutlined />
+          }
+          color={event === "LOGIN_FAILED" ? "red" : event === "LOGOUT" ? "default" : "green"}
+          style={{ fontWeight: 600 }}
+        >
+          {event === "LOGIN_FAILED" ? "FAILED LOGIN" : event === "LOGOUT" ? "LOGOUT" : "LOGIN SUCCESS"}
+        </Tag>
+      ),
+    },
+    {
+      title: "Exact Timestamp",
+      dataIndex: "createdAt",
+      key: "createdAt",
+      width: 230,
+      render: (value) => (
+        <div className={styles.exactTimeCell}>
+          <strong>{formatActivityDateTime(value)}</strong>
+          <span>{formatActivityRelativeTime(value)}</span>
+        </div>
+      ),
+    },
+    {
+      title: "IP Address",
+      dataIndex: "ipAddress",
+      key: "ipAddress",
+      width: 145,
+      render: (val) => <code className={styles.ipAddress}>{val || "—"}</code>,
+    },
+    {
+      title: "Device / Browser",
+      dataIndex: "userAgent",
+      key: "userAgent",
+      render: (val) => <span>{val ? describeDevice(val) : "Unknown device"}</span>,
+    },
+  ], []);
+
+  const tableHeight = useTableBodyScrollHeight(tableRef, [userGroupedData.length, loading, page]);
 
   return (
     <div className={styles.loginHistoryWrap}>
@@ -221,11 +343,30 @@ const LoginHistoryPanel = ({
       <div ref={tableRef} className="erp-table-container">
         <SkeletonAwareTable
           className={styles.loginHistoryTable}
-          columns={columns}
-          dataSource={rows}
+          columns={parentColumns}
+          dataSource={userGroupedData}
+          rowKey="key"
           loading={loading}
           size="small"
-          scroll={{ x: 980, y: tableHeight }}
+          scroll={{ x: 1050, y: tableHeight }}
+          expandable={{
+            expandedRowRender: (record) => (
+              <div style={{ margin: "4px 8px 12px", padding: "12px 16px", background: "var(--color-bg-subtle, #f8fafc)", borderRadius: 8, border: "1px solid var(--color-border, #e2e8f0)" }}>
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 10, color: "var(--color-primary)" }}>
+                  📋 Login & Logout History Logs for User: <span style={{ color: "#000" }}>{record.userName}</span> ({record.history.length} event records)
+                </div>
+                <SkeletonAwareTable
+                  columns={childColumns}
+                  dataSource={record.history}
+                  pagination={false}
+                  size="small"
+                  bordered
+                  rowKey="id"
+                />
+              </div>
+            ),
+            rowExpandable: (record) => record.history && record.history.length > 0,
+          }}
           pagination={{
             current: page,
             pageSize,

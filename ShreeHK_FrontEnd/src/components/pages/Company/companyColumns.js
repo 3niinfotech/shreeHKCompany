@@ -1,3 +1,5 @@
+import { renderLocationWithFlag } from "../../inventory/LocationWithFlag";
+
 export const getCompanyColumns = (offset) => [
     {
         title: "No.",
@@ -9,7 +11,7 @@ export const getCompanyColumns = (offset) => [
     { title: "Company", dataIndex: "name", key: "name" },
     { title: "Contact Person", dataIndex: "contact_person", key: "contact_person" },
     { title: "Contact No.", dataIndex: "contact_number", key: "contact_number" },
-    { title: "Country", dataIndex: "country", key: "country" },
+    { title: "Country", dataIndex: "country", key: "country", render: renderLocationWithFlag },
     { title: "Address", dataIndex: "address", key: "address", ellipsis: true },
     { title: "Email", dataIndex: "email", key: "email" },
     { title: "Website", dataIndex: "website", key: "website" },

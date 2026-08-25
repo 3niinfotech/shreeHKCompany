@@ -670,7 +670,7 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
       className={`on-memo-modal ${isSaleLike ? "on-memo-modal--sell" : ""}`}
       open={open}
       onCancel={onClose}
-      width="85vw"
+      width="88vw"
       centered
       closable={false}
       styles={{

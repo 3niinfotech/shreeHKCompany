@@ -41,38 +41,81 @@ async function getBoxHistoryByProductId(productId) {
   }
 }
 
-async function getTransferHistory({ sku, fromDate, toDate }) {
-  if (!(await hasBoxHistoryTable())) return [];
+async function getTransferHistory({ sku, companyId, fromDate, toDate }) {
+  if (await hasBoxHistoryTable()) {
+    let sql = `SELECT bh.*, p.sku FROM dai_boxhistory bh
+      LEFT JOIN dai_product p ON p.id = bh.product_id WHERE 1=1`;
+    const values = [];
+    if (companyId && Number(companyId) > 0) {
+      sql += " AND p.company = ?";
+      values.push(companyId);
+    }
+    if (sku) {
+      sql += " AND p.sku = ?";
+      values.push(sku);
+    }
+    if (fromDate) {
+      sql += " AND bh.date >= ?";
+      values.push(fromDate);
+    }
+    if (toDate) {
+      sql += " AND bh.date <= ?";
+      values.push(toDate);
+    }
+    sql += " ORDER BY bh.id DESC LIMIT 500";
 
-  let sql = `SELECT bh.*, p.sku FROM dai_boxhistory bh
-    LEFT JOIN dai_product p ON p.id = bh.product_id WHERE 1=1`;
+    try {
+      const rows = await queryAsync(sql, values);
+      if (rows && rows.length > 0) return rows;
+    } catch (err) {
+      if (err.code === "ER_NO_SUCH_TABLE") {
+        boxHistoryTableExists = false;
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  // Fallback / main store in dai_history
+  let sql = `SELECT h.*, COALESCE(h.sku, p.sku) AS sku FROM dai_history h
+    LEFT JOIN dai_product p ON p.id = h.product_id WHERE 1=1`;
   const values = [];
+  if (companyId && Number(companyId) > 0) {
+    sql += " AND p.company = ?";
+    values.push(companyId);
+  }
   if (sku) {
-    sql += " AND p.sku = ?";
-    values.push(sku);
+    sql += " AND (h.sku = ? OR p.sku = ?)";
+    values.push(sku, sku);
   }
   if (fromDate) {
-    sql += " AND bh.date >= ?";
+    sql += " AND h.date >= ?";
     values.push(fromDate);
   }
   if (toDate) {
-    sql += " AND bh.date <= ?";
+    sql += " AND h.date <= ?";
     values.push(toDate);
   }
-  sql += " ORDER BY bh.id DESC LIMIT 500";
+  sql += " ORDER BY h.id DESC LIMIT 500";
 
   try {
     return await queryAsync(sql, values);
   } catch (err) {
-    if (err.code === "ER_NO_SUCH_TABLE") {
-      boxHistoryTableExists = false;
-      return [];
-    }
     throw err;
   }
 }
 
-const getCompanyId = (req) => Number(req.companyId ?? req.user?.companyId) || 1;
+const getCompanyId = (req) => {
+  if (req && typeof req === "object") {
+    if (req.companyId != null && Number(req.companyId) > 0) return Number(req.companyId);
+    if (req.user && req.user.companyId != null && Number(req.user.companyId) > 0) return Number(req.user.companyId);
+    if (req.headers && req.headers["x-company-id"] != null && Number(req.headers["x-company-id"]) > 0) {
+      return Number(req.headers["x-company-id"]);
+    }
+  }
+  const n = Number(req);
+  return n > 0 ? n : 0;
+};
 const getUserId = (req) => Number(req.user?.user_id) || 1;
 const hideUser16 = (userId) => userId !== 16 && userId !== 1;
 

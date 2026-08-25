@@ -158,6 +158,32 @@ function buildPaymentDetail() {
   </div>`;
 }
 
+export const GIA_MAX_ROWS = 20;
+
+function buildGiaChunkTableRows(chunk, startIndex, minRows = GIA_MAX_ROWS) {
+  const padded = [...chunk];
+  while (padded.length < minRows) {
+    padded.push({ no: startIndex + padded.length + 1, sku: "", description: "", pcs: "", carats: "", price: "", amount: "" });
+  }
+
+  return padded
+    .map(
+      (row, idx) => {
+        const itemNo = row.no || (startIndex + idx + 1);
+        return `<tr>
+        <td>${itemNo}</td>
+        <td>${escapeHtml(row.sku)}</td>
+        <td>${escapeHtml(row.description)}</td>
+        <td>${row.pcs !== "" ? escapeHtml(row.pcs) : ""}</td>
+        <td>${row.carats !== "" && row.carats != null ? fmtCarats(row.carats) : ""}</td>
+        <td>${row.price !== "" && row.price != null ? fmtMoney(row.price) : ""}</td>
+        <td class="amt">${row.amount !== "" && row.amount != null ? fmtMoney(row.amount) : ""}</td>
+      </tr>`;
+      },
+    )
+    .join("");
+}
+
 export function buildGiaMemoConsignmentPage(data, copyLabel = "(ORIGINAL COPY)") {
   const rows = normalizeLineItems(data.lineItems || []);
   const totals = computeTotals(rows);
@@ -171,97 +197,128 @@ export function buildGiaMemoConsignmentPage(data, copyLabel = "(ORIGINAL COPY)")
   const inWord = capitalizeWords(`${num2words(grandTotal)} Only`);
   const legal = escapeHtml(data.disclaimer || DEFAULT_LEGAL);
 
-  return `<div class="sheet gia-page-break">
-    <div class="header">
-      <div class="brand">
-        ${buildCompanyLogoHtml({
-          logo: data.company?.logo,
-          logoUrl: resolveCompanyLogoUrl(data.company?.logoUrl || data.company?.logo),
-          companyName: data.company?.name || "Venya",
-          className: "logo",
-          imgStyle: "max-height:56px;max-width:140px;object-fit:contain;display:block;",
-        })}
-        <div>
-          <div class="brand-name">${escapeHtml((data.company?.name || "VENYA").split(/\s+/)[0].toUpperCase())}</div>
-          <div class="brand-sub">${escapeHtml(data.company?.tagline || "GEMS CO., LTD.")}</div>
+  const chunks = [];
+  if (rows.length === 0) {
+    chunks.push([]);
+  } else {
+    for (let i = 0; i < rows.length; i += GIA_MAX_ROWS) {
+      chunks.push(rows.slice(i, i + GIA_MAX_ROWS));
+    }
+  }
+
+  const totalPages = chunks.length;
+
+  return chunks
+    .map((chunk, pageIndex) => {
+      const isLastPage = pageIndex === totalPages - 1;
+      const startIndex = pageIndex * GIA_MAX_ROWS;
+      const currentCopyLabel =
+        totalPages > 1
+          ? `${escapeHtml(copyLabel)} (Page ${pageIndex + 1} of ${totalPages})`
+          : escapeHtml(copyLabel);
+
+      const tableBody = buildGiaChunkTableRows(chunk, startIndex, GIA_MAX_ROWS);
+
+      const tfootContent = isLastPage
+        ? `<tfoot>
+            <tr>
+              <td colspan="3" class="total-label">Total (Before VAT)</td>
+              <td>${totals.pcs || "0"}</td>
+              <td>${fmtCarats(totals.carats)}</td>
+              <td>US$</td>
+              <td>${fmtMoney(subTotal)}</td>
+            </tr>
+            <tr class="grand">
+              <td colspan="5">Grand Total</td>
+              <td>US$</td>
+              <td>${fmtMoney(grandTotal)}</td>
+            </tr>
+          </tfoot>`
+        : "";
+
+      const footerSection = isLastPage
+        ? `<div class="in-word"><span class="label">In Word:</span> ${escapeHtml(inWord)}</div>
+          <div class="terms-block">
+            <table>
+              <tr><td>Payment Terms</td><td>${terms}</td></tr>
+              <tr><td>Due Date</td><td>${dueDate}</td></tr>
+              <tr><td></td><td>Part Payment Allowed</td></tr>
+            </table>
+          </div>
+          <div class="pay-confirm">
+            ${buildPaymentDetail()}
+            <div class="confirm-col">
+              <div class="title">Confirmed By :</div>
+            </div>
+          </div>
+          <div class="signatures">
+            <div class="sig">
+              <div class="line"></div>
+              <div class="label">For Venya Gems Co., Ltd. — (Authorised Signature)</div>
+            </div>
+            <div class="sig">
+              <div class="line"></div>
+              <div class="label">(Chop &amp; Buyer's Signature)</div>
+            </div>
+          </div>
+          <div class="legal">
+            ${legal}
+            <div class="note">NOTE : All diamonds are sold &amp; delivered in Bangkok, Thailand.</div>
+          </div>`
+        : `<div style="text-align:right;padding:10px 15px;font-style:italic;color:#777;font-size:11px;">
+            Continued on Page ${pageIndex + 2}...
+          </div>
+          <div style="height:40px;"></div>`;
+
+      return `<div class="sheet gia-page-break">
+        <div class="header">
+          <div class="brand">
+            ${buildCompanyLogoHtml({
+              logo: data.company?.logo,
+              logoUrl: resolveCompanyLogoUrl(data.company?.logoUrl || data.company?.logo),
+              companyName: data.company?.name || "Venya",
+              className: "logo",
+              imgStyle: "max-height:56px;max-width:140px;object-fit:contain;display:block;",
+            })}
+            <div>
+              <div class="brand-name">${escapeHtml((data.company?.name || "VENYA").split(/\s+/)[0].toUpperCase())}</div>
+              <div class="brand-sub">${escapeHtml(data.company?.tagline || "GEMS CO., LTD.")}</div>
+            </div>
+          </div>
+          <div class="memo-title">
+            <h1>Consignment</h1>
+            <span>${currentCopyLabel}</span>
+          </div>
         </div>
-      </div>
-      <div class="memo-title">
-        <h1>Consignment</h1>
-        <span>${escapeHtml(copyLabel)}</span>
-      </div>
-    </div>
 
-    <div class="company-block">
-      <div class="col">${buildBuyerBlock(data.party)}</div>
-      <div class="col right">${buildSenderBlock()}</div>
-    </div>
+        <div class="company-block">
+          <div class="col">${buildBuyerBlock(data.party)}</div>
+          <div class="col right">${buildSenderBlock()}</div>
+        </div>
 
-    <div class="meta-strip">
-      <div class="field"><label>Date</label><div class="val blue">${escapeHtml(fmtDisplayDate(data.date))}</div></div>
-      <div class="field"><label>Reference No.</label><div class="val">${referenceNo}</div></div>
-      <div class="field"><label>Consignment No.</label><div class="val">${consignmentNo}</div></div>
-    </div>
+        <div class="meta-strip">
+          <div class="field"><label>Date</label><div class="val blue">${escapeHtml(fmtDisplayDate(data.date))}</div></div>
+          <div class="field"><label>Reference No.</label><div class="val">${referenceNo}</div></div>
+          <div class="field"><label>Consignment No.</label><div class="val">${consignmentNo}</div></div>
+        </div>
 
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>No.</th><th>SKU</th><th>Description</th>
-            <th>Pcs</th><th>Carats</th><th>Price (US$)</th><th>Amount (US$)</th>
-          </tr>
-        </thead>
-        <tbody>${buildTableRows(rows, Math.max(rows.length, 5))}</tbody>
-        <tfoot>
-          <tr>
-            <td colspan="3" class="total-label">Total (Before VAT)</td>
-            <td>${totals.pcs || "0"}</td>
-            <td>${fmtCarats(totals.carats)}</td>
-            <td>US$</td>
-            <td>${fmtMoney(subTotal)}</td>
-          </tr>
-          <tr class="grand">
-            <td colspan="5">Grand Total</td>
-            <td>US$</td>
-            <td>${fmtMoney(grandTotal)}</td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>No.</th><th>SKU</th><th>Description</th>
+                <th>Pcs</th><th>Carats</th><th>Price (US$)</th><th>Amount (US$)</th>
+              </tr>
+            </thead>
+            <tbody>${tableBody}</tbody>
+            ${tfootContent}
+          </table>
+        </div>
 
-    <div class="in-word"><span class="label">In Word:</span> ${escapeHtml(inWord)}</div>
-
-    <div class="terms-block">
-      <table>
-        <tr><td>Payment Terms</td><td>${terms}</td></tr>
-        <tr><td>Due Date</td><td>${dueDate}</td></tr>
-        <tr><td></td><td>Part Payment Allowed</td></tr>
-      </table>
-    </div>
-
-    <div class="pay-confirm">
-      ${buildPaymentDetail()}
-      <div class="confirm-col">
-        <div class="title">Confirmed By :</div>
-      </div>
-    </div>
-
-    <div class="signatures">
-      <div class="sig">
-        <div class="line"></div>
-        <div class="label">For Venya Gems Co., Ltd. — (Authorised Signature)</div>
-      </div>
-      <div class="sig">
-        <div class="line"></div>
-        <div class="label">(Chop &amp; Buyer's Signature)</div>
-      </div>
-    </div>
-
-    <div class="legal">
-      ${legal}
-      <div class="note">NOTE : All diamonds are sold &amp; delivered in Bangkok, Thailand.</div>
-    </div>
-  </div>`;
+        ${footerSection}
+      </div>`;
+    })
+    .join("");
 }
 
 export function buildGiaMemoConsignmentBody(data, options = {}) {

@@ -4,11 +4,20 @@ const AdvancePayment = express.Router();
 AdvancePayment.use(express.json());
 const { authenticateToken } = require("../../authMiddleware.js");
 const { fetchRowById, auditCrud, parseBodyId } = require("../../services/auditMutationHelper.js");
+const { buildUserContext } = require("../../tenantHelper.js");
 
 AdvancePayment.get("/advance/get", authenticateToken, (req, res) => {
-    const query = `SELECT id, party, date, type, book, cheque, amount, description, company, user FROM acc_advance`;
+    const companyId = buildUserContext(req).companyId;
+    if (!companyId || companyId <= 0) {
+        return res.status(200).json({
+            message: "Advance Payment Data fetch Successfully",
+            Data: [],
+        });
+    }
 
-    connection.query(query, (err, result) => {
+    const query = `SELECT id, party, date, type, book, cheque, amount, description, company, user FROM acc_advance WHERE company = ?`;
+
+    connection.query(query, [companyId], (err, result) => {
         if (err) {
             return res.status(500).json({ err: err.message });
         }
@@ -21,6 +30,7 @@ AdvancePayment.get("/advance/get", authenticateToken, (req, res) => {
 });
 
 AdvancePayment.post("/advance-payment", authenticateToken, (req, res) => {
+    const contextCompanyId = buildUserContext(req).companyId;
     const id = parseBodyId(req.body.id);
     const party = req.body.party ?? req.body.name ?? "";
     const date = req.body.date ?? "";
@@ -29,7 +39,7 @@ AdvancePayment.post("/advance-payment", authenticateToken, (req, res) => {
     const cheque = req.body.cheque ?? req.body.cheque_no ?? "";
     const amount = req.body.amount ?? 0;
     const description = req.body.description ?? "";
-    const company = req.body.company ?? "";
+    const company = req.body.company ?? contextCompanyId;
     const user = req.body.user ?? "";
 
     const isUpdate = Number.isFinite(id) && id > 0;
@@ -74,7 +84,7 @@ AdvancePayment.post("/advance-payment", authenticateToken, (req, res) => {
                 recordReference: String(description || amount || party || savedId || ""),
                 oldValue: oldValue || null,
                 newValue: { ...newValue, id: savedId },
-            }).catch(() => {});
+            }).catch(() => { });
 
             res.status(isUpdate ? 200 : 201).json({
                 message: isUpdate ? "Advance payment updated successfully!" : "Advance payment created successfully!",

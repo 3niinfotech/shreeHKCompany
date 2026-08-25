@@ -19,15 +19,21 @@ const query = (sql, values = []) => {
   });
 };
 
+const safeEscape = (val) => {
+  if (typeof val === "number" && Number.isNaN(val)) return "NULL";
+  if (val === "NaN" || val === "undefined") return "NULL";
+  return connection.escape(val);
+};
+
 const insertString = (post) => {
   try {
     const names = [];
     const values = [];
 
     for (const key of Object.keys(post)) {
-      if (key === 'id') continue;
+      if (key === 'id' || key === 'NaN') continue;
       names.push(key);
-      values.push(connection.escape(post[key]));
+      values.push(safeEscape(post[key]));
     }
 
     return [names.join(','), values.join(',')];
@@ -41,8 +47,8 @@ const updateString = (post) => {
     const parts = [];
 
     for (const key of Object.keys(post)) {
-      if (key === 'id' || key === 'company' || key === 'fn') continue;
-      parts.push(`${key}=${connection.escape(post[key])}`);
+      if (key === 'id' || key === 'company' || key === 'fn' || key === 'NaN') continue;
+      parts.push(`${key}=${safeEscape(post[key])}`);
     }
 
     return parts.join(',');

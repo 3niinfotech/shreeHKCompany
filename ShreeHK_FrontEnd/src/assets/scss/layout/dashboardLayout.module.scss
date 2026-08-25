@@ -46,10 +46,17 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 32px;
-        height: 32px;
-        background: var(--color-sidebar-hover-bg);
+        width: 50px;
+        height: 60px;
         border-radius: 8px;
+        overflow: hidden;
+        padding: 4px;
+
+        img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+        }
       }
 
       .brandText {
@@ -71,6 +78,33 @@
 
         &:hover {
           background: color-mix(in srgb, var(--color-primary) 70%, transparent);
+        }
+      }
+    }
+
+    // ── Navigation Search Input ──
+    .navSearchContainer {
+      padding: 10px 12px 6px;
+      border-bottom: 0.5px solid var(--color-sidebar-border);
+
+      :global(.ant-input-affix-wrapper) {
+        background: var(--color-sidebar-active-bg, rgba(255, 255, 255, 0.06));
+        border-color: var(--color-sidebar-border);
+        border-radius: v.$radius-control;
+        color: var(--color-neutral);
+
+        &:hover, &:focus, &:global(.ant-input-affix-wrapper-focused) {
+          border-color: var(--color-primary);
+        }
+
+        :global(.ant-input) {
+          background: transparent;
+          color: var(--color-neutral);
+          font-size: 0.78rem;
+
+          &::placeholder {
+            color: var(--color-input-placeholder, #8c8c8c);
+          }
         }
       }
     }
@@ -148,6 +182,15 @@
         letter-spacing: 0.6px;
         text-transform: uppercase;
         padding: 10px 24px 4px;
+      }
+
+      &:global(.ant-menu-inline-collapsed) {
+        > :global(.ant-menu-item),
+        > :global(.ant-menu-item-group) > :global(.ant-menu-item-group-list) > :global(.ant-menu-item),
+        > :global(.ant-menu-item-group) > :global(.ant-menu-item-group-list) > :global(.ant-menu-submenu) > :global(.ant-menu-submenu-title),
+        > :global(.ant-menu-submenu) > :global(.ant-menu-submenu-title) {
+          padding-inline: calc(43% - calc(var(--ant-menu-collapsed-icon-size) / 2) - var(--ant-menu-item-margin-inline)) !important;
+        }
       }
 
       :global(.ant-menu-item-group-list .ant-menu-item) {
@@ -263,8 +306,8 @@
         }
 
         .brandIcon {
-          width: 28px;
-          height: 28px;
+          width: 50px;
+          height: 50px;
         }
       }
 

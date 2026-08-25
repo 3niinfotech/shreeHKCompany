@@ -36,7 +36,7 @@ const InventoryTableSection = React.memo(function InventoryTableSection({
         tableLayout="fixed"
         rowClassName={isTableSkeleton ? undefined : getInventoryRowClass}
         onRow={isTableSkeleton ? undefined : handleOnRow}
-        loading={overlayLoading}
+        loading={overlayLoading ? { spinning: true, tip: "" } : false}
         pagination={false}
         bordered
         scroll={{ x: tableScrollX ?? "max-content", y: bodyScrollY }}

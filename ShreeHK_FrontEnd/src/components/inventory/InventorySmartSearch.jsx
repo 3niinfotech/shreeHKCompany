@@ -207,6 +207,12 @@ const InventorySmartSearch = ({
         <Input
           ref={inputRef}
           value={value}
+          name="smart_search_input_no_autofill"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          data-lpignore="true"
           onChange={handleInputChange}
           onFocus={() => {
             if (suggestions.length > 0) setDropdownOpen(true);

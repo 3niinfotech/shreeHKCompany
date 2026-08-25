@@ -53,10 +53,10 @@ async function searchInventory(params = {}, context = {}) {
 
   let sql = `
     SELECT
-      p.id, p.sku, p.polish_pcs AS pcs, p.polish_carat AS carat, p.amount, p.rate,
-      p.cost_price, p.outward, p.hold, p.site_upload, p.rapnet_upload, p.lab,
-      pv.shape, pv.color, pv.clarity, pv.cut, pv.polish, pv.symmetry, pv.fluorescence,
-      pv.report_no, pv.depth, pv.table_per, pv.measurements
+      p.id, p.sku, p.polish_pcs AS pcs, p.polish_carat AS carat, p.amount, p.price,
+      p.cost, p.outward, p.hold, p.site_upload, p.rapnet_upload, p.lab,
+      pv.shape, pv.color, pv.clarity, pv.cut, pv.polish, pv.symmentry AS symmetry, pv.f_intensity AS fluorescence,
+      pv.report_no, pv.depth_pc AS depth, pv.table_pc AS table_per, pv.mesurment AS measurements
     FROM dai_product p
     LEFT JOIN dai_product_value pv ON p.id = pv.product_id
     WHERE p.company = ?
@@ -136,10 +136,10 @@ async function getStoneById(params = {}, context = {}) {
 
   const sql = `
     SELECT
-      p.id, p.sku, p.polish_pcs AS pcs, p.polish_carat AS carat, p.amount, p.rate,
-      p.cost_price, p.outward, p.hold, p.site_upload, p.rapnet_upload, p.lab,
-      pv.shape, pv.color, pv.clarity, pv.cut, pv.polish, pv.symmetry, pv.fluorescence,
-      pv.report_no, pv.depth, pv.table_per, pv.measurements
+      p.id, p.sku, p.polish_pcs AS pcs, p.polish_carat AS carat, p.amount, p.price,
+      p.cost, p.outward, p.hold, p.site_upload, p.rapnet_upload, p.lab,
+      pv.shape, pv.color, pv.clarity, pv.cut, pv.polish, pv.symmentry AS symmetry, pv.f_intensity AS fluorescence,
+      pv.report_no, pv.depth_pc AS depth, pv.table_pc AS table_per, pv.mesurment AS measurements
     FROM dai_product p
     LEFT JOIN dai_product_value pv ON p.id = pv.product_id
     WHERE p.company = ? AND (p.sku = ? OR p.id = ?)
@@ -231,8 +231,8 @@ async function queryStonesByStatus(extraWhere, queryParams = [], limit = 50, con
 
   const sql = `
     SELECT
-      p.id, p.sku, p.polish_pcs AS pcs, p.polish_carat AS carat, p.amount, p.rate,
-      p.cost_price, p.outward, p.hold, p.lab,
+      p.id, p.sku, p.polish_pcs AS pcs, p.polish_carat AS carat, p.amount, p.price,
+      p.cost, p.outward, p.hold, p.lab,
       pv.shape, pv.color, pv.clarity
     FROM dai_product p
     LEFT JOIN dai_product_value pv ON p.id = pv.product_id

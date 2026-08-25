@@ -71,7 +71,7 @@
       flex: 0 1 auto;
       min-height: 0;
       width: 100%;
-      max-height: calc(48px + (var(--inward-visible-rows, 4) * 54px));
+      max-height: calc(48px + (var(--inward-visible-rows, 7) * 54px));
       overflow: hidden;
     }
 

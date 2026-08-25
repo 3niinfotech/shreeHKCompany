@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Modal, Typography, Spin, Empty } from "antd";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   CalendarOutlined,
   BankOutlined,
@@ -107,6 +108,7 @@ const YearHeaderArt = () => (
 );
 
 const CompanyYearPicker = ({ open, onClose, force = false }) => {
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [selectingKey, setSelectingKey] = useState(null);
   const [options, setOptions] = useState([]);
@@ -215,10 +217,14 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
           dbName: Data.dbName,
         });
       }
+      try {
+        queryClient.clear();
+      } catch (qcErr) {
+        console.error("Failed to clear query cache:", qcErr);
+      }
       toastApiSuccess(res.data);
       setShowContextPicker(false);
       onClose?.();
-      // window.location.reload();
       return;
     } catch (err) {
       toastApiError(err);

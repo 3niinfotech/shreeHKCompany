@@ -3,10 +3,15 @@ const helper = require("../helper.js");
 const DONUT_COLORS = ["#10b981", "#8b5cf6", "#3b82f6", "#f59e0b", "#ef4444", "#1e40af", "#e5566e", "#26b99a"];
 
 const resolveCompanyId = (source) => {
-  if (source && typeof source === "object" && source.user) {
-    return Number(source.user.companyId) || 1;
+  if (source && typeof source === "object") {
+    if (source.companyId != null && Number(source.companyId) > 0) return Number(source.companyId);
+    if (source.user && source.user.companyId != null && Number(source.user.companyId) > 0) return Number(source.user.companyId);
+    if (source.headers && source.headers["x-company-id"] != null && Number(source.headers["x-company-id"]) > 0) {
+      return Number(source.headers["x-company-id"]);
+    }
   }
-  return Number(source) || 1;
+  const n = Number(source);
+  return n > 0 ? n : 0;
 };
 
 const toAgg = (row = {}) => ({

@@ -14,13 +14,15 @@ import {
 } from '@ant-design/icons';
 import DynamicFormField from "../../hooks/DynamicFormField"
 import { BaseModal, FormModal } from "../../components/common/modals";
-import { Pencil, CircleCheck } from "lucide-react";
+import { Pencil, CircleCheck, FileUp } from "lucide-react";
 import "../../assets/scss/masterEdit.scss";
 import { useDeleteApiRequest, useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../constants/endpoints';
 import { ConfirmDeleteModal } from "../../components/common/modals";
 import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
 import styles from '../../assets/scss/pages/accountings/PartyWiseTransaction.module.scss';
+import { exportReportToExcel } from '../../utils/reportExcelExport';
+import { toastSuccess, toastWarning, toastError } from '../../utils/toastNotify';
 import AICustomerSuggestModal from '../../components/ai/AICustomerSuggestModal';
 import PageHeroHeader from '../../components/common/PageHeroHeader';
 import { TeamOutlined } from '@ant-design/icons';
@@ -92,17 +94,59 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
     const [form] = Form.useForm();
     const [searchText, setSearchText] = useState('');
     const [selectedRowKey, setSelectedRowKey] = useState(null);
+    const [selectedRowKeys, setSelectedRowKeys] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [editingName, setEditingName] = useState('');
+    const [editingRecord, setEditingRecord] = useState(null);
     const [allData, setAllData] = useState([]);
     const [deleteModal, setDeleteModal] = useState({ open: false, record: null });
     const [offset, setOffset] = useState(0);
     const [hasMore, setHasMore] = useState(true);
     const [scrollFetching, setScrollFetching] = useState(false);
     const [aiSuggestTarget, setAiSuggestTarget] = useState(null);
+    const [exporting, setExporting] = useState(false);
     const tableRef = useRef(null);
     const tableScrollY = useTableBodyScrollHeight(tableRef, [allData.length, searchText]);
+
+    const rowSelection = {
+        selectedRowKeys,
+        onChange: (keys) => setSelectedRowKeys(keys),
+    };
+
+    const handleExport = async () => {
+        if (!allData || !allData.length) {
+            toastWarning('No data to export.');
+            return;
+        }
+        const exportRows = selectedRowKeys.length > 0
+            ? allData.filter(item => selectedRowKeys.includes(item.id))
+            : allData;
+
+        setExporting(true);
+        try {
+            const headers = [
+                { title: 'Sr.No', key: 'srNo', accessor: (_, index) => index + 1, width: 8 },
+                { title: 'Group', key: 'under_group', width: 20 },
+                { title: 'Sub Group', key: 'under_subgroup', width: 20 },
+                { title: 'Party Name', key: 'name', width: 30 },
+                { title: 'Contact Number', key: 'contact_number', width: 18 },
+                { title: 'Address', key: 'address', width: 35 },
+                { title: 'Country', key: 'country', width: 15 },
+            ];
+            await exportReportToExcel({
+                headers,
+                rows: exportRows,
+                fileName: 'Party_Master',
+                sheetName: 'Parties',
+            });
+            toastSuccess(`Exported ${exportRows.length} ${exportRows.length === 1 ? 'record' : 'records'} to Excel`);
+        } catch (err) {
+            toastError(err.message || 'Export failed');
+        } finally {
+            setExporting(false);
+        }
+    };
 
     // API Hooks
     const { data, isLoading: isFetching, isFetching: isRefetching, refetch } = useFetchApi(
@@ -139,6 +183,7 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
     }, [scrollFetching, isRefetching, hasMore]);
 
     const resetAndRefetch = async () => {
+        setSelectedRowKeys([]);
         setHasMore(true);
         if (offset !== 0) {
             setOffset(0);
@@ -157,7 +202,7 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
         if (record) {
             setEditingId(record.id);
             setEditingName(record.name || '');
-            form.setFieldsValue({
+            const initialVals = {
                 under_group: record.under_group,
                 under_subgroup: record.under_subgroup,
                 name: record.name,
@@ -166,10 +211,13 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
                 email: record.email,
                 contact_number: record.contact_number,
                 contact_person: record.contact_person
-            });
+            };
+            setEditingRecord(initialVals);
+            form.setFieldsValue(initialVals);
         } else {
             setEditingId(null);
             setEditingName('');
+            setEditingRecord(null);
             form.resetFields();
         }
         setIsModalOpen(true);
@@ -215,12 +263,16 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
             align: 'center',
             render: (_, __, index) => index + 1
         },
-        { title: 'Group', dataIndex: 'under_group', key: 'under_group' },
-        { title: 'Sub Group', dataIndex: 'under_subgroup', key: 'under_subgroup' },
+        {
+            title: 'Group', dataIndex: 'under_group', key: 'under_group', width: 60
+        },
+        {
+            title: 'Sub Group', dataIndex: 'under_subgroup', key: 'under_subgroup', width: 60
+        },
         {
             title: 'Party',
             dataIndex: 'name',
-            width: 250,
+            width: 300,
             key: 'name',
             render: (text, record) => (
                 <Text style={{ color: record.id === selectedRowKey ? cssVar('color-text-inverse') : 'inherit', fontWeight: 500 }}>
@@ -228,13 +280,13 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
                 </Text>
             )
         },
-        { title: 'Contact Number', dataIndex: 'contact_number', key: 'contact_number' },
+        { title: 'Contact Number', dataIndex: 'contact_number', key: 'contact_number', width: 150 },
         {
             title: 'Address',
             dataIndex: 'address',
             key: 'address',
             ellipsis: true,
-            width: 300
+            width: 400
         },
         {
             title: 'Actions',
@@ -258,12 +310,10 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
                         style={{ color: record.id === selectedRowKey ? cssVar('color-text-inverse') : cssVar('color-success'), cursor: 'pointer' }}
                         onClick={() => showModal(record)}
                     />
-                    <Popconfirm title="Delete Party" onConfirm={() => handleDelete(record.id)}>
-                        <DeleteOutlined
-                            style={{ color: cssVar('color-error'), cursor: 'pointer' }}
-                            onClick={() => openDelete(record)}
-                        />
-                    </Popconfirm>
+                    <DeleteOutlined
+                        style={{ color: cssVar('color-error'), cursor: 'pointer' }}
+                        onClick={() => openDelete(record)}
+                    />
                 </Space>
             ),
         },
@@ -280,6 +330,15 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
                         <Button icon={<ReloadOutlined />} loading={isFetching || isRefetching} onClick={resetAndRefetch}>
                             Refresh
                         </Button>
+                        <Button
+                            icon={<FileUp size={16} color='white' />}
+                            loading={exporting}
+                            onClick={handleExport}
+                            disabled={!allData.length}
+                            style={{ background: "var(--color-btn-save-bg) !important", borderColor: "var(--color-btn-save-bg) !important", color: "white !important" }}
+                        >
+                            <span style={{ color: 'white' }}>Export to Excel</span>
+                        </Button>
                         <Button type="primary" icon={<PlusOutlined />} onClick={() => showModal()}>
                             Add New Party
                         </Button>
@@ -289,24 +348,25 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
 
             <Card className={styles.tableCard}>
                 <div ref={tableRef} className="erp-table-container">
-                <SkeletonAwareTable
-                    columns={columns}
-                    dataSource={allData}
-                    rowKey="id"
-                    loading={isFetching && offset === 0}
-                    pagination={false}
-                    bordered
-                    size="small"
-                    scroll={{ y: tableScrollY }}
-                    onScroll={handleTableScroll}
-                    rowClassName={(record) => record.id === selectedRowKey ? styles.activeRow : ''}
-                    footer={() => (
-                        <div style={{ textAlign: 'center', padding: 4, fontSize: 12, color: cssVar('color-text-muted') }}>
-                            {(isRefetching || scrollFetching) ? <Spin size="small" /> :
-                                hasMore ? 'Scroll down for more...' : `Total ${allData.length} records`}
-                        </div>
-                    )}
-                />
+                    <SkeletonAwareTable
+                        columns={columns}
+                        dataSource={allData}
+                        rowKey="id"
+                        rowSelection={rowSelection}
+                        loading={isFetching && offset === 0}
+                        pagination={false}
+                        bordered
+                        size="small"
+                        scroll={{ y: tableScrollY }}
+                        onScroll={handleTableScroll}
+                        rowClassName={(record) => record.id === selectedRowKey ? styles.activeRow : ''}
+                        footer={() => (
+                            <div style={{ textAlign: 'center', padding: 4, fontSize: 12, color: cssVar('color-text-muted') }}>
+                                {(isRefetching || scrollFetching) ? <Spin size="small" /> :
+                                    hasMore ? 'Scroll down for more...' : `Total ${allData.length} records`}
+                            </div>
+                        )}
+                    />
                 </div>
             </Card>
 
@@ -328,6 +388,7 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
                     form={form}
                     formKey={editingId}
                     formFields={formFields}
+                    initialValues={editingRecord}
                 />
             ) : (
                 <BaseModal
@@ -354,7 +415,7 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
             )}
             <ConfirmDeleteModal
                 open={deleteModal.open}
-                title="Delete Category"
+                title="Delete Party"
                 entityName={deleteModal.record?.name}
                 loading={isDeleting}
                 onCancel={closeDelete}
