@@ -26,6 +26,12 @@ function resolveInvoiceFrom(value) {
   return Number.isNaN(n) ? 0 : n;
 }
 
+function toNum(val, def = 0) {
+  if (val == null || val === "" || val === "NaN") return def;
+  const n = Number(val);
+  return Number.isFinite(n) ? n : def;
+}
+
 function buildMemoOutwardRow(post, productsCsv) {
   return {
     entryno: post.entryno || "",
@@ -43,17 +49,17 @@ function buildMemoOutwardRow(post, productsCsv) {
     products: productsCsv,
     return_products: "",
     status: post.status || "on_memo",
-    paid_amount: post.paid_amount ?? 0,
-    due_amount: post.due_amount ?? 0,
+    paid_amount: toNum(post.paid_amount),
+    due_amount: toNum(post.due_amount),
     part: 0,
     user: post.user ?? DEFAULT_USER_ID,
-    final_amount: post.final_amount ?? 0,
-    less_percent: post.less_percent ?? 0,
-    less_amount: post.less_amount ?? 0,
-    charge: post.charge ?? 0,
-    other_less_amount: post.other_less_amount ?? 0,
-    other_less_percent: post.other_less_percent ?? 0,
-    shipping_charge: post.shipping_charge ?? 0,
+    final_amount: toNum(post.final_amount),
+    less_percent: toNum(post.less_percent),
+    less_amount: toNum(post.less_amount),
+    charge: toNum(post.charge),
+    other_less_amount: toNum(post.other_less_amount),
+    other_less_percent: toNum(post.other_less_percent),
+    shipping_charge: toNum(post.shipping_charge),
     shipping_name: post.shipping_name || "",
     origin_of: post.origin_of || "",
     cif: post.cif || "",
@@ -656,12 +662,14 @@ async function sendTo(rawPost, userContext = {}) {
         company: companyId,
       });
 
-      const temp = String(increId).split("-");
+      const temp = String(increId || "").split("-");
       if (temp.length >= 2) {
-        temp[1] = String(Number(temp[1]) + 1);
+        const parsed = parseInt(temp[1], 10);
+        temp[1] = String(Number.isNaN(parsed) ? 1 : parsed + 1);
       }
       const setNewid = temp.join("-");
-      const nextInvoice = Number(invoiceNo) + 1;
+      const parsedInv = parseInt(invoiceNo, 10);
+      const nextInvoice = Number.isNaN(parsedInv) ? String(invoiceNo || "1") : String(parsedInv + 1);
       await q(
         `UPDATE dai_incrementid SET outward = ?, invoice = ? WHERE company = ?`,
         [setNewid, nextInvoice, companyId]

@@ -1,8 +1,9 @@
 const express = require('express');
 const connection = require("../../connection.js");
 const helper = require("../../helper.js");
-const {authenticateToken} = require('../../authMiddleware.js');
+const { authenticateToken } = require('../../authMiddleware.js');
 const { logAuditInTx } = require("../../services/auditIntegration.js");
+const { buildUserContext } = require("../../tenantHelper.js");
 const PartyWiseTransaction = express.Router();
 PartyWiseTransaction.use(express.json());
 
@@ -10,12 +11,21 @@ PartyWiseTransaction.use(express.json());
 // PartyWiseTransaction get api 
 
 PartyWiseTransaction.get('/partywisetransaction', authenticateToken, (req, res) => {
+    const companyId = buildUserContext(req).companyId;
+    if (!companyId || companyId <= 0) {
+        return res.status(200).json({
+            message: "PartyWiseTransaction Data Fetch SuccessFully",
+            TotalItems: 0,
+            Data: [],
+        });
+    }
+
     const limit = parseInt(req.query.limit) || 100;
     const offset = parseInt(req.query.offset) || 0;
 
-    const query = `SELECT id, under_group, under_subgroup, address, contact_number, name FROM dai_party LIMIT ? OFFSET ?`;
+    const query = `SELECT id, under_group, under_subgroup, address, contact_number, name FROM dai_party WHERE company = ? LIMIT ? OFFSET ?`;
 
-    connection.query(query, [limit, offset], (err, result) => {
+    connection.query(query, [companyId, limit, offset], (err, result) => {
         if (err) {
             return res.status(500).json({ err: err.message });
         }
@@ -51,9 +61,13 @@ PartyWiseTransaction.get('/partywisetransaction', authenticateToken, (req, res) 
 
 
 PartyWiseTransaction.post('/partywisetransaction/save', authenticateToken, async (req, res) => {
+    const companyId = buildUserContext(req).companyId;
     const { id } = req.body;
     const body = { ...req.body };
     delete body.id;
+    if (!body.company && companyId > 0) {
+        body.company = companyId;
+    }
 
     if (!body || Object.keys(body).length === 0) {
         return res.status(400).json({ status: false, Message: 'Request body is empty' });

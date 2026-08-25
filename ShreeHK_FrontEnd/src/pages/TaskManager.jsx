@@ -436,7 +436,7 @@ export default function TaskManager() {
                                         setIsAddModalOpen(true);
                                     }}
                                     style={{
-                                        background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                                        // background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
                                         borderColor: '#059669',
                                         borderRadius: 10,
                                         fontWeight: 600,
@@ -657,7 +657,7 @@ export default function TaskManager() {
                                         flexDirection: 'column'
                                     }}
                                 >
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, justifyContent: col.items.length > 0 ? 'flex-start' : 'center' }}>
                                     {col.items.length > 0 ? (
                                         col.items.map(task => (
                                             <Card
@@ -713,7 +713,7 @@ export default function TaskManager() {
                                             </Card>
                                         ))
                                     ) : (
-                                        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No tasks" />
+                                        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No tasks" style={{ margin: 0 }} />
                                     )}
                                 </div>
                             </Card>

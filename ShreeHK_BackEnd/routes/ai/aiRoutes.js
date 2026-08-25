@@ -133,52 +133,15 @@ aiRouter.post("/customer-insight", authenticateToken, async (req, res) => {
 });
 
 aiRouter.post("/chat", authenticateToken, async (req, res) => {
-  const { message, conversationHistory = [] } = req.body || {};
+  const { message, threadId = "default" } = req.body || {};
   if (!message || !String(message).trim()) {
     return res.status(400).json({ success: false, message: "message is required" });
   }
 
   try {
-    console.log("[AI Chat] Step 1: Fetching live DB context for:", message);
-    const dbContext = await aiBrain.buildBrainContext(message);
-    console.log(
-      "[AI Chat] Step 1 done — tables:",
-      Object.keys(dbContext.table_counts || {}).length,
-      "entities:",
-      Object.keys(dbContext.entities || {}).join(", ") || "none"
-    );
-
-    console.log("[AI Chat] Step 2: Building Gemini prompt...");
-    const { systemPrompt, userPrompt } = aiPromptBuilder.buildChatPrompt({
-      message,
-      conversationHistory,
-      dbContext,
-    });
-
-    console.log(
-      "[AI Chat] Step 3: Calling Gemini...",
-      "API Key exists:",
-      !!process.env.GEMINI_API_KEY
-    );
-    console.log(
-      "Calling Gemini with key:",
-      `${String(process.env.GEMINI_API_KEY || "").slice(0, 8)}...`
-    );
-
-    const result = await askAI(systemPrompt, userPrompt, {
-      maxTokens: 1200,
-      temperature: 0.7,
-    });
-
-    console.log("[AI Chat] Step 4: Success — response length:", result?.length || 0);
-    res.json({ success: true, data: result });
+    const outcome = await executeAgentQuery(req, message, threadId);
+    res.json(outcome);
   } catch (err) {
-    console.error("Gemini Error Details:", err?.message);
-    console.error("Gemini Error Staus:", err?.status);
-    console.error(
-      "API Key exists:",
-      !!process.env.GEMINI_API_KEY || !!process.env.VITE_GEMINI_API_KEY
-    );
     handleAiError(res, err);
   }
 });

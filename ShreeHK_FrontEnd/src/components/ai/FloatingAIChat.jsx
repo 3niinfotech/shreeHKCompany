@@ -27,6 +27,7 @@ import { sendAgentQuery, sendAiChat, fetchUserThreads, fetchThreadHistory, delet
 import { pickApiMessage } from "../../utils/apiToast";
 import useSpeechRecognition from "../../hooks/useSpeechRecognition";
 import AIAgentCommandBar from "./AIAgentCommandBar";
+import sdLogo from "../../assets/loader/icon.png";
 import styles from "../../assets/scss/components/ai/aiChat.module.scss";
 
 const QUICK_PROMPTS = [
@@ -235,12 +236,20 @@ const FloatingAIChat = () => {
           <header className={styles.header}>
             <div className={styles.headerTop}>
               <div className={styles.headerBrand}>
-                <div className={styles.headerAvatar}>
-                  <Gem size={22} className={styles.headerAvatarIcon} />
+                <div className={styles.headerAvatar} style={{padding: "4px", borderRadius: "12px" }}>
+                  <img src={sdLogo} alt="SD Logo" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                 </div>
                 <div className={styles.headerTitles}>
-                  <h3>ShreeHK Enterprise AI</h3>
-                  <p>Diamond Inventory Intelligence</p>
+                  <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span>SmartDia</span>
+                    <span style={{
+                      background: "linear-gradient(135deg, #6366F1 0%, #A855F7 100%)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                      fontWeight: 800,
+                    }}>Enterprise AI</span>
+                  </h3>
+                  <p style={{ margin: "2px 0 0 0" }}>Diamond Inventory Intelligence</p>
                   <div className={styles.statusRow}>
                     <span className={styles.statusDot} />
                     <span className={styles.statusText}>Live Orchestrator</span>
@@ -289,7 +298,7 @@ const FloatingAIChat = () => {
                   ...threads.map((t) => ({ value: t.threadId, label: t.title })),
                 ]}
               />
-              <div className="flex items-center gap-1">
+              <div style={{ display: "flex", gap: 10 }}>
                 <Button
                   size="small"
                   type="text"
@@ -318,11 +327,17 @@ const FloatingAIChat = () => {
 
             {messages.length === 0 && !loading ? (
               <div className={styles.welcome}>
-                <div className={styles.welcomeHeroBadge}>
-                  <div className={styles.heroGlow} />
-                  <Gem size={30} className={styles.heroGemIcon} />
+                {/* <div className={styles.welcomeHeroBadge} style={{ backgroundColor: "#ffffff", padding: "8px", borderRadius: "18px", boxShadow: "0 8px 24px rgba(99, 102, 241, 0.15)" }}>
+                  <img src={sdLogo} alt="SD Logo" style={{ width: "40px", height: "40px", objectFit: "contain" }} />
+                </div> */}
+                <div className={styles.welcomeTitle}>
+                  SmartDia <span style={{
+                    background: "linear-gradient(135deg, #6366F1 0%, #A855F7 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    fontWeight: 800,
+                  }}>Enterprise AI</span>
                 </div>
-                <div className={styles.welcomeTitle}>ShreeHK Diamond AI</div>
                 <p className={styles.welcomeSub}>
                   Instant access to diamond stock availability, party accounts outstanding, memo movements, and sales performance.
                 </p>

@@ -2,13 +2,22 @@ const express = require("express");
 const connection = require('../../connection.js');
 const { authenticateToken } = require('../../authMiddleware.js');
 const { fetchRowById, fetchRowByField, auditCrud } = require('../../services/auditMutationHelper.js');
+const { buildUserContext } = require('../../tenantHelper.js');
 const CurrencyRate = express.Router();
 CurrencyRate.use(express.json());
 
 CurrencyRate.get("/currency-rate/get", authenticateToken, (req, res) => {
-    const query = `SELECT id, currency, USD, HKD FROM dai_currencyrate`;
+    const companyId = buildUserContext(req).companyId;
+    if (!companyId || companyId <= 0) {
+        return res.status(200).json({
+            message: "CurrencyRate Successfully Retrieved",
+            Data: [],
+        });
+    }
 
-    connection.query(query, (err, result) => {
+    const query = `SELECT id, currency, USD, HKD FROM dai_currencyrate WHERE company = ?`;
+
+    connection.query(query, [companyId], (err, result) => {
         if (err) {
             return res.status(500).json({ message: err.message });
         }
@@ -21,17 +30,21 @@ CurrencyRate.get("/currency-rate/get", authenticateToken, (req, res) => {
 });
 
 CurrencyRate.post("/currency-rate", authenticateToken, async (req, res) => {
+    const companyId = buildUserContext(req).companyId || 1;
     const { currency, USD, HKD } = req.body;
-    const newValue = { currency, USD, HKD };
+    const newValue = { currency, USD, HKD, company: companyId };
 
     try {
-        const existing = await fetchRowByField("dai_currencyrate", "currency", currency);
+        const existingRows = await new Promise((resolve) => {
+            connection.query("SELECT * FROM dai_currencyrate WHERE currency = ? AND company = ? LIMIT 1", [currency, companyId], (err, r) => resolve(r));
+        });
+        const existing = existingRows?.[0] || null;
 
         if (existing) {
             await new Promise((resolve, reject) => {
                 connection.query(
-                    `UPDATE dai_currencyrate SET USD = ?, HKD = ? WHERE currency = ?`,
-                    [USD, HKD, currency],
+                    `UPDATE dai_currencyrate SET USD = ?, HKD = ? WHERE currency = ? AND company = ?`,
+                    [USD, HKD, currency, companyId],
                     (err) => (err ? reject(err) : resolve()),
                 );
             });
@@ -48,8 +61,8 @@ CurrencyRate.post("/currency-rate", authenticateToken, async (req, res) => {
 
         const insertResult = await new Promise((resolve, reject) => {
             connection.query(
-                `INSERT INTO dai_currencyrate (currency, USD, HKD) VALUES (?, ?, ?)`,
-                [currency, USD, HKD],
+                `INSERT INTO dai_currencyrate (currency, USD, HKD, company) VALUES (?, ?, ?, ?)`,
+                [currency, USD, HKD, companyId],
                 (err, result) => (err ? reject(err) : resolve(result)),
             );
         });

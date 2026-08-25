@@ -340,10 +340,50 @@ registerTool(
   partyTransactionTools.getOutstandingSummary
 );
 
+// Phase 4 Analytics & Intelligence Tools Registration
+const analyticsAiTools = require("./analyticsAiTools.js");
+
+registerTool(
+  "detectAnomalies",
+  "Detect inventory price mismatches below cost, duplicate GIA/IGI report numbers, and unusual discounts",
+  {
+    type: "object",
+    properties: {},
+  },
+  analyticsAiTools.detectAnomalies
+);
+
+registerTool(
+  "forecastDemand",
+  "Calculate historical monthly sales velocity per diamond shape and analyze current on-hand stock reorder needs",
+  {
+    type: "object",
+    properties: {},
+  },
+  analyticsAiTools.forecastDemand
+);
+
+registerTool(
+  "suggestPrice",
+  "Calculate recommended selling price per carat based on purchase cost and historical actual sales for similar specifications",
+  {
+    type: "object",
+    properties: {
+      shape: { type: "string", description: "Diamond shape (e.g. ROUND, PEAR, OVAL)" },
+      carat: { type: "number", description: "Carat weight" },
+      color: { type: "string", description: "Color grade" },
+      clarity: { type: "string", description: "Clarity grade" },
+      purchasePrice: { type: "number", description: "Cost price per carat" },
+    },
+  },
+  analyticsAiTools.suggestPrice
+);
+
 module.exports = {
   registerTool,
   getRegisteredToolSchemas,
   executeTool,
 };
+
 
 

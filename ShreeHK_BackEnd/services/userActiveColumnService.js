@@ -3,13 +3,13 @@ const helper = require("../helper.js");
 let ensurePromise = null;
 
 /**
- * Ensures `user.is_active` exists (auto-migration for existing DBs).
+ * Ensures `user.is_active` and `user.designation` exist (auto-migration for existing DBs).
  */
 const ensureUserActiveColumn = async () => {
   if (ensurePromise) return ensurePromise;
 
   ensurePromise = (async () => {
-    const rows = await helper.query(
+    const rowsActive = await helper.query(
       `SELECT COUNT(*) AS cnt
        FROM information_schema.COLUMNS
        WHERE TABLE_SCHEMA = DATABASE()
@@ -17,12 +17,27 @@ const ensureUserActiveColumn = async () => {
          AND COLUMN_NAME = 'is_active'`,
     );
 
-    if (Number(rows[0]?.cnt) > 0) return;
+    if (Number(rowsActive[0]?.cnt) === 0) {
+      await helper.query(
+        "ALTER TABLE `user` ADD COLUMN `is_active` TINYINT(1) NOT NULL DEFAULT 1",
+      );
+      console.log("[user] Added missing column: is_active");
+    }
 
-    await helper.query(
-      "ALTER TABLE `user` ADD COLUMN `is_active` TINYINT(1) NOT NULL DEFAULT 1",
+    const rowsDesig = await helper.query(
+      `SELECT COUNT(*) AS cnt
+       FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'user'
+         AND COLUMN_NAME = 'designation'`,
     );
-    console.log("[user] Added missing column: is_active");
+
+    if (Number(rowsDesig[0]?.cnt) === 0) {
+      await helper.query(
+        "ALTER TABLE `user` ADD COLUMN `designation` VARCHAR(150) DEFAULT NULL",
+      );
+      console.log("[user] Added missing column: designation");
+    }
   })().catch((err) => {
     ensurePromise = null;
     throw err;
@@ -32,3 +47,4 @@ const ensureUserActiveColumn = async () => {
 };
 
 module.exports = { ensureUserActiveColumn };
+

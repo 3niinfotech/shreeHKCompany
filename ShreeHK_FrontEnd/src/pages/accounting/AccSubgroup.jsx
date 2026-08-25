@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Button, Form } from "antd";
 import { ReloadOutlined } from "@ant-design/icons";
 import { accSubgroupFields } from "../master/Data";
@@ -18,6 +18,7 @@ const columns = [
 const AccSubgroup = () => {
   const [form] = Form.useForm();
   const [dataSource, setDataSource] = useState([]);
+  const [search, setSearch] = useState("");
   const [editRecord, setEditRecord] = useState(null);
   const addModal = useModal();
   const editModal = useModal();
@@ -33,6 +34,16 @@ const AccSubgroup = () => {
       setDataSource(data.Data.filter((row) => row && row.id != null));
     }
   }, [data]);
+
+  const filteredData = useMemo(() => {
+    if (!search.trim()) return dataSource;
+    const term = search.toLowerCase().trim();
+    return dataSource.filter(
+      (row) =>
+        row?.name?.toLowerCase().includes(term) ||
+        String(row?.group_id || "").toLowerCase().includes(term)
+    );
+  }, [dataSource, search]);
 
   const openDelete = (record) => {
     if (!record?.id) return;
@@ -64,7 +75,13 @@ const AccSubgroup = () => {
 
   return (
     <>
-      <MasterListTable title="Accounting Sub Group" columns={columns} dataSource={dataSource} loading={isLoading}
+      <MasterListTable
+        title="Accounting Sub Group"
+        columns={columns}
+        dataSource={filteredData}
+        loading={isLoading}
+        searchValue={search}
+        onSearchChange={setSearch}
         onAdd={() => { setEditRecord(null); addModal.openModal(); }}
         onEdit={(r) => { setEditRecord(r); editModal.openModal(); }}
         onDelete={openDelete}

@@ -3,32 +3,37 @@ const connection = require("../../connection.js");
 const helper = require("../../helper.js");
 const { authenticateToken } = require("../../authMiddleware.js");
 const { logAuditInTx } = require("../../services/auditIntegration.js");
+const { buildUserContext } = require("../../tenantHelper.js");
 const originRouter = express.Router();
 
 originRouter.use(express.json());
 
 // Get
 originRouter.get("/master/origin", authenticateToken, (req, res) => {
+  const companyId = buildUserContext(req).companyId;
+  if (!companyId || companyId <= 0) {
+    return res.json({ TotalItems: 0, Data: [] });
+  }
+
   const id = parseInt(req?.query?.id) || 0;
   const searchInput = req.query.searchInput;
 
-  let query = `SELECT * FROM dai_origin`;
-
-  const countQuery = `SELECT COUNT(*) as totalItems FROM dai_origin`;
+  let query = `SELECT * FROM dai_origin WHERE company = ${companyId}`;
+  const countQuery = `SELECT COUNT(*) as totalItems FROM dai_origin WHERE company = ${companyId}`;
 
   connection.query(countQuery, (countError, countResult) => {
     if (countError) return res.status(500).json({ error: countError.message });
 
-    const totalItems = countResult[0].totalItems;
+    const totalItems = countResult[0]?.totalItems || 0;
 
     if (id == 0) {
       if (searchInput) {
-        query += ` WHERE name LIKE ${connection.escape("%" + searchInput + "%")}`;
+        query += ` AND name LIKE ${connection.escape("%" + searchInput + "%")}`;
       }
 
       query += ` ORDER BY id DESC`;
     } else {
-      query += ` WHERE id=${parseInt(id)}`;
+      query += ` AND id=${parseInt(id)}`;
     }
 
     connection.query(query, (error, data) => {
@@ -46,6 +51,7 @@ originRouter.get("/master/origin", authenticateToken, (req, res) => {
 
 // Post
 originRouter.post("/origin/save", authenticateToken, async (req, res) => {
+  const companyId = buildUserContext(req).companyId || 1;
   const { id, name } = req.body;
 
   try {
@@ -57,7 +63,7 @@ originRouter.post("/origin/save", authenticateToken, async (req, res) => {
       }
 
       if (id == 0) {
-        const result = await q("INSERT INTO dai_origin (name) VALUES (?)", [name]);
+        const result = await q("INSERT INTO dai_origin (name, company) VALUES (?, ?)", [name, companyId]);
         const newRows = await q("SELECT * FROM dai_origin WHERE id=?", [result.insertId]);
         await logAuditInTx(q, {
           actionType: "CREATE",
@@ -65,9 +71,10 @@ originRouter.post("/origin/save", authenticateToken, async (req, res) => {
           recordId: result.insertId,
           recordReference: name,
           newValue: newRows[0],
+          companyId,
         });
       } else {
-        await q("UPDATE dai_origin SET name=? WHERE id=?", [name, id]);
+        await q("UPDATE dai_origin SET name=? WHERE id=? AND company=?", [name, id, companyId]);
         const newRows = await q("SELECT * FROM dai_origin WHERE id=?", [id]);
         await logAuditInTx(q, {
           actionType: "UPDATE",
@@ -76,6 +83,7 @@ originRouter.post("/origin/save", authenticateToken, async (req, res) => {
           recordReference: name,
           oldValue: oldRow,
           newValue: newRows[0],
+          companyId,
         });
       }
     });

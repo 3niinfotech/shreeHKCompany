@@ -205,14 +205,23 @@ export function StoneActionSuccessModal({
 
   if (!mounted) return null;
 
-  const detailEntries = Object.entries(stone || {}).filter(
-    ([, v]) => v !== undefined && v !== null && v !== "" && typeof v !== "object"
-  );
+  const formatCarat = (val) => {
+    if (val === undefined || val === null || val === "") return "";
+    const n = Number(val);
+    if (!Number.isFinite(n) || n === 0) return typeof val === "string" ? val : "";
+    return `${n.toFixed(2)} ct`;
+  };
+
+  const certDetails = [
+    { label: "SKU", value: stone.sku || stone.name || stone.diamond_no || "-" },
+    { label: "CARAT", value: formatCarat(stone.carat ?? stone.polish_carat ?? stone.weight) || "-" },
+    { label: "SHAPE", value: String(stone.shape || "-").toUpperCase() },
+    { label: "CLARITY", value: String(stone.clarity || "-").toUpperCase() },
+  ];
 
   return (
     <div
       className={`stone-modal-overlay ${closing ? "is-closing" : "is-open"}`}
-      onMouseDown={(e) => e.target === e.currentTarget && handleClose()}
       role="dialog"
       aria-modal="true"
       aria-label={cfg.heading}
@@ -238,22 +247,24 @@ export function StoneActionSuccessModal({
             </>
           ) : (
             <>
-              {stone.name ? <strong>{stone.name}</strong> : "This stone"} has been successfully{" "}
-              {cfg.verb}.
+              {stone.sku || stone.name ? (
+                <strong>{stone.sku || stone.name}</strong>
+              ) : (
+                "This stone"
+              )}{" "}
+              has been successfully {cfg.verb}.
             </>
           )}
         </p>
 
-        {detailEntries.length > 0 && (
-          <div className="stone-cert-strip">
-            {detailEntries.map(([k, v]) => (
-              <div className="stone-cert-item" key={k}>
-                <span className="stone-cert-label">{k}</span>
-                <span className="stone-cert-value">{v}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="stone-cert-strip">
+          {certDetails.map(({ label, value }) => (
+            <div className="stone-cert-item" key={label}>
+              <span className="stone-cert-label">{label}</span>
+              <span className="stone-cert-value">{value}</span>
+            </div>
+          ))}
+        </div>
 
         <div className="stone-modal-actions">
           {onViewStone && (
@@ -294,7 +305,7 @@ export function StoneActionSuccessModal({
           display: flex;
           align-items: center;
           justify-content: center;
-          background: rgba(6, 7, 10, 0.72);
+          background: rgba(15, 23, 42, 0.45);
           backdrop-filter: blur(6px);
           -webkit-backdrop-filter: blur(6px);
           padding: 20px;
@@ -305,16 +316,16 @@ export function StoneActionSuccessModal({
         .stone-modal-card {
           position: relative;
           width: 100%;
-          max-width: 380px;
-          background: radial-gradient(120% 140% at 50% -10%, #1b1e26 0%, #121319 60%, #0e0f14 100%);
-          border: 1px solid rgba(232, 196, 104, 0.18);
+          max-width: 390px;
+          background: var(--color-card-bg, #ffffff);
+          border: 1px solid var(--color-border, #E2E8F0);
           border-radius: 20px;
-          padding: 40px 28px 28px;
+          padding: 38px 28px 28px;
           display: flex;
           flex-direction: column;
           align-items: center;
           text-align: center;
-          box-shadow: 0 30px 80px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+          box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16), 0 4px 16px rgba(0, 0, 0, 0.04);
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
         }
         .stone-modal-card.is-open { animation: cardIn 0.42s cubic-bezier(.2,.9,.25,1.1) both; }
@@ -335,19 +346,19 @@ export function StoneActionSuccessModal({
           position: absolute;
           top: 14px;
           right: 14px;
-          width: 30px;
-          height: 30px;
+          width: 32px;
+          height: 32px;
           border-radius: 999px;
-          border: 1px solid rgba(255,255,255,0.08);
-          background: rgba(255,255,255,0.03);
-          color: #8A8F98;
+          border: 1px solid #E2E8F0;
+          background: #F1F5F9;
+          color: #64748B;
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
           transition: color .15s ease, background .15s ease, transform .15s ease;
         }
-        .stone-modal-close:hover { color: #F3EFE6; background: rgba(255,255,255,0.08); transform: rotate(90deg); }
+        .stone-modal-close:hover { color: #0F172A; background: #E2E8F0; transform: rotate(90deg); }
 
         /* ---------- Medallion ---------- */
         .medallion-wrap {
@@ -404,7 +415,7 @@ export function StoneActionSuccessModal({
         .diamond-check {
           stroke-dasharray: 60;
           stroke-dashoffset: 60;
-          filter: drop-shadow(0 0 6px rgba(63,167,114,0.7));
+          filter: drop-shadow(0 0 6px rgba(47,158,106,0.5));
           animation: drawLine 0.35s ease-out 0.75s forwards;
         }
 
@@ -432,10 +443,10 @@ export function StoneActionSuccessModal({
           animation: fadeUp 0.4s ease 0.5s both;
         }
         .stone-modal-heading {
-          font-family: Georgia, "Times New Roman", serif;
-          font-size: 26px;
-          font-weight: 600;
-          color: #F3EFE6;
+          font-family: inherit;
+          font-size: 25px;
+          font-weight: 700;
+          color: var(--color-text-heading, #1E293B);
           margin: 0 0 8px;
           letter-spacing: 0.01em;
           animation: fadeUp 0.4s ease 0.56s both;
@@ -443,11 +454,11 @@ export function StoneActionSuccessModal({
         .stone-modal-message {
           font-size: 14px;
           line-height: 1.5;
-          color: #A8ADB6;
-          margin: 0 0 20px;
+          color: var(--color-text-body, #475569);
+          margin: 0 0 22px;
           animation: fadeUp 0.4s ease 0.62s both;
         }
-        .stone-modal-message strong { color: #F3EFE6; font-weight: 600; }
+        .stone-modal-message strong { color: #0F172A; font-weight: 600; }
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(6px); }
           to { opacity: 1; transform: translateY(0); }
@@ -456,37 +467,41 @@ export function StoneActionSuccessModal({
         /* ---------- Certificate strip ---------- */
         .stone-cert-strip {
           width: 100%;
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0;
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 12px;
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 1px;
+          background: #E2E8F0;
+          border: 1px solid #CBD5E1;
+          border-radius: 14px;
           overflow: hidden;
-          margin-bottom: 22px;
+          margin-bottom: 24px;
           animation: fadeUp 0.4s ease 0.68s both;
         }
         .stone-cert-item {
-          flex: 1 1 33%;
-          min-width: 90px;
-          padding: 10px 8px;
+          padding: 13px 12px;
           display: flex;
           flex-direction: column;
-          gap: 3px;
-          border-right: 1px solid rgba(255,255,255,0.06);
-          border-bottom: 1px solid rgba(255,255,255,0.06);
-          background: rgba(255,255,255,0.015);
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          background: #F8FAFC;
+          transition: background 0.2s ease;
         }
-        .stone-cert-item:last-child { border-right: none; }
+        .stone-cert-item:hover {
+          background: #F1F5F9;
+        }
         .stone-cert-label {
-          font-size: 9px;
+          font-size: 10px;
+          font-weight: 700;
           letter-spacing: 0.12em;
-          color: #6B6F78;
+          color: #64748B;
           text-transform: uppercase;
         }
         .stone-cert-value {
-          font-size: 12.5px;
-          color: #E7E3D8;
-          font-weight: 600;
+          font-size: 14px;
+          color: #0F172A;
+          font-weight: 700;
+          letter-spacing: 0.02em;
         }
 
         /* ---------- Buttons ---------- */
@@ -508,16 +523,16 @@ export function StoneActionSuccessModal({
         }
         .stone-btn:active { transform: scale(0.97); }
         .stone-btn-primary {
-          background: linear-gradient(135deg, var(--accent), #B8892F);
-          color: #14151a;
+          background: linear-gradient(135deg, var(--accent, #5B4FCF), #4A3FBA);
+          color: #ffffff;
+          box-shadow: 0 4px 14px rgba(91, 79, 207, 0.22);
         }
-        .stone-btn-primary:hover { filter: brightness(1.08); }
         .stone-btn-ghost {
-          background: rgba(255,255,255,0.04);
-          color: #C9CCD3;
-          border: 1px solid rgba(255,255,255,0.1);
+          background: #F8FAFC;
+          color: #334155;
+          border: 1px solid #CBD5E1;
         }
-        .stone-btn-ghost:hover { background: rgba(255,255,255,0.08); }
+        .stone-btn-ghost:hover { background: #F1F5F9; }
 
         /* ---------- Auto-close progress ---------- */
         .stone-progress-track {

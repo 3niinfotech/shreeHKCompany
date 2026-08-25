@@ -62,6 +62,11 @@ outwardRouter.post("/outward/sendTo", authenticateToken, async (req, res) => {
 });
 
 outwardRouter.post("/outward/list", authenticateToken, async (req, res) => {
+  const companyId = buildUserContext(req).companyId;
+  if (!companyId || companyId <= 0) {
+    return res.status(201).json({ status: true, Data: [], total: 0, message: "No records found" });
+  }
+
   const post = req.body;
 
   if (!post || Object.keys(post).length === 0) {
@@ -102,9 +107,9 @@ outwardRouter.post("/outward/list", authenticateToken, async (req, res) => {
     const offset = (page - 1) * limit;
 
     const baseFromWhere = `FROM dai_outward o
-                   LEFT JOIN dai_party p ON o.party = p.id
-                   LEFT JOIN dai_product dp ON FIND_IN_SET(dp.id, o.products)
-                   WHERE 1=1 
+                   LEFT JOIN dai_party p ON o.party = p.id AND p.company = ${companyId}
+                   LEFT JOIN dai_product dp ON FIND_IN_SET(dp.id, o.products) AND dp.company = ${companyId}
+                   WHERE o.company = ${companyId} 
                    ${typeFilter} ${userFilter} ${party} ${invoiceNo} ${dateFilter}`;
 
     const query = `SELECT o.id, o.entryno, o.type, o.invoiceno, p.name as party, o.reference,
@@ -148,6 +153,11 @@ outwardRouter.post("/outward/list", authenticateToken, async (req, res) => {
 });
 
 outwardRouter.get("/outward/", authenticateToken, (req, res) => {
+  const companyId = buildUserContext(req).companyId;
+  if (!companyId || companyId <= 0) {
+    return res.status(201).json({ status: false, message: "Error in Fetching data" });
+  }
+
   const id = parseInt(req?.query?.id) || 0;
 
   if (!id) {
@@ -155,7 +165,7 @@ outwardRouter.get("/outward/", authenticateToken, (req, res) => {
   }
 
   try {
-    let query = `SELECT * FROM dai_outward where id =${id}`;
+    let query = `SELECT * FROM dai_outward WHERE id = ${id} AND company = ${companyId}`;
 
     connection.query(query, (error, data) => {
       if (error) {
@@ -166,10 +176,10 @@ outwardRouter.get("/outward/", authenticateToken, (req, res) => {
         });
       }
 
-      if (data.length > 0) {
+      if (data && data.length > 0) {
         let products = data[0]["products"];
         if (products != "") {
-          let pquery = `SELECT * FROM dai_product p JOIN dai_product_value  pv ON p.id = pv.product_id WHERE p.id IN(${products})`;
+          let pquery = `SELECT * FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id WHERE p.company = ${companyId} AND p.id IN(${products})`;
 
           connection.query(pquery, (error, pdata) => {
             if (error) {
@@ -220,6 +230,11 @@ outwardRouter.post("/outward/update", authenticateToken, async (req, res) => {
 });
 
 outwardRouter.post("/outward/getProducts", authenticateToken, async (req, res) => {
+  const companyId = buildUserContext(req).companyId;
+  if (!companyId || companyId <= 0) {
+    return res.status(201).json({ status: false, message: "Error in Fetching data" });
+  }
+
   const { id, ...body } = req.body;
 
   if (!id) {
@@ -228,7 +243,7 @@ outwardRouter.post("/outward/getProducts", authenticateToken, async (req, res) =
 
   try {
     let responseData = {};
-    let query = `SELECT * FROM dai_outward where id =${id}`;
+    let query = `SELECT * FROM dai_outward WHERE id = ${id} AND company = ${companyId}`;
 
     connection.query(query, (error, data) => {
       if (error) {
@@ -240,10 +255,10 @@ outwardRouter.post("/outward/getProducts", authenticateToken, async (req, res) =
       }
 
 
-      if (data.length > 0) {
+      if (data && data.length > 0) {
         let products = data[0]["products"];
         if (products != "") {
-          let pquery = `SELECT * FROM dai_product p JOIN dai_product_value  pv ON p.id = pv.product_id WHERE p.id IN(${products})`;
+          let pquery = `SELECT * FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id WHERE p.company = ${companyId} AND p.id IN(${products})`;
 
           connection.query(pquery, (error, pdata) => {
             if (error) {
@@ -254,7 +269,7 @@ outwardRouter.post("/outward/getProducts", authenticateToken, async (req, res) =
               });
             }
 
-            if (pdata.length > 0) {
+            if (pdata && pdata.length > 0) {
               res.status(201).json({ status: true, products: pdata });
             } else {
               res.status(201).json({

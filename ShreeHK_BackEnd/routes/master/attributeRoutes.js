@@ -3,12 +3,16 @@ const connection = require("../../connection.js");
 const helper = require("../../helper.js");
 const { authenticateToken } = require("../../authMiddleware.js");
 const { logAuditInTx } = require("../../services/auditIntegration.js");
+const { buildUserContext } = require("../../tenantHelper.js");
 
 const attributeRouter = express.Router();
 attributeRouter.use(express.json());
 
 attributeRouter.get("/master/attribute", authenticateToken, (req, res) => {
-  const companyId = Number(req.companyId ?? req.user?.companyId) || 1;
+  const companyId = buildUserContext(req).companyId;
+  if (!companyId || companyId <= 0) {
+    return res.json({ TotalItems: 0, Data: [] });
+  }
   const searchInput = req.query.searchInput;
   let query = `SELECT * FROM dai_attribute WHERE company = ?`;
   const params = [companyId];
@@ -26,7 +30,7 @@ attributeRouter.get("/master/attribute", authenticateToken, (req, res) => {
 
 attributeRouter.post("/attribute/save", authenticateToken, async (req, res) => {
   const { id, ...body } = req.body;
-  const companyId = Number(req.companyId ?? req.user?.companyId) || 1;
+  const companyId = buildUserContext(req).companyId || 1;
   body.company = companyId;
   if (!body.name || !body.code) {
     return res.status(400).json({ error: "name and code are required" });
@@ -103,7 +107,10 @@ attributeRouter.delete("/attribute/delete", authenticateToken, async (req, res) 
 });
 
 attributeRouter.get("/attribute/getOption", authenticateToken, (req, res) => {
-  const companyId = Number(req.companyId ?? req.user?.companyId) || 1;
+  const companyId = buildUserContext(req).companyId;
+  if (!companyId || companyId <= 0) {
+    return res.json({ Data: [] });
+  }
   connection.query(
     "SELECT code, name, value FROM dai_attribute WHERE company = ? ORDER BY short_order",
     [companyId],

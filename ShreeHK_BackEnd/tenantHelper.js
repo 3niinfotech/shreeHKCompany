@@ -138,9 +138,11 @@ function isMetaOnlyPath(path) {
 }
 
 function getTenantScope(req) {
+  const headerCompanyId = req.headers ? Number(req.headers["x-company-id"] || req.headers["x-company-id"]) : 0;
+  const companyId = Number(req.companyId ?? req.user?.companyId ?? (headerCompanyId > 0 ? headerCompanyId : 0)) || 0;
   return {
-    companyId: Number(req.companyId ?? req.user?.companyId) || 0,
-    yearId: Number(req.yearId ?? req.user?.yearId) || null,
+    companyId: companyId > 0 ? companyId : 0,
+    yearId: Number(req.yearId ?? req.user?.yearId ?? (req.headers ? req.headers["x-year-id"] : null)) || null,
     dbName: req.dbName ?? req.user?.dbName ?? connection.META_DB,
     db: req.db ?? connection.getActivePool(),
   };
@@ -149,7 +151,7 @@ function getTenantScope(req) {
 function buildUserContext(req) {
   const scope = getTenantScope(req);
   return {
-    companyId: scope.companyId || 1,
+    companyId: scope.companyId || 0,
     userId: req.user?.user_id,
     user_id: req.user?.user_id,
     username: req.user?.username,

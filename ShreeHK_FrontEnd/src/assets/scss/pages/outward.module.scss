@@ -206,7 +206,7 @@
       height: var(--table-scroll-y) !important;
       max-height: var(--table-scroll-y) !important;
       overflow-y: auto !important;
-      scrollbar-gutter: stable;
+      // scrollbar-gutter: stable;
     }
 
     :global(.ant-table-sticky-scroll) {
@@ -214,11 +214,11 @@
     }
 
     :global(.ant-table-wrapper .ant-table-placeholder) {
-      height: auto !important;
+      height: 70.3vh !important;
     }
 
     :global(.ant-table-wrapper .ant-table-tbody > tr.ant-table-placeholder > td) {
-      height: auto !important;
+      height: 70.3vh !important;
       vertical-align: middle;
     }
 
@@ -406,7 +406,7 @@
       :global(.ant-table-summary) {
         background: var(--color-bg-muted);
 
-        > tr > td {
+        >tr>td {
           padding: 2px 10px !important;
           font-size: 12px !important;
           font-weight: 600 !important;

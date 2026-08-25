@@ -31,7 +31,7 @@ async function getPartiesList(params = {}, context = {}) {
   const companyId = Number(context.companyId) || 1;
 
   let sql = `
-    SELECT id, name, code, party_type, country, contact_person, contact_number, email, address
+    SELECT id, name, type, country, contact_person, contact_number, email, address
     FROM dai_party
     WHERE company = ?
   `;
@@ -39,12 +39,12 @@ async function getPartiesList(params = {}, context = {}) {
 
   if (params.search) {
     const term = `%${String(params.search).trim()}%`;
-    sql += " AND (name LIKE ? OR code LIKE ? OR country LIKE ? OR contact_person LIKE ?)";
-    queryParams.push(term, term, term, term);
+    sql += " AND (name LIKE ? OR country LIKE ? OR contact_person LIKE ?)";
+    queryParams.push(term, term, term);
   }
 
   if (params.partyType) {
-    sql += " AND party_type = ?";
+    sql += " AND type = ?";
     queryParams.push(String(params.partyType).trim());
   }
 
@@ -81,7 +81,7 @@ async function getPartyById(params = {}, context = {}) {
   }
 
   const sql = `
-    SELECT id, name, code, party_type, country, contact_person, contact_number, email, address
+    SELECT id, name, type, country, contact_person, contact_number, email, address
     FROM dai_party
     WHERE company = ? AND (id = ? OR name LIKE ?)
     LIMIT 1
@@ -201,7 +201,7 @@ async function getOutwardStock(params = {}, context = {}) {
 
   let sql = `
     SELECT o.id, o.entryno, o.invoiceno, o.party, p.name AS party_name, o.date, o.duedate, o.type, o.status,
-           o.products, o.total_pcs, o.total_carat, o.final_amount, o.paid_amount, o.due_amount
+           o.products, o.paid_amount, o.due_amount
     FROM dai_outward o
     LEFT JOIN dai_party p ON o.party = p.id
     WHERE o.company = ?
@@ -247,7 +247,7 @@ async function getInwardStock(params = {}, context = {}) {
 
   let sql = `
     SELECT i.id, i.entryno, i.invoiceno, i.party, p.name AS party_name, i.date, i.inward_type,
-           i.total_pcs, i.total_carat, i.final_amount, i.paid_amount, i.due_amount
+           i.paid_amount, i.due_amount
     FROM dai_inward i
     LEFT JOIN dai_party p ON i.party = p.id
     WHERE i.company = ? AND (i.deleted = 0 OR i.deleted IS NULL)

@@ -3,12 +3,18 @@ const connection = require("../../connection.js");
 const helper = require("../../helper.js");
 const { authenticateToken } = require("../../authMiddleware.js");
 const { logAuditInTx } = require("../../services/auditIntegration.js");
+const { buildUserContext } = require("../../tenantHelper.js");
 const categoryRouter = express.Router();
 
 categoryRouter.use(express.json());
 
 // Get
 categoryRouter.get("/master/category", authenticateToken, (req, res) => {
+  const companyId = buildUserContext(req).companyId;
+  if (!companyId || companyId <= 0) {
+    return res.json({ TotalItems: 0, Data: [] });
+  }
+
   const id = parseInt(req?.query?.id) || 0;
   const searchInput = req.query.searchInput;
 
@@ -16,26 +22,27 @@ categoryRouter.get("/master/category", authenticateToken, (req, res) => {
   let query = `
     SELECT c.*, p.name AS parent_name
     FROM category c
-    LEFT JOIN category p ON c.parent = p.id AND c.parent <> 0
+    LEFT JOIN category p ON c.parent = p.id AND c.parent <> 0 AND p.company = ${companyId}
+    WHERE c.company = ${companyId}
   `;
 
-  const countQuery = `SELECT COUNT(*) as totalItems FROM category`;
+  const countQuery = `SELECT COUNT(*) as totalItems FROM category WHERE company = ${companyId}`;
 
   connection.query(countQuery, (countError, countResult) => {
     if (countError) return res.status(500).json({ error: countError.message });
 
-    const totalItems = countResult[0].totalItems;
+    const totalItems = countResult[0]?.totalItems || 0;
 
     if (id == 0) {
       if (searchInput) {
         const escaped = connection.escape("%" + searchInput + "%");
         // Search category name OR parent category name (not numeric parent id)
-        query += ` WHERE c.name LIKE ${escaped} OR p.name LIKE ${escaped}`;
+        query += ` AND (c.name LIKE ${escaped} OR p.name LIKE ${escaped})`;
       }
 
       query += ` ORDER BY c.id DESC`;
     } else {
-      query += ` WHERE c.id=${parseInt(id)}`;
+      query += ` AND c.id=${parseInt(id)}`;
     }
 
     connection.query(query, (error, data) => {
@@ -53,6 +60,7 @@ categoryRouter.get("/master/category", authenticateToken, (req, res) => {
 
 // Post
 categoryRouter.post("/category/save", authenticateToken, async (req, res) => {
+  const companyId = buildUserContext(req).companyId || 1;
   const { id, name, parent } = req.body;
 
   try {
@@ -64,7 +72,7 @@ categoryRouter.post("/category/save", authenticateToken, async (req, res) => {
       }
 
       if (id == 0) {
-        const result = await q("INSERT INTO category (name, parent) VALUES (?, ?)", [name, parent]);
+        const result = await q("INSERT INTO category (name, parent, company) VALUES (?, ?, ?)", [name, parent, companyId]);
         const newRows = await q("SELECT * FROM category WHERE id=?", [result.insertId]);
         await logAuditInTx(q, {
           actionType: "CREATE",
@@ -72,9 +80,10 @@ categoryRouter.post("/category/save", authenticateToken, async (req, res) => {
           recordId: result.insertId,
           recordReference: name,
           newValue: newRows[0],
+          companyId,
         });
       } else {
-        await q("UPDATE category SET name=?, parent=? WHERE id=?", [name, parent, id]);
+        await q("UPDATE category SET name=?, parent=? WHERE id=? AND company=?", [name, parent, id, companyId]);
         const newRows = await q("SELECT * FROM category WHERE id=?", [id]);
         await logAuditInTx(q, {
           actionType: "UPDATE",
@@ -83,6 +92,7 @@ categoryRouter.post("/category/save", authenticateToken, async (req, res) => {
           recordReference: name,
           oldValue: oldRow,
           newValue: newRows[0],
+          companyId,
         });
       }
     });

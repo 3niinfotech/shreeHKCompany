@@ -147,7 +147,7 @@ const TransactionStockTemplate = ({
     listEndpoint,
     payload,
     'POST',
-    { enabled: true }
+    { enabled: true, staleTime: 0, refetchOnMount: 'always' }
   );
 
   const { mutate: deleteRecord, isPending: isDeleting } = useDeleteApiRequest(deleteEndpoint, deleteQueryKey || queryKey);
@@ -989,7 +989,7 @@ const TransactionStockTemplate = ({
               value={filterType || undefined}
               onChange={(v) => { setFilterType(v || ''); resetList(); }}
               options={typeFilterOptions}
-              style={{ minWidth: 140, borderRadius:8}}
+              style={{ minWidth: 140, borderRadius: 8 }}
             />
           </FilterField>
         )}

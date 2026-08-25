@@ -112,34 +112,36 @@ const InventoryFilterPanel = ({
           {toolbarActions ? (
             <div className={styles.toolbarRow}>{toolbarActions}</div>
           ) : null}
-          <div className={styles.headerRight}>
-            {headerActionsLeft ? (
-              <div className={styles.headerActions}>{headerActionsLeft}</div>
-            ) : null}
-            {hasAdvanced ? (
-              <Button
-                type="default"
-                size="small"
-                className={`${styles.toggleBtn} ${expanded ? styles.toggleBtnActive : ""}`}
-                icon={
-                  expanded ? (
-                    <ChevronUp size={14} />
-                  ) : (
-                    <ChevronDown size={14} />
-                  )
-                }
-                onClick={handleToggleClick}
-                onMouseEnter={handleAdvancedHoverEnter}
-                onMouseLeave={handleAdvancedHoverLeave}
-              >
-                <SlidersHorizontal size={14} />
-                {expanded ? "Hide Filters" : advancedTitle}
-              </Button>
-            ) : null}
-            {headerActions ? (
-              <div className={styles.headerActions}>{headerActions}</div>
-            ) : null}
-          </div>
+          {(headerActionsLeft || hasAdvanced || headerActions) ? (
+            <div className={styles.headerRight}>
+              {headerActionsLeft ? (
+                <div className={styles.headerActions}>{headerActionsLeft}</div>
+              ) : null}
+              {hasAdvanced ? (
+                <Button
+                  type="default"
+                  size="small"
+                  className={`${styles.toggleBtn} ${expanded ? styles.toggleBtnActive : ""}`}
+                  icon={
+                    expanded ? (
+                      <ChevronUp size={14} />
+                    ) : (
+                      <ChevronDown size={14} />
+                    )
+                  }
+                  onClick={handleToggleClick}
+                  onMouseEnter={handleAdvancedHoverEnter}
+                  onMouseLeave={handleAdvancedHoverLeave}
+                >
+                  <SlidersHorizontal size={14} />
+                  {expanded ? "Hide Filters" : advancedTitle}
+                </Button>
+              ) : null}
+              {headerActions ? (
+                <div className={styles.headerActions}>{headerActions}</div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
 

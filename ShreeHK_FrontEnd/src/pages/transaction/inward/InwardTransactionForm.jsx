@@ -156,6 +156,7 @@ const InwardTransactionForm = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [aiOcrModalOpen, setAiOcrModalOpen] = useState(false);
   const [existData, setExistData] = useState([]);
+  const [checkMessage, setCheckMessage] = useState('');
   const [excelLoading, setExcelLoading] = useState(false);
   const [excelFileName, setExcelFileName] = useState('');
 
@@ -387,6 +388,7 @@ const InwardTransactionForm = ({
         onSuccess: (response) => {
           setItems(normalizedItems);
           setExistData(response?.data || []);
+          setCheckMessage(response?.message || '');
           setIsModalOpen(true);
         },
         onError: (error) => toastApiError(error),
@@ -422,6 +424,7 @@ const InwardTransactionForm = ({
         }
         setIsModalOpen(false);
         setExistData([]);
+        setCheckMessage('');
         setIsSubmitted(false);
         form.resetFields();
         setItems(createInitialLineItems(initialLineCount));
@@ -517,7 +520,7 @@ const InwardTransactionForm = ({
 
       <div
         className={`${styles.tableSection} ${scrollableTable ? styles.tableSectionScrollable : ''}`}
-        // style={scrollableTable ? { '--inward-visible-rows': visibleRowCount } : undefined}
+      // style={scrollableTable ? { '--inward-visible-rows': visibleRowCount } : undefined}
       >
         {useModernLayout ? (
           <div className={styles.tableCardHead}>
@@ -570,10 +573,13 @@ const InwardTransactionForm = ({
         onClose={() => {
           setIsModalOpen(false);
           setExistData([]);
+          setCheckMessage('');
         }}
 
         onSave={onFinalSave}
         existData={existData}
+        items={items}
+        message={checkMessage}
         loading={isSaving}
       />
     </div>

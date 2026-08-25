@@ -1,6 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { Alert, Tag, Button, Tooltip } from "antd";
-import { EyeOutlined, EyeInvisibleOutlined } from "@ant-design/icons";
+import {
+  EyeOutlined,
+  EyeInvisibleOutlined,
+  CrownOutlined,
+  SafetyCertificateOutlined,
+  UserOutlined,
+} from "@ant-design/icons";
 import { api } from "../../api/axiosInstance";
 import { ENDPOINTS } from "../../constants/endpoints";
 import ActivityUnifiedDataCell from "./ActivityUnifiedDataCell";
@@ -127,16 +133,32 @@ const ActivityLogFlatTable = ({
     {
       title: "User",
       key: "who",
-      width: 120,
+      width: 140,
       fixed: "left",
-      render: (_, record) => (
-        <div className={styles.whoCell}>
-          <span className={styles.whoName}>{record.userName || "—"}</span>
-          {record.userRole ? (
-            <span className={styles.whoRole}>{record.userRole}</span>
-          ) : null}
-        </div>
-      ),
+      render: (_, record) => {
+        const roleStr = String(record.userRole || "User").trim();
+        const roleUpper = roleStr.toUpperCase();
+        let roleColor = "default";
+        let RoleIcon = UserOutlined;
+        if (roleUpper.includes("SUPER")) {
+          roleColor = "purple";
+          RoleIcon = CrownOutlined;
+        } else if (roleUpper.includes("ADMIN")) {
+          roleColor = "blue";
+          RoleIcon = SafetyCertificateOutlined;
+        }
+
+        return (
+          <div className={styles.whoCell}>
+            <span className={styles.whoName}>{record.userName || "—"}</span>
+            <div style={{ marginTop: 2 }}>
+              <Tag icon={<RoleIcon />} color={roleColor} className={styles.roleBadge}>
+                {roleStr}
+              </Tag>
+            </div>
+          </div>
+        );
+      },
     },
     {
       title: "Module / Page",

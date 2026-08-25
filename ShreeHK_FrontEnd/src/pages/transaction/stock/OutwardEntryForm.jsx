@@ -327,7 +327,7 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
       });
     }
   };
-  
+
 
   const buildPayload = useCallback(() => {
     const values = form.getFieldsValue();
@@ -382,6 +382,10 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
       }
       toastApiSuccess(result);
       setConfirmModalOpen(false);
+      queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.gia] });
+      queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.outMemo] });
+      queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.sale] });
+      queryClient.invalidateQueries({ queryKey: ['OutwardList'] });
       queryClient.invalidateQueries({ queryKey: ['GetProductData'] });
       queryClient.invalidateQueries({ queryKey: ['getIncrement'] });
       navigate(config.returnPath);

@@ -8,36 +8,43 @@ export const api = axios.create({
 });
 
 let cachedAuthStorageRaw = null;
-let cachedToken = null;
+let cachedContext = { token: null, companyId: null, yearId: null };
 
-const getAuthToken = () => {
+const getAuthContext = () => {
     const authData = localStorage.getItem("auth-storage");
     if (!authData) {
         cachedAuthStorageRaw = null;
-        cachedToken = null;
-        return null;
+        cachedContext = { token: null, companyId: null, yearId: null };
+        return cachedContext;
     }
 
     if (authData === cachedAuthStorageRaw) {
-        return cachedToken;
+        return cachedContext;
     }
 
     try {
         const parsedData = JSON.parse(authData);
         cachedAuthStorageRaw = authData;
-        cachedToken = parsedData.state?.token || null;
-        return cachedToken;
+        const state = parsedData.state || {};
+        cachedContext = {
+            token: state.token || null,
+            companyId: state.companyId || null,
+            yearId: state.yearId || null,
+        };
+        return cachedContext;
     } catch {
         localStorage.removeItem("auth-storage");
         cachedAuthStorageRaw = null;
-        cachedToken = null;
-        return null;
+        cachedContext = { token: null, companyId: null, yearId: null };
+        return cachedContext;
     }
 };
 
 api.interceptors.request.use((config) => {
-    const token = getAuthToken();
+    const { token, companyId, yearId } = getAuthContext();
     if (token) config.headers.Authorization = `Bearer ${token}`;
+    if (companyId != null && companyId !== "") config.headers["X-Company-Id"] = String(companyId);
+    if (yearId != null && yearId !== "") config.headers["X-Year-Id"] = String(yearId);
     return config;
 });
 

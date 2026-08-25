@@ -6,8 +6,8 @@ const InMemoEntry = () => (
     title="Inward - Memo Transaction"
     defaultInwardType="memo"
     showRPcs
-    initialLineCount={4}
-    visibleRowCount={4}
+    initialLineCount={7}
+    visibleRowCount={7}
     scrollableTable
   />
 );

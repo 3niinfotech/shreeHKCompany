@@ -738,6 +738,7 @@
 .whoName {
   font-weight: 600;
   font-size: 13px;
+  color: #000000 !important;
 }
 
 .whoRole {
@@ -1109,26 +1110,34 @@
     display: flex;
     flex-direction: column;
   }
+}
 
-  strong {
-    overflow: hidden;
-    color: var(--color-text, #111827);
-    font-size: 12px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  span {
-    color: #fff;
-    font-size: 14px;
-  }
+.loginUserName {
+  overflow: hidden;
+  color: #000000 !important;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .loginAvatar {
-  color: #fff !important;
+  color: #ffffff !important;
   background: linear-gradient(135deg, var(--color-primary), #7c3aed) !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
   font-weight: 700;
+
+  :global(.ant-avatar-string) {
+    color: #ffffff !important;
+  }
+}
+
+.roleBadge {
+  color: #000000 !important;
+  font-weight: 600 !important;
+  font-size: 11px !important;
+  line-height: 18px !important;
+  margin: 0 !important;
 }
 
 .loginEventTag {

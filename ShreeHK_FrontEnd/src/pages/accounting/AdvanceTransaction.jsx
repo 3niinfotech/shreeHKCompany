@@ -97,6 +97,7 @@ const AdvanceTransaction = () => {
                         showSearch
                         optionFilterProp="children"
                         virtual
+                        style={{ borderRadius: "8px" }}
                     >
                         {partyOptions.map((p) => (
                             <Option key={p.value || 'all'} value={p.value}>{p.label}</Option>
@@ -126,16 +127,16 @@ const AdvanceTransaction = () => {
             </AdvancedFilterPanel>
 
             <div ref={tableRef} className={`${styles.transactionTableWrap} erp-table-container`}>
-            <Table
-                dataSource={dataSource}
-                columns={columns}
-                loading={isLoading}
-                pagination={{ pageSize: 50 }}
-                bordered
-                size="small"
-                className={styles.transactionTable}
-                scroll={{ x: 'max-content', y: tableHeight }}
-            />
+                <Table
+                    dataSource={dataSource}
+                    columns={columns}
+                    loading={isLoading}
+                    pagination={{ pageSize: 50 }}
+                    bordered
+                    size="small"
+                    className={styles.transactionTable}
+                    scroll={{ x: 'max-content', y: tableHeight }}
+                />
             </div>
         </div>
     );
