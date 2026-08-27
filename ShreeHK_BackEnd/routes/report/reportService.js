@@ -455,6 +455,98 @@ async function getStoneSaleReport(post, companyId) {
   return data;
 }
 
+async function getStonePurchaseReport(post, companyId) {
+  const limit = parseInt(post.limit, 10) || 100;
+  const partyList = await getPartyMap();
+
+  let partySql = "";
+  const values = [companyId];
+  if (post.party) {
+    partySql = " AND party = ?";
+    values.push(post.party);
+  }
+
+  let dateSql = "";
+  const fd = post.cfrom || post.fromDate;
+  const td = post.cto || post.toDate;
+  if (fd && td) {
+    dateSql = " AND invoicedate BETWEEN ? AND ?";
+    values.push(fd, td);
+  } else if (fd) {
+    dateSql = " AND invoicedate >= ?";
+    values.push(fd);
+  } else if (td) {
+    dateSql = " AND invoicedate <= ?";
+    values.push(td);
+  }
+
+  let invoiceSql = "";
+  if (post.invoice || post.invoiceNo) {
+    invoiceSql = " AND invoiceno = ?";
+    values.push(post.invoice || post.invoiceNo);
+  }
+
+  const inwardSql = `SELECT * FROM dai_inward
+    WHERE (deleted = 0 OR deleted IS NULL) AND company = ?
+    AND inward_type IN ('purchase','import')${partySql}${dateSql}${invoiceSql}
+    ORDER BY date DESC, id DESC LIMIT ?`;
+  values.push(limit);
+
+  const inwardRows = await queryAsync(inwardSql, values);
+  if (!inwardRows.length) return [];
+
+  const inwardIds = inwardRows.map((r) => r.id);
+  const productRows = await queryAsync(
+    `SELECT p.id, p.inward_id, p.sku, p.lab, p.polish_pcs, p.polish_carat,
+      p.purchase_pcs, p.purchase_carat, p.price, p.amount, p.purchase_price, p.purchase_amount,
+      p.outward, p.group_type, p.outward_parent,
+      pv.shape, pv.clarity, pv.color, pv.report_no
+     FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id
+     WHERE p.inward_id IN (${inwardIds.map(() => "?").join(",")})`,
+    inwardIds
+  );
+
+  const productsByInwardId = {};
+  productRows.forEach((prod) => {
+    if (!productsByInwardId[prod.inward_id]) productsByInwardId[prod.inward_id] = [];
+    productsByInwardId[prod.inward_id].push(prod);
+  });
+
+  const data = [];
+  inwardRows.forEach((row) => {
+    (productsByInwardId[row.id] || []).forEach((prod) => {
+      if (
+        (prod.outward === "memo" || prod.outward === "sale") &&
+        (prod.group_type !== "single" ||
+          (prod.group_type === "single" && prod.outward_parent))
+      ) {
+        return;
+      }
+      data.push({
+        sku: prod.sku,
+        lab: prod.lab,
+        report_no: prod.report_no,
+        polish_pcs: parseFloat(prod.purchase_pcs) === 0 ? prod.polish_pcs : prod.purchase_pcs,
+        polish_carat: parseFloat(prod.purchase_carat) === 0 ? prod.polish_carat : prod.purchase_carat,
+        sell_price: parseFloat(prod.purchase_price) === 0 ? prod.price : prod.purchase_price,
+        sell_amount: parseFloat(prod.purchase_amount) === 0 ? prod.amount : prod.purchase_amount,
+        shape: prod.shape,
+        color: prod.color,
+        clarity: prod.clarity,
+        party: partyList[row.party] || "",
+        out_date: row.invoicedate ? moment(row.invoicedate).format("DD-MM-YYYY") : "",
+        entryno: row.entryno,
+        invoiceno: row.invoiceno,
+        terms: row.terms,
+        due_date: row.duedate && row.duedate !== "0000-00-00" ? moment(row.duedate).format("DD-MM-YYYY") : "",
+        paid_amount: row.paid_amount,
+      });
+    });
+  });
+
+  return data;
+}
+
 function formatStoneDateTime(value) {
   if (!value || value === "0000-00-00" || value === "0000-00-00 00:00:00") return "";
   const m = moment(value);
@@ -964,23 +1056,30 @@ async function getTransactionPartyRows(outwardRows, report, partyMap, giaSql) {
       terms: row.terms || "",
       duedate: row.duedate,
       reference: row.reference || "",
+      paid_amount: Number(row.paid_amount) || 0,
     });
   });
 
-  return data.map((row, idx) => ({
-    no: idx + 1,
-    key: idx + 1,
-    invoice: row.invoiceno,
-    date: row.out_date,
-    company: row.party,
-    pcs: row.tpp,
-    carat: row.tpc,
-    price: row.tp,
-    amount: row.ta,
-    term: row.terms,
-    dueDate: row.duedate,
-    reference: row.reference,
-  }));
+  return data.map((row, idx) => {
+    const paid = Number(row.paid_amount) || 0;
+    const amount = Number(row.ta) || 0;
+    return {
+      no: idx + 1,
+      key: idx + 1,
+      invoice: row.invoiceno,
+      date: row.out_date,
+      company: row.party,
+      pcs: row.tpp,
+      carat: row.tpc,
+      price: row.tp,
+      amount,
+      term: row.terms,
+      dueDate: row.duedate,
+      reference: row.reference,
+      paid_amount: paid,
+      due_amount: Number((amount - paid).toFixed(2)),
+    };
+  });
 }
 
 async function getPurchaseTransactionRows(post, companyId, userId) {
@@ -1116,6 +1215,8 @@ async function getPurchaseTransactionRows(post, companyId, userId) {
           ? moment(row.duedate).format("DD/MM/YY")
           : "",
       reference: row.reference || "",
+      paid_amount: Number(row.paid_amount) || 0,
+      due_amount: Number((Number(ta.toFixed(2)) - (Number(row.paid_amount) || 0)).toFixed(2)),
     });
   });
 
@@ -1142,6 +1243,7 @@ async function getTransactionReport(post, companyId, userId) {
 module.exports = {
   getGroupReport,
   getStoneSaleReport,
+  getStonePurchaseReport,
   getStoneDetail,
   getStoneOldHistory,
   getStoneInfoByParty,

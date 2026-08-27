@@ -50,6 +50,8 @@ reportRouter.post("/report/sale-stock", authenticateToken, async (req, res) => {
     let Data = [];
     if (type === "sale") {
       Data = await reportService.getStoneSaleReport(req.body, companyId);
+    } else if (type === "purchase") {
+      Data = await reportService.getStonePurchaseReport(req.body, companyId);
     }
     return res.json({ status: true, Data, TotalItems: Data.length });
   } catch (error) {
@@ -186,6 +188,8 @@ reportRouter.post("/report/outstanding", authenticateToken, async (req, res) => 
                                  DATE_FORMAT(o.date, '%d-%m-%Y') AS date, 
                                   DATE_FORMAT(o.duedate, '%d-%m-%Y') AS due_date, 
                                       o.terms, 
+                                     o.pcs,
+                                     o.carat,
                                      o.final_amount,
                                      o.paid_amount,
                                      o.due_amount                                 
@@ -203,6 +207,8 @@ reportRouter.post("/report/outstanding", authenticateToken, async (req, res) => 
                                  DATE_FORMAT(o.date, '%d-%m-%Y') AS date, 
                                   DATE_FORMAT(o.duedate, '%d-%m-%Y') AS due_date, 
                                       o.terms, 
+                                     o.pcs,
+                                     o.carat,
                                      o.final_amount,
                                      o.paid_amount,
                                      o.due_amount                                
@@ -224,6 +230,8 @@ reportRouter.post("/report/outstanding", authenticateToken, async (req, res) => 
                                  DATE_FORMAT(o.date, '%d-%m-%Y') AS date, 
                                   DATE_FORMAT(o.duedate, '%d-%m-%Y') AS due_date, 
                                       o.terms, 
+                                     o.pcs,
+                                     o.carat,
                                      o.final_amount,
                                      o.paid_amount,
                                      o.due_amount                                 
@@ -241,6 +249,8 @@ reportRouter.post("/report/outstanding", authenticateToken, async (req, res) => 
                                  DATE_FORMAT(o.date, '%d-%m-%Y') AS date, 
                                   DATE_FORMAT(o.duedate, '%d-%m-%Y') AS due_date, 
                                       o.terms, 
+                                     o.pcs,
+                                     o.carat,
                                      o.final_amount,
                                      o.paid_amount,
                                      o.due_amount                                

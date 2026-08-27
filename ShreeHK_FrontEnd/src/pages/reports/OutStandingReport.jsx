@@ -164,17 +164,23 @@ const OutStandingReport = () => {
     };
 
     const exportHeaders = [
-        { title: 'No', key: 'no', width: 8 },
-        { title: 'Entry No', key: 'entryno', width: 12 },
-        { title: 'Company', key: 'name', width: 20 },
-        { title: 'Invoice', key: 'invoiceno', width: 14 },
-        { title: 'Date', key: 'invoicedate', width: 12 },
-        { title: 'Paid Amount', key: 'paid_amount', width: 14 },
-        { title: 'Term', key: 'terms', width: 10 },
-        { title: 'Due Date', key: 'due_date', width: 12 },
-        { title: 'Reference', key: 'reference', width: 14 },
-        { title: 'Due Amount', key: 'due_amount', width: 14 },
-        { title: 'Final Amount', key: 'final_amount', width: 14 },
+        { title: 'Entry No', key: 'entryno', width: 16, align: 'center' },
+        { title: 'Company', key: 'name', width: 42, align: 'center', accessor: (row) => String(row.name || '').toUpperCase() },
+        { title: 'Invoice', key: 'invoiceno', width: 12, align: 'center' },
+        { title: 'Date', key: 'invoicedate', width: 14, align: 'center' },
+        { title: 'Term', key: 'terms', width: 10, align: 'center' },
+        { title: 'Due Date', key: 'due_date', width: 14, align: 'center' },
+        { title: 'Pcs', key: 'pcs', width: 8, align: 'center', type: 'n', total: true, decimals: 0, accessor: (row) => Number(row.pcs) || 0 },
+        { title: 'Carat', key: 'carat', width: 10, align: 'center', type: 'n', total: true, decimals: 3, accessor: (row) => Number(row.carat) || 0 },
+        { title: 'Price', key: 'price', width: 10, align: 'center', type: 'n', total: true, decimals: 2, accessor: (row) => {
+            const carat = Number(row.carat) || 0;
+            const amount = Number(row.final_amount) || 0;
+            return carat > 0 ? Number((amount / carat).toFixed(2)) : 0;
+        } },
+        { title: 'Amount', key: 'final_amount', width: 14, align: 'center', type: 'n', total: true, decimals: 2, accessor: (row) => Number(row.final_amount) || 0 },
+        { title: 'Reference', key: 'reference', width: 32, align: 'center' },
+        { title: 'Paid Amt.', key: 'paid_amount', width: 12, align: 'center', type: 'n', total: true, decimals: 2, accessor: (row) => Number(row.paid_amount) || 0 },
+        { title: 'Due Amt.', key: 'due_amount', width: 14, align: 'center', type: 'n', total: true, decimals: 2, accessor: (row) => Number(row.due_amount) || 0 },
     ];
 
     const handleExport = async () => {
@@ -190,6 +196,8 @@ const OutStandingReport = () => {
                 rows,
                 fileName: 'outstanding_report',
                 sheetName: 'Outstanding',
+                title: 'Outstanding Report',
+                totals: true,
             });
             toastSuccess('Exported to Excel');
         } catch (err) {
