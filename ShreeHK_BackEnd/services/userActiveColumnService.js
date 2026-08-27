@@ -3,7 +3,7 @@ const helper = require("../helper.js");
 let ensurePromise = null;
 
 /**
- * Ensures `user.is_active` and `user.designation` exist (auto-migration for existing DBs).
+ * Ensures user profile columns exist (auto-migration for existing DBs).
  */
 const ensureUserActiveColumn = async () => {
   if (ensurePromise) return ensurePromise;
@@ -37,6 +37,36 @@ const ensureUserActiveColumn = async () => {
         "ALTER TABLE `user` ADD COLUMN `designation` VARCHAR(150) DEFAULT NULL",
       );
       console.log("[user] Added missing column: designation");
+    }
+
+    const extraColumns = [
+      { name: "department", ddl: "ALTER TABLE `user` ADD COLUMN `department` VARCHAR(150) DEFAULT NULL" },
+      { name: "joining_date", ddl: "ALTER TABLE `user` ADD COLUMN `joining_date` DATE DEFAULT NULL" },
+      { name: "profile_image", ddl: "ALTER TABLE `user` ADD COLUMN `profile_image` VARCHAR(255) DEFAULT NULL" },
+      { name: "created_by", ddl: "ALTER TABLE `user` ADD COLUMN `created_by` INT DEFAULT NULL" },
+      {
+        name: "created_at",
+        ddl: "ALTER TABLE `user` ADD COLUMN `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP",
+      },
+      {
+        name: "updated_at",
+        ddl: "ALTER TABLE `user` ADD COLUMN `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+      },
+    ];
+
+    for (const col of extraColumns) {
+      const rows = await helper.query(
+        `SELECT COUNT(*) AS cnt
+         FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'user'
+           AND COLUMN_NAME = ?`,
+        [col.name],
+      );
+      if (Number(rows[0]?.cnt) === 0) {
+        await helper.query(col.ddl);
+        console.log(`[user] Added missing column: ${col.name}`);
+      }
     }
   })().catch((err) => {
     ensurePromise = null;

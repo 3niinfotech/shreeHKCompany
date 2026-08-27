@@ -199,6 +199,7 @@
     .purchaseBtn,
     .consignBtn,
     .labBtn {
+
       &,
       &:hover:not(:disabled),
       &:focus:not(:disabled),
@@ -347,6 +348,7 @@
     }
 
     @keyframes statusDotBreathe {
+
       0%,
       100% {
         transform: scale(1);
@@ -358,6 +360,7 @@
     }
 
     @keyframes statusDotBlink {
+
       0%,
       45% {
         opacity: 1;
@@ -370,6 +373,7 @@
     }
 
     @keyframes connectionOnlineGlow {
+
       0%,
       100% {
         box-shadow: 0 0 0 0 rgba(82, 196, 26, 0);
@@ -381,6 +385,7 @@
     }
 
     @keyframes connectionOfflineAlert {
+
       0%,
       100% {
         box-shadow: 0 0 0 0 rgba(255, 77, 79, 0);
@@ -392,6 +397,7 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
+
       .connectionStatus,
       .connectionStatus .statusDot,
       .connectionStatus .statusPulseRing {
@@ -425,16 +431,45 @@
     }
 
     @keyframes bellVibrate {
-      0%   { transform: rotate(0deg) scale(1); }
-      2%   { transform: rotate(20deg) scale(1.12); }
-      4%   { transform: rotate(-18deg) scale(1.12); }
-      6%   { transform: rotate(14deg) scale(1.08); }
-      8%   { transform: rotate(-12deg) scale(1.08); }
-      10%  { transform: rotate(8deg) scale(1.04); }
-      12%  { transform: rotate(-6deg) scale(1.04); }
-      14%  { transform: rotate(3deg) scale(1); }
-      16%  { transform: rotate(0deg) scale(1); }
-      100% { transform: rotate(0deg) scale(1); }
+      0% {
+        transform: rotate(0deg) scale(1);
+      }
+
+      2% {
+        transform: rotate(20deg) scale(1.12);
+      }
+
+      4% {
+        transform: rotate(-18deg) scale(1.12);
+      }
+
+      6% {
+        transform: rotate(14deg) scale(1.08);
+      }
+
+      8% {
+        transform: rotate(-12deg) scale(1.08);
+      }
+
+      10% {
+        transform: rotate(8deg) scale(1.04);
+      }
+
+      12% {
+        transform: rotate(-6deg) scale(1.04);
+      }
+
+      14% {
+        transform: rotate(3deg) scale(1);
+      }
+
+      16% {
+        transform: rotate(0deg) scale(1);
+      }
+
+      100% {
+        transform: rotate(0deg) scale(1);
+      }
     }
 
     .notificationBadge {
@@ -455,19 +490,36 @@
 
       &.badgePulse {
         animation: badgePop 0.35s cubic-bezier(0.36, 0.07, 0.19, 0.97) both,
-                   badgePulse 1.8s ease 0.35s 2;
+          badgePulse 1.8s ease 0.35s 2;
       }
     }
 
     @keyframes badgePop {
-      0%   { transform: scale(0.4); opacity: 0; }
-      70%  { transform: scale(1.25); }
-      100% { transform: scale(1); opacity: 1; }
+      0% {
+        transform: scale(0.4);
+        opacity: 0;
+      }
+
+      70% {
+        transform: scale(1.25);
+      }
+
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
     }
 
     @keyframes badgePulse {
-      0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, v.$danger 60%, transparent); }
-      50%       { box-shadow: 0 0 0 6px color-mix(in srgb, v.$danger 0%, transparent); }
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, v.$danger 60%, transparent);
+      }
+
+      50% {
+        box-shadow: 0 0 0 6px color-mix(in srgb, v.$danger 0%, transparent);
+      }
     }
   }
 
@@ -582,6 +634,7 @@
     }
 
     @keyframes connectionOnlineGlowLight {
+
       0%,
       100% {
         box-shadow: 0 0 0 0 rgba(82, 196, 26, 0);
@@ -593,6 +646,7 @@
     }
 
     .headerSearch {
+
       :global(input::placeholder),
       :global(.ant-input::placeholder),
       :global(.ant-input-affix-wrapper .ant-input::placeholder) {
@@ -603,6 +657,7 @@
     }
 
     .topQuickBtn {
+
       &,
       &:not(:disabled),
       &:hover:not(:disabled),
@@ -632,6 +687,7 @@
     .purchaseBtn,
     .consignBtn,
     .labBtn {
+
       &,
       &:hover:not(:disabled),
       &:focus:not(:disabled),
@@ -713,11 +769,9 @@
 
   &.online {
     .networkModalHero {
-      background: linear-gradient(
-        135deg,
-        color-mix(in srgb, var(--color-success, #52c41a) 18%, #fff) 0%,
-        color-mix(in srgb, var(--color-primary) 12%, #fff) 100%
-      );
+      background: linear-gradient(135deg,
+          color-mix(in srgb, var(--color-success, #52c41a) 18%, #fff) 0%,
+          color-mix(in srgb, var(--color-primary) 12%, #fff) 100%);
     }
 
     .networkModalIcon {
@@ -744,11 +798,9 @@
 
   &.offline {
     .networkModalHero {
-      background: linear-gradient(
-        135deg,
-        color-mix(in srgb, var(--color-danger, #ff4d4f) 16%, #fff) 0%,
-        color-mix(in srgb, #f97316 10%, #fff) 100%
-      );
+      background: linear-gradient(135deg,
+          color-mix(in srgb, var(--color-danger, #ff4d4f) 16%, #fff) 0%,
+          color-mix(in srgb, #f97316 10%, #fff) 100%);
     }
 
     .networkModalIcon {
@@ -875,7 +927,7 @@
       background: var(--color-danger, #ff4d4f);
     }
 
-    + li {
+    +li {
       margin-top: 8px;
     }
   }
@@ -991,6 +1043,7 @@
 }
 
 @keyframes networkIconShake {
+
   0%,
   88%,
   100% {
@@ -1007,6 +1060,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .networkModalRoot :global(.ant-modal-content),
   .networkModalPulse,
   .networkModalIcon,

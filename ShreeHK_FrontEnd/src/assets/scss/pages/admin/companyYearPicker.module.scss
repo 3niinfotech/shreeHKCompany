@@ -5,6 +5,7 @@
     border: 1px solid var(--color-border);
     box-shadow: 0 24px 60px rgba(8, 24, 40, 0.22);
     padding: 0;
+    animation: modalScaleEntrance 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
   :global(.ant-modal-header) {
@@ -77,6 +78,19 @@
   font-size: 21px;
   font-weight: 700;
   line-height: 1.25;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.typewriterCursor {
+  display: inline-block;
+  width: 2px;
+  height: 20px;
+  background-color: #ffffff;
+  border-radius: 1px;
+  margin-left: 2px;
+  animation: cursorBlink 0.8s infinite;
 }
 
 .titleSubtext {
@@ -86,6 +100,14 @@
   font-size: 13px;
   line-height: 1.45;
   max-width: 640px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.titleSubtextVisible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .headerArt {
@@ -115,12 +137,21 @@
   padding: 40px 0;
 }
 
+.modalBodyContent {
+  position: relative;
+}
+
+.yearViewWrapper {
+  animation: viewFadeEntrance 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 /* ---------------- Company step ---------------- */
 
 .companyGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 22px;
+  animation: viewFadeEntrance 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 
   @media (max-width: 860px) {
     grid-template-columns: 1fr;
@@ -139,6 +170,8 @@
   border: 1px solid var(--color-border);
   border-radius: 16px;
   background: var(--color-card-bg);
+  animation: cardReveal 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--card-index, 0) * 70ms + 100ms);
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease,
@@ -185,6 +218,8 @@
   font-size: 30px;
   color: var(--color-primary);
   background: var(--color-primary-light);
+  animation: cardChildFade 0.3s ease both;
+  animation-delay: calc(var(--card-index, 0) * 70ms + 120ms);
 }
 
 .companyBody {
@@ -208,6 +243,8 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
+  animation: cardChildFade 0.3s ease both;
+  animation-delay: calc(var(--card-index, 0) * 70ms + 160ms);
 }
 
 .companyTag {
@@ -221,6 +258,8 @@
   font-weight: 600;
   color: var(--color-primary-dark);
   background: var(--color-primary-light);
+  animation: cardChildFade 0.3s ease both;
+  animation-delay: calc(var(--card-index, 0) * 70ms + 200ms);
 
   span {
     overflow: hidden;
@@ -237,6 +276,8 @@
   font-size: 12.5px;
   font-weight: 500;
   color: var(--color-text-muted);
+  animation: cardChildFade 0.3s ease both;
+  animation-delay: calc(var(--card-index, 0) * 70ms + 240ms);
 
   span {
     overflow: hidden;
@@ -256,6 +297,8 @@
   font-size: 12px;
   color: var(--color-text-muted);
   background: var(--color-bg-muted);
+  animation: cardChildFade 0.3s ease both;
+  animation-delay: calc(var(--card-index, 0) * 70ms + 280ms);
   transition: transform 0.2s ease, color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 
   .companyCard:hover:not(:disabled) & {
@@ -272,6 +315,7 @@
   display: flex;
   justify-content: flex-start;
   margin-bottom: 18px;
+  animation: backBtnFade 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .backButton {
@@ -351,6 +395,8 @@
   border: 1px solid var(--color-border);
   border-radius: 14px;
   background: var(--color-card-bg);
+  animation: cardReveal 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--card-index, 0) * 70ms + 100ms);
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease,
@@ -401,6 +447,8 @@
   font-size: 19px;
   color: var(--color-primary);
   background: var(--color-primary-light);
+  animation: cardChildFade 0.3s ease both;
+  animation-delay: calc(var(--card-index, 0) * 70ms + 120ms);
 }
 
 .yearBody {
@@ -422,6 +470,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  animation: cardChildFade 0.3s ease both;
+  animation-delay: calc(var(--card-index, 0) * 70ms + 160ms);
 }
 
 .yearBadge {
@@ -437,6 +487,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  animation: cardChildFade 0.3s ease both;
+  animation-delay: calc(var(--card-index, 0) * 70ms + 200ms);
 }
 
 .yearBadgeCurrent {
@@ -456,6 +508,8 @@
   font-size: 11px;
   color: var(--color-text-muted);
   background: var(--color-bg-muted);
+  animation: cardChildFade 0.3s ease both;
+  animation-delay: calc(var(--card-index, 0) * 70ms + 280ms);
   transition: transform 0.2s ease, color 0.2s ease, background 0.2s ease;
 
   .yearCard:hover:not(:disabled) & {
@@ -472,6 +526,8 @@
   font-size: 19px;
   color: var(--color-primary);
   line-height: 1;
+  animation: cardChildFade 0.3s ease both;
+  animation-delay: calc(var(--card-index, 0) * 70ms + 280ms);
 }
 
 .yearRange {
@@ -482,6 +538,8 @@
   font-size: 12px;
   font-weight: 500;
   color: var(--color-text-muted);
+  animation: cardChildFade 0.3s ease both;
+  animation-delay: calc(var(--card-index, 0) * 70ms + 240ms);
 
   span {
     overflow: hidden;
@@ -509,6 +567,106 @@
   svg {
     color: var(--color-primary);
     font-size: 14px;
+  }
+}
+
+/* ---------------- Animation Keyframes ---------------- */
+
+@keyframes modalScaleEntrance {
+  0% {
+    opacity: 0;
+    transform: scale(0.96) translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+@keyframes viewFadeEntrance {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cardReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes cardChildFade {
+  0% {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes backBtnFade {
+  0% {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ---------------- Reduced Motion ---------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  :global(.ant-modal-content) {
+    animation: none !important;
+  }
+
+  .companyGrid,
+  .yearViewWrapper,
+  .companyCard,
+  .yearCard,
+  .companyIcon,
+  .yearIcon,
+  .companyName,
+  .yearLabel,
+  .companyTag,
+  .yearBadge,
+  .companyMeta,
+  .yearRange,
+  .companyArrow,
+  .yearArrow,
+  .yearCheck,
+  .backWrapper {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .typewriterCursor {
+    display: none !important;
+  }
+
+  .titleSubtext {
+    opacity: 1 !important;
+    transform: none !important;
   }
 }
 

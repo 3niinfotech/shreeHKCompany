@@ -128,21 +128,22 @@ export default function useInventoryToolbarPage({
         return;
       }
       if (key === "export") {
-        exportAction.submitExport(selectedRowKeys, {
-          fileName: "Defult_Stock_List",
-          sheetName: "Stock List",
-        });
+        const selectedSet = new Set(selectedRowKeys.map(String));
+        const exportRows = (list.tableData || []).filter((row) => selectedSet.has(String(row.id)));
+        exportAction.submitExport(selectedRowKeys, { sheetName: "Export" }, exportRows);
         return;
       }
       if (key === "iExport") {
-        iExport.submitIExport(selectedRowKeys, { fileName: "Import_Format", format: "xlsx" });
+        const selectedSet = new Set(selectedRowKeys.map(String));
+        const exportRows = (list.tableData || []).filter((row) => selectedSet.has(String(row.id)));
+        iExport.submitIExport(selectedRowKeys, { sheetName: "Export" }, exportRows);
         return;
       }
       if (key === "mail") {
         setBulkActionModal({ open: true, actionKey: "mail" });
       }
     },
-    [exportAction, iExport, selectedRowKeys],
+    [exportAction, iExport, selectedRowKeys, list.tableData],
   );
 
   const openStoneDetail = useCallback((record) => {

@@ -127,6 +127,7 @@ const mapInventoryProductRow = (item, index, offset = 1) => ({
   origin: item.origin,
   intensity: item.intensity,
   overTone: item.overtone,
+  mainColor: item.main_color,
   color: item.color,
   location: item.location,
   package: item.package,
@@ -1306,6 +1307,26 @@ const DiamondInventoryTable = () => {
       pageModalsRef.current?.openPackage();
       return;
     }
+    if (mapped === "export") {
+      if (selectedRowKeys.length === 0) {
+        toastWarning("Please select at least one diamond");
+        return;
+      }
+      const selectedSet = new Set(selectedRowKeys.map(String));
+      const exportRows = tableData.filter((row) => selectedSet.has(String(row.id)));
+      submitExport(selectedRowKeys, { sheetName: "Export" }, exportRows);
+      return;
+    }
+    if (key === "iExport" || mapped === "iExport") {
+      if (selectedRowKeys.length === 0) {
+        toastWarning("Please select at least one diamond");
+        return;
+      }
+      const selectedSet = new Set(selectedRowKeys.map(String));
+      const exportRows = tableData.filter((row) => selectedSet.has(String(row.id)));
+      submitIExport(selectedRowKeys, { sheetName: "Export" }, exportRows);
+      return;
+    }
     setBulkActionModal({ open: true, actionKey: mapped });
   };
 
@@ -1324,7 +1345,9 @@ const DiamondInventoryTable = () => {
       return;
     }
     if (key === "export") {
-      const ok = await submitExport(selectedRowKeys, values);
+      const selectedSet = new Set(selectedRowKeys.map(String));
+      const exportRows = tableData.filter((row) => selectedSet.has(String(row.id)));
+      const ok = await submitExport(selectedRowKeys, values, exportRows);
       if (!ok) return;
     } else if (key === "changePrice") {
       const ok = await submitChangePrice(selectedRowKeys, values);
@@ -1338,7 +1361,9 @@ const DiamondInventoryTable = () => {
       const ok = await printLabel(selectedRowKeys, values, { diaPair });
       if (!ok) return;
     } else if (key === "iExport") {
-      const ok = await submitIExport(selectedRowKeys, values);
+      const selectedSet = new Set(selectedRowKeys.map(String));
+      const exportRows = tableData.filter((row) => selectedSet.has(String(row.id)));
+      const ok = await submitIExport(selectedRowKeys, values, exportRows);
       if (!ok) return;
     } else if (key === "mail") {
       const ok = await submitMail(selectedRowKeys, values);
@@ -1366,15 +1391,19 @@ const DiamondInventoryTable = () => {
     if (!preset) return;
 
     if (preset.mode === "iExport") {
-      await submitIExport(selectedRowKeys, { fileName: preset.fileName, format: "xlsx" });
+      const selectedSet = new Set(selectedRowKeys.map(String));
+      const exportRows = tableData.filter((row) => selectedSet.has(String(row.id)));
+      await submitIExport(selectedRowKeys, { fileName: preset.fileName, sheetName: preset.sheetName || "Export", format: "xlsx" }, exportRows);
       return;
     }
 
+    const selectedSet = new Set(selectedRowKeys.map(String));
+    const exportRows = tableData.filter((row) => selectedSet.has(String(row.id)));
     await submitExport(selectedRowKeys, {
       fileName: preset.fileName,
-      sheetName: preset.sheetName,
-    });
-  }, [selectedRowKeys, submitExport, submitIExport]);
+      sheetName: preset.sheetName || "Export",
+    }, exportRows);
+  }, [selectedRowKeys, submitExport, submitIExport, tableData]);
 
   const applyInventoryFilters = useCallback((overrides = {}) => {
     const compactValues = filterForm.getFieldsValue();

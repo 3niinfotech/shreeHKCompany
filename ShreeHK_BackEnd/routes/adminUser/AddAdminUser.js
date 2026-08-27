@@ -1,4 +1,7 @@
 const express = require("express");
+const path = require("path");
+const fs = require("fs");
+const multer = require("multer");
 const connection = require("../../connection.js");
 const helper = require("../../helper.js");
 const { authenticateToken, isSuperAdmin } = require("../../authMiddleware.js");
@@ -8,6 +11,39 @@ const { isUserOnline } = require("../../services/userPresenceService.js");
 const AdminUserRouter = express.Router();
 const md5 = require('md5');
 AdminUserRouter.use(express.json());
+
+const profileStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const uploadPath = "uploads/profiles/";
+        if (!fs.existsSync(uploadPath)) {
+            fs.mkdirSync(uploadPath, { recursive: true });
+        }
+        cb(null, uploadPath);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+        cb(null, "profile-" + uniqueSuffix + path.extname(file.originalname));
+    },
+});
+
+const profileUpload = multer({ storage: profileStorage });
+
+const handleProfileUpload = (req, res, next) => {
+    profileUpload.single("profile_image")(req, res, (err) => {
+        if (err) {
+            return res.status(400).json({
+                status: false,
+                message: err.message || "Profile photo upload failed.",
+            });
+        }
+        next();
+    });
+};
+
+const emptyToNull = (value) => {
+    if (value === undefined || value === null || String(value).trim() === "") return null;
+    return String(value).trim();
+};
 
 const SUPER_ADMIN_ROLL_ID = 1;
 
@@ -47,15 +83,28 @@ AdminUserRouter.get('/getAdminManageUser', authenticateToken, isSuperAdmin, asyn
 
         const results = await helper.query(`
         SELECT
-            user_id AS id,
-            first_name AS fname,
-            last_name AS lname,
-            user_name AS username,
-            user_email AS email,
-            mobile AS mobileno,
-            roll AS userroll,
-            COALESCE(is_active, 1) AS is_active
-        FROM user
+            u.user_id AS id,
+            u.first_name AS fname,
+            u.last_name AS lname,
+            u.user_name AS username,
+            u.user_email AS email,
+            u.mobile AS mobileno,
+            u.roll AS userroll,
+            COALESCE(u.is_active, 1) AS is_active,
+            u.department,
+            u.designation,
+            u.profile_image,
+            DATE_FORMAT(u.joining_date, '%Y-%m-%d') AS joining_date,
+            u.created_by,
+            DATE_FORMAT(u.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+            DATE_FORMAT(u.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at,
+            COALESCE(
+                NULLIF(TRIM(CONCAT(COALESCE(cb.first_name, ''), ' ', COALESCE(cb.last_name, ''))), ''),
+                cb.user_name,
+                '-'
+            ) AS created_by_name
+        FROM user u
+        LEFT JOIN user cb ON u.created_by = cb.user_id
     `);
 
         const Data = results.map((row) => ({
@@ -103,8 +152,8 @@ AdminUserRouter.get('/getAdminManageUser', authenticateToken, isSuperAdmin, asyn
 //     );
 // });
 
-AdminUserRouter.post('/admin-manage-user', authenticateToken, isSuperAdmin, async (req, res) => {
-    const { id, fname, lname, username, email, mobileno, userroll, password, is_active } = req.body;
+AdminUserRouter.post('/admin-manage-user', authenticateToken, isSuperAdmin, handleProfileUpload, async (req, res) => {
+    const { id, fname, lname, username, email, mobileno, userroll, password, is_active, department, designation, joining_date } = req.body;
     const activeVal =
         is_active === undefined || is_active === null || is_active === ""
             ? 1
@@ -119,7 +168,12 @@ AdminUserRouter.post('/admin-manage-user', authenticateToken, isSuperAdmin, asyn
             return res.status(400).json({ status: false, message: validationError });
         }
 
-        if (id && id !== 0) {
+        const departmentVal = emptyToNull(department);
+        const designationVal = emptyToNull(designation);
+        const joiningDateVal = emptyToNull(joining_date);
+        const profileImageVal = req.file ? `/uploads/profiles/${req.file.filename}` : null;
+
+        if (id && Number(id) !== 0) {
             await helper.runInTransaction(async (q) => {
                 const rows = await q("SELECT * FROM user WHERE user_id = ?", [id]);
                 const oldRow = rows[0] || null;
@@ -149,15 +203,22 @@ AdminUserRouter.post('/admin-manage-user', authenticateToken, isSuperAdmin, asyn
                     }
                 }
 
+                const extraSet = ["department = ?", "designation = ?", "joining_date = ?"];
+                const extraParams = [departmentVal, designationVal, joiningDateVal];
+                if (profileImageVal) {
+                    extraSet.push("profile_image = ?");
+                    extraParams.push(profileImageVal);
+                }
+
                 if (password && password.trim() !== "") {
                     await q(
-                        `UPDATE user SET first_name = ?, last_name = ?, user_name = ?, user_email = ?, mobile = ?, roll = ?, pass = ?, is_active = ? WHERE user_id = ?`,
-                        [fname, lname, username, email, mobileno, userroll, md5(password), activeVal, id],
+                        `UPDATE user SET first_name = ?, last_name = ?, user_name = ?, user_email = ?, mobile = ?, roll = ?, pass = ?, is_active = ?, ${extraSet.join(", ")} WHERE user_id = ?`,
+                        [fname, lname, username, email, mobileno, userroll, md5(password), activeVal, ...extraParams, id],
                     );
                 } else {
                     await q(
-                        `UPDATE user SET first_name = ?, last_name = ?, user_name = ?, user_email = ?, mobile = ?, roll = ?, is_active = ? WHERE user_id = ?`,
-                        [fname, lname, username, email, mobileno, userroll, activeVal, id],
+                        `UPDATE user SET first_name = ?, last_name = ?, user_name = ?, user_email = ?, mobile = ?, roll = ?, is_active = ?, ${extraSet.join(", ")} WHERE user_id = ?`,
+                        [fname, lname, username, email, mobileno, userroll, activeVal, ...extraParams, id],
                     );
                 }
 
@@ -180,8 +241,8 @@ AdminUserRouter.post('/admin-manage-user', authenticateToken, isSuperAdmin, asyn
 
         const insertId = await helper.runInTransaction(async (q) => {
             const result = await q(
-                `INSERT INTO user (first_name, last_name, user_name, user_email, mobile, roll, pass, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                [fname, lname, username, email, mobileno, userroll, md5(password), activeVal],
+                `INSERT INTO user (first_name, last_name, user_name, user_email, mobile, roll, pass, is_active, department, designation, joining_date, profile_image, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [fname, lname, username, email, mobileno, userroll, md5(password), activeVal, departmentVal, designationVal, joiningDateVal, profileImageVal, req.user?.user_id || null],
             );
             const newRows = await q(
                 "SELECT user_id, first_name, last_name, user_name, user_email, mobile, roll, is_active FROM user WHERE user_id = ?",

@@ -1,12 +1,14 @@
-import { Edit2, Trash2, Plus, Search } from "lucide-react";
+import { Edit2, Trash2, Plus, Search, FileUp } from "lucide-react";
 import { Table, Button, Input, Space, Card, Typography } from "antd";
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { AppstoreOutlined } from "@ant-design/icons";
 import useThemeColors from "../../../hooks/useThemeColors";
 import useTableBodyScrollHeight from "../../../hooks/useTableBodyScrollHeight";
 import PageHeroHeader from "../PageHeroHeader";
 import useTableSkeleton from "../skeleton/useTableSkeleton";
 import styles from "../../../assets/scss/pages/master/company.module.scss";
+import { exportReportToExcel } from "../../../utils/reportExcelExport";
+import { toastSuccess } from "../../../utils/toastNotify";
 
 const { Text } = Typography;
 
@@ -84,6 +86,38 @@ const MasterListTable = ({
         return record[rowKey] ?? `row-${index}`;
     };
 
+    const [exporting, setExporting] = useState(false);
+
+    const handleExportExcel = async () => {
+        if (!safeDataSource || !safeDataSource.length) return;
+        setExporting(true);
+        try {
+            const exportHeaders = columns
+                .map((col, idx) => ({
+                    title: typeof col.title === 'string' ? col.title : (col.key || `Col_${idx}`),
+                    key: col.dataIndex || col.key || `col_${idx}`,
+                    width: col.width ? Math.min(30, Math.max(12, Math.floor(col.width / 5))) : 20,
+                }))
+                .filter(h => h.title && h.title !== "Edit / Delete" && h.key !== "action");
+
+            await exportReportToExcel({
+                headers: exportHeaders.length ? exportHeaders : [
+                    { title: "ID", key: "id", width: 10 },
+                    { title: "Name", key: "name", width: 25 },
+                    { title: "Description", key: "description", width: 30 }
+                ],
+                rows: safeDataSource,
+                fileName: `${title.replace(/\s+/g, "_")}_Export`,
+                sheetName: title.slice(0, 31),
+            });
+            toastSuccess(`Exported ${safeDataSource.length} ${title} record(s) to Excel.`);
+        } catch (err) {
+            console.error("Master Export Failed:", err);
+        } finally {
+            setExporting(false);
+        }
+    };
+
     return (
         <div className={styles.pageWrapper}>
             <Card variant="none" className={styles.cardContainer}>
@@ -101,6 +135,14 @@ const MasterListTable = ({
                                 onChange={(e) => onSearchChange?.(e.target.value)}
                                 allowClear
                             />
+                            <Button
+                                icon={<FileUp size={16} />}
+                                loading={exporting}
+                                onClick={handleExportExcel}
+                                disabled={!safeDataSource.length}
+                            >
+                                Export Excel
+                            </Button>
                             {!hideCrudActions && (
                                 <Button
                                     type="primary"

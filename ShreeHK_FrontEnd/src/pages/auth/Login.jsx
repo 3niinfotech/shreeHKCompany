@@ -4,7 +4,7 @@ import loginImage from "../../assets/Gemini_Generated_Image.png";
 import brandLockup from "../../assets/Brand_Logo/oneline_logo.png";
 import styles from '../../assets/scss/pages/login.module.scss';
 import { toastApiError } from '../../utils/apiToast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { usePostApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../constants/endpoints';
 import useAuthStore from '../../store/Auth.Store';
@@ -15,6 +15,7 @@ const { Title, Text } = Typography;
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const login = useAuthStore((state) => state.login);
   const setShowContextPicker = useAuthStore((state) => state.setShowContextPicker);
   const { mutate: loginUser, isPending } = usePostApiRequest(ENDPOINTS.auth.login, null, { showToast: false });
@@ -27,7 +28,14 @@ const Login = () => {
         if (data?.token) {
           login(data.user, data.token, {});
           setShowContextPicker(true);
-          navigate(getPostLoginPath(useAuthStore.getState().user));
+          const fromLoc = location.state?.from;
+          const fromPath = fromLoc?.pathname
+            ? `${fromLoc.pathname}${fromLoc.search || ""}`
+            : null;
+          const target = fromPath && fromPath !== "/forbidden" && fromPath !== "/auth/login"
+            ? fromPath
+            : getPostLoginPath(useAuthStore.getState().user);
+          navigate(target, { replace: true });
         }
       },
       onError: (err) => {

@@ -1,3 +1,5 @@
+import useAuthStore from "../store/Auth.Store";
+
 const fmtDate = (value) => {
   if (!value) return "—";
   const str = String(value);
@@ -44,6 +46,8 @@ export function mapTransactionToInvoice(record, options = {}) {
     footerNote = "Receive the above goods as per condition overleaf.",
   } = options;
 
+  const authState = typeof window !== "undefined" ? useAuthStore?.getState?.() || {} : {};
+
   const allProducts = Array.isArray(record?.products) ? record.products : [];
   const products =
     Array.isArray(productIds) && productIds.length
@@ -67,9 +71,32 @@ export function mapTransactionToInvoice(record, options = {}) {
   };
 
   const companyPayload = {
+    name: company.name || company.company_name || company.companyName || authState.companyName,
+    company_name: company.company_name || company.name || authState.companyName,
+    shortcutName: company.shortcutName || authState.companyShortcutName,
+    logo: company.logo || company.logoUrl || authState.companyLogo || null,
+    logoUrl: company.logoUrl || company.logo || authState.companyLogo || null,
+    address: company.address || company.companyAddress || authState.companyAddress || null,
+    companyAddress: company.companyAddress || company.address || authState.companyAddress || null,
+    number: company.number || company.companyNumber || company.tel || authState.companyNumber || null,
+    companyNumber: company.companyNumber || company.number || authState.companyNumber || null,
+    city: company.city || company.companyCity || authState.companyCity || null,
+    companyCity: company.companyCity || company.city || authState.companyCity || null,
+    state: company.state || company.companyState || authState.companyState || null,
+    companyState: company.companyState || company.state || authState.companyState || null,
+    pincode: company.pincode || company.companyPincode || authState.companyPincode || null,
+    companyPincode: company.companyPincode || company.pincode || authState.companyPincode || null,
+    country: company.country || company.companyCountry || authState.companyCountry || null,
+    companyCountry: company.companyCountry || company.country || authState.companyCountry || null,
+    email: company.email || company.companyEmail || authState.companyEmail || null,
+    companyEmail: company.companyEmail || company.email || authState.companyEmail || null,
+    website: company.website || company.companyWebsite || authState.companyWebsite || null,
+    companyWebsite: company.companyWebsite || company.website || authState.companyWebsite || null,
+    rapnetId: company.rapnetId || company.companyRapnetId || company.rapnet_id || authState.companyRapnetId || null,
+    companyRapnetId: company.companyRapnetId || company.rapnetId || authState.companyRapnetId || null,
+    skype: company.skype || company.companySkype || company.skype_id || company.skypeId || authState.companySkypeId || authState.companySkype || null,
+    companySkype: company.companySkype || company.skype || authState.companySkypeId || null,
     ...company,
-    logo: company.logo || company.logoUrl || null,
-    logoUrl: company.logoUrl || company.logo || null,
   };
 
   return {

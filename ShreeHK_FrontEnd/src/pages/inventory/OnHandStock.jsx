@@ -272,24 +272,22 @@ const OnHandStock = () => {
                 return;
             }
             if (key === "export") {
-                submitExport(selectedRowKeys, {
-                    fileName: "Defult_Stock_List",
-                    sheetName: "Stock List",
-                });
+                const selectedSet = new Set(selectedRowKeys.map(String));
+                const exportRows = tableData.filter((row) => selectedSet.has(String(row.id)));
+                submitExport(selectedRowKeys, { sheetName: "Export" }, exportRows);
                 return;
             }
             if (key === "iExport") {
-                submitIExport(selectedRowKeys, {
-                    fileName: "Import_Format",
-                    format: "xlsx",
-                });
+                const selectedSet = new Set(selectedRowKeys.map(String));
+                const exportRows = tableData.filter((row) => selectedSet.has(String(row.id)));
+                submitIExport(selectedRowKeys, { sheetName: "Export" }, exportRows);
                 return;
             }
             if (key === "mail") {
                 setBulkActionModal({ open: true, actionKey: "mail" });
             }
         },
-        [selectedRowKeys, submitExport, submitIExport]
+        [selectedRowKeys, submitExport, submitIExport, tableData]
     );
 
     return (
