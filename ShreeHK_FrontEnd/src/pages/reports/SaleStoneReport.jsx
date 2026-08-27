@@ -14,6 +14,33 @@ import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
 import { SkuLink } from '../../hooks/useSkuModalAction';
 import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
 
+const TYPE_OPTIONS = [
+    { value: 'sale', label: 'Sale' },
+    { value: 'purchase', label: 'Purchase' },
+];
+
+const detailOfGoods = (row) => [row.shape, row.color, row.clarity].filter(Boolean).join(' ');
+
+const SALE_EXCEL_HEADERS = [
+    { title: 'No', key: 'no', width: 6, align: 'center' },
+    { title: 'SKU', key: 'sku', width: 14, align: 'center' },
+    { title: 'Date', key: 'out_date', width: 14, align: 'center' },
+    { title: 'GIA/NOGIA', key: 'lab', width: 12, align: 'center' },
+    { title: 'Invoice No', key: 'invoiceno', width: 14, align: 'center' },
+    { title: 'Detail Of Goods', key: 'detail_of_goods', width: 22, align: 'center', accessor: detailOfGoods },
+    { title: 'Pcs', key: 'polish_pcs', width: 8, align: 'center', type: 'n', total: true, decimals: 0 },
+    { title: 'Cts', key: 'polish_carat', width: 10, align: 'center', type: 'n', total: true, decimals: 3 },
+    { title: 'Price', key: 'sell_price', width: 12, align: 'center', type: 'n', total: true, decimals: 2 },
+    { title: 'Amount', key: 'sell_amount', width: 14, align: 'center', type: 'n', total: true, decimals: 2 },
+    { title: 'Term', key: 'terms', width: 12, align: 'center' },
+    { title: 'Due Date', key: 'due_date', width: 14, align: 'center' },
+    { title: 'Party', key: 'party', width: 36, align: 'center', accessor: (row) => String(row.party || '').toUpperCase() },
+    { title: 'Rec Amt', key: 'paid_amount', width: 12, align: 'center', type: 'n', total: true, decimals: 2, accessor: (row) => Number(row.paid_amount ?? 0) },
+    { title: 'Rec Date', key: 'received_date', width: 14, align: 'center', accessor: (row) => row.received_date || '' },
+    { title: 'Rec Bank', key: 'received_book', width: 14, align: 'center', accessor: (row) => row.received_book || '' },
+    { title: 'Remarks', key: 'remark', width: 16, align: 'center', accessor: (row) => row.remark || '' },
+];
+
 const SaleStoneReport = () => {
     const [form] = Form.useForm();
     const [tableData, setTableData] = useState([]);
@@ -35,7 +62,7 @@ const SaleStoneReport = () => {
     const handleSearch = () => {
         const v = form.getFieldsValue();
         fetchReport({
-            type: 'sale',
+            type: v.type || 'sale',
             party: v.party || '',
             invoice: (v.invoiceNo || '').trim(),
             cfrom: v.fromDate ? dayjs(v.fromDate).format('YYYY-MM-DD') : '',
@@ -79,12 +106,6 @@ const SaleStoneReport = () => {
     const tableRef = useRef(null);
     const tableHeight = useTableBodyScrollHeight(tableRef, [tableData.length, tableLoading]);
 
-    const exportHeaders = columns.map((c) => ({
-        title: c.title,
-        key: c.dataIndex || c.title,
-        width: 14,
-    }));
-
     const handleExport = async () => {
         if (!tableData.length) {
             toastWarning('Run search first — no data to export.');
@@ -92,11 +113,15 @@ const SaleStoneReport = () => {
         }
         setExporting(true);
         try {
+            const isPurchase = form.getFieldValue('type') === 'purchase';
+            const title = isPurchase ? 'Purchase Stone Report' : 'Sale Stone Report';
             await exportReportToExcel({
-                headers: exportHeaders,
+                headers: SALE_EXCEL_HEADERS,
                 rows: tableData,
-                fileName: 'sale_stock_report',
-                sheetName: 'Sale Stock',
+                fileName: isPurchase ? 'purchase_stone_report' : 'sale_stone_report',
+                sheetName: title,
+                title,
+                totals: true,
             });
             toastSuccess('Exported to Excel');
         } catch (err) {
@@ -140,8 +165,15 @@ const SaleStoneReport = () => {
                 )}
             >
                 <div className={`${filterPanelStyles.filterInlineRow} ${styles.saleStockFilterForm}`}>
-                    <Form form={form}>
+                    <Form form={form} initialValues={{ type: 'sale' }}>
                         <div className={styles.filterFieldsFlex}>
+                            <Form.Item name="type" className={styles.filterItem}>
+                                <Select
+                                    placeholder="Type"
+                                    options={TYPE_OPTIONS}
+                                    className={styles.fieldDate}
+                                />
+                            </Form.Item>
                             <Form.Item name="party" className={styles.filterItem}>
                                 <Select
                                     allowClear

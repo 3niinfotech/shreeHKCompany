@@ -1,10 +1,9 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { Button, Card, Form } from 'antd';
+import { Button, Card, Form, Select, DatePicker } from 'antd';
 import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
 import { FileUp } from 'lucide-react';
 import dayjs from 'dayjs';
 import useFormHandleChange from '../../hooks/useFormHandleChange';
-import DynamicForm from '../../hooks/DynamicFormField';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../constants/endpoints';
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
@@ -48,15 +47,6 @@ const GroupReport = () => {
         const list = filterOpts?.Data?.subGroups || [];
         return [{ value: '', label: 'All Sub Group' }, ...list];
     }, [filterOpts]);
-
-    const filterFields = [
-        { name: 'reportType', label: '', type: 'select', span: 3, placeholder: 'Report Type', options: REPORT_TYPES },
-        { name: 'mainGroup', label: '', type: 'select', span: 3, placeholder: 'All Main Group', options: mainGroupOptions },
-        { name: 'subGroup', label: '', type: 'select', span: 3, placeholder: 'All Sub Group', options: subGroupOptions },
-        { name: 'company', label: '', type: 'select', span: 3, placeholder: 'All Company', options: companyOptions },
-        { name: 'fromDate', label: '', type: 'date', span: 3.4, placeholder: 'From Date' },
-        { name: 'toDate', label: '', type: 'date', span: 3.4, placeholder: 'To Date' },
-    ];
 
     const handleSearch = () => {
         const v = form.getFieldsValue();
@@ -111,7 +101,39 @@ const GroupReport = () => {
     const tableRef = useRef(null);
     const tableHeight = useTableBodyScrollHeight(tableRef, [tableData.length, tableLoading]);
 
-    const exportHeaders = columns.map((c) => ({ title: c.title, key: c.key, width: 14 }));
+    const toUsDate = (value) => {
+        if (!value) return '';
+        const s = String(value).trim();
+        const m = s.match(/^(\d{1,2})[/\-](\d{1,2})[/\-](\d{2,4})$/);
+        if (m) {
+            const dd = m[1].padStart(2, '0');
+            const mm = m[2].padStart(2, '0');
+            const yyyy = m[3].length === 2 ? `20${m[3]}` : m[3];
+            return `${mm}-${dd}-${yyyy}`;
+        }
+        const d = dayjs(s);
+        return d.isValid() ? d.format('MM-DD-YYYY') : s;
+    };
+
+    const exportHeaders = [
+        { title: 'US Date', key: 'usDate', width: 12, accessor: (row) => toUsDate(row.date) },
+        { title: 'Date', key: 'date', width: 12 },
+        { title: 'Invoice', key: 'invoice', width: 12 },
+        { title: 'Sku', key: 'sku', width: 16 },
+        { title: 'Lab', key: 'lab', width: 8 },
+        { title: 'Report No', key: 'reportNo', width: 16, accessor: (row) => (row.reportNo != null && row.reportNo !== '' ? String(row.reportNo) : '') },
+        { title: 'P.Pcs', key: 'pcs', width: 8, type: 'n', total: true, decimals: 0 },
+        { title: 'P.Carat', key: 'carat', width: 10, type: 'n', total: true, decimals: 3 },
+        { title: 'Price', key: 'price', width: 12, type: 'n', total: true, decimals: 2 },
+        { title: 'Amount', key: 'amount', width: 14, type: 'n', total: true, decimals: 2 },
+        { title: 'Shape', key: 'shape', width: 12 },
+        { title: 'Color', key: 'color', width: 10 },
+        { title: 'Clarity', key: 'clarity', width: 10 },
+        { title: 'Company', key: 'company', width: 36 },
+        { title: 'Remark', key: 'remark', width: 16 },
+        { title: 'Main Group', key: 'mainGroup', width: 14 },
+        { title: 'Sub_group', key: 'subGroup', width: 16 },
+    ];
 
     const handleExport = async () => {
         if (!tableData.length) {
@@ -125,6 +147,8 @@ const GroupReport = () => {
                 rows: tableData,
                 fileName: 'group_report',
                 sheetName: 'Group',
+                title: 'Group Report',
+                totals: true,
             });
             toastSuccess('Exported to Excel');
         } catch (err) {
@@ -173,9 +197,53 @@ const GroupReport = () => {
                     </>
                 }
             >
-                <div className={filterPanelStyles.filterFormWide}>
+                <div className={`${filterPanelStyles.filterInlineRow} ${styles.saleStockFilterForm}`}>
                     <Form form={form} initialValues={{ reportType: 'memo', company: '0' }}>
-                        <DynamicForm fields={filterFields} />
+                        <div className={styles.filterFieldsFlex}>
+                            <Form.Item name="reportType" className={styles.filterItem}>
+                                <Select
+                                    placeholder="Report Type"
+                                    options={REPORT_TYPES}
+                                    className={styles.fieldDate}
+                                />
+                            </Form.Item>
+                            <Form.Item name="mainGroup" className={styles.filterItem}>
+                                <Select
+                                    allowClear
+                                    showSearch
+                                    placeholder="All Main Group"
+                                    options={mainGroupOptions}
+                                    optionFilterProp="label"
+                                    className={styles.fieldDate}
+                                />
+                            </Form.Item>
+                            <Form.Item name="subGroup" className={styles.filterItem}>
+                                <Select
+                                    allowClear
+                                    showSearch
+                                    placeholder="All Sub Group"
+                                    options={subGroupOptions}
+                                    optionFilterProp="label"
+                                    className={styles.fieldDate}
+                                />
+                            </Form.Item>
+                            <Form.Item name="company" className={styles.filterItem}>
+                                <Select
+                                    allowClear
+                                    showSearch
+                                    placeholder="All Company"
+                                    options={companyOptions}
+                                    optionFilterProp="label"
+                                    className={styles.fieldDate}
+                                />
+                            </Form.Item>
+                            <Form.Item name="fromDate" className={styles.filterItem}>
+                                <DatePicker placeholder="From Date" className={styles.fieldDate} />
+                            </Form.Item>
+                            <Form.Item name="toDate" className={styles.filterItem}>
+                                <DatePicker placeholder="To Date" className={styles.fieldDate} />
+                            </Form.Item>
+                        </div>
                     </Form>
                 </div>
             </AdvancedFilterPanel>
