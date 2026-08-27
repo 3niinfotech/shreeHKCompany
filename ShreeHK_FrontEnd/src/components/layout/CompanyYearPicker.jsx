@@ -107,6 +107,60 @@ const YearHeaderArt = () => (
   </svg>
 );
 
+/** Custom hook to detect prefers-reduced-motion preference */
+const usePrefersReducedMotion = () => {
+  const [reducedMotion, setReducedMotion] = useState(() => {
+    if (typeof window !== "undefined" && window.matchMedia) {
+      return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const handler = (e) => setReducedMotion(e.matches);
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener("change", handler);
+      return () => mediaQuery.removeEventListener("change", handler);
+    }
+  }, []);
+
+  return reducedMotion;
+};
+
+/** Hook to animate text character-by-character */
+const useTypewriter = (text, speed = 25, enabled = true) => {
+  const [displayedText, setDisplayedText] = useState(enabled ? "" : text);
+  const [isTyping, setIsTyping] = useState(enabled);
+
+  useEffect(() => {
+    if (!enabled || !text) {
+      setDisplayedText(text || "");
+      setIsTyping(false);
+      return;
+    }
+
+    setDisplayedText("");
+    setIsTyping(true);
+    let i = 0;
+
+    const timer = setInterval(() => {
+      i++;
+      if (i <= text.length) {
+        setDisplayedText(text.slice(0, i));
+      } else {
+        setIsTyping(false);
+        clearInterval(timer);
+      }
+    }, speed);
+
+    return () => clearInterval(timer);
+  }, [text, speed, enabled]);
+
+  return { displayedText, isTyping };
+};
+
 const CompanyYearPicker = ({ open, onClose, force = false }) => {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
@@ -125,6 +179,23 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
   const user = useAuthStore((s) => s.user);
   const activeCompanyId = useAuthStore((s) => s.companyId);
   const activeYearId = useAuthStore((s) => s.yearId);
+  const reducedMotion = usePrefersReducedMotion();
+
+  const titleTextTarget = selectedCompany ? "Select Financial Year" : "Select Company";
+  const titleSubtextTarget = selectedCompany
+    ? `Company : ${selectedCompany.companyName}`
+    : "Choose your company to continue";
+
+  const { displayedText: titleText, isTyping: titleTyping } = useTypewriter(
+    titleTextTarget,
+    26,
+    open && !loading && !reducedMotion
+  );
+  const { displayedText: titleSubtext } = useTypewriter(
+    titleSubtextTarget,
+    14,
+    open && !loading && !reducedMotion
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -153,14 +224,6 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
         });
 
         setCompanyOptions(companies);
-        // const seen = new Set();
-        // const rows = rowsRaw.filter((item) => {
-        //   const key = `${String(item.companyName || "").trim().toLowerCase()}::${String(item.yearLabel || "").trim().toLowerCase()}`;
-        //   if (!key || seen.has(key)) return false;
-        //   seen.add(key);
-        //   return true;
-        // });
-        // setOptions(rows);
 
         if (rows.length === 0) {
           toastApiError({ response: { data: res.data } });
@@ -200,21 +263,13 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
       const { token: newToken, Data } = res.data || {};
       if (newToken) {
         login(user, newToken, {
-          companyId: Data.companyId,
-          yearId: Data.yearId,
-          companyName: Data.companyName,
-          companyShortcutName: Data.companyShortcutName,
+          ...Data,
           companyLogo: Data.companyLogo || null,
-          dbName: Data.dbName,
         });
       } else {
         setSessionContext({
-          companyId: Data.companyId,
-          yearId: Data.yearId,
-          companyName: Data.companyName,
-          companyShortcutName: Data.companyShortcutName,
+          ...Data,
           companyLogo: Data.companyLogo || null,
-          dbName: Data.dbName,
         });
       }
       try {
@@ -246,12 +301,11 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
       </div>
       <div className={styles.titleTextWrap}>
         <div className={styles.titleText}>
-          {selectedCompany ? "Select Financial Year" : "Select Company"}
+          <span>{titleText}</span>
+          {titleTyping && <span className={styles.typewriterCursor} />}
         </div>
-        <Text className={styles.titleSubtext}>
-          {selectedCompany
-            ? `Company : ${selectedCompany.companyName}`
-            : "Choose your company to continue"}
+        <Text className={`${styles.titleSubtext} ${titleSubtext ? styles.titleSubtextVisible : ""}`}>
+          {titleSubtext}
         </Text>
       </div>
       {selectedCompany ? <YearHeaderArt /> : <CompanyHeaderArt />}
@@ -279,23 +333,10 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
       ) : options.length === 0 ? (
         <Empty description="No company/year mapping found" className={styles.emptyState} />
       ) : (
-        <>
-          {selectedCompany && (
-            <div className={styles.backWrapper}>
-              <button
-                type="button"
-                className={styles.backButton}
-                onClick={() => setSelectedCompany(null)}
-              >
-                <ArrowLeftOutlined />
-                <span>Back to Companies</span>
-              </button>
-            </div>
-          )}
-
+        <div className={styles.modalBodyContent}>
           {!selectedCompany && (
-            <div className={styles.companyGrid}>
-              {companyOptions.map((item) => {
+            <div className={styles.companyGrid} key="company-grid">
+              {companyOptions.map((item, index) => {
                 const isActive = activeCompanyId != null
                   && String(item.companyId) === String(activeCompanyId);
 
@@ -303,6 +344,7 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
                   <button
                     key={item.companyId}
                     type="button"
+                    style={{ "--card-index": Math.min(index, 6) }}
                     className={`${styles.companyCard} ${isActive ? styles.companyCardActive : ""}`}
                     onClick={() => handleCompanySelect(item)}
                     aria-label={`Select ${item.companyName}`}
@@ -337,9 +379,20 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
           )}
 
           {selectedCompany && (
-            <>
+            <div className={styles.yearViewWrapper} key={`year-view-${selectedCompany.companyId}`}>
+              <div className={styles.backWrapper}>
+                <button
+                  type="button"
+                  className={styles.backButton}
+                  onClick={() => setSelectedCompany(null)}
+                >
+                  <ArrowLeftOutlined />
+                  <span>Back to Companies</span>
+                </button>
+              </div>
+
               <div className={styles.yearGrid}>
-                {yearOptions.map((item) => {
+                {yearOptions.map((item, index) => {
                   const isSelecting = selectingKey === `${item.companyId}-${item.yearId}`;
                   const meta = getYearMeta(item);
                   const isActive = activeYearId != null
@@ -351,6 +404,7 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
                       key={item.yearId}
                       type="button"
                       disabled={Boolean(selectingKey)}
+                      style={{ "--card-index": Math.min(index, 6) }}
                       className={`${styles.yearCard} ${isActive ? styles.yearCardActive : ""} ${isSelecting ? styles.yearCardSelecting : ""}`}
                       onClick={() => selectContext(item)}
                       aria-label={`Select fiscal year ${item.yearLabel}`}
@@ -401,9 +455,9 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
                 <SafetyOutlined />
                 <span>Your data is safe and secure with end-to-end encryption</span>
               </div>
-            </>
+            </div>
           )}
-        </>
+        </div>
       )}
     </Modal>
   );

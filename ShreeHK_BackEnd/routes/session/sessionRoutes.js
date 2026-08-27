@@ -126,14 +126,21 @@ sessionRouter.post("/session/context", authenticateToken, async (req, res) => {
     let companies;
     try {
       companies = await metaQuery(
-        "SELECT id, name, shortcutName, logo FROM company WHERE id = ? LIMIT 1",
+        "SELECT id, name, shortcutName, logo, address, number, city, state, pincode, country, email, website, rapnet_id, skype FROM company WHERE id = ? LIMIT 1",
         [companyId]
       );
     } catch {
-      companies = await metaQuery(
-        "SELECT id, name, shortcutName FROM company WHERE id = ? LIMIT 1",
-        [companyId]
-      );
+      try {
+        companies = await metaQuery(
+          "SELECT id, name, shortcutName, logo, address, number, city, state, pincode, country, email, website, rapnet_id FROM company WHERE id = ? LIMIT 1",
+          [companyId]
+        );
+      } catch {
+        companies = await metaQuery(
+          "SELECT id, name, shortcutName FROM company WHERE id = ? LIMIT 1",
+          [companyId]
+        );
+      }
     }
     if (!companies.length) {
       return res.status(404).json({
@@ -153,6 +160,8 @@ sessionRouter.post("/session/context", authenticateToken, async (req, res) => {
       dbName,
     });
 
+    const comp = companies[0] || {};
+
     res.status(200).json({
       status: true,
       Message: "Session context updated",
@@ -161,9 +170,21 @@ sessionRouter.post("/session/context", authenticateToken, async (req, res) => {
         companyId,
         yearId: yearId || null,
         dbName,
-        companyName: companies[0].name,
-        companyShortcutName: companies[0].shortcutName || null,
-        companyLogo: companies[0].logo || null,
+        companyName: comp.name,
+        companyShortcutName: comp.shortcutName || null,
+        companyLogo: comp.logo || null,
+        companyAddress: comp.address || null,
+        companyNumber: comp.number || null,
+        companyTel: comp.number || null,
+        companyCity: comp.city || null,
+        companyState: comp.state || null,
+        companyPincode: comp.pincode || null,
+        companyCountry: comp.country || null,
+        companyEmail: comp.email || null,
+        companyWebsite: comp.website || null,
+        companyRapnetId: comp.rapnet_id || null,
+        companySkypeId: comp.skype || comp.skype_id || comp.skypeId || null,
+        companySkype: comp.skype || comp.skype_id || comp.skypeId || null,
       },
     });
   } catch (err) {

@@ -19,6 +19,15 @@ const useAuthStore = create(
       companyName: null,
       companyShortcutName: null,
       companyLogo: null,
+      companyAddress: null,
+      companyNumber: null,
+      companyCity: null,
+      companyState: null,
+      companyPincode: null,
+      companyCountry: null,
+      companyEmail: null,
+      companyWebsite: null,
+      companyRapnetId: null,
       dbName: null,
       showContextPicker: false,
       lastActiveAt: null,
@@ -59,13 +68,41 @@ const useAuthStore = create(
           companyName: context.companyName ?? user?.company_name ?? get().companyName ?? null,
           companyShortcutName: context.companyShortcutName ?? get().companyShortcutName ?? null,
           companyLogo: context.companyLogo ?? get().companyLogo ?? null,
+          companyAddress: context.companyAddress ?? get().companyAddress ?? null,
+          companyNumber: context.companyNumber ?? context.companyTel ?? get().companyNumber ?? null,
+          companyCity: context.companyCity ?? get().companyCity ?? null,
+          companyState: context.companyState ?? get().companyState ?? null,
+          companyPincode: context.companyPincode ?? get().companyPincode ?? null,
+          companyCountry: context.companyCountry ?? get().companyCountry ?? null,
+          companyEmail: context.companyEmail ?? get().companyEmail ?? null,
+          companyWebsite: context.companyWebsite ?? get().companyWebsite ?? null,
+          companyRapnetId: context.companyRapnetId ?? get().companyRapnetId ?? null,
           dbName: context.dbName ?? get().dbName ?? null,
           showContextPicker: context.showContextPicker ?? get().showContextPicker ?? false,
           lastActiveAt: Date.now(),
         });
       },
 
-      setSessionContext: ({ token, companyId, yearId, companyName, companyShortcutName, companyLogo, dbName }) => {
+      setSessionContext: (context = {}) => {
+        const {
+          token,
+          companyId,
+          yearId,
+          companyName,
+          companyShortcutName,
+          companyLogo,
+          companyAddress,
+          companyNumber,
+          companyTel,
+          companyCity,
+          companyState,
+          companyPincode,
+          companyCountry,
+          companyEmail,
+          companyWebsite,
+          companyRapnetId,
+          dbName,
+        } = context;
         const updates = {};
         if (token) updates.token = token;
         if (companyId != null) updates.companyId = companyId;
@@ -73,6 +110,15 @@ const useAuthStore = create(
         if (companyName != null) updates.companyName = companyName;
         if (companyShortcutName != null) updates.companyShortcutName = companyShortcutName;
         if (companyLogo !== undefined) updates.companyLogo = companyLogo;
+        if (companyAddress !== undefined) updates.companyAddress = companyAddress;
+        if (companyNumber !== undefined || companyTel !== undefined) updates.companyNumber = companyNumber ?? companyTel;
+        if (companyCity !== undefined) updates.companyCity = companyCity;
+        if (companyState !== undefined) updates.companyState = companyState;
+        if (companyPincode !== undefined) updates.companyPincode = companyPincode;
+        if (companyCountry !== undefined) updates.companyCountry = companyCountry;
+        if (companyEmail !== undefined) updates.companyEmail = companyEmail;
+        if (companyWebsite !== undefined) updates.companyWebsite = companyWebsite;
+        if (companyRapnetId !== undefined) updates.companyRapnetId = companyRapnetId;
         if (dbName != null) updates.dbName = dbName;
         set(updates);
       },

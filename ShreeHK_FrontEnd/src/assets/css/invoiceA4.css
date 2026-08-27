@@ -8,6 +8,8 @@
   min-height: 297mm;
   max-width: 100%;
   margin: 0 auto;
+  padding: 8mm 0mm 6mm 0mm;
+  box-sizing: border-box;
 }
 
 @media print {

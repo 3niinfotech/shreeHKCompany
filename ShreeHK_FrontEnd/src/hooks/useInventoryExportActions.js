@@ -1,6 +1,8 @@
 import { useCallback, useState } from "react";
 import { postInventoryExport } from "../api/services/productService";
 import { pickApiMessage, toastApiError } from "../utils/apiToast";
+import { toastSuccess, toastWarning } from "../utils/toastNotify";
+import { exportVenyaInventoryExcel } from "../utils/venyaInventoryExcelExport";
 
 const parseBlobError = async (error) => {
   const blob = error?.response?.data;
@@ -30,15 +32,28 @@ export default function useInventoryExportActions({ onSuccess } = {}) {
   const [loading, setLoading] = useState(false);
 
   const submitExport = useCallback(
-    async (selectedIds = [], values = {}) => {
-      if (!selectedIds.length) return false;
-
-      const fileName =
-        String(values.fileName || "Defult_Stock_List").trim() || "Defult_Stock_List";
-      const sheetName = String(values.sheetName || "Stock List").trim() || "Stock List";
+    async (selectedIds = [], values = {}, rows = []) => {
+      const exportRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
+      if (!exportRows.length && !selectedIds.length) {
+        toastWarning("Please Select Item");
+        return false;
+      }
 
       setLoading(true);
       try {
+        if (exportRows.length) {
+          const count = await exportVenyaInventoryExcel({
+            rows: exportRows,
+            sheetName: String(values.sheetName || "Export").trim() || "Export",
+          });
+          toastSuccess(`Exported ${count} record(s)`);
+          onSuccess?.();
+          return true;
+        }
+
+        const fileName =
+          String(values.fileName || "Defult_Stock_List").trim() || "Defult_Stock_List";
+        const sheetName = String(values.sheetName || "Stock List").trim() || "Stock List";
         const { blob, fileName: downloadName } = await postInventoryExport({
           ids: selectedIds,
           fileName,
@@ -48,6 +63,10 @@ export default function useInventoryExportActions({ onSuccess } = {}) {
         onSuccess?.();
         return true;
       } catch (error) {
+        if (error?.message === "Please Select Item") {
+          toastWarning(error.message);
+          return false;
+        }
         const msg = await parseBlobError(error);
         if (msg) toastApiError({ response: { data: { message: msg } } });
         else toastApiError(error);

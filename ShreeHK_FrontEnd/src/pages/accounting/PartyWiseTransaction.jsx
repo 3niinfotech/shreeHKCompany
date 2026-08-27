@@ -127,12 +127,17 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
         try {
             const headers = [
                 { title: 'Sr.No', key: 'srNo', accessor: (_, index) => index + 1, width: 8 },
-                { title: 'Group', key: 'under_group', width: 20 },
-                { title: 'Sub Group', key: 'under_subgroup', width: 20 },
+                { title: 'Party Code', key: 'id', width: 12 },
                 { title: 'Party Name', key: 'name', width: 30 },
+                { title: 'Contact Person', key: 'contact_person', width: 20 },
                 { title: 'Contact Number', key: 'contact_number', width: 18 },
+                { title: 'Email', key: 'email', width: 25 },
                 { title: 'Address', key: 'address', width: 35 },
                 { title: 'Country', key: 'country', width: 15 },
+                { title: 'Group', key: 'under_group', width: 20 },
+                { title: 'Sub Group', key: 'under_subgroup', width: 20 },
+                { title: 'GST / Tax No', key: 'tax_no', width: 18 },
+                { title: 'Credit Limit', key: 'credit_limit', width: 15 },
             ];
             await exportReportToExcel({
                 headers,

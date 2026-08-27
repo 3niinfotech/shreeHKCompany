@@ -4,6 +4,10 @@ const manageUserFromAdmin = [
     { type: "input", label: "User Name", name: "username", required: true, span: 12 },
     { type: "input", label: "Email ID", name: "email", required: true, span: 12 },
     { type: "input", label: "Mobile No", name: "mobileno", required: true, span: 12 },
+    { type: "input", label: "Department", name: "department", required: false, span: 12 },
+    { type: "input", label: "Designation", name: "designation", required: false, span: 12 },
+    { type: "date", label: "Joining Date", name: "joining_date", required: false, span: 12 },
+    { type: "upload", label: "Profile Photo", name: "profile_image", required: false, span: 12 },
     {
         type: "select",
         label: "User Role",

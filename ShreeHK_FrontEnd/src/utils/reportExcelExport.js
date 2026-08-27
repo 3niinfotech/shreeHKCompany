@@ -20,8 +20,8 @@ export async function exportReportToExcel({
 
   const aoa = [
     headers.map((h) => h.title),
-    ...rows.map((row) => headers.map((h) => {
-      const val = typeof h.accessor === 'function' ? h.accessor(row) : row[h.key];
+    ...rows.map((row, rowIndex) => headers.map((h) => {
+      const val = typeof h.accessor === 'function' ? h.accessor(row, rowIndex) : row[h.key];
       return val == null ? '' : val;
     })),
   ];

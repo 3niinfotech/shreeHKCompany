@@ -1,4 +1,5 @@
-import { Form, Input, Select, Row, Col, DatePicker, InputNumber, Checkbox } from 'antd';
+import { Form, Input, Select, Row, Col, DatePicker, InputNumber, Checkbox, Upload } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 
 const { TextArea } = Input;
 
@@ -45,6 +46,21 @@ const DynamicForm = ({ fields, forceFullWidth, layout = 'grid' }) => {
                 );
             case 'checkbox':
                 return <Checkbox disabled={field.disabled}>{field.label}</Checkbox>;
+            case 'upload':
+                return (
+                    <Upload
+                        accept={field.accept || 'image/*'}
+                        maxCount={1}
+                        listType="picture-card"
+                        beforeUpload={() => false}
+                        disabled={field.disabled}
+                    >
+                        <div>
+                            <PlusOutlined />
+                            <div style={{ marginTop: 8 }}>{field.uploadText || 'Upload'}</div>
+                        </div>
+                    </Upload>
+                );
             default:
                 return (
                     <Input
@@ -63,6 +79,7 @@ const DynamicForm = ({ fields, forceFullWidth, layout = 'grid' }) => {
             {fields.map((field, index) => {
                 const columnSpan = isStack || forceFullWidth ? 24 : (field.span || 12);
                 const isCheckbox = field.type === 'checkbox';
+                const isUpload = field.type === 'upload';
                 const itemKey = `${field.name ?? 'field'}-${field.label ?? ''}-${index}`;
 
                 return (
@@ -78,7 +95,8 @@ const DynamicForm = ({ fields, forceFullWidth, layout = 'grid' }) => {
                                     )
                                     : null
                             }
-                            valuePropName={isCheckbox ? "checked" : "value"}
+                            valuePropName={isCheckbox ? "checked" : isUpload ? "fileList" : "value"}
+                            getValueFromEvent={isUpload ? (e) => (Array.isArray(e) ? e : e?.fileList) : undefined}
                             rules={[{ required: field.required, message: `${field.label} is required` }]}
                         >
                             {renderInput(field)}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Row, Col, Card, Avatar, Typography, Tabs,
     Form, Input, Button, Divider,
@@ -8,17 +9,21 @@ import {
     UserOutlined, MailOutlined, LockOutlined,
     CameraOutlined, SafetyCertificateOutlined,
     BellOutlined, GlobalOutlined, PhoneOutlined,
-    CrownOutlined, IdcardOutlined
+    CrownOutlined, IdcardOutlined, BankOutlined,
+    TeamOutlined, SafetyOutlined, CalendarOutlined,
+    HistoryOutlined, RightOutlined, ControlOutlined
 } from '@ant-design/icons';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../constants/endpoints';
 import { resolveUploadUrl } from '../../utils/uploadBaseUrl';
 import useThemeColors from '../../hooks/useThemeColors';
 import { cssVar } from '../../theme';
+import styles from '../../assets/scss/pages/myAccount.module.scss';
 
 const { Title, Text } = Typography;
 
 const MyAccount = () => {
+    const navigate = useNavigate();
     const theme = useThemeColors();
     const [form] = Form.useForm();
     const [securityForm] = Form.useForm();
@@ -32,6 +37,54 @@ const MyAccount = () => {
 
     const profile = profileData?.data;
     const isSuperAdmin = profile?.roll === 1;
+
+    const adminShortcuts = [
+        {
+            key: 'company',
+            title: 'Company',
+            subtitle: 'Tenant & company details',
+            path: '/admin/tenant-company',
+            icon: <BankOutlined />,
+            iconColor: 'var(--color-primary)',
+            iconBg: 'var(--color-primary-light)',
+        },
+        {
+            key: 'users',
+            title: 'Manage Users',
+            subtitle: 'User accounts & access',
+            path: '/admin/manage-user',
+            icon: <TeamOutlined />,
+            iconColor: '#10b981',
+            iconBg: 'rgba(16, 185, 129, 0.12)',
+        },
+        {
+            key: 'roll',
+            title: 'Roll',
+            subtitle: 'Roles & permission matrix',
+            path: '/admin/roll',
+            icon: <SafetyOutlined />,
+            iconColor: '#f59e0b',
+            iconBg: 'rgba(245, 158, 11, 0.12)',
+        },
+        {
+            key: 'fiscal-year',
+            title: 'Fiscal Year',
+            subtitle: 'Financial year setup',
+            path: '/admin/fiscal-year',
+            icon: <CalendarOutlined />,
+            iconColor: '#6366f1',
+            iconBg: 'rgba(99, 102, 241, 0.12)',
+        },
+        {
+            key: 'activity-history',
+            title: 'Activity History',
+            subtitle: 'Audit logs & system activity',
+            path: '/admin/activity-history',
+            icon: <HistoryOutlined />,
+            iconColor: '#ec4899',
+            iconBg: 'rgba(236, 72, 153, 0.12)',
+        },
+    ];
 
     // Sync API data → Form fields
     useEffect(() => {
@@ -341,6 +394,53 @@ const MyAccount = () => {
                 </Col>
 
             </Row>
+
+            {/* ── Admin Shortcuts Card ── */}
+            <div className={styles.adminShortcutCard}>
+                <div className={styles.shortcutHeader}>
+                    <div className={styles.shortcutTitleGroup}>
+                        <div className={styles.shortcutTitleIcon}>
+                            <ControlOutlined />
+                        </div>
+                        <div>
+                            <Title level={4} className={styles.shortcutMainTitle}>
+                                Admin Shortcuts
+                            </Title>
+                            <Text className={styles.shortcutSubtitle}>
+                                Quick navigation access to system administration modules
+                            </Text>
+                        </div>
+                    </div>
+                </div>
+
+                <div className={styles.shortcutGrid}>
+                    {adminShortcuts.map((item) => (
+                        <button
+                            key={item.key}
+                            type="button"
+                            className={styles.shortcutButton}
+                            onClick={() => navigate(item.path)}
+                            aria-label={`Open ${item.title}`}
+                        >
+                            <span
+                                className={styles.shortcutIcon}
+                                style={{ color: item.iconColor, background: item.iconBg }}
+                            >
+                                {item.icon}
+                            </span>
+
+                            <span className={styles.shortcutContent}>
+                                <span className={styles.shortcutLabel}>{item.title}</span>
+                                <span className={styles.shortcutSublabel}>{item.subtitle}</span>
+                            </span>
+
+                            <span className={styles.shortcutArrow}>
+                                <RightOutlined />
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            </div>
         </div>
     );
 };

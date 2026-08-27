@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { Form, Input, Button, Table, InputNumber, Select } from 'antd';
+import { Form, Input, Button, Table, InputNumber, Select, Upload, Tag } from 'antd';
+import { UploadOutlined } from '@ant-design/icons';
 import { toastWarning } from '../../../utils/toastNotify';
-import { RefreshCcw, PlusCircle, Trash2, CheckCircle } from 'lucide-react';
+import { RefreshCcw, PlusCircle, Trash2, CheckCircle, FileSpreadsheet } from 'lucide-react';
 import { SwapOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
@@ -18,6 +19,7 @@ import PageHeroHeader, { pageHeroHeaderStyles } from '../../../components/common
 import { BaseModal } from '../../../components/common/modals';
 import styles from '../../../assets/scss/pages/transaction/inwardpurchase.module.scss';
 import { SkuLink } from '../../../hooks/useSkuModalAction';
+import { loadXlsx } from '../../../utils/loadXlsx';
 
 const CONFIRM_TABLE_COLUMNS = [
   { title: 'No.', width: 50, render: (_, __, i) => i + 1 },
@@ -170,6 +172,85 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
   const [submitting, setSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [excelLoading, setExcelLoading] = useState(false);
+  const [excelFileName, setExcelFileName] = useState('');
+
+  const handleExcelUpload = async (uploadInfo) => {
+    const file = uploadInfo.file?.originFileObj || uploadInfo.file;
+    if (!file || uploadInfo.file?.status === 'removed') return;
+
+    setExcelLoading(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      const XLSX = await loadXlsx();
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      if (!sheetName) throw new Error('Excel file has no sheets.');
+      const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '', raw: false });
+      if (!rows || rows.length < 2) throw new Error('Excel file is empty or missing data rows.');
+
+      const headers = rows[0].map(h => String(h || '').trim().toLowerCase());
+      const skuIdx = headers.findIndex(h => h.includes('sku') || h.includes('d.no') || h.includes('mfg'));
+      const priceIdx = headers.findIndex(h => h.includes('price') || h.includes('rate'));
+      const discIdx = headers.findIndex(h => h.includes('disc'));
+
+      if (skuIdx === -1) throw new Error('Excel file must include a SKU column.');
+
+      const loadedSkus = [];
+      rows.slice(1).forEach(r => {
+        const skuVal = String(r[skuIdx] || '').trim();
+        if (skuVal) {
+          const priceVal = priceIdx !== -1 ? Number(r[priceIdx]) || undefined : undefined;
+          const discVal = discIdx !== -1 ? Number(r[discIdx]) || undefined : undefined;
+          loadedSkus.push({ sku: skuVal, customPrice: priceVal, customDisc: discVal });
+        }
+      });
+
+      if (!loadedSkus.length) throw new Error('No valid SKU rows found in Excel.');
+
+      toast.info(`Fetching details for ${loadedSkus.length} SKU(s) from Excel...`);
+      const newItems = [];
+      for (const item of loadedSkus) {
+        try {
+          const fetched = await fetchProductDetail(item.sku, { requireOnHand: config.requireOnHand });
+          if (fetched) {
+            newItems.push({
+              key: Date.now() + Math.random(),
+              sku: fetched.sku,
+              shape: fetched.shape || '',
+              polishCarat: Number(fetched.carats || fetched.polish_carat || 0),
+              color: fetched.color || '',
+              clarity: fetched.clarity || '',
+              lab: fetched.lab || '',
+              rap: Number(fetched.rap || fetched.rap_price || 0),
+              discount: item.customDisc ?? (Number(fetched.discount) || 0),
+              price: item.customPrice ?? (Number(fetched.price) || 0),
+              amount: (Number(fetched.carats || fetched.polish_carat || 0)) * (item.customPrice ?? (Number(fetched.price) || 0)),
+              remark: fetched.remark || '',
+            });
+          }
+        } catch (e) {
+          // If SKU fetch failed, add manual row placeholder
+          newItems.push({
+            key: Date.now() + Math.random(),
+            sku: item.sku,
+            price: item.customPrice || 0,
+            discount: item.customDisc || 0,
+          });
+        }
+      }
+
+      if (newItems.length) {
+        setItems(newItems);
+        setExcelFileName(file.name || 'Excel File');
+        toast.success(`${newItems.length} line item(s) imported from Excel.`);
+      }
+    } catch (err) {
+      toast.error(err?.message || 'Failed to parse Excel file.');
+    } finally {
+      setExcelLoading(false);
+    }
+  };
 
   const { form, items, setItems, addRow, removeRow, updateTableValue } = useFormHandleChange(
     {},
@@ -487,6 +568,35 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
           </Button>
         )}
       />
+      <div className={`${styles.excelUploadPanel} ${styles.excelUploadPanelInForm}`} style={{ marginBottom: 12 }}>
+        <div className={styles.excelUploadCompact}>
+          <div className={styles.excelUploadMeta}>
+            <FileSpreadsheet size={18} className={styles.excelUploadIcon} />
+            <div className={styles.excelUploadCopy}>
+              <span className={styles.excelUploadTitle}>Outward Excel Import</span>
+              <span className={styles.excelUploadHint}>Upload .xlsx file with SKU, Price, Discount columns to auto-load stones</span>
+            </div>
+          </div>
+          <div className={styles.excelUploadActions}>
+            {excelFileName ? (
+              <Tag color="success" className={styles.excelUploadTag} title={excelFileName}>
+                {excelFileName}
+              </Tag>
+            ) : null}
+            <Upload
+              beforeUpload={() => false}
+              showUploadList={false}
+              accept=".xls,.xlsx"
+              onChange={handleExcelUpload}
+              disabled={excelLoading}
+            >
+              <Button size="small" icon={<UploadOutlined />} loading={excelLoading}>
+                {excelFileName ? 'Replace' : 'Upload Outward .xlsx'}
+              </Button>
+            </Upload>
+          </div>
+        </div>
+      </div>
       <Form form={form} layout="vertical" className={styles.formSection} onValuesChange={handleValuesChange}>
         <DynamicForm fields={headerFields} />
       </Form>

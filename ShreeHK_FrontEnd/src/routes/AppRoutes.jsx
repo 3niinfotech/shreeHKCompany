@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { Suspense } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import {
   getAuthorizedRouteMeta,
   getPostLoginPath,
@@ -13,6 +13,7 @@ import useAuthStore from "../store/Auth.Store";
 
 
 export default function AppRoutes() {
+  const location = useLocation();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
   const storePermissions = useAuthStore((state) => state.permissions);
@@ -57,7 +58,7 @@ export default function AppRoutes() {
       {/* 2. PROTECTED ROUTES (Dashboard, Profile etc.) */}
       <Route
         element={
-          isAuthenticated ? <LayoutShell /> : <Navigate to="/auth/login" replace />
+          isAuthenticated ? <LayoutShell /> : <Navigate to="/auth/login" state={{ from: location }} replace />
         }
       >
         {authorizedRoutes.map((r, i) => (
@@ -73,7 +74,7 @@ export default function AppRoutes() {
       <Route
         path="*"
         element={
-          <Navigate to={isAuthenticated ? defaultAuthedPath : "/auth/login"} replace />
+          <Navigate to={isAuthenticated ? defaultAuthedPath : "/auth/login"} state={{ from: location }} replace />
         }
       />
     </Routes>

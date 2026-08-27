@@ -1,11 +1,21 @@
 import React, { lazy, useEffect, useMemo, useState } from 'react';
-import { Button, Tag } from 'antd';
+import { Button, Tag, Avatar } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
 import { manageUserFromAdmin } from "./Data";
 const MasterTemplate = lazy(() => import('../../components/common/masterCommon/MasterPageTemplate'));
 const ConfirmDeleteModal = lazy(() => import("../../components/common/modals/ConfirmDeleteModal"));
 import { useFetchApi, usePostApiRequest, useDeleteApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../constants/endpoints';
+import { resolveUploadUrl } from '../../utils/uploadBaseUrl';
+
+const formatDate = (value) => (value && dayjs(value).isValid() ? dayjs(value).format('DD-MM-YYYY') : '-');
+const formatDateTime = (value) => (value && dayjs(value).isValid() ? dayjs(value).format('DD-MM-YYYY HH:mm') : '-');
+
+const toPhotoFileList = (src) => {
+    if (!src) return [];
+    return [{ uid: '-1', name: 'photo', status: 'done', url: resolveUploadUrl(src) }];
+};
 
 const ManageUser = () => {
     const [offset, setOffset] = useState(0);
@@ -41,7 +51,7 @@ const ManageUser = () => {
     }, [rolesData]);
 
     const formFields = useMemo(() => {
-        return manageUserFromAdmin.map((field) => {
+        const mapped = manageUserFromAdmin.map((field) => {
             if (field.name === "userroll") return { ...field, options: roleOptions };
             if (field.name === "password") {
                 return {
@@ -54,6 +64,14 @@ const ManageUser = () => {
             }
             return field;
         });
+        if (editRecord?.id) {
+            mapped.push(
+                { type: "input", label: "Created By", name: "created_by_name", span: 12, disabled: true },
+                { type: "input", label: "Created Date", name: "created_date", span: 12, disabled: true },
+                { type: "input", label: "Last Updated", name: "last_updated", span: 12, disabled: true },
+            );
+        }
+        return mapped;
     }, [roleOptions, editRecord?.id]);
 
     // --- Table Columns Configuration ---
@@ -65,11 +83,25 @@ const ManageUser = () => {
             width: 70,
             render: (text, record, index) => offset + index + 1
         },
+        {
+            title: 'Photo',
+            dataIndex: 'profile_image',
+            key: 'profile_image',
+            width: 70,
+            render: (src, record) => (
+                <Avatar src={src ? resolveUploadUrl(src) : undefined}>
+                    {(record.fname || record.username || '?').charAt(0).toUpperCase()}
+                </Avatar>
+            ),
+        },
         { title: 'First Name', dataIndex: 'fname', key: 'fname' },
         { title: 'Last Name', dataIndex: 'lname', key: 'lname' },
         { title: 'User Name', dataIndex: 'username', key: 'username' },
         { title: 'Email Id', dataIndex: 'email', key: 'email' },
         { title: 'Mobile No', dataIndex: 'mobileno', key: 'mobileno', ellipsis: true },
+        { title: 'Department', dataIndex: 'department', key: 'department', render: (val) => val || '-' },
+        { title: 'Designation', dataIndex: 'designation', key: 'designation', render: (val) => val || '-' },
+        { title: 'Joining Date', dataIndex: 'joining_date', key: 'joining_date', render: (val) => formatDate(val) },
         { title: 'User Role', dataIndex: 'userroll', key: 'userroll', render: (val) => roleMap[val] || val },
         {
             title: 'Status',
@@ -96,6 +128,9 @@ const ManageUser = () => {
                 </Tag>
             ),
         },
+        { title: 'Created By', dataIndex: 'created_by_name', key: 'created_by_name', render: (val) => val || '-' },
+        { title: 'Created Date', dataIndex: 'created_at', key: 'created_at', render: (val) => formatDateTime(val) },
+        { title: 'Last Updated', dataIndex: 'updated_at', key: 'updated_at', render: (val) => formatDateTime(val) },
     ];
 
     // Mapping API data to Form Fields
@@ -110,7 +145,14 @@ const ManageUser = () => {
             mobileno: record.mobileno ?? "",
             userroll: record.userroll ?? "",
             is_active: Number(record.is_active) !== 0 ? 1 : 0,
-            password: "" // Security ke liye password khali rakha hai
+            password: "", // Security ke liye password khali rakha hai
+            department: record.department ?? "",
+            designation: record.designation ?? "",
+            joining_date: record.joining_date ? dayjs(record.joining_date) : null,
+            profile_image: toPhotoFileList(record.profile_image),
+            created_by_name: record.created_by_name && record.created_by_name !== '-' ? record.created_by_name : "",
+            created_date: formatDateTime(record.created_at) === '-' ? "" : formatDateTime(record.created_at),
+            last_updated: formatDateTime(record.updated_at) === '-' ? "" : formatDateTime(record.updated_at),
         };
     };
 
@@ -145,7 +187,7 @@ const ManageUser = () => {
     };
 
     const handleEdit = (record) => {
-        setEditRecord(record ? mapApiToForm(record) : { is_active: 1 });
+        setEditRecord(record ? mapApiToForm(record) : { is_active: 1, profile_image: [] });
     };
 
     const handleSave = async (values) => {
@@ -159,7 +201,29 @@ const ManageUser = () => {
             userroll: values.userroll,
             is_active: values.is_active ?? 1,
             password: values.password,
+            department: values.department ?? "",
+            designation: values.designation ?? "",
+            joining_date: values.joining_date ? dayjs(values.joining_date).format("YYYY-MM-DD") : "",
         };
+
+        const photoFile = Array.isArray(values.profile_image)
+            ? values.profile_image.find((item) => item?.originFileObj)?.originFileObj
+            : null;
+
+        if (photoFile) {
+            const formData = new FormData();
+            Object.entries(payload).forEach(([key, value]) => {
+                if (value === undefined || value === null) return;
+                formData.append(key, value);
+            });
+            formData.append("profile_image", photoFile);
+            return saveUser(formData, {
+                onSuccess: () => {
+                    setEditRecord(null);
+                    setOffset(0);
+                }
+            });
+        }
 
         return saveUser(payload, {
             onSuccess: () => {

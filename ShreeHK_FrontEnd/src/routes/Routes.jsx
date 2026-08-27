@@ -104,6 +104,11 @@ const TransferHistoryAlias = () => {
   return <Navigate to={`/report/stone-transfer-history${location.search}`} replace />;
 };
 
+const StoneDetailAlias = () => {
+  const location = useLocation();
+  return <Navigate to={`/transaction/stone-update${location.search}`} replace />;
+};
+
 const getUserPermissions = (user) => {
   const perms = user?.permissions ?? user?.perms;
   return Array.isArray(perms) ? perms : [];
@@ -390,6 +395,9 @@ const allProtectedRoutes = [
   { path: "/settings", element: <Setting />, alwaysAllow: true, hideFromNav: true },
   // { path: "/contact-support", element: <ContactSupport />, alwaysAllow: true, hideFromNav: true },
   { path: "/forbidden", element: <Forbidden />, alwaysAllow: true, hideFromNav: true },
+  { path: "/module/inventory/stonedetail.php", element: <StoneDetailAlias />, alwaysAllow: true, hideFromNav: true },
+  { path: "/dai/module/inventory/stonedetail.php", element: <StoneDetailAlias />, alwaysAllow: true, hideFromNav: true },
+  { path: "/inventory/stonedetail", element: <StoneDetailAlias />, alwaysAllow: true, hideFromNav: true },
 ];
 
 // for login

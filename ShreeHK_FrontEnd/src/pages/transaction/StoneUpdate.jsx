@@ -31,7 +31,8 @@ const StoneUpdate = () => {
     const [showForm, setShowForm] = useState(false);
 
     const location = useLocation();
-    const skuFromUpdate = new URLSearchParams(location.search).get('skuupdate');
+    const searchParams = new URLSearchParams(location.search);
+    const skuFromUpdate = searchParams.get('skuupdate') || searchParams.get('sku');
 
     const categories = useMemo(() => [
         { id: 1, name: "Natural Diamond" },
