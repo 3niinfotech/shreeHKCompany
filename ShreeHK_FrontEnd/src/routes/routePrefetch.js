@@ -89,3 +89,51 @@ export const prefetchRouteTree = (route) => {
     route.children.forEach(prefetchRouteTree);
   }
 };
+
+const collectRoutePaths = (routes, paths = []) => {
+  if (!Array.isArray(routes)) return paths;
+  routes.forEach((route) => {
+    if (route?.path?.startsWith("/")) {
+      paths.push(route.path);
+    }
+    if (Array.isArray(route?.children)) {
+      collectRoutePaths(route.children, paths);
+    }
+  });
+  return paths;
+};
+
+/** Gradually prefetch authorized route chunks during browser idle time. */
+export const prefetchAuthorizedRoutesIdle = (routes) => {
+  const paths = collectRoutePaths(routes);
+  if (!paths.length) return undefined;
+
+  let index = 0;
+  let cancelled = false;
+  let cancelScheduled = null;
+
+  const step = () => {
+    if (cancelled || index >= paths.length) return;
+    prefetchRoute(paths[index]);
+    index += 1;
+    if (index < paths.length) {
+      cancelScheduled = scheduleIdle(step);
+    }
+  };
+
+  cancelScheduled = scheduleIdle(step);
+
+  return () => {
+    cancelled = true;
+    cancelScheduled?.();
+  };
+};
+
+function scheduleIdle(callback) {
+  if (typeof window.requestIdleCallback === "function") {
+    const idleId = window.requestIdleCallback(callback, { timeout: 2500 });
+    return () => window.cancelIdleCallback(idleId);
+  }
+  const timer = window.setTimeout(callback, 80);
+  return () => window.clearTimeout(timer);
+}

@@ -61,7 +61,7 @@ const DOWNLOAD_EXCEL_PRESETS = {
 };
 
 const DOWNLOAD_MENU_ITEMS = [
-  { key: "export", label: "Export Excel", icon: <DownloadOutlined /> },
+  { key: "export", label: "Export to Excel", icon: <DownloadOutlined /> },
   { key: "iExport", label: "I.Export Excel", icon: <DownloadOutlined /> },
   { key: "sell", label: "Sell Diamond Excel", icon: <DownloadOutlined /> },
   { key: "memo", label: "Memo Diamond Excel", icon: <DownloadOutlined /> },

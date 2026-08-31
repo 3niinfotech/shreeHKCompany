@@ -165,6 +165,8 @@ export const APPROVAL_MEMO_STYLES = `
     font-size:13px;
     text-align:center;
     border:1px solid var(--line);
+    -webkit-user-select: text;
+    user-select: text;
   }
   .approval-memo-root tbody td:nth-child(2){text-align:left;color:#555;}
   .approval-memo-root tbody td:nth-child(3){text-align:left;}

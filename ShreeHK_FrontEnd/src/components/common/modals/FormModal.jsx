@@ -13,6 +13,8 @@ const FormModal = ({
     onClose,
     onSave,
     loading = false,
+    contentLoading = false,
+    contentSkeletonFields = 6,
     form,
     formFields,
     initialValues,
@@ -89,6 +91,8 @@ const FormModal = ({
             onClose={onClose}
             onSave={handleSaveWithToast}
             loading={loading}
+            contentLoading={contentLoading}
+            contentSkeletonFields={contentSkeletonFields}
             width={width}
             saveBtnText={saveBtnText}
             cancelBtnText={cancelBtnText}

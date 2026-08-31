@@ -8,6 +8,8 @@ export async function exportReportToExcel({
   sheetName = 'Report',
   title = '',
   totals = false,
+  autoFilter = false,
+  titleNoTopLeftBorder = false,
 }) {
   if (!headers?.length || !rows?.length) {
     throw new Error('No data to export');
@@ -21,6 +23,8 @@ export async function exportReportToExcel({
       sheetName,
       title,
       totals,
+      autoFilter,
+      titleNoTopLeftBorder,
     });
     return;
   }
@@ -63,6 +67,11 @@ const BLACK_BORDER = {
   right: { style: 'thin', color: { rgb: 'FF000000' } },
 };
 
+const TITLE_BORDER_NO_TOP_LEFT = {
+  bottom: { style: 'thin', color: { rgb: 'FF000000' } },
+  right: { style: 'thin', color: { rgb: 'FF000000' } },
+};
+
 function cellValue(header, row, rowIndex) {
   const val = typeof header.accessor === 'function'
     ? header.accessor(row, rowIndex)
@@ -70,8 +79,9 @@ function cellValue(header, row, rowIndex) {
   return val == null ? '' : val;
 }
 
-function makeStyledCell(value, { isTitle, isHeader, isTotal, isNumber }) {
+function makeStyledCell(value, { isTitle, isHeader, isTotal, isNumber, titleNoTopLeftBorder }) {
   const num = isNumber && value !== '' && value != null && !Number.isNaN(Number(value));
+  const border = isTitle && titleNoTopLeftBorder ? TITLE_BORDER_NO_TOP_LEFT : BLACK_BORDER;
   return {
     v: num ? Number(value) : (value ?? ''),
     t: num ? 'n' : 's',
@@ -90,7 +100,7 @@ function makeStyledCell(value, { isTitle, isHeader, isTotal, isNumber }) {
         vertical: 'center',
         wrapText: Boolean(isHeader),
       },
-      border: BLACK_BORDER,
+      border,
     },
   };
 }
@@ -105,6 +115,8 @@ export async function exportVenyaStyledReport({
   sheetName = 'Report',
   title = '',
   totals = false,
+  autoFilter = false,
+  titleNoTopLeftBorder = false,
 }) {
   const XLSX = await import('xlsx-js-style');
   const lastCol = headers.length - 1;
@@ -117,9 +129,13 @@ export async function exportVenyaStyledReport({
     ws[XLSX.utils.encode_cell({ r: startRow, c: 0 })] = makeStyledCell(title, {
       isTitle: true,
       align: 'center',
+      titleNoTopLeftBorder,
     });
     for (let c = 1; c <= lastCol; c += 1) {
-      ws[XLSX.utils.encode_cell({ r: startRow, c })] = makeStyledCell('', { isTitle: true });
+      ws[XLSX.utils.encode_cell({ r: startRow, c })] = makeStyledCell('', {
+        isTitle: true,
+        titleNoTopLeftBorder,
+      });
     }
     ws['!merges'] = [{ s: { r: startRow, c: 0 }, e: { r: startRow, c: lastCol } }];
   }
@@ -172,6 +188,15 @@ export async function exportVenyaStyledReport({
     topLeftCell: XLSX.utils.encode_cell({ r: headerRow + 1, c: 0 }),
     activePane: 'bottomLeft',
   };
+  if (autoFilter) {
+    const filterEndRow = totals ? lastRow - 1 : lastRow;
+    ws['!autofilter'] = {
+      ref: XLSX.utils.encode_range({
+        s: { r: headerRow, c: 0 },
+        e: { r: filterEndRow, c: lastCol },
+      }),
+    };
+  }
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, sheetName.slice(0, 31));

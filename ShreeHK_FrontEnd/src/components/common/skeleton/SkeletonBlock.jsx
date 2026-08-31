@@ -167,4 +167,13 @@ export function SkeletonDetail({ fields = 8, className = "" }) {
   );
 }
 
+/** Compact list placeholder for dropdowns / popovers */
+export function SkeletonDropdownPanel({ rows = 4, className = "" }) {
+  return (
+    <div className={`${styles.dropdownPanel} ${className}`.trim()} aria-hidden="true">
+      <SkeletonList rows={rows} withAvatar />
+    </div>
+  );
+}
+
 export default SkeletonBlock;

@@ -1,7 +1,8 @@
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { Button, Result, Space } from "antd";
 import { useNavigate } from "react-router-dom";
 import useAuthStore from "../../store/Auth.Store";
+import useAuthUser from "../../hooks/useAuthUser";
 import {
   userLacksRoleAccess,
   userHasAssignedRole,
@@ -12,17 +13,8 @@ import styles from "../../assets/scss/pages/errors/forbidden.module.scss";
 
 const Forbidden = () => {
   const navigate = useNavigate();
-  const user = useAuthStore((state) => state.user);
-  const storePermissions = useAuthStore((state) => state.permissions);
   const logout = useAuthStore((state) => state.logout);
-
-  const userWithPerms = useMemo(
-    () => ({
-      ...user,
-      permissions: user?.permissions ?? storePermissions ?? [],
-    }),
-    [user, storePermissions]
-  );
+  const userWithPerms = useAuthUser();
 
   const blockedFromApp = userLacksRoleAccess(userWithPerms);
   const hasRole = userHasAssignedRole(userWithPerms);

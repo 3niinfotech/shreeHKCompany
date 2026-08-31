@@ -3,17 +3,14 @@ import {
     Table, Button, Card, Typography, Checkbox, Form, Select, Input, DatePicker,
 } from 'antd';
 import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
-import { SearchOutlined, BarChartOutlined, ReloadOutlined } from '@ant-design/icons';
-import { FileUp, Sparkles } from 'lucide-react';
+import { SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import AIResultPanel from '../../components/ai/AIResultPanel';
-import useAiSalesReport from '../../components/ai/useAiSalesReport';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../constants/endpoints';
 import useFormHandleChange from '../../hooks/useFormHandleChange';
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
-import PageHeroHeader from '../../components/common/PageHeroHeader';
 import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
+import ExportExcelButton from '../../components/common/ExportExcelButton';
 import { exportReportToExcel } from '../../utils/reportExcelExport';
 import styles from '../../assets/scss/pages/report/TransactionReport.module.scss';
 import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
@@ -153,7 +150,7 @@ const TransactionReport = () => {
 
         fetchTransaction({
             type,
-            saleStatus: v.saleStatus || 'close',
+            saleStatus: v.saleStatus || 'report',
             party: company,
             company,
             invoice: (v.invoiceNo || '').trim(),
@@ -248,16 +245,18 @@ const TransactionReport = () => {
                         <Button type="default" icon={<ReloadOutlined />} className={filterPanelStyles.btnClear} onClick={handleSearch} loading={tableLoading}>
                             Reload
                         </Button>
-                        <Button type="primary" icon={<FileUp />} className={styles.exportBtn} loading={exporting} onClick={handleExport} disabled={!tableData.length} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff" }}>
-                            Export to Excel
-                        </Button>
+                        <ExportExcelButton
+                            loading={exporting}
+                            onClick={handleExport}
+                            disabled={!tableData.length}
+                        />
                     </>
                 }
             >
                 <div className={`${filterPanelStyles.filterInlineRow} ${styles.transactionFilterForm}`}>
                     <Form
                         form={form}
-                        initialValues={{ saleStatus: 'close', type: 'company', company: 'all', location: 'all', gia: false, nonGia: false }}
+                        initialValues={{ saleStatus: 'report', type: 'company', company: 'all', location: 'all', gia: false, nonGia: false }}
                     >
                         <div className={styles.filterFieldsFlex}>
                             <Form.Item name="saleStatus" className={styles.filterItem}>

@@ -1,5 +1,6 @@
 /**
  * Frontend permission registry — keys must match backend/config/permissionRegistry.js
+ * Route-tree drift notes: see docs/acl-drift.md (Phase 1.21 — no key renames).
  */
 
 export const PAGE_ENTRIES = [

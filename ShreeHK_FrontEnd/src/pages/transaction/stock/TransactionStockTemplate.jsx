@@ -1126,6 +1126,7 @@ const TransactionStockTemplate = ({
         onClose={closeInvoice}
         record={invoiceModal.record}
         invoiceTitle={invoiceTitle}
+        printType={actions.printType}
         company={invoiceCompany}
         selectedProductIds={
           invoiceModal.record && getSelected(invoiceModal.record.id).length

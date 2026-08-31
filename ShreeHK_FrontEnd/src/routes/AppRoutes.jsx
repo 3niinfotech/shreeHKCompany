@@ -1,28 +1,36 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Suspense } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import {
   getAuthorizedRouteMeta,
   getPostLoginPath,
-  normalizeAuthUser,
   publicRoutes,
 } from "./Routes";
 import LayoutShell from "../components/layout/LayoutShell";
 import Loader from "../components/common/Loader";
+import PageSkeleton from "../components/common/skeleton/PageSkeleton";
 import useAuthStore from "../store/Auth.Store";
+import useAuthUser from "../hooks/useAuthUser";
 
 
 export default function AppRoutes() {
   const location = useLocation();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
-  const storePermissions = useAuthStore((state) => state.permissions);
   const sanitizeUser = useAuthStore((state) => state.sanitizeUser);
+  const userWithPerms = useAuthUser();
 
-  const userWithPerms = useMemo(() => normalizeAuthUser({
-    ...user,
-    permissions: user?.permissions ?? storePermissions ?? [],
-  }), [user, storePermissions]);
+  const [authHydrated, setAuthHydrated] = useState(() => useAuthStore.persist.hasHydrated());
+
+  useEffect(() => {
+    const unsub = useAuthStore.persist.onFinishHydration(() => {
+      setAuthHydrated(true);
+    });
+    if (useAuthStore.persist.hasHydrated()) {
+      setAuthHydrated(true);
+    }
+    return unsub;
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -37,6 +45,10 @@ export default function AppRoutes() {
 
   const defaultAuthedPath = getPostLoginPath(userWithPerms);
 
+  if (!authHydrated) {
+    return <Loader />;
+  }
+
   return (
     <Routes>
       {/* 1. PUBLIC ROUTES (Login, Register etc.) */}
@@ -47,7 +59,7 @@ export default function AppRoutes() {
           element={
             // AGAR LOGIN HAI TO DASHBOARD BHEJO, WARNA LOGIN DIKHAO
             !isAuthenticated ? (
-              <Suspense fallback={<Loader />}>{r.element}</Suspense>
+              <Suspense fallback={<PageSkeleton />}>{r.element}</Suspense>
             ) : (
               <Navigate to={getPostLoginPath(userWithPerms)} replace />
             )
@@ -65,7 +77,7 @@ export default function AppRoutes() {
           <Route
             key={`protected-${i}`}
             path={r.path}
-            element={<Suspense fallback={<Loader />}>{r.element}</Suspense>}
+            element={<Suspense fallback={<PageSkeleton />}>{r.element}</Suspense>}
           />
         ))}
       </Route>

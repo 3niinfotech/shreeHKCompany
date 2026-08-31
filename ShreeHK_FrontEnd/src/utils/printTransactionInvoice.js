@@ -24,7 +24,9 @@ export function printTransactionInvoice(invoiceData) {
   const html = buildInvoicePrintDocument(invoiceData);
   const printFrame = document.createElement("iframe");
   printFrame.setAttribute("title", "Invoice print");
-  printFrame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;";
+  // Full A4 off-screen frame — 0×0 hidden iframes can rasterize text in Save-as-PDF output
+  printFrame.style.cssText =
+    "position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0;opacity:0;pointer-events:none;";
   document.body.appendChild(printFrame);
 
   const frameDoc = printFrame.contentDocument || printFrame.contentWindow?.document;

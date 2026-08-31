@@ -3,7 +3,7 @@ import DynamicFormField from '../../../hooks/DynamicFormField';
 import { Edit2, Trash2, Plus, Search } from 'lucide-react';
 import FormModal from '../modals/FormModal';
 import { Pencil, CircleCheck } from 'lucide-react';
-import { Table, Button, Input, Space, Card, Form, Spin } from 'antd';
+import { Table, Button, Input, Space, Card, Form } from 'antd';
 import '../../../assets/scss/masterEdit.scss';
 import { AccountBookOutlined, ReloadOutlined } from '@ant-design/icons';
 import PageHeroHeader from '../PageHeroHeader';
@@ -11,6 +11,7 @@ import styles from '../../../assets/scss/pages/master/company.module.scss';
 import useThemeColors from '../../../hooks/useThemeColors';
 import useTableBodyScrollHeight from '../../../hooks/useTableBodyScrollHeight';
 import useTableSkeleton from '../skeleton/useTableSkeleton';
+import { SkeletonBlock } from '../skeleton';
 import { cssVar } from '../../../theme';
 import { useNavigate } from 'react-router-dom';
 
@@ -182,8 +183,9 @@ const AccountingMasterTemplate = ({
                         onScroll={handleTableScroll}
                         footer={() => (
                             <div style={{ textAlign: 'center', padding: '5px' }}>
-                                {isLoadMore ? <Spin size="small" tip="Loading..." /> :
-                                    hasMore ? "Scroll for more" : `Total ${processedData.length} records`}
+                                {isLoadMore ? (
+                                  <SkeletonBlock variant="text" width="120px" height={12} style={{ margin: '0 auto' }} />
+                                ) : hasMore ? "Scroll for more" : `Total ${processedData.length} records`}
                             </div>
                         )}
                     />

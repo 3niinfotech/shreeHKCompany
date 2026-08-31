@@ -1,0 +1,18 @@
+.exportBtn {
+  background: var(--color-success) !important;
+  border-color: var(--color-success) !important;
+  color: #fff !important;
+  font-weight: 500;
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-success) 88%, #000) !important;
+    border-color: color-mix(in srgb, var(--color-success) 88%, #000) !important;
+    color: #fff !important;
+  }
+
+  &:disabled {
+    background: color-mix(in srgb, var(--color-success) 45%, var(--color-bg-card)) !important;
+    border-color: color-mix(in srgb, var(--color-success) 45%, var(--color-border)) !important;
+    color: color-mix(in srgb, #fff 70%, transparent) !important;
+  }
+}

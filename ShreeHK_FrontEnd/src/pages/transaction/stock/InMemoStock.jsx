@@ -6,6 +6,7 @@ import { ENDPOINTS } from '../../../constants/endpoints';
 const InMemoStock = () => (
   <TransactionStockTemplate
     title="In Memo Stock"
+    invoiceTitle="Good Receive Note"
     queryKey={TRANSACTION_STOCK_KEYS.inMemo}
     listEndpoint={ENDPOINTS.transactionStock.inward.list}
     deleteEndpoint={ENDPOINTS.transactionStock.inward.delete}

@@ -61,6 +61,8 @@ const DynamicForm = ({ fields, forceFullWidth, layout = 'grid' }) => {
                         </div>
                     </Upload>
                 );
+            case 'hidden':
+                return <Input type="hidden" />;
             default:
                 return (
                     <Input
@@ -80,14 +82,15 @@ const DynamicForm = ({ fields, forceFullWidth, layout = 'grid' }) => {
                 const columnSpan = isStack || forceFullWidth ? 24 : (field.span || 12);
                 const isCheckbox = field.type === 'checkbox';
                 const isUpload = field.type === 'upload';
+                const isHidden = field.type === 'hidden';
                 const itemKey = `${field.name ?? 'field'}-${field.label ?? ''}-${index}`;
 
                 return (
-                    <Col span={columnSpan} key={itemKey}>
+                    <Col span={columnSpan} key={itemKey} style={isHidden ? { display: 'none' } : undefined}>
                         <Form.Item
                             name={field.name}
                             label={
-                                !isCheckbox && field.label
+                                !isCheckbox && !isHidden && field.label
                                     ? (
                                         <span style={{ fontWeight: isStack ? 500 : 500, fontSize: isStack ? 11 : undefined }}>
                                             {field.label}
@@ -97,7 +100,7 @@ const DynamicForm = ({ fields, forceFullWidth, layout = 'grid' }) => {
                             }
                             valuePropName={isCheckbox ? "checked" : isUpload ? "fileList" : "value"}
                             getValueFromEvent={isUpload ? (e) => (Array.isArray(e) ? e : e?.fileList) : undefined}
-                            rules={[{ required: field.required, message: `${field.label} is required` }]}
+                            rules={isHidden ? [] : [{ required: field.required, message: `${field.label} is required` }]}
                         >
                             {renderInput(field)}
                         </Form.Item>

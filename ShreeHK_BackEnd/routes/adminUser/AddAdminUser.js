@@ -55,11 +55,24 @@ const safeUserRow = (row) => {
     return safe;
 };
 
-const validateUserPayload = async ({ id = 0, fname, lname, username, email, mobileno, userroll, password }) => {
+const normalizeUserId = (id) => {
+    const parsed = parseInt(String(id ?? "").trim(), 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+};
+
+const validateUserPayload = async (
+    { id = 0, fname, lname, username, email, mobileno, userroll, password },
+    existingUser = null,
+) => {
     if (!fname || !lname || !username || !email || !mobileno || userroll === undefined || userroll === null || userroll === "") {
         return "First name, last name, username, email, mobile number, and role are required.";
     }
-    if (!id && (!password || String(password).length < 8)) {
+
+    const userId = normalizeUserId(id);
+    const trimmedUsername = String(username).trim();
+    const trimmedEmail = String(email).trim().toLowerCase();
+
+    if (!userId && (!password || String(password).length < 8)) {
         return "A password of at least 8 characters is required for a new user.";
     }
     if (password && String(password).length < 8) {
@@ -69,11 +82,29 @@ const validateUserPayload = async ({ id = 0, fname, lname, username, email, mobi
     const roles = await helper.query("SELECT id FROM roll WHERE id = ? LIMIT 1", [userroll]);
     if (!roles.length) return "Selected role does not exist.";
 
-    const duplicates = await helper.query(
-        "SELECT user_id FROM user WHERE (user_name = ? OR user_email = ?) AND user_id <> ? LIMIT 1",
-        [String(username).trim(), String(email).trim(), Number(id) || 0],
-    );
-    if (duplicates.length) return "Username or email is already in use.";
+    const usernameChanged =
+        !existingUser ||
+        String(existingUser.user_name || "").trim().toLowerCase() !== trimmedUsername.toLowerCase();
+    const emailChanged =
+        !existingUser ||
+        String(existingUser.user_email || "").trim().toLowerCase() !== trimmedEmail;
+
+    if (usernameChanged) {
+        const usernameConflict = await helper.query(
+            "SELECT user_id FROM user WHERE LOWER(TRIM(user_name)) = LOWER(?) AND user_id <> ? LIMIT 1",
+            [trimmedUsername, userId],
+        );
+        if (usernameConflict.length) return "Username is already in use.";
+    }
+
+    if (emailChanged) {
+        const emailConflict = await helper.query(
+            "SELECT user_id FROM user WHERE LOWER(TRIM(user_email)) = ? AND user_id <> ? LIMIT 1",
+            [trimmedEmail, userId],
+        );
+        if (emailConflict.length) return "Email is already in use.";
+    }
+
     return null;
 };
 
@@ -154,6 +185,7 @@ AdminUserRouter.get('/getAdminManageUser', authenticateToken, isSuperAdmin, asyn
 
 AdminUserRouter.post('/admin-manage-user', authenticateToken, isSuperAdmin, handleProfileUpload, async (req, res) => {
     const { id, fname, lname, username, email, mobileno, userroll, password, is_active, department, designation, joining_date } = req.body;
+    const userId = normalizeUserId(id);
     const activeVal =
         is_active === undefined || is_active === null || is_active === ""
             ? 1
@@ -161,21 +193,29 @@ AdminUserRouter.post('/admin-manage-user', authenticateToken, isSuperAdmin, hand
 
     try {
         await ensureUserActiveColumn();
-        const validationError = await validateUserPayload({
-            id, fname, lname, username, email, mobileno, userroll, password,
-        });
-        if (validationError) {
-            return res.status(400).json({ status: false, message: validationError });
-        }
 
         const departmentVal = emptyToNull(department);
         const designationVal = emptyToNull(designation);
         const joiningDateVal = emptyToNull(joining_date);
         const profileImageVal = req.file ? `/uploads/profiles/${req.file.filename}` : null;
 
-        if (id && Number(id) !== 0) {
+        if (userId) {
+            const existingRows = await helper.query("SELECT * FROM user WHERE user_id = ? LIMIT 1", [userId]);
+            const existingUser = existingRows[0] || null;
+            if (!existingUser) {
+                return res.status(404).json({ status: false, message: "User not found." });
+            }
+
+            const validationError = await validateUserPayload(
+                { id: userId, fname, lname, username, email, mobileno, userroll, password },
+                existingUser,
+            );
+            if (validationError) {
+                return res.status(400).json({ status: false, message: validationError });
+            }
+
             await helper.runInTransaction(async (q) => {
-                const rows = await q("SELECT * FROM user WHERE user_id = ?", [id]);
+                const rows = await q("SELECT * FROM user WHERE user_id = ?", [userId]);
                 const oldRow = rows[0] || null;
                 if (!oldRow) {
                     const error = new Error("User not found.");
@@ -187,7 +227,7 @@ AdminUserRouter.post('/admin-manage-user', authenticateToken, isSuperAdmin, hand
                     Number(oldRow.roll) === SUPER_ADMIN_ROLL_ID &&
                     (Number(userroll) !== SUPER_ADMIN_ROLL_ID || activeVal === 0);
                 if (demotingSuperAdmin) {
-                    if (Number(id) === Number(req.user.user_id)) {
+                    if (Number(userId) === Number(req.user.user_id)) {
                         const error = new Error("You cannot demote or deactivate your own Super Admin account.");
                         error.statusCode = 403;
                         throw error;
@@ -213,20 +253,20 @@ AdminUserRouter.post('/admin-manage-user', authenticateToken, isSuperAdmin, hand
                 if (password && password.trim() !== "") {
                     await q(
                         `UPDATE user SET first_name = ?, last_name = ?, user_name = ?, user_email = ?, mobile = ?, roll = ?, pass = ?, is_active = ?, ${extraSet.join(", ")} WHERE user_id = ?`,
-                        [fname, lname, username, email, mobileno, userroll, md5(password), activeVal, ...extraParams, id],
+                        [fname, lname, username, email, mobileno, userroll, md5(password), activeVal, ...extraParams, userId],
                     );
                 } else {
                     await q(
                         `UPDATE user SET first_name = ?, last_name = ?, user_name = ?, user_email = ?, mobile = ?, roll = ?, is_active = ?, ${extraSet.join(", ")} WHERE user_id = ?`,
-                        [fname, lname, username, email, mobileno, userroll, activeVal, ...extraParams, id],
+                        [fname, lname, username, email, mobileno, userroll, activeVal, ...extraParams, userId],
                     );
                 }
 
-                const newRows = await q("SELECT user_id, first_name, last_name, user_name, user_email, mobile, roll, is_active FROM user WHERE user_id = ?", [id]);
+                const newRows = await q("SELECT user_id, first_name, last_name, user_name, user_email, mobile, roll, is_active FROM user WHERE user_id = ?", [userId]);
                 await logAuditInTx(q, {
                     actionType: "UPDATE",
                     moduleName: "User",
-                    recordId: id,
+                    recordId: userId,
                     recordReference: username,
                     oldValue: safeUserRow(oldRow),
                     newValue: newRows[0],
@@ -235,8 +275,15 @@ AdminUserRouter.post('/admin-manage-user', authenticateToken, isSuperAdmin, hand
 
             return res.status(200).json({
                 message: "User updated successfully",
-                data: { id, fname, lname, username, email, mobileno, userroll, is_active: activeVal },
+                data: { id: userId, fname, lname, username, email, mobileno, userroll, is_active: activeVal },
             });
+        }
+
+        const validationError = await validateUserPayload({
+            id: 0, fname, lname, username, email, mobileno, userroll, password,
+        });
+        if (validationError) {
+            return res.status(400).json({ status: false, message: validationError });
         }
 
         const insertId = await helper.runInTransaction(async (q) => {

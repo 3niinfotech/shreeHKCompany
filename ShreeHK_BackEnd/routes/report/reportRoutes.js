@@ -149,126 +149,78 @@ reportRouter.post("/report/outstanding", authenticateToken, async (req, res) => 
       party = ` AND o.party = ${post.party}`;
     }
 
+    const invoiceNo = post.invoiceno || post.invoice || "";
     let invoice = "";
-    if (post.invoice && post.invoice !== "") {
-      invoice = ` AND o.invoiceno = ${post.invoice}`;
+    if (invoiceNo !== "") {
+      invoice = ` AND o.invoiceno LIKE '%${invoiceNo}%'`;
     }
 
-    const moment = require("moment");
-
-    const fromDate = post.from;
-    const toDate = post.to;
     let dateFilter = "";
-    if (fromDate && toDate) {
-      const ffDate = moment(fromDate, "DD-MM-YYYY").format("YYYY/MM/DD");
-      const ftDate = moment(toDate, "DD-MM-YYYY").format("YYYY/MM/DD");
-
-      dateFilter = ` and o.date between '${ffDate}' and '${ftDate}'`;
-    } else if (fromDate) {
-      const ffDate = moment(fromDate, "DD-MM-YYYY").format("YYYY/MM/DD");
-      const maxDate = "2050/12/31";
-      dateFilter = ` and o.date between '${ffDate}' and '${maxDate}'`;
-    } else if (toDate) {
-      const minDate = "2010/01/01";
-      const ftDate = moment(toDate, "DD-MM-YYYY").format("YYYY/MM/DD");
-      dateFilter = ` and o.date between '${minDate}' and '${ftDate}'`;
+    if (post.from || post.to) {
+      const from = post.from ? moment(post.from, "YYYY-MM-DD").format("YYYY-MM-DD") : "2010-01-01";
+      const to = post.to ? moment(post.to, "YYYY-MM-DD").format("YYYY-MM-DD") : "2050-12-31";
+      dateFilter = ` AND o.date BETWEEN '${from}' AND '${to}'`;
     }
 
-    const page = post.page || 0;
+    const page = parseInt(post.page, 10) || 1;
+    const offset = (page - 1) * 10;
     let query = "";
-    let type = post.type;
-    const userId = post.userid;
+    const type = post.type;
+    const userId = Number(post.userid ?? buildUserContext(req).userId) || 0;
 
-    let status = true;
+    const saleSelect = `SELECT o.id, o.entryno, o.type, o.invoiceno, p.name, o.reference,
+                                 DATE_FORMAT(o.invoicedate, '%d-%m-%Y') AS invoicedate,
+                                 DATE_FORMAT(o.date, '%d-%m-%Y') AS date,
+                                 DATE_FORMAT(o.duedate, '%d-%m-%Y') AS due_date,
+                                 o.terms,
+                                 COALESCE(SUM(dp.polish_pcs), 0) AS pcs,
+                                 COALESCE(SUM(dp.polish_carat), 0) AS carat,
+                                 o.final_amount,
+                                 o.paid_amount,
+                                 o.due_amount`;
+    const saleFrom = `FROM dai_outward o
+                         LEFT JOIN dai_party p ON o.party = p.id AND p.company = ${companyId}
+                         LEFT JOIN dai_product dp ON FIND_IN_SET(dp.id, o.products) AND dp.company = ${companyId}`;
+    const saleGroupBy = `GROUP BY o.id, o.entryno, o.type, o.invoiceno, p.name, o.reference, o.invoicedate, o.date, o.duedate, o.terms, o.final_amount, o.paid_amount, o.due_amount
+                         ORDER BY o.date DESC, o.id DESC
+                         LIMIT ${offset}, 10`;
 
     if (type === "sale") {
-      if (userId === 16 || userId === 1) {
-        query = `SELECT o.id, o.entryno, o.type, o.invoiceno, p.name, o.reference, 
-                                 DATE_FORMAT(o.invoicedate, '%d-%m-%Y') AS invoicedate, 
-                                 DATE_FORMAT(o.date, '%d-%m-%Y') AS date, 
-                                  DATE_FORMAT(o.duedate, '%d-%m-%Y') AS due_date, 
-                                      o.terms, 
-                                     o.pcs,
-                                     o.carat,
-                                     o.final_amount,
-                                     o.paid_amount,
-                                     o.due_amount                                 
-                         FROM dai_outward o
+      const userFilter = (userId === 16 || userId === 1) ? "" : " AND o.user != 16";
+      query = `${saleSelect}
+                         ${saleFrom}
+                         WHERE o.company = ${companyId}
+                         AND o.type IN ('sale', 'export')
+                         AND o.status IN ('on_sale', 'on_export')
+                         ${userFilter}
+                         ${party} ${invoice} ${dateFilter}
+                         ${saleGroupBy}`;
+    } else if (type === "purchase") {
+      const userFilter = (userId === 16 || userId === 1) ? "" : " AND o.user != 16";
+      query = `SELECT o.id, o.entryno, o.inward_type as type, o.invoiceno, p.name, o.reference,
+                                 DATE_FORMAT(o.invoicedate, '%d-%m-%Y') AS invoicedate,
+                                 DATE_FORMAT(o.date, '%d-%m-%Y') AS date,
+                                 DATE_FORMAT(o.duedate, '%d-%m-%Y') AS due_date,
+                                 o.terms,
+                                 o.pcs,
+                                 o.carat,
+                                 o.final_amount,
+                                 o.paid_amount,
+                                 o.due_amount
+                         FROM dai_inward o
                          LEFT JOIN dai_party p ON o.party = p.id AND p.company = ${companyId}
                          WHERE o.company = ${companyId}
-                         AND o.type IN ('sale', 'export') 
-                         AND o.status IN ('on_sale', 'on_export') 
+                         AND o.inward_type IN ('purchase', 'import')
+                         AND (deleted = 0 OR deleted IS NULL)
+                         ${userFilter}
                          ${party} ${invoice} ${dateFilter}
-                         ORDER BY o.date DESC, o.id DESC 
-                         LIMIT ${page}, 10`;
-      } else {
-        query = `SELECT o.id, o.entryno, o.type, o.invoiceno, p.name, o.reference, 
-                                 DATE_FORMAT(o.invoicedate, '%d-%m-%Y') AS invoicedate, 
-                                 DATE_FORMAT(o.date, '%d-%m-%Y') AS date, 
-                                  DATE_FORMAT(o.duedate, '%d-%m-%Y') AS due_date, 
-                                      o.terms, 
-                                     o.pcs,
-                                     o.carat,
-                                     o.final_amount,
-                                     o.paid_amount,
-                                     o.due_amount                                
-                         FROM dai_outward o
-                         LEFT JOIN dai_party p ON o.party = p.id AND p.company = ${companyId}
-                         WHERE o.company = ${companyId}
-                         AND o.type IN ('sale', 'export') 
-                         AND o.user != 16 
-                         AND o.status IN ('on_sale', 'on_export') 
-                         ${party} ${invoice} ${dateFilter}
-                         ORDER BY o.date DESC, o.id DESC 
-                         LIMIT ${page}, 10`;
-      }
-    }
-    else if (type === "purchase") {
-      if (userId === 16 || userId === 1) {
-        query = `SELECT o.id, o.entryno, o.inward_type as type, o.invoiceno, p.name, o.reference, 
-                                 DATE_FORMAT(o.invoicedate, '%d-%m-%Y') AS invoicedate, 
-                                 DATE_FORMAT(o.date, '%d-%m-%Y') AS date, 
-                                  DATE_FORMAT(o.duedate, '%d-%m-%Y') AS due_date, 
-                                      o.terms, 
-                                     o.pcs,
-                                     o.carat,
-                                     o.final_amount,
-                                     o.paid_amount,
-                                     o.due_amount                                 
-                         FROM dai_inward o  
-                         LEFT JOIN dai_party p ON o.party = p.id AND p.company = ${companyId}
-                         WHERE o.company = ${companyId}
-                         AND o.inward_type IN ('purchase', 'import')   
-                        AND (deleted = 0 || deleted IS NULL)                    
-                         ${party} ${invoice} ${dateFilter}
-                         ORDER BY o.date DESC, o.id DESC 
-                         LIMIT ${page}, 10`;
-      } else {
-        query = `SELECT o.id, o.entryno, o.inward_type as type, o.invoiceno, p.name, o.reference, 
-                                 DATE_FORMAT(o.invoicedate, '%d-%m-%Y') AS invoicedate, 
-                                 DATE_FORMAT(o.date, '%d-%m-%Y') AS date, 
-                                  DATE_FORMAT(o.duedate, '%d-%m-%Y') AS due_date, 
-                                      o.terms, 
-                                     o.pcs,
-                                     o.carat,
-                                     o.final_amount,
-                                     o.paid_amount,
-                                     o.due_amount                                
-                          FROM dai_inward o
-                         LEFT JOIN dai_party p ON o.party = p.id AND p.company = ${companyId}
-                         WHERE o.company = ${companyId}
-                         AND o.inward_type IN ('purchase', 'import')   
-                         AND o.user != 16 
-                         AND (deleted = 0 || deleted IS NULL)                         
-                         ${party} ${invoice} ${dateFilter}
-                         ORDER BY o.date DESC, o.id DESC 
-                         LIMIT ${page}, 10`;
-      }
+                         ORDER BY o.date DESC, o.id DESC
+                         LIMIT ${offset}, 10`;
     }
 
     connection.query(query, (error, data) => {
       if (error) {
-        res.status(201).json({
+        return res.status(201).json({
           status: false,
           message: "Error in Fetching data ",
           Data: error,

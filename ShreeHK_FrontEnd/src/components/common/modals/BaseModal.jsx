@@ -1,4 +1,5 @@
 import { Modal, Button } from "antd";
+import { SkeletonForm } from "../skeleton";
 import styles from "../../../assets/scss/modal.module.scss";
 
 const BaseModal = ({
@@ -9,6 +10,8 @@ const BaseModal = ({
     onClose,
     onSave,
     content,
+    contentLoading = false,
+    contentSkeletonFields = 6,
     saveBtnText = "Save",
     cancelBtnText = "Close",
     saveIcon,
@@ -97,7 +100,7 @@ const BaseModal = ({
             {...props}
         >
             <div className={isEdit ? "master-edit-modal__body" : styles.modalBody}>
-                {content}
+                {contentLoading ? <SkeletonForm fields={contentSkeletonFields} /> : content}
             </div>
         </Modal>
     );

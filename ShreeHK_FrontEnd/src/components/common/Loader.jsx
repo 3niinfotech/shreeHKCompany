@@ -73,7 +73,8 @@ function getTransparentLogo() {
 getTransparentLogo();
 
 /**
- * Premium full-viewport route / suspense loader for Smart DIA.
+ * Boot / auth hydration loader only — do not use for pages, tables, or modals.
+ * Everywhere else use skeleton components from `components/common/skeleton`.
  */
 const Loader = ({
   text = "Loading",

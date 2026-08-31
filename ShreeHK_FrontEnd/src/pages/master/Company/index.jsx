@@ -225,6 +225,7 @@ import { ReloadOutlined } from "@ant-design/icons";
 import { companyFields } from "../Data";
 import { ConfirmDeleteModal } from "../../../components/common/modals";
 import { MasterListTable } from "../../../components/common/table";
+import ExportExcelButton from "../../../components/common/ExportExcelButton";
 import MasterFormAddModal from "../../../components/common/masterCommon/MasterFormAddModal";
 import MasterFormEditModal from "../../../components/common/masterCommon/MasterFormEditModal";
 import { getCompanyColumns, mapApiToForm, mapFormToApi, exportCompanyExcel } from "../../../components/pages/Company";
@@ -423,9 +424,10 @@ const CompanyPage = () => {
                         <Button icon={<ReloadOutlined />} loading={isFetching} onClick={handleRefresh}>
                             Refresh
                         </Button>
-                        <Button type="primary" onClick={handleDownloadExcel} disabled={selectedRowKeys.length === 0} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff" }}>
-                            Download Excel
-                        </Button>
+                        <ExportExcelButton
+                            onClick={handleDownloadExcel}
+                            disabled={selectedRowKeys.length === 0}
+                        />
                     </Space>
                 }
             />

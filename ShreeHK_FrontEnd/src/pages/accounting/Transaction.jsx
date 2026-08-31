@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useRef } from 'react';
-import { Select, DatePicker, Table, Typography, Button } from 'antd';
+import { Select, DatePicker, Typography, Button } from 'antd';
+import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
 import {
     BookOutlined,
     TeamOutlined,
@@ -166,7 +167,7 @@ const Transaction = () => {
             </AdvancedFilterPanel>
 
             <div ref={tableRef} className={`${styles.tableWrap} erp-table-container`}>
-            <Table
+            <SkeletonAwareTable
                 dataSource={dataSource}
                 columns={columns}
                 loading={isLoading}

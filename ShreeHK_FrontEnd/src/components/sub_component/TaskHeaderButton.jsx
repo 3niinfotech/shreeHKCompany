@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Dropdown, Empty, Spin } from "antd";
+import { Dropdown, Empty } from "antd";
+import { SkeletonDropdownPanel } from "../common/skeleton";
 import { NotebookPen, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api/axiosInstance";
@@ -48,9 +49,7 @@ const TaskPanel = ({ tasks, loading, onTaskClick, onViewAll }) => {
 
       <div className={styles.list}>
         {loading && tasks.length === 0 ? (
-          <div className={styles.loaderWrap}>
-            <Spin />
-          </div>
+          <SkeletonDropdownPanel rows={4} />
         ) : null}
 
         {!loading && tasks.length === 0 ? (

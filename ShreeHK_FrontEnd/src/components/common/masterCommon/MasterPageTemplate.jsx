@@ -24,6 +24,8 @@ const MasterTemplate = ({
     searchValue,
     onSearchChange,
     hideCrudActions = false,
+    onRow,
+    rowClassName,
 }) => {
     const [form] = Form.useForm();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -91,6 +93,8 @@ const MasterTemplate = ({
                 totalItems={totalItems}
                 loading={loading}
                 hideCrudActions={hideCrudActions}
+                onRow={onRow}
+                rowClassName={rowClassName}
             />
 
             <BaseModal

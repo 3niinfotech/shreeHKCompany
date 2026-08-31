@@ -3,7 +3,7 @@ import {
   Card, Form, Input, Select, DatePicker, Button, Switch, Tabs, Tooltip, Space,
 } from "antd";
 import {
-  HistoryOutlined, FileExcelOutlined, FilePdfOutlined, DeleteOutlined, ReloadOutlined,
+  HistoryOutlined, FilePdfOutlined, DeleteOutlined, ReloadOutlined,
   LoginOutlined, TeamOutlined, DatabaseOutlined, ThunderboltOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
@@ -11,11 +11,12 @@ import dayjs from "dayjs";
 import { toastApiSuccess, toastApiError } from "../../utils/apiToast";
 import { api } from "../../api/axiosInstance";
 import { ENDPOINTS } from "../../constants/endpoints";
+import ExportExcelButton from "../../components/common/ExportExcelButton";
 import PageHeroHeader from "../../components/common/PageHeroHeader";
 import ActivityLogFlatTable from "../../components/admin/ActivityLogFlatTable";
 import LoginHistoryPanel from "../../components/admin/LoginHistoryPanel";
 import DeleteConfirmModal from "../../components/common/masterCommon/DeleteConfirmModal";
-import useAuthStore from "../../store/Auth.Store";
+import useAuthUser from "../../hooks/useAuthUser";
 import { hasPagePermission } from "../../config/permissionRegistry";
 import styles from "../../assets/scss/pages/admin/activityHistory.module.scss";
 
@@ -55,11 +56,9 @@ const triggerDownload = (blob, fileName) => {
 const todayRange = () => [dayjs().startOf("day"), dayjs().endOf("day")];
 
 const ActivityHistory = () => {
-  const user = useAuthStore((s) => s.user);
-  const storePermissions = useAuthStore((s) => s.permissions);
-  const permissions = user?.permissions ?? storePermissions ?? [];
+  const userWithPerms = useAuthUser();
   const canDelete =
-    Number(user?.roll) === 1 || hasPagePermission(permissions, "admin.activity_history");
+    userWithPerms?.roll === 1 || hasPagePermission(userWithPerms?.permissions ?? [], "admin.activity_history");
 
   const [form] = Form.useForm();
   const [total, setTotal] = useState(0);
@@ -274,15 +273,11 @@ const ActivityHistory = () => {
                   onClick={() => setTableRefreshKey((value) => value + 1)}
                 />
               </Tooltip>
-              <Tooltip title="Export Excel">
-                <Button
-                  className={styles.excelBtn}
-                  icon={<FileExcelOutlined />}
-                  loading={exporting === "xlsx"}
-                  disabled={!total || !!exporting}
-                  onClick={() => handleExport("xlsx")}
-                />
-              </Tooltip>
+              <ExportExcelButton
+                loading={exporting === "xlsx"}
+                disabled={!total || !!exporting}
+                onClick={() => handleExport("xlsx")}
+              />
               <Tooltip title="Export PDF">
                 <Button
                   icon={<FilePdfOutlined />}
