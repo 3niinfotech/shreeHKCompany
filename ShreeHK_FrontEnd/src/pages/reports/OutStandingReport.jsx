@@ -7,7 +7,7 @@ import debounce from 'lodash/debounce';
 import { useLocation } from 'react-router-dom';
 import { BarChartOutlined, ReloadOutlined } from '@ant-design/icons';
 import { ENDPOINTS } from '../../constants/endpoints';
-import { FileUp, Search, Sparkles } from 'lucide-react';
+import { Search, Sparkles } from 'lucide-react';
 import AIResultPanel from '../../components/ai/AIResultPanel';
 import useAiSalesReport from '../../components/ai/useAiSalesReport';
 import useFiltersFormFields from '../../hooks/useFiltersFormFields';
@@ -15,6 +15,7 @@ import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
 import OutstandingCalculationModal from './OutstandingcalculationModal';
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
 import PageHeroHeader from '../../components/common/PageHeroHeader';
+import ExportExcelButton from '../../components/common/ExportExcelButton';
 import { exportReportToExcel } from '../../utils/reportExcelExport';
 import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
 import styles from '../../assets/scss/pages/report/outStanding.module.scss';
@@ -69,7 +70,7 @@ const OutStandingReport = () => {
 
         fetchData(payload, {
             onSuccess: (res) => {
-                const rawData = res?.data || [];
+                const rawData = res?.Data || res?.data || [];
 
                 if (Array.isArray(rawData)) {
                     setTableData(rawData);
@@ -243,16 +244,11 @@ const OutStandingReport = () => {
                         >
                             Reload
                         </Button>
-                        <Button
-                            type="primary"
-                            icon={<FileUp size={16} />}
-                            className={styles.exportBtn}
+                        <ExportExcelButton
                             loading={exporting}
                             onClick={handleExport}
                             disabled={!tableData.length}
-                        >
-                            Export to Excel
-                        </Button>
+                        />
                     </>
                 )}
             >

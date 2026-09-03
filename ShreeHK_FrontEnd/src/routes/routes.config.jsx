@@ -1,0 +1,314 @@
+import React from "react";
+import { Navigate, useLocation } from "react-router-dom";
+import { ROLE_ACCESS } from "./routeAcl";
+
+const Login = React.lazy(() => import("../pages/auth/Login"));
+
+/** Legacy/bookmark path — canonical login is /auth/login (Phase 1.19). */
+const LoginAlias = () => {
+  const location = useLocation();
+  return <Navigate to={`/auth/login${location.search}`} replace />;
+};
+
+export const publicRoutes = [
+  { path: "/login", element: <LoginAlias /> },
+  { path: "/auth/login", element: <Login /> },
+];
+
+// --- 1. COMMON COMPONENT ---
+const Dashboard = React.lazy(() => import("../pages/DashBoard"));
+const TaskManager = React.lazy(() => import("../pages/TaskManager"));
+
+// --- 2. MASTER DROPDOWN PAGE ---
+const Company = React.lazy(() => import("../pages/master/Company"));
+const Shipping = React.lazy(() => import("../pages/master/Shipping"));
+const Origin = React.lazy(() => import("../pages/master/Origin"));
+const Lab = React.lazy(() => import("../pages/master/Lab"));
+const Category = React.lazy(() => import("../pages/master/Category"));
+const RapNetPriceList = React.lazy(() => import("../pages/master/RapNetPriceList"));
+const BulkUpdate = React.lazy(() => import("../pages/master/BulkUpdate"));
+const ImportFormat = React.lazy(() => import("../pages/master/ImportFormat"));
+const Attribute = React.lazy(() => import("../pages/master/Attribute"));
+const RefreshStock = React.lazy(() => import("../pages/master/RefreshStock"));
+const Integrations = React.lazy(() => import("../pages/master/Integrations"));
+
+// --- 3. INVENTORY DROPDOWN PAGE ---
+const DiamondInventoryTable = React.lazy(() => import("../pages/inventory/DiamondInventoryTable"));
+const SingleToBox = React.lazy(() => import("../pages/inventory/SingleToBox"));
+const SingleToParcel = React.lazy(() => import("../pages/inventory/SingleToParcel"));
+const OnHandStock = React.lazy(() => import("../pages/inventory/OnHandStock"));
+const Barcode = React.lazy(() => import("../pages/inventory/Barcode"));
+const Box = React.lazy(() => import("../pages/inventory/Box"));
+const Parcel = React.lazy(() => import("../pages/inventory/Parcel"));
+const Pair = React.lazy(() => import("../pages/inventory/Pair"));
+const CycleCount = React.lazy(() => import("../pages/inventory/CycleCount"));
+const Categories = React.lazy(() => import("../pages/inventory/Category"));
+
+// --- 4. TRANSACTION DROPDOWN PAGE ---
+const InwardPurchase = React.lazy(() => import("../pages/transaction/inward/InwardPurchase"));
+const InWardImport = React.lazy(() => import("../pages/transaction/inward/InwordImport"));
+const InMemo = React.lazy(() => import("../pages/transaction/inward/InMemo"));
+const InConsignment = React.lazy(() => import("../pages/transaction/inward/InConsignment"));
+const StoneUpdate = React.lazy(() => import("../pages/transaction/StoneUpdate"));
+const GIAMemoStock = React.lazy(() => import("../pages/transaction/stock/GIAMemoStock"));
+const InMemoStock = React.lazy(() => import("../pages/transaction/stock/InMemoStock"));
+const OutMemoStock = React.lazy(() => import("../pages/transaction/stock/OutMemoStock"));
+const SaleStock = React.lazy(() => import("../pages/transaction/stock/SaleStock"));
+const PurchaseStock = React.lazy(() => import("../pages/transaction/stock/PurchaseStock"));
+const InMemoEntry = React.lazy(() => import("../pages/transaction/stock/InMemoEntry"));
+const PurchaseEntry = React.lazy(() => import("../pages/transaction/stock/PurchaseEntry"));
+const OutMemoEntry = React.lazy(() => import("../pages/transaction/stock/OutMemoEntry"));
+const SaleEntry = React.lazy(() => import("../pages/transaction/stock/SaleEntry"));
+const GIAEntry = React.lazy(() => import("../pages/transaction/stock/GIAEntry"));
+const ExportEntry = React.lazy(() => import("../pages/transaction/stock/ExportEntry"));
+const ConsignEntry = React.lazy(() => import("../pages/transaction/stock/ConsignEntry"));
+
+// --- 5. ACCOUNTING DROPDOWN PAGE ---
+const Expanse = React.lazy(() => import("../pages/accounting/Expanse"));
+const AdvancePayment = React.lazy(() => import("../pages/accounting/AdvancePayment"));
+const MyBalance = React.lazy(() => import("../pages/accounting/my-balance/MyBalance"));
+const Transaction = React.lazy(() => import("../pages/accounting/Transaction"));
+const AdvanceTransaction = React.lazy(() => import("../pages/accounting/AdvanceTransaction"));
+const PartyWiseTransaction = React.lazy(() => import("../pages/accounting/PartyWiseTransaction"));
+const AccParty = React.lazy(() => import("../pages/accounting/AccParty"));
+const AccPartyReport = React.lazy(() => import("../pages/accounting/AccPartyReport"));
+const ExpanseTableData = React.lazy(() => import("../pages/accounting/FormTable/ExpanseTableData"));
+const AdvanceTableData = React.lazy(() => import("../pages/accounting/FormTable/AdvanceTableData"));
+const AccGroup = React.lazy(() => import("../pages/accounting/AccGroup"));
+const AccSubgroup = React.lazy(() => import("../pages/accounting/AccSubgroup"));
+
+// --- 6. REPORTS DROPDOWN PAGE ---
+const TransactionReport = React.lazy(() => import("../pages/reports/TransactionReport"));
+const OutStandingReport = React.lazy(() => import("../pages/reports/OutStandingReport"));
+const GroupReport = React.lazy(() => import("../pages/reports/GroupReport"));
+const StoneHistory = React.lazy(() => import("../pages/reports/StoneHistory"));
+const TransferHistory = React.lazy(() => import("../pages/reports/TransferHistory"));
+const SaleStoneReport = React.lazy(() => import("../pages/reports/SaleStoneReport"));
+const StoneInfoReport = React.lazy(() => import("../pages/reports/StoneInfoReport"));
+
+// --- 6. ADMIN DROPDOWN PAGE ---
+const AdvancedRollPage = React.lazy(() => import("../pages/admin/AdvancedRollPage"));
+const ManageUser = React.lazy(() => import("../pages/admin/ManageUser"));
+const FiscalYearAdmin = React.lazy(() => import("../pages/admin/FiscalYearAdmin"));
+const ActivityHistory = React.lazy(() => import("../pages/admin/ActivityHistory"));
+const LegacyAppsScope = React.lazy(() => import("../pages/admin/LegacyAppsScope"));
+const TenantCompanyList = React.lazy(() => import("../pages/admin/TenantCompanyList"));
+
+// --- 8. OUTWARD DROPDOWN PAGE ---
+const Outward = React.lazy(() => import("../pages/outword/OutWord"));
+
+// --- 9 MY ACCOUNT ---
+const MyAccount = React.lazy(() => import("../pages/myAccount/MyAccount"));
+const Setting = React.lazy(() => import("../pages/myAccount/Setting"));
+
+// --- ERRORS ---
+const Forbidden = React.lazy(() => import("../pages/errors/Forbidden"));
+
+// Alias route to preserve old (typo) URLs and keep query params (e.g. ?sku=...).
+const TransferHistoryAlias = () => {
+  const location = useLocation();
+  return <Navigate to={`/report/stone-transfer-history${location.search}`} replace />;
+};
+
+const StoneDetailAlias = () => {
+  const location = useLocation();
+  return <Navigate to={`/transaction/stone-update${location.search}`} replace />;
+};
+
+export const allProtectedRoutes = [
+  { path: "/dashboard", name: "Dashboard", icon: "House", element: <Dashboard />, permissionKey: "core.dashboard" },
+  { path: "/", element: <Navigate to="/dashboard" replace />, alwaysAllow: true, hideFromNav: true },
+  {
+    name: "Master",
+    path: "/master",
+    icon: "Settings",
+    children: [
+      { path: "/master/company-details", name: "Company", element: <Company />, permissionKey: "master.company" },
+      { path: "/master/shipping-details", name: "Shipping", element: <Shipping />, permissionKey: "master.shipping" },
+      { path: "/master/origin", name: "Origin", element: <Origin />, permissionKey: "master.origin" },
+      { path: "/master/lab", name: "Lab", element: <Lab />, permissionKey: "master.lab" },
+      { path: "/master/category", name: "Category", element: <Category />, permissionKey: "master.category" },
+      { path: "/master/rapnet-pricelist", name: "RapNet PriceList", element: <RapNetPriceList />, permissionKey: "master.rapnet" },
+      { path: "/master/bulk-update", name: "Bulk Update", element: <BulkUpdate />, permissionKey: "master.bulk_update" },
+      { path: "/master/import-format", name: "Import Format", element: <ImportFormat />, permissionKey: "master.import_format" },
+      // { path: "/master/attribute", name: "Attribute", element: <Attribute />, permissionKey: "master.attribute" },
+      { path: "/master/refresh-stock", name: "Refresh Stock", element: <RefreshStock />, permissionKey: "master.refresh_stock" },
+      { path: "/master/integrations", name: "Integrations", element: <Integrations />, permissionKey: "master.integrations" },
+    ]
+  },
+  {
+    name: "Inventory",
+    path: "/inventory",
+    icon: "Package",
+    children: [
+      { path: "/inventory/my-inventory", name: "My Inventory", element: <DiamondInventoryTable />, permissionKey: "inventory.my_inventory" },
+      { path: "/inventory/categorize-inventory", name: "Categorize", element: <Categories />, permissionKey: "inventory.categorize" },
+      {
+        name: "Single/Two",
+        path: "/inventory/singal-two",
+        children: [
+          { path: "/inventory/box", name: "Box To", element: <SingleToBox />, permissionKey: "inventory.single_to_box" },
+          { path: "/inventory/parcel", name: "Parcel To", element: <SingleToParcel />, permissionKey: "inventory.single_to_parcel" }
+        ]
+      },
+      { path: "/inventory/on-hand-stock", name: "On Hand Stock", element: <OnHandStock />, permissionKey: "inventory.on_hand_stock" },
+      { path: "/inventory/barcode", name: "Barcode", element: <Barcode />, permissionKey: "inventory.barcode" },
+      { path: "/inventory/cycle-count", name: "Cycle Count", element: <CycleCount />, permissionKey: "inventory.on_hand_stock" },
+      { path: "/inventory/box-to", name: "Box", element: <Box />, permissionKey: "inventory.box" },
+      { path: "/inventory/parcel-to", name: "Parcel", element: <Parcel />, permissionKey: "inventory.parcel" },
+      { path: "/inventory/pair", name: "Pair", element: <Pair />, permissionKey: "inventory.pair" },
+    ]
+  },
+  {
+    name: "Transaction",
+    path: "/transaction/inward/",
+    icon: "Repeat",
+    children: [
+      {
+        name: "Inward",
+        path: "/transaction/inward/import",
+        element: <InWardImport />,
+        permissionKey: "transaction.inward"
+        // children: [
+        //   { path: "/transaction/inward/import", name: "Import", element: <InWardImport />, permissionKey: "transaction.inward" },
+        // { path: "/transaction/inward/purchase", name: "Purchase", element: <InwardPurchase />, permissionKey: "transaction.inward" },
+        // { path: "/transaction/inward/inmemo", name: "In Memo", element: <InMemo />, permissionKey: "transaction.inward" },
+        // { path: "/transaction/inward/inconsignment", name: "In Consignment", element: <InConsignment />, permissionKey: "transaction.inward" },
+        // ],
+      },
+      {
+        path: "/transaction/stone-update",
+        name: "Stone Update",
+        element: <StoneUpdate />,
+        permissionKey: "transaction.stone_update"
+      },
+      {
+        path: "/transaction/gia-memo",
+        name: "GIA-Memo",
+        element: <GIAMemoStock />,
+        permissionKey: "transaction.gia_memo"
+      },
+      {
+        path: "/transaction/gia-memo/entry",
+        name: "GIA Memo Entry",
+        element: <GIAEntry />,
+        permissionKey: "transaction.gia_memo",
+        hideFromNav: true
+      },
+      {
+        path: "/transaction/in-memo",
+        name: "In Memo",
+        element: <InMemoStock />,
+        permissionKey: "transaction.in_memo"
+      },
+      {
+        path: "/transaction/in-memo/entry",
+        name: "In Memo Entry",
+        element: <InMemoEntry />,
+        permissionKey: "transaction.in_memo",
+        hideFromNav: true
+      },
+      {
+        path: "/transaction/out-memo",
+        name: "Out Memo",
+        element: <OutMemoStock />,
+        permissionKey: "transaction.out_memo"
+      },
+      {
+        path: "/transaction/out-memo/entry",
+        name: "Out Memo Entry",
+        element: <OutMemoEntry />,
+        permissionKey: "transaction.out_memo",
+        hideFromNav: true
+      },
+      {
+        path: "/transaction/sale",
+        name: "Sale",
+        element: <SaleStock />,
+        permissionKey: "transaction.sale_stock"
+      },
+      {
+        path: "/transaction/sale/entry",
+        name: "Sale Entry",
+        element: <SaleEntry />,
+        permissionKey: "transaction.sale_stock",
+        hideFromNav: true
+      },
+      {
+        path: "/transaction/purchase",
+        name: "Purchase",
+        element: <PurchaseStock />,
+        permissionKey: "transaction.purchase_stock"
+      },
+      {
+        path: "/transaction/purchase/entry",
+        name: "Purchase Entry",
+        element: <PurchaseEntry />,
+        permissionKey: "transaction.purchase_stock",
+        hideFromNav: true
+      },
+    ]
+  },
+  {
+    name: "Accounting",
+    path: "/accounting",
+    icon: "Book",
+    children: [
+      { path: "/accounting/expanse", name: "Expanse", element: <Expanse />, permissionKey: "accounting.expanse" },
+      { path: "/accounting/expanse/table-data", name: "Expanse List", element: <ExpanseTableData />, permissionKey: "accounting.expanse_list" },
+      { path: "/accounting/advance", name: "AdvancePayment", element: <AdvancePayment />, permissionKey: "accounting.advance" },
+      { path: "/accounting/advance/table-data", name: "Advance List", element: <AdvanceTableData />, permissionKey: "accounting.advance_list" },
+      { path: "/accounting/my-balance", name: "My Balance", element: <MyBalance />, permissionKey: "accounting.my_balance" },
+      { path: "/accounting/account-transaction", name: "Transactions", element: <Transaction />, permissionKey: "accounting.transactions" },
+      { path: "/accounting/advance-transaction", name: "Adv Transaction", element: <AdvanceTransaction />, permissionKey: "accounting.advance_transaction" },
+      { path: "/accounting/party-wise-transaction", name: "Party Wise Transaction", element: <PartyWiseTransaction />, permissionKey: "accounting.party_wise" },
+      { path: "/accounting/party", name: "Accounting Party", element: <AccParty />, permissionKey: "accounting.party" },
+      { path: "/accounting/party-report", name: "Party Report", element: <AccPartyReport />, permissionKey: "accounting.party_report" },
+      { path: "/accounting/group", name: "Group", element: <AccGroup />, permissionKey: "accounting.group" },
+      { path: "/accounting/subgroup", name: "Sub Group", element: <AccSubgroup />, permissionKey: "accounting.subgroup" },
+    ]
+  },
+  {
+    name: "Reports",
+    path: "/report",
+    icon: "BarChart",
+    children: [
+      { path: "/report/transaction", name: "Trans. Report", element: <TransactionReport />, permissionKey: "reports.transaction" },
+      { path: "/report/outstanding", name: "Outstanding", element: <OutStandingReport />, permissionKey: "reports.outstanding" },
+      { path: "/report/group-report", name: "Group Report", element: <GroupReport />, permissionKey: "reports.group_report" },
+      { path: "/report/stone-history", name: "Stone History", element: <StoneHistory />, permissionKey: "reports.stone_history" },
+      { path: "/report/stone-transfer-history", name: "Transfer History", element: <TransferHistory />, permissionKey: "reports.transfer_history" },
+      {
+        path: "/report/stone-tranfer-history",
+        name: "Transfer History",
+        element: <TransferHistoryAlias />,
+        permissionKey: "reports.transfer_history",
+        hideFromNav: true,
+      },
+      { path: "/report/sale-stock", name: "Sale Stock Report", element: <SaleStoneReport />, permissionKey: "reports.sale_stock" },
+      { path: "/report/stone-info", name: "Party Stone Info", element: <StoneInfoReport />, permissionKey: "reports.stone_info" },
+    ]
+  },
+  {
+    name: "Admin",
+    path: "/admin",
+    icon: "User",
+    children: [
+      { path: "/admin/tenant-company", name: "Company", element: <TenantCompanyList />, requiredRole: ROLE_ACCESS.SUPER_ADMIN, permissionKey: "admin.tenant_company" },
+      { path: "/admin/manage-user", name: "Manage User", element: <ManageUser />, requiredRole: ROLE_ACCESS.SUPER_ADMIN, permissionKey: "admin.manage_user" },
+      { path: "/admin/roll", name: "Roll", element: <AdvancedRollPage />, requiredRole: ROLE_ACCESS.SUPER_ADMIN, permissionKey: "admin.role" },
+      { path: "/admin/fiscal-year", name: "Fiscal Year", element: <FiscalYearAdmin />, requiredRole: ROLE_ACCESS.SUPER_ADMIN, permissionKey: "admin.fiscal_year" },
+      { path: "/admin/activity-history", name: "Activity History", element: <ActivityHistory />, permissionKeys: ["admin.activity_history", "admin.auditor"] },
+      { path: "/admin/legacy-apps", name: "Legacy Apps", element: <LegacyAppsScope />, requiredRole: ROLE_ACCESS.SUPER_ADMIN, permissionKey: "admin.legacy_apps" },
+    ]
+  },
+  { path: "/outward", name: "Outward", icon: "ExternalLink", element: <Outward />, permissionKey: "outward.main" },
+  { path: "/task-manager", name: "Task Manager", icon: "NotebookPen", element: <TaskManager />, permissionKey: "core.task_manager" },
+  { path: "/my-account", element: <MyAccount />, alwaysAllow: true, hideFromNav: true },
+  { path: "/settings", element: <Setting />, alwaysAllow: true, hideFromNav: true },
+  // { path: "/contact-support", element: <ContactSupport />, alwaysAllow: true, hideFromNav: true },
+  { path: "/forbidden", element: <Forbidden />, alwaysAllow: true, hideFromNav: true },
+  { path: "/module/inventory/stonedetail.php", element: <StoneDetailAlias />, alwaysAllow: true, hideFromNav: true },
+  { path: "/dai/module/inventory/stonedetail.php", element: <StoneDetailAlias />, alwaysAllow: true, hideFromNav: true },
+  { path: "/inventory/stonedetail", element: <StoneDetailAlias />, alwaysAllow: true, hideFromNav: true },
+];

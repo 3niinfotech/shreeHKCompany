@@ -187,6 +187,25 @@
   }
 }
 
+.editModalRoot {
+  :global(.ant-modal-footer .ant-btn-primary),
+  :global(.ant-modal-footer .fiscal-save-btn) {
+    background: var(--color-success, #2f9e6a) !important;
+    border-color: var(--color-success, #2f9e6a) !important;
+    color: #fff !important;
+    box-shadow: none !important;
+    font-weight: 600;
+
+    &:hover:not(:disabled),
+    &:focus:not(:disabled),
+    &:active:not(:disabled) {
+      background: var(--color-success-dark, #247a52) !important;
+      border-color: var(--color-success-dark, #247a52) !important;
+      color: #fff !important;
+    }
+  }
+}
+
 .modalActions {
   justify-content: flex-end;
   width: 100%;

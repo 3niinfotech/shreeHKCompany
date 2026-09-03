@@ -46,6 +46,7 @@ export const usePostApiRequest = (url, successKey, options = {}) => {
         onSuccess: (data) => {
             if (successKey) {
                 queryClient.invalidateQueries({ queryKey: [successKey] });
+                queryClient.refetchQueries({ queryKey: [successKey], type: "active" });
             }
             if (showToast) {
                 if (data?.status === false) toastApiError({ response: { data } });
@@ -76,6 +77,7 @@ export const usePutApiRequest = (url, successKey, options = {}) => {
         onSuccess: (data) => {
             if (successKey) {
                 queryClient.invalidateQueries({ queryKey: [successKey] });
+                queryClient.refetchQueries({ queryKey: [successKey], type: "active" });
             }
             if (showToast) {
                 if (data?.status === false) toastApiError({ response: { data } });
@@ -108,6 +110,7 @@ export const useDeleteApiRequest = (url, successKey, options = {}) => {
         onSuccess: (data) => {
             if (successKey) {
                 queryClient.invalidateQueries({ queryKey: [successKey] });
+                queryClient.refetchQueries({ queryKey: [successKey], type: "active" });
             }
             if (showToast) toastDeleted(data);
         },

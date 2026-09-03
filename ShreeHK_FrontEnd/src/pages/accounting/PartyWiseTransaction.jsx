@@ -2,8 +2,9 @@
 
 import React, { useEffect, useState, useCallback, useRef, createElement } from 'react';
 import {
-    Button, Input, Select, Card, Typography, Space, Tooltip, Popconfirm, Form, Spin
+    Button, Input, Select, Card, Typography, Space, Tooltip, Popconfirm, Form
 } from 'antd';
+import { SkeletonBlock } from '../../components/common/skeleton';
 import {
     PlusOutlined,
     EyeOutlined,
@@ -14,13 +15,14 @@ import {
 } from '@ant-design/icons';
 import DynamicFormField from "../../hooks/DynamicFormField"
 import { BaseModal, FormModal } from "../../components/common/modals";
-import { Pencil, CircleCheck, FileUp } from "lucide-react";
+import { Pencil, CircleCheck } from "lucide-react";
 import "../../assets/scss/masterEdit.scss";
 import { useDeleteApiRequest, useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../constants/endpoints';
 import { ConfirmDeleteModal } from "../../components/common/modals";
 import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
 import styles from '../../assets/scss/pages/accountings/PartyWiseTransaction.module.scss';
+import ExportExcelButton from '../../components/common/ExportExcelButton';
 import { exportReportToExcel } from '../../utils/reportExcelExport';
 import { toastSuccess, toastWarning, toastError } from '../../utils/toastNotify';
 import AICustomerSuggestModal from '../../components/ai/AICustomerSuggestModal';
@@ -335,15 +337,11 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
                         <Button icon={<ReloadOutlined />} loading={isFetching || isRefetching} onClick={resetAndRefetch}>
                             Refresh
                         </Button>
-                        <Button
-                            icon={<FileUp size={16} color='white' />}
+                        <ExportExcelButton
                             loading={exporting}
                             onClick={handleExport}
                             disabled={!allData.length}
-                            style={{ background: "var(--color-btn-save-bg) !important", borderColor: "var(--color-btn-save-bg) !important", color: "white !important" }}
-                        >
-                            <span style={{ color: 'white' }}>Export to Excel</span>
-                        </Button>
+                        />
                         <Button type="primary" icon={<PlusOutlined />} onClick={() => showModal()}>
                             Add New Party
                         </Button>
@@ -367,7 +365,9 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
                         rowClassName={(record) => record.id === selectedRowKey ? styles.activeRow : ''}
                         footer={() => (
                             <div style={{ textAlign: 'center', padding: 4, fontSize: 12, color: cssVar('color-text-muted') }}>
-                                {(isRefetching || scrollFetching) ? <Spin size="small" /> :
+                                {(isRefetching || scrollFetching) ? (
+                                  <SkeletonBlock variant="text" width="100px" height={12} style={{ margin: '0 auto' }} />
+                                ) :
                                     hasMore ? 'Scroll down for more...' : `Total ${allData.length} records`}
                             </div>
                         )}

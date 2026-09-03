@@ -27,7 +27,7 @@ export default function useTableSkeleton({
     showOverlay,
     columns: showSkeleton ? skeleton.columns : columns,
     dataSource: showSkeleton ? skeleton.dataSource : safeData,
-    /** Pass to Ant Table: spin only when refetching with existing rows */
-    tableLoading: showOverlay,
+    /** Never use Ant Design table spin — skeleton or stale rows only */
+    tableLoading: false,
   };
 }

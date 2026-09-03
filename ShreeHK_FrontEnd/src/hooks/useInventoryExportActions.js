@@ -45,6 +45,7 @@ export default function useInventoryExportActions({ onSuccess } = {}) {
           const count = await exportVenyaInventoryExcel({
             rows: exportRows,
             sheetName: String(values.sheetName || "Export").trim() || "Export",
+            mode: "export",
           });
           toastSuccess(`Exported ${count} record(s)`);
           onSuccess?.();

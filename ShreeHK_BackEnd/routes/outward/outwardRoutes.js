@@ -169,7 +169,7 @@ outwardRouter.get("/outward/", authenticateToken, (req, res) => {
 
     connection.query(query, (error, data) => {
       if (error) {
-        res.status(201).json({
+        return res.status(201).json({
           status: false,
           message: "Error in Fetching data ",
           Data: error,
@@ -247,7 +247,7 @@ outwardRouter.post("/outward/getProducts", authenticateToken, async (req, res) =
 
     connection.query(query, (error, data) => {
       if (error) {
-        res.status(201).json({
+        return res.status(201).json({
           status: false,
           message: "Error in Fetching data ",
           data: error,

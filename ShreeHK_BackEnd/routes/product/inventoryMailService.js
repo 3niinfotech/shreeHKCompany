@@ -92,8 +92,8 @@ const buildAttachmentFilename = () => {
   return `KalistJewels_${dd}-${mm}-${yyyy}.xlsx`;
 };
 
-const sendInventoryStoneMail = async ({ ids, email, subject, content }) => {
-  const products = await repository.getExportInventoryByIds(ids);
+const sendInventoryStoneMail = async ({ ids, email, subject, content, companyId }) => {
+  const products = await repository.getExportInventoryByIds(ids, companyId);
   if (!products.length) {
     const error = new Error("No product found for selected items");
     error.statusCode = 404;

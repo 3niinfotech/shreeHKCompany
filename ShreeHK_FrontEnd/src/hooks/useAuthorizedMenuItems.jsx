@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { House, Settings, Package, Repeat, Book, BarChart, ExternalLink, User, Users, Shield, NotebookPen } from "lucide-react";
 import { getAuthorizedRouteMeta } from "../routes/Routes";
 import { prefetchRoute, prefetchRouteTree } from "../routes/routePrefetch";
-import useAuthStore from "../store/Auth.Store";
+import useAuthUser from "./useAuthUser";
 
 const ICON_MAP = { House, Settings, Package, Repeat, Book, BarChart, ExternalLink, User, Users, Shield, NotebookPen };
 
@@ -18,26 +18,17 @@ const renderIcon = (iconName) => {
 
 export default function useAuthorizedMenuItems(onItemClick) {
   const navigate = useNavigate();
-  const user = useAuthStore((state) => state.user);
-  const storePermissions = useAuthStore((state) => state.permissions);
-  const userWithPerms = useMemo(
-    () => ({
-      ...user,
-      permissions: user?.permissions ?? storePermissions ?? [],
-    }),
-    [user, storePermissions]
-  );
+  const userWithPerms = useAuthUser();
   const { routes: authorizedRoutes } = useMemo(
     () => getAuthorizedRouteMeta(userWithPerms),
     [userWithPerms]
   );
 
-  const handleNavigate = useCallback(
+  const goToPath = useCallback(
     (path) => {
-      navigate(path);
-      onItemClick?.();
+      if (path) navigate(path);
     },
-    [navigate, onItemClick]
+    [navigate]
   );
 
   const buildMenuItems = useCallback(
@@ -60,17 +51,18 @@ export default function useAuthorizedMenuItems(onItemClick) {
               ? buildMenuItems(item.children, index)
               : null,
             onMouseEnter: () => prefetchRouteTree(item),
-            onClick: hasChildren
+            onMouseDown: hasChildren
               ? null
-              : () => {
-                  if (item.path) {
-                    prefetchRoute(item.path);
-                    handleNavigate(item.path);
-                  }
+              : (event) => {
+                  if (event.button !== 0 || !item.path) return;
+                  prefetchRoute(item.path);
+                  goToPath(item.path);
+                  onItemClick?.();
                 },
+            onClick: hasChildren ? null : () => onItemClick?.(),
           };
         }),
-    [handleNavigate]
+    [goToPath, onItemClick]
   );
 
   return useMemo(

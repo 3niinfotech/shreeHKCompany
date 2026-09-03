@@ -34,7 +34,7 @@ const InventoryBulkActionModal = ({
           normalized[key] = normalized[key].format("YYYY-MM-DD");
         }
       });
-      onSubmit?.(normalized, actionKey);
+      await onSubmit?.(normalized, actionKey);
     } catch (err) {
       if (err?.errorFields && err.errorFields.length > 0) {
         const firstMsg = err.errorFields[0]?.errors?.[0];
@@ -56,8 +56,16 @@ const InventoryBulkActionModal = ({
       case "date":
         return <DatePicker className="w-100" style={{ width: "100%" }} format="DD-MM-YYYY" />;
       default:
-        return <Input {...common} />;
+        return <Input type={field.inputType || "text"} {...common} />;
     }
+  };
+
+  const buildFieldRules = (field) => {
+    const rules = [...(field.rules || [])];
+    if (field.required) {
+      rules.unshift({ required: true, message: `${field.label} is required` });
+    }
+    return rules.length ? rules : undefined;
   };
 
   if (!actionKey) return null;
@@ -99,14 +107,9 @@ const InventoryBulkActionModal = ({
         <Button
           key="ok"
           type="primary"
-          className={styles.okBtn}
+          className={styles.btnSave}
           loading={loading}
           onClick={handleOk}
-          style={{
-            background: theme.btnBg || theme.accent,
-            borderColor: theme.btnBorder || theme.accent,
-            color: "#fff",
-          }}
         >
           {submitLabel}
         </Button>,
@@ -121,11 +124,7 @@ const InventoryBulkActionModal = ({
                   className={styles.formItem}
                   name={field.name}
                   label={field.label}
-                  rules={
-                    field.required
-                      ? [{ required: true, message: `${field.label} is required` }]
-                      : undefined
-                  }
+                  rules={buildFieldRules(field)}
                 >
                   {renderField(field)}
                 </Form.Item>

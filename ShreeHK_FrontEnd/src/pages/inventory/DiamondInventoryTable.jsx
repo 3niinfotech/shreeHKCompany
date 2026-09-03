@@ -61,7 +61,7 @@ const DOWNLOAD_EXCEL_PRESETS = {
 };
 
 const DOWNLOAD_MENU_ITEMS = [
-  { key: "export", label: "Export Excel", icon: <DownloadOutlined /> },
+  { key: "export", label: "Export to Excel", icon: <DownloadOutlined /> },
   { key: "iExport", label: "I.Export Excel", icon: <DownloadOutlined /> },
   { key: "sell", label: "Sell Diamond Excel", icon: <DownloadOutlined /> },
   { key: "memo", label: "Memo Diamond Excel", icon: <DownloadOutlined /> },
@@ -241,19 +241,19 @@ const InventoryTableFooter = React.memo(function InventoryTableFooter({ showTota
     <div className="inventory-table-footer-totals">
       <div className="inventory-footer-group inventory-footer-group--total">
         <span className="inventory-footer-stat">
-          TOTAL : <b>{Number(showTotalStats.totalPcs || 0).toLocaleString()}</b>
+          TOTAL Pcs : <b>{Number(showTotalStats.totalPcs || 0).toLocaleString()}</b>
         </span>
         <span className="inventory-footer-stat">
           Carat Total : <b>{showTotalStats.totalCts}</b>
         </span>
         <span className="inventory-footer-stat">
-          Amount Total : <b>{showTotalStats.askAmt}</b>
+          Amount Total : <b>{Number(showTotalStats.askAmt || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>
         </span>
       </div>
       <div className="inventory-footer-group inventory-footer-group--selected">
         <span className="inventory-footer-divider" aria-hidden="true" />
         <span className="inventory-footer-stat">
-          Select Pcs : <b>{selectedStats.totalPcs}</b>
+          Select Pcs : <b>{Number(selectedStats.totalPcs || 0).toLocaleString()}</b>
         </span>
         <span className="inventory-footer-stat">
           Select Carats : <b>{selectedStats.totalCts}</b>
@@ -262,7 +262,7 @@ const InventoryTableFooter = React.memo(function InventoryTableFooter({ showTota
           Select Price : <b>{selectedStats.askRate}</b>
         </span>
         <span className="inventory-footer-stat">
-          Select Amount : <b>{selectedStats.askAmt}</b>
+          Select Amount : <b>{Number(selectedStats.askAmt || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>
         </span>
       </div>
     </div>
@@ -283,7 +283,7 @@ const InventoryTableFooterConnected = React.memo(function InventoryTableFooterCo
     }
     const rows = [];
     for (let i = 0; i < selectedRowKeys.length; i += 1) {
-      const row = rowsById.get(selectedRowKeys[i]);
+      const row = rowsById.get(String(selectedRowKeys[i]));
       if (row) rows.push(row);
     }
     return computeSelectedStockCalculationStats(rows);
@@ -331,7 +331,7 @@ function computeSelectedStockCalculationStats(selectedRows) {
     };
   }
 
-  let count = 0;
+  let pcs = 0;
   let carat = 0;
   let rapTotal = 0;
   let askingTotal = 0;
@@ -340,16 +340,19 @@ function computeSelectedStockCalculationStats(selectedRows) {
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     if (!row) continue;
-    const c = Number(row.polishCarat ?? row.carat ?? row.Carat ?? 0);
-    const r = Number(row.rapPrice ?? row.rap ?? row.Rap ?? 0);
+    const rowPcs = Number(row.polishPcs ?? row.polish_pcs ?? row.pcs ?? 0);
+    const c = Number(row.polishCarat ?? row.polish_carat ?? row.carat ?? row.Carat ?? 0);
+    const r = Number(row.rapPrice ?? row.rap_price ?? row.rap ?? row.Rap ?? 0);
     const p = Number(row.price ?? row.Asking ?? row.Rate ?? 0);
-    const a = Number(row.amount ?? row.Amount ?? 0);
+    // Prefer stored amount; fall back to carat × price when amount is missing/0
+    const storedAmount = Number(row.amount ?? row.Amount ?? 0);
+    const a = storedAmount || (c * p);
 
-    count += 1;
-    carat += c;
+    pcs += Number.isFinite(rowPcs) ? rowPcs : 0;
+    carat += Number.isFinite(c) ? c : 0;
     rapTotal += r * c;
     askingTotal += p * c;
-    amount += a;
+    amount += Number.isFinite(a) ? a : 0;
   }
 
   const safeAvg = (total, divisor) =>
@@ -359,7 +362,7 @@ function computeSelectedStockCalculationStats(selectedRows) {
     rapTotal ? (((askingTotal * 100) / rapTotal) - 100).toFixed(2) : "0.00";
 
   return {
-    totalPcs: count,
+    totalPcs: pcs,
     totalCts: carat.toFixed(2),
     aRap: safeAvg(rapTotal, carat),
     askDisc: calAvgDisc(askingTotal, rapTotal),
@@ -1520,7 +1523,9 @@ const DiamondInventoryTable = () => {
     const computed = computeSelectedStockCalculationStats(filteredTableData);
     const td = productData?.TotalData;
     return {
-      totalPcs: td?.TotalItems ?? computed.totalPcs,
+      totalPcs: td?.TotalPcs != null
+        ? Number(td.TotalPcs)
+        : (td?.TotalItems ?? computed.totalPcs),
       totalCts:
         td?.TotalCarat != null
           ? Number(td.TotalCarat).toFixed(2)
@@ -1531,7 +1536,7 @@ const DiamondInventoryTable = () => {
           ? Number(td.TotalAmount).toFixed(2)
           : computed.askAmt,
     };
-  }, [tableData, productData]);
+  }, [filteredTableData, productData]);
 
   const totalItemsDisplay =
     productData?.TotalData?.TotalItems?.toLocaleString() ??

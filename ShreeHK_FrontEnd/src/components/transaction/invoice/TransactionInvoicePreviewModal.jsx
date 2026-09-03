@@ -12,6 +12,7 @@ const TransactionInvoicePreviewModal = ({
   onClose,
   record,
   invoiceTitle = "Purchase Invoice",
+  printType,
   company = {},
   selectedProductIds = null,
 }) => {
@@ -19,10 +20,11 @@ const TransactionInvoicePreviewModal = ({
     if (!record) return null;
     return mapTransactionToInvoice(record, {
       invoiceTitle,
+      printType,
       company,
       productIds: selectedProductIds,
     });
-  }, [record, invoiceTitle, company, selectedProductIds]);
+  }, [record, invoiceTitle, printType, company, selectedProductIds]);
 
   const handlePrint = () => {
     if (!invoiceData) return;

@@ -1,9 +1,10 @@
-import { useEffect, lazy, Suspense } from "react";
+import { useEffect, lazy, Suspense, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import useUIStore from "../../store/Ui.Store";
 import useAuthStore from "../../store/Auth.Store";
 import useSessionKeepalive from "../../hooks/useSessionKeepalive";
 import useActivityTracker from "../../hooks/useActivityTracker";
+import useAuthUser from "../../hooks/useAuthUser";
 import MainLayout from "./MainLayout";
 import DashboardLayout from "./DashboardLayout";
 import CompanyYearPicker from "./CompanyYearPicker";
@@ -12,6 +13,8 @@ import useCopyableTableIdentifiers from "../../hooks/useCopyableTableIdentifiers
 import TaskReminderModal from "../dashboard/TaskReminderModal";
 import { SkuModalProvider } from "../../hooks/useSkuModalAction";
 import { prefetchMasterQueries } from "../../api/prefetchMasterQueries";
+import { getAuthorizedRouteMeta } from "../../routes/Routes";
+import { prefetchAuthorizedRoutesIdle } from "../../routes/routePrefetch";
 
 const FloatingAIChat = lazy(() => import("../ai/FloatingAIChat"));
 
@@ -22,12 +25,17 @@ const LayoutShell = () => {
   const companyId = useAuthStore((state) => state.companyId);
   const yearId = useAuthStore((state) => state.yearId);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const userWithPerms = useAuthUser();
   useSessionKeepalive();
   useActivityTracker();
   useCopyableTableIdentifiers();
 
   const contextReady = companyId != null && yearId != null;
   const queryClient = useQueryClient();
+  const { routes: authorizedRoutes } = useMemo(
+    () => getAuthorizedRouteMeta(userWithPerms),
+    [userWithPerms]
+  );
 
   useEffect(() => {
     if (isAuthenticated && !contextReady) {
@@ -40,6 +48,11 @@ const LayoutShell = () => {
       prefetchMasterQueries(queryClient);
     }
   }, [isAuthenticated, contextReady, queryClient]);
+
+  useEffect(() => {
+    if (!contextReady) return undefined;
+    return prefetchAuthorizedRoutesIdle(authorizedRoutes);
+  }, [contextReady, authorizedRoutes]);
 
   useEffect(() => {
     if (!contextReady) return undefined;

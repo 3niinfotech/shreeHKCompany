@@ -65,10 +65,9 @@ const AddToPackageModal = ({ open, onClose, productIds, onSuccess }) => {
         <Button
           key="ok"
           type="primary"
-          className={styles.okBtn}
+          className={styles.btnSave}
           loading={isLoading}
           onClick={handleOk}
-          style={{ background: theme.btnBg || theme.accent, borderColor: theme.btnBorder || theme.accent, color: "#fff" }}
         >
           Submit {theme.label}
         </Button>,

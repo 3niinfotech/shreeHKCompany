@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { Card, Tabs, Input, Button, Table, Typography, InputNumber } from "antd";
-import { Search, Globe, FileUp } from "lucide-react";
+import { Search, Globe } from "lucide-react";
 import { api } from "../../api/axiosInstance";
 import { ENDPOINTS } from "../../constants/endpoints";
 import { toastApiSuccess, toastApiError } from "../../utils/apiToast";
 import { SkuLink } from "../../hooks/useSkuModalAction";
+import ExportExcelButton from "../../components/common/ExportExcelButton";
 import { exportReportToExcel } from "../../utils/reportExcelExport";
 import { toastSuccess } from "../../utils/toastNotify";
 
@@ -176,14 +177,10 @@ const Integrations = () => {
             Generate and download standard Rapnet B2B diamond stock CSV/Excel feeds (PHP james.php & nivoda.php parity).
           </Text>
           <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 16 }}>
-            <Button
-              type="primary"
-              icon={<FileUp size={16} />}
+            <ExportExcelButton
               loading={feedLoading}
               onClick={handleExportB2BFeed}
-            >
-              Export B2B Rapnet CSV Feed
-            </Button>
+            />
           </div>
           <Text type="secondary" style={{ display: "block", marginTop: 16, fontSize: 12 }}>
             Includes 26 standard B2B fields: Stock #, Shape, Carat, Color, Clarity, Cut, Polish, Symm, Flu, Lab, Certificate #, Rap Rate, Discount %, Price/Ct, Total Price, Depth %, Table %, Meas Length, Width, Depth, Girdle, Availability.

@@ -1,14 +1,13 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Button, Card, Form, Select, DatePicker } from 'antd';
 import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
-import { FileUp } from 'lucide-react';
 import dayjs from 'dayjs';
 import useFormHandleChange from '../../hooks/useFormHandleChange';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../constants/endpoints';
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
-import PageHeroHeader from '../../components/common/PageHeroHeader';
-import { BarChartOutlined, ReloadOutlined } from '@ant-design/icons';
+import { ReloadOutlined } from '@ant-design/icons';
+import ExportExcelButton from '../../components/common/ExportExcelButton';
 import { exportReportToExcel } from '../../utils/reportExcelExport';
 import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
 import styles from '../../assets/scss/pages/report/groupReport.module.scss';
@@ -184,16 +183,11 @@ const GroupReport = () => {
                         <Button type="default" icon={<ReloadOutlined />} className={filterPanelStyles.btnClear} onClick={handleSearch} loading={tableLoading}>
                             Reload
                         </Button>
-                        <Button
-                            type="primary"
-                            icon={<FileUp size={16} />}
+                        <ExportExcelButton
                             loading={exporting}
                             onClick={handleExport}
                             disabled={!tableData.length}
-                            style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff" }}
-                        >
-                            Export to Excel
-                        </Button>
+                        />
                     </>
                 }
             >

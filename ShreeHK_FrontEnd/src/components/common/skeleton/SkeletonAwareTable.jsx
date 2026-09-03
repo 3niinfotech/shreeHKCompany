@@ -2,8 +2,7 @@ import { Table } from "antd";
 import useTableSkeleton from "./useTableSkeleton";
 
 /**
- * Drop-in Ant Design Table that shows skeleton rows on initial empty loads
- * and a light overlay when refetching with existing rows.
+ * Drop-in Ant Design Table that shows skeleton rows while loading (no table spin overlay).
  */
 export default function SkeletonAwareTable({
   columns,

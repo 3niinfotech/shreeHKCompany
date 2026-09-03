@@ -230,6 +230,7 @@ const FiscalYearAdmin = () => {
       <Modal
         title="Edit Fiscal Year"
         open={editOpen}
+        rootClassName={styles.editModalRoot}
         onCancel={() => {
           setEditOpen(false);
           setEditing(null);
@@ -239,10 +240,9 @@ const FiscalYearAdmin = () => {
           <Button key="cancel" onClick={() => setEditOpen(false)} danger>Cancel</Button>,
           <Button
             key="save"
-            type="primary"
             loading={isUpdating}
             onClick={() => editForm.submit()}
-            style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff" }}
+            className="fiscal-save-btn"
           >
             Save Changes
           </Button>,

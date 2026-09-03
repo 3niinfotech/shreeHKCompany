@@ -1,14 +1,14 @@
 import React, { useMemo, useState, useRef } from 'react';
-import { Select, DatePicker, Table, Typography, Button } from 'antd';
+import { Select, DatePicker, Typography, Button } from 'antd';
+import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
 import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
 import { BookOutlined, TeamOutlined, CalendarOutlined, ReloadOutlined } from '@ant-design/icons';
-import { FileUp } from 'lucide-react';
 import dayjs from 'dayjs';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../constants/endpoints';
 import AdvancedFilterPanel, { FilterField, filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
-import PageHeroHeader from '../../components/common/PageHeroHeader';
 import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
+import ExportExcelButton from '../../components/common/ExportExcelButton';
 import { exportReportToExcel } from '../../utils/reportExcelExport';
 import styles from '../../assets/scss/pages/accountings/transaction.module.scss';
 
@@ -144,9 +144,11 @@ const AccPartyReport = () => {
             <Button type="default" icon={<ReloadOutlined />} className={filterPanelStyles.btnClear} onClick={handleSearch} loading={isLoading}>
               Reload
             </Button>
-            <Button type="primary" icon={<FileUp size={16} />} loading={exporting} onClick={handleExport} disabled={!dataSource.length} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff" }}>
-              Export to Excel
-            </Button>
+            <ExportExcelButton
+              loading={exporting}
+              onClick={handleExport}
+              disabled={!dataSource.length}
+            />
           </>
         )}
       >
@@ -192,7 +194,7 @@ const AccPartyReport = () => {
       </AdvancedFilterPanel>
 
       <div ref={tableRef} className="erp-table-container">
-        <Table
+        <SkeletonAwareTable
           columns={columns}
           dataSource={dataSource}
           loading={isLoading}

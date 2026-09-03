@@ -41,6 +41,7 @@ export function mapTransactionToInvoice(record, options = {}) {
   const {
     productIds = null,
     invoiceTitle = "Purchase Invoice",
+    printType,
     company = {},
     disclaimer,
     footerNote = "Receive the above goods as per condition overleaf.",
@@ -101,6 +102,7 @@ export function mapTransactionToInvoice(record, options = {}) {
 
   return {
     invoiceTitle,
+    printType: printType || "",
     docType: record?.type || "",
     inwardType: record?.inward_type || "",
     type: record?.type || record?.inward_type || "",

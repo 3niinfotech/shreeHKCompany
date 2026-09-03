@@ -92,10 +92,9 @@ const ReservationModal = ({ open, selectedIds = [], partyHint = "", onClose, onS
         <Button
           key="save"
           type="primary"
-          className={styles.okBtn}
+          className={styles.btnSave}
           loading={loading}
           onClick={() => form.submit()}
-          style={{ background: theme.btnBg || theme.accent, borderColor: theme.btnBorder || theme.accent, color: "#fff" }}
         >
           Submit {theme.label}
         </Button>,

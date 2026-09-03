@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Typography, Spin, Empty } from "antd";
+import { Modal, Typography, Empty } from "antd";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   CalendarOutlined,
@@ -15,6 +15,7 @@ import { ENDPOINTS } from "../../constants/endpoints";
 import useAuthStore from "../../store/Auth.Store";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { toastApiSuccess, toastApiError } from "../../utils/apiToast";
+import { SkeletonBlock, SkeletonCard } from "../common/skeleton";
 import styles from "../../assets/scss/pages/admin/companyYearPicker.module.scss";
 
 const { Text, Title } = Typography;
@@ -326,9 +327,10 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
       destroyOnClose
     >
       {loading ? (
-        <div className={styles.loaderWrap}>
-          <Spin size="large" />
-          <Text type="secondary">Loading available contexts...</Text>
+        <div className={styles.companyGrid} aria-hidden="true">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <SkeletonCard key={index} lines={3} withAvatar className={styles.companyCard} />
+          ))}
         </div>
       ) : options.length === 0 ? (
         <Empty description="No company/year mapping found" className={styles.emptyState} />
@@ -426,8 +428,8 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
                         </span>
 
                         {isSelecting ? (
-                          <span className={styles.yearArrow}>
-                            <Spin size="small" />
+                          <span className={styles.yearArrow} aria-hidden="true">
+                            <SkeletonBlock variant="icon" width={16} height={16} />
                           </span>
                         ) : isActive ? (
                           <span className={styles.yearCheck}>

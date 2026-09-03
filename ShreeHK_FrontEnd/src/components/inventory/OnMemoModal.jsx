@@ -11,6 +11,7 @@ import { fetchProductDetail } from "../../api/services/productService";
 import { toastApiError } from "../../utils/apiToast";
 import { getActionTheme } from "./inventoryActionConfig";
 import { SkuLink } from "../../hooks/useSkuModalAction";
+import styles from "../../assets/scss/components/inventoryBulkActionModal.module.scss";
 import "../../assets/scss/pages/inventory/onMemoModal.scss";
 
 /** PHP Helper::getAllLab() — hardcoded GIA/IGI/CGL/AGT (dai_product_lab query is commented out). */
@@ -923,11 +924,11 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
           <Button
             type="primary"
             size="middle"
+            className={styles.btnSave}
             loading={submitting}
             disabled={submitting || !resolvedRowCount}
             onClick={handleSubmit}
             icon={<SendOutlined />}
-            style={{ background: config.submitBtn.bg, borderColor: config.submitBtn.border }}
           >
             {config.submitBtn.label}
           </Button>

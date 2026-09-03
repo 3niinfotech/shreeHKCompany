@@ -108,11 +108,12 @@
 
 import React, { useState, useMemo } from 'react';
 import { Menu, ConfigProvider, Drawer, Button } from 'antd';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { Menu as MenuIcon, X, House, Settings, Package, Repeat, Book, BarChart, ExternalLink, User, Users, Shield, NotebookPen, CheckSquare, ClipboardList } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { Menu as MenuIcon } from 'lucide-react';
 import { getAuthorizedRouteMeta } from '../../routes/Routes';
-import { prefetchRoute, prefetchRouteTree } from '../../routes/routePrefetch';
-import useAuthStore from '../../store/Auth.Store';
+import { prefetchRoute } from '../../routes/routePrefetch';
+import useAuthUser from '../../hooks/useAuthUser';
+import useAuthorizedMenuItems from '../../hooks/useAuthorizedMenuItems';
 import useThemeColors from '../../hooks/useThemeColors';
 import styles from '../../assets/scss/layout/navbar.module.scss';
 
@@ -121,8 +122,6 @@ const preventNavTextCaret = (event) => {
         event.preventDefault();
     }
 };
-
-const ICON_MAP = { House, Settings, Package, Repeat, Book, BarChart, ExternalLink, User, Users, Shield, NotebookPen, CheckSquare, ClipboardList };
 
 /** Highlight top-level nav when pathname matches a child route */
 const resolveNavSelectedKeys = (pathname, routes = []) => {
@@ -150,69 +149,16 @@ const resolveNavSelectedKeys = (pathname, routes = []) => {
 };
 
 const NavBar = () => {
-    const navigate = useNavigate();
     const location = useLocation();
     const [visible, setVisible] = useState(false);
     const themeColors = useThemeColors();
-    const user = useAuthStore((state) => state.user);
-    const storePermissions = useAuthStore((state) => state.permissions);
-    const userWithPerms = useMemo(
-        () => ({
-            ...user,
-            permissions: user?.permissions ?? storePermissions ?? [],
-        }),
-        [user, storePermissions]
-    );
+    const userWithPerms = useAuthUser();
     const { routes: authorizedRoutes } = useMemo(
         () => getAuthorizedRouteMeta(userWithPerms),
         [userWithPerms]
     );
 
-    const renderIcon = (iconName) => {
-        if (!iconName) return null;
-        const IconComponent = ICON_MAP[iconName];
-        if (IconComponent) {
-            return <IconComponent size={18} strokeWidth={2} style={{ marginRight: 8 }} />;
-        }
-        return null;
-    };
-
-    // ✅ FIX: getMenuItems ko useMemo mein wrap karo
-    // Pehle yeh function har render pe naya array banata tha
-    // Ant Design Menu har baar naye items dekhke re-render karta tha → flicker + delay
-    // useMemo se yeh sirf ek baar calculate hoga, jab tak routes change na ho
-    const buildMenuItems = (routes = authorizedRoutes, parentIndex = 0) =>
-        routes.filter((item) => item.name && !item.hideFromNav).map((item, index) => {
-            const hasChildren = item.children && item.children.length > 0;
-
-            const itemKey =
-                item.path && item.path !== "/"
-                    ? item.path
-                    : `parent-${item.name}-${parentIndex}-${index}`;
-
-            return {
-                key: itemKey,
-                label: item.name,
-                icon: item.icon ? renderIcon(item.icon) : null,
-
-                children: hasChildren
-                    ? buildMenuItems(item.children, index)
-                    : null,
-
-                onMouseEnter: () => prefetchRouteTree(item),
-
-                onClick: hasChildren
-                    ? null
-                    : () => {
-                        prefetchRoute(item.path);
-                        navigate(item.path);
-                        setVisible(false);
-                    }
-            };
-        });
-
-    // ✅ useMemo: menu items sirf ek baar build honge - no flicker on re-render
-    const menuItems = useMemo(() => buildMenuItems(authorizedRoutes), [authorizedRoutes]);
+    const menuItems = useAuthorizedMenuItems(() => setVisible(false));
 
     const selectedKeys = useMemo(
         () => resolveNavSelectedKeys(location.pathname, authorizedRoutes),

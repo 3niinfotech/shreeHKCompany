@@ -1,13 +1,12 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Table, Card, Form, Select, Input, DatePicker, Button } from 'antd';
 import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
-import { FileUp } from 'lucide-react';
 import dayjs from 'dayjs';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../constants/endpoints';
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
-import PageHeroHeader from '../../components/common/PageHeroHeader';
-import { BarChartOutlined, ReloadOutlined } from '@ant-design/icons';
+import { ReloadOutlined } from '@ant-design/icons';
+import ExportExcelButton from '../../components/common/ExportExcelButton';
 import { exportReportToExcel } from '../../utils/reportExcelExport';
 import styles from '../../assets/scss/pages/report/groupReport.module.scss';
 import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
@@ -37,7 +36,7 @@ const SALE_EXCEL_HEADERS = [
     { title: 'Party', key: 'party', width: 36, align: 'center', accessor: (row) => String(row.party || '').toUpperCase() },
     { title: 'Rec Amt', key: 'paid_amount', width: 12, align: 'center', type: 'n', total: true, decimals: 2, accessor: (row) => Number(row.paid_amount ?? 0) },
     { title: 'Rec Date', key: 'received_date', width: 14, align: 'center', accessor: (row) => row.received_date || '' },
-    { title: 'Rec Bank', key: 'received_book', width: 14, align: 'center', accessor: (row) => row.received_book || '' },
+    { title: 'Rec Book', key: 'received_book', width: 14, align: 'center', accessor: (row) => row.received_book || '' },
     { title: 'Remarks', key: 'remark', width: 16, align: 'center', accessor: (row) => row.remark || '' },
 ];
 
@@ -122,6 +121,8 @@ const SaleStoneReport = () => {
                 sheetName: title,
                 title,
                 totals: true,
+                autoFilter: true,
+                titleNoTopLeftBorder: true,
             });
             toastSuccess('Exported to Excel');
         } catch (err) {
@@ -158,9 +159,11 @@ const SaleStoneReport = () => {
                         <Button type="default" icon={<ReloadOutlined />} className={filterPanelStyles.btnClear} onClick={handleSearch} loading={tableLoading}>
                             Reload
                         </Button>
-                        <Button type="primary" icon={<FileUp size={16} />} loading={exporting} onClick={handleExport} disabled={!tableData.length} style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff" }}>
-                            Export to Excel
-                        </Button>
+                        <ExportExcelButton
+                            loading={exporting}
+                            onClick={handleExport}
+                            disabled={!tableData.length}
+                        />
                     </>
                 )}
             >

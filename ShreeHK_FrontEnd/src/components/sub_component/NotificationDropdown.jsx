@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Dropdown, Empty, Spin } from "antd";
+import { Dropdown, Empty } from "antd";
+import { SkeletonDropdownPanel } from "../common/skeleton";
 import { Bell, CheckCheck, IndianRupee, LogIn, Package, Sparkles } from "lucide-react";
 import { api } from "../../api/axiosInstance";
 import { playNotificationSound } from "../../utils/soundNotify";
@@ -97,9 +98,7 @@ const NotificationPanel = ({
 
     <div className={styles.list}>
       {loading && notifications.length === 0 ? (
-        <div className={styles.loaderWrap}>
-          <Spin />
-        </div>
+        <SkeletonDropdownPanel rows={5} />
       ) : null}
 
       {!loading && notifications.length === 0 ? (

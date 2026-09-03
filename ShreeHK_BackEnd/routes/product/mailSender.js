@@ -32,13 +32,21 @@ const sendInventoryMail = async ({ to, subject, html, attachments = [] }) => {
     },
   });
 
-  await transporter.sendMail({
-    from: `"${config.fromName}" <${config.from}>`,
-    to,
-    subject,
-    html,
-    attachments,
-  });
+  try {
+    await transporter.sendMail({
+      from: `"${config.fromName}" <${config.from}>`,
+      to,
+      subject,
+      html,
+      attachments,
+    });
+  } catch (error) {
+    const smtpError = new Error(
+      error?.response || error?.message || "Failed to send email. Check SMTP settings in backend .env"
+    );
+    smtpError.statusCode = 502;
+    throw smtpError;
+  }
 
   return { simulated: false };
 };

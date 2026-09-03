@@ -1,4 +1,4 @@
-import { Edit2, Trash2, Plus, Search, FileUp } from "lucide-react";
+import { Edit2, Trash2, Plus, Search } from "lucide-react";
 import { Table, Button, Input, Space, Card, Typography } from "antd";
 import { useMemo, useRef, useState } from "react";
 import { AppstoreOutlined } from "@ant-design/icons";
@@ -6,6 +6,7 @@ import useThemeColors from "../../../hooks/useThemeColors";
 import useTableBodyScrollHeight from "../../../hooks/useTableBodyScrollHeight";
 import PageHeroHeader from "../PageHeroHeader";
 import useTableSkeleton from "../skeleton/useTableSkeleton";
+import ExportExcelButton from "../ExportExcelButton";
 import styles from "../../../assets/scss/pages/master/company.module.scss";
 import { exportReportToExcel } from "../../../utils/reportExcelExport";
 import { toastSuccess } from "../../../utils/toastNotify";
@@ -30,6 +31,8 @@ const MasterListTable = ({
     totalItems,
     loading,
     hideCrudActions = false,
+    onRow,
+    rowClassName,
 }) => {
     const theme = useThemeColors();
     const tableRef = useRef(null);
@@ -135,14 +138,11 @@ const MasterListTable = ({
                                 onChange={(e) => onSearchChange?.(e.target.value)}
                                 allowClear
                             />
-                            <Button
-                                icon={<FileUp size={16} />}
+                            {/* <ExportExcelButton
                                 loading={exporting}
                                 onClick={handleExportExcel}
                                 disabled={!safeDataSource.length}
-                            >
-                                Export Excel
-                            </Button>
+                            /> */}
                             {!hideCrudActions && (
                                 <Button
                                     type="primary"
@@ -169,6 +169,8 @@ const MasterListTable = ({
                         size="small"
                         loading={tableLoading}
                         onScroll={showSkeleton ? undefined : onTableScroll}
+                        onRow={showSkeleton ? undefined : onRow}
+                        rowClassName={showSkeleton ? undefined : rowClassName}
                         className="custom-ant-table"
                     />
                 </div>

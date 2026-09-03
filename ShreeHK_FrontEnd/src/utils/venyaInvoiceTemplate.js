@@ -62,6 +62,10 @@ const fmtMoney = (value, digits = 2) =>
 
 const fmtCarat = (value) => fmtMoney(value, 3);
 
+/** Uniform description column font — matches table body (10pt) so rows don't mix px/pt sizes */
+const descCellStyle = (width) =>
+  `width:${width};text-align:left;padding:4px;font-size:10pt;`;
+
 function toTitleCase(str) {
   return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
 }
@@ -159,7 +163,17 @@ function resolveVariant(data) {
   const title = String(data.invoiceTitle || "").toLowerCase();
 
   if (type === "memo" || type === "consign" || title.includes("memo")) return "memo";
-  if (inwardType === "purchase" || inwardType === "import" || title.includes("purchase")) return "purchase";
+  if (
+    inwardType === "purchase" ||
+    inwardType === "import" ||
+    inwardType === "in_memo" ||
+    type === "purchase" ||
+    title.includes("purchase") ||
+    title.includes("inward") ||
+    title.includes("good receive")
+  ) {
+    return "purchase";
+  }
   return "invoice";
 }
 
@@ -181,6 +195,123 @@ function buildLineItem(row) {
     price,
     amount,
   };
+}
+
+function buildPurchasePage(data) {
+  const inwardType = String(data.inwardType || data.type || "").toLowerCase();
+  const title = String(data.invoiceTitle || "").toLowerCase();
+  const isPurchase =
+    inwardType === "purchase" ||
+    inwardType === "import" ||
+    String(data.docType || "").toLowerCase() === "purchase" ||
+    title.includes("purchase");
+  const centerTitle = isPurchase ? "Purchase Note" : "Good Receive Note";
+
+  const lineItems = (data.lineItems || []).map((row) =>
+    typeof row.description === "string" ? row : buildLineItem(row)
+  );
+
+  let totalPcs = 0;
+  let totalCarat = 0;
+  let totalAmount = 0;
+  lineItems.forEach((row) => {
+    totalPcs += Number(row.pcs || 0);
+    totalCarat += Number(row.carat || 0);
+    totalAmount += Number(row.amount || 0);
+  });
+
+  const avgPrice = totalCarat > 0 ? totalAmount / totalCarat : 0;
+
+  const party = data.party || {};
+  const date = fmtDate(data.date);
+  const ref = escapeHtml(data.reference || "");
+  const invNo = escapeHtml(data.invoiceNo || "");
+
+  const dateLabel = isPurchase ? "Purchase Date:" : "In Memo Date:";
+  const noLabel = isPurchase ? "Invoice No.:" : "In Memo No.:";
+
+  let rowsHtml = "";
+  lineItems.forEach((row, i) => {
+    rowsHtml += `<tr>
+      <td style="width:5%;text-align:center;padding:4px;">${i + 1}</td>
+      <td style="width:12%;text-align:left;padding:4px;font-size:10px;">${escapeHtml(row.sku)}</td>
+      <td style="${descCellStyle("47%")}">${escapeHtml(row.description)}</td>
+      <td style="width:4%;text-align:right;padding:4px;">${row.pcs}</td>
+      <td style="width:8%;text-align:right;padding:4px;">${fmtCarat(row.carat)}</td>
+      <td style="width:11%;text-align:right;padding:4px;">${fmtMoney(row.price)}</td>
+      <td style="width:13%;text-align:right;padding:4px;">${fmtMoney(row.amount)}</td>
+    </tr>`;
+  });
+
+  const totalRowHtml = `<tr>
+    <td style="width:5%;text-align:center;padding:4px;"></td>
+    <td style="width:12%;text-align:left;padding:4px;font-size:12px;"></td>
+    <td style="width:47%;text-align:left;padding:4px;font-size:12px;font-weight:bold;">Total</td>
+    <td style="width:4%;text-align:right;padding:4px;font-weight:bold;">${totalPcs}</td>
+    <td style="width:8%;text-align:right;padding:4px;font-weight:bold;">${fmtCarat(totalCarat)}</td>
+    <td style="width:11%;text-align:right;padding:4px;font-weight:bold;">${fmtMoney(avgPrice)}</td>
+    <td style="width:13%;text-align:right;padding:4px;font-weight:bold;">${fmtMoney(totalAmount)}</td>
+  </tr>`;
+
+  return `<div class="venya-invoice-page" style="font-size:12pt;page-break-after:always;">
+    <table cellspacing="0" style="width:100%;text-align:center;font-size:12px;">
+      <tr>
+        ${buildLogoCell(data.company || {})}
+        <td style="width:40%;text-align:center;">
+          <span style="color:${VENYA_BLUE};font-size:18px;">${centerTitle}</span>
+        </td>
+        <td style="width:30%;text-align:left;"></td>
+      </tr>
+    </table>
+    <hr style="width:100%;height:1px;color:#ccc;margin:3px 0px 5px 0px;">
+    <table cellspacing="0" style="width:100%;text-align:left;font-size:12px;">
+      <tr>
+        <td style="width:60%;text-align:left;">
+          <p style="margin:0 0 2px;padding-bottom:2px;color:${VENYA_BLUE}"><b>From. ${escapeHtml(party.name || "—")}</b></p>
+          ${party.address ? `<p style="margin:0 0 2px;padding-bottom:2px;">${escapeHtml(party.address)},</p>` : ""}
+          <p style="margin:0 0 2px;padding-bottom:2px;">${party.pincode ? `${escapeHtml(party.pincode)}, ` : ""}${escapeHtml(party.country || "")}</p>
+          ${party.contactPerson ? `<p style="margin:0 0 2px;padding-bottom:2px;">${escapeHtml(party.contactPerson)}</p>` : ""}
+          <p style="margin:0 0 2px;">
+            ${party.contact ? `<b style="color:${VENYA_PINK}">Tel:</b> ${escapeHtml(party.contact)} &nbsp;&nbsp;` : ""}
+            ${party.fax ? `<b style="color:${VENYA_PINK}">Fax:</b> ${escapeHtml(party.fax)}` : ""}
+          </p>
+        </td>
+        <td style="width:10%;"></td>
+        <td style="width:30%;text-align:left;font-size:13px;">
+          <p style="font-size:13px;margin:0 0 2px;padding-bottom:10px;height:30px;">${dateLabel} &nbsp;&nbsp;&nbsp;${date}</p>
+          <p style="font-size:13px;margin:0 0 2px;padding-bottom:10px;color:${VENYA_PINK}">Reference No.: &nbsp;&nbsp;&nbsp;<b style="color:${VENYA_BLUE};">${ref}</b></p>
+          <p style="font-size:13px;margin:0 0 2px;color:${VENYA_PINK}">${noLabel} &nbsp;&nbsp;&nbsp;<b style="color:${VENYA_BLUE};">${invNo}</b></p>
+        </td>
+      </tr>
+    </table>
+    <table cellspacing="0" border="1" cellpadding="5" style="border-collapse:collapse;width:100%;border:solid 1px black;color:${VENYA_PINK};text-align:center;font-size:12px;margin-top:10px">
+      <tr>
+        <th style="width:5%;text-align:center;padding:4px;">No.</th>
+        <th style="width:12%;text-align:center;padding:4px;">SKU</th>
+        <th style="width:47%;text-align:center;padding:4px;">Description</th>
+        <th style="width:4%;text-align:center;padding:4px;">PCS</th>
+        <th style="width:8%;text-align:center;padding:4px;">Carats</th>
+        <th style="width:11%;text-align:center;padding:4px;">Price(US$)</th>
+        <th style="width:13%;text-align:center;padding:4px;">Amount(US$)</th>
+      </tr>
+    </table>
+    <table cellspacing="0" border="1" cellpadding="5" style="width:100%;border-collapse:collapse;text-align:center;font-size:10pt;">
+      ${rowsHtml}
+      ${totalRowHtml}
+    </table>
+    <br><br><br>
+    <table cellspacing="0" style="width:100%;text-align:left;font-size:14px;">
+      <tr>
+        <td style="width:30%;text-align:left;"></td>
+        <td style="width:35%;text-align:left;"></td>
+        <td style="width:35%;text-align:right;">
+          <p style="margin:0 0 2px;padding-bottom:30px;color:${VENYA_PINK}">Received Confirmation</p>
+          <hr style="width:100%;height:1px;">
+          <p style="margin:0 0 2px;padding-bottom:10px;">(Authorised Signature)</p>
+        </td>
+      </tr>
+    </table>
+  </div>`;
 }
 
 function buildCompanyBlock(company = {}) {
@@ -415,7 +546,7 @@ function buildSummaryRows(totalPcs, totalCarat, grandTotal, maxRows = VENYA_MAX_
   let rows = `<tr>
     <td style="width:${w.no};text-align:center;padding:4px;">1</td>
     <td style="width:${w.sku};text-align:left;padding:4px;font-size:10px;"></td>
-    <td style="width:${w.desc};text-align:left;padding:4px;">Cut and Polish Diamond</td>
+    <td style="${descCellStyle(w.desc)}">Cut and Polish Diamond</td>
     <td style="width:${w.pcs};text-align:right;padding:4px;">${totalPcs}</td>
     <td style="width:${w.carat};text-align:right;padding:4px;">${fmtCarat(totalCarat)}</td>
     <td style="width:${w.price};text-align:right;padding:4px;">${fmtMoney(avgPrice)}</td>
@@ -426,7 +557,7 @@ function buildSummaryRows(totalPcs, totalCarat, grandTotal, maxRows = VENYA_MAX_
     rows += `<tr>
       <td style="width:${w.no};text-align:center;padding:4px;">${i}</td>
       <td style="width:${w.sku};text-align:left;padding:4px;"></td>
-      <td style="width:${w.desc};text-align:left;padding:4px;"></td>
+      <td style="${descCellStyle(w.desc)}"></td>
       <td style="width:${w.pcs};text-align:right;padding:4px;"></td>
       <td style="width:${w.carat};text-align:right;padding:4px;"></td>
       <td style="width:${w.price};text-align:right;padding:4px;"></td>
@@ -439,6 +570,11 @@ function buildSummaryRows(totalPcs, totalCarat, grandTotal, maxRows = VENYA_MAX_
 export function buildVenyaInvoiceBody(invoiceData, options = {}) {
   const { includeCustomerCopy = true } = options;
   const variant = resolveVariant(invoiceData);
+
+  if (variant === "purchase") {
+    return buildPurchasePage(invoiceData);
+  }
+
   const lineItems = (invoiceData.lineItems || []).map((row) =>
     typeof row.description === "string" ? row : buildLineItem(row)
   );
@@ -455,7 +591,7 @@ export function buildVenyaInvoiceBody(invoiceData, options = {}) {
   }
 
   const original = buildInvoicePage(invoiceData, "(ORIGINAL COPY)", { isSummary: false });
-  if (!includeCustomerCopy || variant === "purchase") return original;
+  if (!includeCustomerCopy) return original;
   const customer = buildInvoicePage(invoiceData, "(CUSTOMER COPY)", { isSummary: false });
   return `${original}${customer}`;
 }
@@ -471,7 +607,7 @@ function buildChunkLineRows(lineItems, startIndex, minRows = VENYA_MAX_ROWS, var
       rows += `<tr>
         <td style="width:${w.no};text-align:center;padding:4px;">${itemNo}</td>
         <td style="width:${w.sku};text-align:left;padding:4px;font-size:10px;">${escapeHtml(row.sku)}</td>
-        <td style="width:${w.desc};text-align:left;padding:4px;font-size:10px;">${escapeHtml(row.description)}</td>
+        <td style="${descCellStyle(w.desc)}">${escapeHtml(row.description)}</td>
         <td style="width:${w.pcs};text-align:right;padding:4px;">${row.pcs}</td>
         <td style="width:${w.carat};text-align:right;padding:4px;">${fmtCarat(row.carat)}</td>
         <td style="width:${w.price};text-align:right;padding:4px;">${fmtMoney(row.price)}</td>
@@ -481,7 +617,7 @@ function buildChunkLineRows(lineItems, startIndex, minRows = VENYA_MAX_ROWS, var
       rows += `<tr>
         <td style="width:${w.no};text-align:center;padding:4px;">${itemNo}</td>
         <td style="width:${w.sku};text-align:left;padding:4px;"></td>
-        <td style="width:${w.desc};text-align:left;padding:4px;"></td>
+        <td style="${descCellStyle(w.desc)}"></td>
         <td style="width:${w.pcs};text-align:right;padding:4px;"></td>
         <td style="width:${w.carat};text-align:right;padding:4px;"></td>
         <td style="width:${w.price};text-align:right;padding:4px;">Shipping</td>
@@ -491,7 +627,7 @@ function buildChunkLineRows(lineItems, startIndex, minRows = VENYA_MAX_ROWS, var
       rows += `<tr>
         <td style="width:${w.no};text-align:center;padding:4px;">${itemNo}</td>
         <td style="width:${w.sku};text-align:left;padding:4px;"></td>
-        <td style="width:${w.desc};text-align:left;padding:4px;"></td>
+        <td style="${descCellStyle(w.desc)}"></td>
         <td style="width:${w.pcs};text-align:right;padding:4px;"></td>
         <td style="width:${w.carat};text-align:right;padding:4px;"></td>
         <td style="width:${w.price};text-align:right;padding:4px;"></td>
@@ -822,7 +958,7 @@ function buildPackingListPage(data) {
     rowsHtml += `<tr>
       <td style="width:5%;text-align:center;padding:4px;">${i + 1}</td>
       <td style="width:15%;text-align:left;padding:4px;font-size:10px;">${escapeHtml(row.sku)}</td>
-      <td style="width:43%;text-align:left;padding:4px;font-size:10px;">${escapeHtml(row.description)}</td>
+      <td style="${descCellStyle("43%")}">${escapeHtml(row.description)}</td>
       <td style="width:5%;text-align:right;padding:4px;">${row.pcs}</td>
       <td style="width:8%;text-align:right;padding:4px;">${fmtCarat(row.carat)}</td>
       <td style="width:11%;text-align:right;padding:4px;">${fmtMoney(row.price)}</td>
@@ -883,6 +1019,10 @@ export const VENYA_PRINT_STYLES = `
   table { vertical-align: top; border-collapse: collapse; }
   tr { vertical-align: top; }
   td { vertical-align: top; }
+  td, th, p, span, div {
+    -webkit-user-select: text;
+    user-select: text;
+  }
   .venya-invoice-page {
     padding: 8mm 0mm 6mm 0mm;
     box-sizing: border-box;

@@ -1,9 +1,9 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Tabs } from "antd";
 import { Home } from "lucide-react";
 import useTabsStore from "../../store/Tabs.Store";
-import useAuthStore from "../../store/Auth.Store";
+import useAuthUser from "../../hooks/useAuthUser";
 import useUIStore from "../../store/Ui.Store";
 import { resolveTabFromPath, HOME_TAB } from "../../utils/tabRouteMeta";
 import { getAuthorizedRouteMeta, getPostLoginPath } from "../../routes/Routes";
@@ -33,17 +33,8 @@ const preventTabTextCaret = (event) => {
 const TabBar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const user = useAuthStore((state) => state.user);
-  const storePermissions = useAuthStore((state) => state.permissions);
+  const userWithPerms = useAuthUser();
   const viewMode = useUIStore((state) => state.viewMode) ?? "web";
-
-  const userWithPerms = useMemo(
-    () => ({
-      ...user,
-      permissions: user?.permissions ?? storePermissions ?? [],
-    }),
-    [user, storePermissions]
-  );
 
   const homePath = useMemo(() => getPostLoginPath(userWithPerms), [userWithPerms]);
 
@@ -65,6 +56,18 @@ const TabBar = () => {
     openTab({ key: meta.key, label: meta.label, path: meta.path });
   }, [location.pathname, userWithPerms, viewMode, openTab, authorizedRoutes]);
 
+  const handleTabPointerDown = useCallback(
+    (tab) => (event) => {
+      if (event.button !== 0) return;
+      const targetPath = tab.key === HOME_TAB.key ? homePath : tab.path;
+      prefetchRoute(targetPath);
+      if (location.pathname !== targetPath) {
+        navigate(targetPath);
+      }
+    },
+    [homePath, location.pathname, navigate]
+  );
+
   const tabItems = useMemo(
     () =>
       tabs.map((tab) => ({
@@ -72,13 +75,14 @@ const TabBar = () => {
         label: (
           <span
             onMouseEnter={() => prefetchRoute(tab.key === HOME_TAB.key ? homePath : tab.path)}
+            onMouseDown={handleTabPointerDown(tab)}
           >
             {renderTabLabel(tab)}
           </span>
         ),
         closable: tab.closable !== false,
       })),
-    [tabs, homePath]
+    [tabs, homePath, handleTabPointerDown]
   );
 
   const handleChange = (key) => {

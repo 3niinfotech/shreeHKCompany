@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import { Outlet, Link, useLocation } from "react-router-dom";
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { Layout, Menu, ConfigProvider, Input } from "antd";
 import {
   Gem,
@@ -13,12 +13,14 @@ import Header from "./Header";
 import Footer from "./Footer";
 import TabBar from "./TabBar";
 import useAuthorizedMenuItems from "../../hooks/useAuthorizedMenuItems";
+import useAuthUser from "../../hooks/useAuthUser";
 import useAuthStore from "../../store/Auth.Store";
 import useTabsStore from "../../store/Tabs.Store";
 import useUIStore from "../../store/Ui.Store";
 import { getDashboardMenuTheme } from "../../theme";
 import { resolveTabFromPath } from "../../utils/tabRouteMeta";
 import { getPostLoginPath } from "../../routes/Routes";
+import { prefetchRoute } from "../../routes/routePrefetch";
 import RoleAccessGuard from "./RoleAccessGuard";
 import { resolveCompanyLogoUrl } from "../../utils/companyLogo";
 import logoHeader from "../../assets/loader/softWare_Header_white.svg";
@@ -28,6 +30,7 @@ const { Sider, Content } = Layout;
 
 const DashboardLayout = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [navSearchText, setNavSearchText] = useState("");
   const isDarkMode = useUIStore((state) => state.isDarkMode);
@@ -36,21 +39,12 @@ const DashboardLayout = () => {
     [isDarkMode]
   );
   const menuItems = useAuthorizedMenuItems();
-  const user = useAuthStore((state) => state.user);
+  const userWithPerms = useAuthUser();
   const companyLogo = useAuthStore((state) => state.companyLogo);
   const companyName = useAuthStore((state) => state.companyName);
-  const storePermissions = useAuthStore((state) => state.permissions);
   const openTab = useTabsStore((state) => state.openTab);
 
   const logoUrl = useMemo(() => resolveCompanyLogoUrl(companyLogo), [companyLogo]);
-
-  const userWithPerms = useMemo(
-    () => ({
-      ...user,
-      permissions: user?.permissions ?? storePermissions ?? [],
-    }),
-    [user, storePermissions]
-  );
 
   const homePath = useMemo(() => getPostLoginPath(userWithPerms), [userWithPerms]);
 
@@ -69,10 +63,14 @@ const DashboardLayout = () => {
         path = key.replace("user-mgmt-", "");
       }
       if (!path.startsWith("/")) return;
-      const meta = resolveTabFromPath(path, user);
+      prefetchRoute(path);
+      const meta = resolveTabFromPath(path, userWithPerms);
       openTab({ key: meta.key, label: meta.label, path: meta.path });
+      if (location.pathname !== path) {
+        navigate(path);
+      }
     },
-    [user, openTab]
+    [userWithPerms, openTab, navigate, location.pathname]
   );
 
   const filteredMenuItems = useMemo(() => {

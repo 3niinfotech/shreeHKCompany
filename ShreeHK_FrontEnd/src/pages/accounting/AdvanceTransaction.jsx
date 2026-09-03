@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useRef } from 'react';
-import { Select, DatePicker, Table, Typography, Button } from 'antd';
+import { Select, DatePicker, Typography, Button } from 'antd';
+import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
 import { TeamOutlined, CalendarOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
@@ -127,7 +128,7 @@ const AdvanceTransaction = () => {
             </AdvancedFilterPanel>
 
             <div ref={tableRef} className={`${styles.transactionTableWrap} erp-table-container`}>
-                <Table
+                <SkeletonAwareTable
                     dataSource={dataSource}
                     columns={columns}
                     loading={isLoading}

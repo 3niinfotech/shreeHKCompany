@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import dayjs from 'dayjs';
 import { Card, Form, Input, Tag, Typography, Button, Tabs, Badge, Space, Switch, Row, Col, Divider, Tooltip } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
-import { Gem, FileText, MapPin, Calendar, DollarSign, Layers, Activity, FileUp, Sparkles, AlertCircle, CheckCircle } from 'lucide-react';
+import { Gem, FileText, MapPin, Calendar, DollarSign, Layers, Activity, Sparkles, AlertCircle, CheckCircle } from 'lucide-react';
 import { api } from '../../api/axiosInstance';
 import { ENDPOINTS } from '../../constants/endpoints';
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
@@ -10,6 +10,7 @@ import styles from '../../assets/scss/pages/report/stoneHistory.module.scss';
 import { toastApiError } from '../../utils/apiToast';
 import { toastSuccess, toastWarning } from '../../utils/toastNotify';
 import { SkeletonDetail, SkeletonAwareTable } from '../../components/common/skeleton';
+import ExportExcelButton from '../../components/common/ExportExcelButton';
 import { exportReportToExcel } from '../../utils/reportExcelExport';
 
 const { Title, Text } = Typography;
@@ -182,15 +183,11 @@ const StoneInfoReport = () => {
                 clearLabel="Reset"
                 extraActions={(
                     <Space wrap>
-                        <Button
-                            icon={<FileUp size={15} color="white" />}
+                        <ExportExcelButton
                             loading={exporting}
                             onClick={handleExportExcel}
                             disabled={!detail}
-                            style={{ background: "var(--color-btn-save-bg)", borderColor: "var(--color-btn-save-bg)", color: "#fff" }}
-                        >
-                            Export to Excel
-                        </Button>
+                        />
                         <Button type="default" icon={<ReloadOutlined />} className={filterPanelStyles.btnClear} onClick={handleSearch} loading={loading}>
                             Reload
                         </Button>

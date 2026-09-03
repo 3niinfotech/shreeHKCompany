@@ -10,21 +10,53 @@ import ExcelJS from "exceljs";
  * - Data Rows (Row 7+): Font size 11, Alternating ROWS (1st row plain white #FFFFFF, 2nd row #CCCCCC...), Black borders
  * - SKU Column (Col B): Clickable Excel Hyperlink to ERP SKU detail page (`/transaction/stone-update?sku=...`)
  * - Certificate Column (Col D): Clickable Excel Hyperlink to GIA Certificate (`https://www.gia.edu/report-check?reportno=...`) opening in new tab
- * - Amount formula (=G{row}*N{row}), numeric types
+ * - Amount formula (=Carat{row}*Price{row}), numeric types
+ * - Export button uses Venya getExportAttribute(); I.Export uses getInventoryAttribute()
  * - Frozen panes at Row 6 (A7), AutoFilter
  */
 
-const COLUMNS = [
+/** Venya Helper::getExportAttribute() — inventory Export button */
+const EXPORT_COLUMNS = [
   { key: "sku", header: "Sku", width: 16, align: "center" },
   { key: "lab", header: "Lab", width: 8, align: "center" },
   { key: "report_no", header: "Certificate", width: 14, align: "center" },
   { key: "shape", header: "Shape", width: 12, align: "center" },
   { key: "polish_pcs", header: "Pcs", width: 8, align: "center", type: "int" },
   { key: "polish_carat", header: "Carat", width: 10, align: "center", type: "num" },
-  { key: "color", header: "Color", width: 18, align: "center" },
+  { key: "main_color", header: "Color", width: 18, align: "center" },
   { key: "clarity", header: "Clarity", width: 8, align: "center" },
-  { key: "rap_price", header: "Rapnet", width: 10, align: "center", type: "num" },
+  { key: "rapnet", header: "Rapnet", width: 10, align: "center", type: "num" },
   { key: "discount", header: "Discount", width: 10, align: "center", type: "num" },
+  { key: "price", header: "Price", width: 10, align: "right", type: "num" },
+  { key: "amount", header: "Amount", width: 14, align: "right", type: "formula" },
+  { key: "size", header: "Size", width: 8, align: "center" },
+  { key: "f_intensity", header: "Fluorescence", width: 12, align: "center" },
+  { key: "cut", header: "Cut", width: 8, align: "center" },
+  { key: "polish", header: "Polish", width: 8, align: "center" },
+  { key: "symmentry", header: "Symm", width: 8, align: "center" },
+  { key: "table_pc", header: "Table", width: 8, align: "right", type: "num" },
+  { key: "depth_pc", header: "Depth", width: 8, align: "right", type: "num" },
+  { key: "mesurment", header: "Msurmnt", width: 16, align: "left" },
+  { key: "gridle", header: "Gridle", width: 12, align: "left" },
+  { key: "location", header: "LOC", width: 10, align: "center" },
+  { key: "package", header: "Package", width: 12, align: "left" },
+];
+
+/** Venya Helper::getInventoryAttribute() — inventory I.Export button */
+const IEXPORT_COLUMNS = [
+  { key: "mfg_code", header: "Type", width: 10, align: "center" },
+  { key: "sku", header: "Sku", width: 16, align: "center" },
+  { key: "lab", header: "Lab", width: 8, align: "center" },
+  { key: "report_no", header: "Certificate", width: 14, align: "center" },
+  { key: "shape", header: "Shape", width: 12, align: "center" },
+  { key: "polish_pcs", header: "Pcs", width: 8, align: "center", type: "int" },
+  { key: "polish_carat", header: "Carat", width: 10, align: "center", type: "num" },
+  { key: "main_color", header: "Full Color", width: 18, align: "center" },
+  { key: "argyle_color", header: "Argyle Color", width: 14, align: "center" },
+  { key: "in_house_clarity", header: "In House Clarity", width: 12, align: "center" },
+  { key: "clarity", header: "Clarity", width: 8, align: "center" },
+  { key: "rap_price", header: "Rap", width: 10, align: "center", type: "num" },
+  { key: "cost", header: "Cost", width: 10, align: "right", type: "num" },
   { key: "price", header: "Price", width: 10, align: "right", type: "num" },
   { key: "amount", header: "Amount", width: 14, align: "right", type: "formula" },
   { key: "size", header: "Size", width: 8, align: "center" },
@@ -36,17 +68,13 @@ const COLUMNS = [
   { key: "depth_pc", header: "Depth", width: 8, align: "right", type: "num" },
   { key: "mesurment", header: "Measurement", width: 16, align: "left" },
   { key: "gridle", header: "Girdle", width: 12, align: "left" },
-  { key: "location", header: "LOC", width: 10, align: "center" },
-  { key: "package", header: "Package", width: 12, align: "left" },
-  { key: "mfg_code", header: "Type", width: 10, align: "center" },
-  { key: "main_color", header: "Full Color", width: 18, align: "center" },
-  { key: "argyle_color", header: "Argyle Color", width: 14, align: "center" },
-  { key: "in_house_clarity", header: "House", width: 12, align: "center" },
-  { key: "cost", header: "Cost", width: 10, align: "right", type: "num" },
   { key: "mining", header: "Mining", width: 12, align: "left" },
   { key: "origin", header: "Origin", width: 12, align: "left" },
   { key: "intensity", header: "Intensity", width: 12, align: "left" },
   { key: "overtone", header: "Overtone", width: 12, align: "left" },
+  { key: "color", header: "Color", width: 18, align: "center" },
+  { key: "location", header: "LOC", width: 10, align: "center" },
+  { key: "package", header: "Package", width: 12, align: "left" },
   { key: "bgm", header: "BGM", width: 10, align: "center" },
   { key: "eyeclean", header: "Eye Clean", width: 10, align: "center" },
   { key: "main_group", header: "Group", width: 12, align: "left" },
@@ -119,6 +147,8 @@ const pickField = (row, key) => {
       return row.clarity || row.mainClarity || row.in_house_clarity || "";
     case "rap_price":
       return getNumeric(row.rapPrice ?? row.rap_price ?? row.rap ?? 0);
+    case "rapnet":
+      return getNumeric(row.rapPrice ?? row.rap_price ?? row.rap ?? row.rapnet ?? 0);
     case "discount":
       return getNumeric(row.discount ?? row.disc ?? row.dis ?? 0);
     case "cost":
@@ -212,11 +242,15 @@ const triggerFileDownload = (buffer, fileName) => {
 export const exportVenyaInventoryExcel = async ({
   rows = [],
   sheetName = "Export",
+  useRapnetUrl = true,
+  mode = "iExport",
 } = {}) => {
   if (!rows.length) {
     const error = new Error("Please Select Item");
     throw error;
   }
+
+  const COLUMNS = mode === "export" ? EXPORT_COLUMNS : IEXPORT_COLUMNS;
 
   const workbook = new ExcelJS.Workbook();
   const ws = workbook.addWorksheet(sheetName.slice(0, 31) || "Export");
@@ -446,11 +480,13 @@ export const exportVenyaInventoryExcel = async ({
 
       const raw = pickField(row, col.key);
 
-      // --- A. SKU HYPERLINK ---
+      // --- A. SKU HYPERLINK (Venya Rapnet URL / ERP Stone Detail) ---
       if (col.key === "sku") {
         const skuVal = cellText(raw);
         if (skuVal) {
-          const skuUrl = `${baseUrl}/transaction/stone-update?sku=${encodeURIComponent(skuVal)}`;
+          const skuUrl = useRapnetUrl !== false
+            ? `https://www.shreehk.com/rapnet.php?sku=${encodeURIComponent(skuVal)}`
+            : `${baseUrl}/transaction/stone-update?sku=${encodeURIComponent(skuVal)}`;
           cell.value = {
             text: skuVal,
             hyperlink: skuUrl,

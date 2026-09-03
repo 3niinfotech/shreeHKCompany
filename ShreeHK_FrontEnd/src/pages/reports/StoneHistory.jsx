@@ -4,7 +4,7 @@ import { Card, Form, Input, Tag, Button, Typography, Switch, Tabs } from 'antd';
 import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
 import { ReloadOutlined } from '@ant-design/icons';
 import {
-    CircleDot, ScanText, FileUp, History, BookOpen, Image,
+    CircleDot, ScanText, History, BookOpen, Image,
     Pencil, ExternalLink, Link2, BadgeCheck, Tag as TagIcon,
     ShieldAlert, Award, Gem,
 } from 'lucide-react';
@@ -13,6 +13,7 @@ import DynamicForm from '../../hooks/DynamicFormField';
 import { api } from '../../api/axiosInstance';
 import { ENDPOINTS } from '../../constants/endpoints';
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
+import ExportExcelButton from '../../components/common/ExportExcelButton';
 import { exportReportToExcel } from '../../utils/reportExcelExport';
 import { buildStoneUpdateUrl } from '../../utils/inventorySkuNavigation';
 import styles from '../../assets/scss/pages/report/stoneHistory.module.scss';
@@ -609,16 +610,12 @@ const StoneHistory = () => {
                                                     >
                                                         Load Old
                                                     </Button>
-                                                    <Button
-                                                        type="primary"
+                                                    <ExportExcelButton
                                                         size="small"
-                                                        icon={<FileUp size={14} />}
                                                         loading={exporting}
                                                         onClick={handleExport}
                                                         disabled={!historyRows.length}
-                                                    >
-                                                        Export
-                                                    </Button>
+                                                    />
                                                 </span>
                                             </div>
                                             <SkeletonAwareTable

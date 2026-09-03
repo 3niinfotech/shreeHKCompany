@@ -1,11 +1,12 @@
-import React, { lazy, useEffect, useMemo, useState } from 'react';
+import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Tag, Avatar } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { manageUserFromAdmin } from "./Data";
+import UserQuickInspectPanel from '../../components/admin/UserQuickInspectPanel';
+import { useFetchApi, usePostApiRequest, useDeleteApiRequest } from '../../api/ApiFunction';
 const MasterTemplate = lazy(() => import('../../components/common/masterCommon/MasterPageTemplate'));
 const ConfirmDeleteModal = lazy(() => import("../../components/common/modals/ConfirmDeleteModal"));
-import { useFetchApi, usePostApiRequest, useDeleteApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../constants/endpoints';
 import { resolveUploadUrl } from '../../utils/uploadBaseUrl';
 
@@ -36,6 +37,22 @@ const ManageUser = () => {
     const { mutate: deleteUser, isPending: isDeleting } = useDeleteApiRequest(ENDPOINTS.admin.deleteUser, 'getUsersAdmin');
 
     const [deleteModal, setDeleteModal] = useState({ open: false, record: null });
+    const [inspectUser, setInspectUser] = useState(null);
+
+    const handleInspectClose = useCallback(() => {
+        setInspectUser(null);
+    }, []);
+
+    const handleUserRowEvents = useCallback((record) => ({
+        onClick: (e) => {
+            if (e.target.closest('svg')) return;
+            setInspectUser(record);
+        },
+    }), []);
+
+    const inspectRowClassName = useCallback((record) => (
+        inspectUser?.id === record.id ? 'manage-user-inspect-row' : ''
+    ), [inspectUser?.id]);
 
     const roleOptions = useMemo(() => {
         if (!rolesData?.data) return [];
@@ -65,6 +82,7 @@ const ManageUser = () => {
             return field;
         });
         if (editRecord?.id) {
+            mapped.unshift({ type: "hidden", name: "id" });
             mapped.push(
                 { type: "input", label: "Created By", name: "created_by_name", span: 12, disabled: true },
                 { type: "input", label: "Created Date", name: "created_date", span: 12, disabled: true },
@@ -190,9 +208,10 @@ const ManageUser = () => {
         setEditRecord(record ? mapApiToForm(record) : { is_active: 1, profile_image: [] });
     };
 
-    const handleSave = async (values) => {
+    const handleSave = async (values, mode = "add") => {
+        const userId = Number(values?.id ?? editRecord?.id ?? 0);
         const payload = {
-            id: editRecord?.id || 0,
+            id: mode === "edit" && userId > 0 ? userId : 0,
             fname: values.fname,
             lname: values.lname,
             username: values.username,
@@ -249,6 +268,8 @@ const ManageUser = () => {
                 onEdit={handleEdit}
                 onSave={handleSave}
                 initialValues={editRecord}
+                onRow={handleUserRowEvents}
+                rowClassName={inspectRowClassName}
                 extraHeaderActions={(
                     <Button
                         icon={<ReloadOutlined />}
@@ -264,6 +285,13 @@ const ManageUser = () => {
                         Refresh
                     </Button>
                 )}
+            />
+
+            <UserQuickInspectPanel
+                user={inspectUser}
+                roleName={inspectUser ? (roleMap[inspectUser.userroll] || inspectUser.userroll) : ""}
+                visible={Boolean(inspectUser)}
+                onClose={handleInspectClose}
             />
 
             <ConfirmDeleteModal
