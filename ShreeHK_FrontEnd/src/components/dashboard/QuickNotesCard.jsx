@@ -48,8 +48,20 @@ const QuickNotesCard = () => {
   const authUser = useAuthStore((state) => state.user);
   const isSuperAdmin = authUser?.roll === 1 || Number(authUser?.roll) === 1;
 
-  const { data: apiResponse, isLoading } = useFetchApi("quickNotes", ENDPOINTS.quickNotes.list);
-  const { data: usersRes } = useFetchApi("usersList", ENDPOINTS.admin.users, { enabled: isSuperAdmin });
+  const { data: apiResponse, isLoading, dataUpdatedAt } = useFetchApi(
+    "quickNotes",
+    ENDPOINTS.quickNotes.list,
+    {},
+    "GET",
+    {
+      staleTime: 0,
+      refetchOnMount: "always",
+      refetchInterval: 10000,
+      refetchIntervalInBackground: true,
+      placeholderData: undefined,
+    }
+  );
+  const { data: usersRes } = useFetchApi("usersList", ENDPOINTS.admin.users, {}, "GET", { enabled: isSuperAdmin });
 
   const createMutation = usePostApiRequest(ENDPOINTS.quickNotes.create, "quickNotes");
   const updateMutation = usePutApiRequest(ENDPOINTS.quickNotes.update, "quickNotes");
@@ -63,7 +75,10 @@ const QuickNotesCard = () => {
     }));
   }, [usersRes]);
 
-  const notes = useMemo(() => (Array.isArray(apiResponse?.Data) ? apiResponse.Data : []), [apiResponse]);
+  const notes = useMemo(
+    () => (Array.isArray(apiResponse?.Data) ? apiResponse.Data : []),
+    [apiResponse, dataUpdatedAt]
+  );
 
   const [inputText, setInputText] = useState("");
   const [targetDate, setTargetDate] = useState(() => dayjs().format("YYYY-MM-DD"));

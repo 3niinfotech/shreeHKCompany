@@ -1,13 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Dropdown, Empty } from "antd";
+import { useQueryClient } from "@tanstack/react-query";
 import { SkeletonDropdownPanel } from "../common/skeleton";
 import { NotebookPen, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api/axiosInstance";
+import { ENDPOINTS } from "../../constants/endpoints";
 import { playNotificationSound } from "../../utils/soundNotify";
 import styles from "../../assets/scss/components/notificationDropdown.module.scss";
 
 const POLLING_MS = 10000;
+
+const isTaskPending = (task) => Number(task?.completed) !== 1;
 
 const preventDropdownClose = (event) => {
   event.preventDefault();
@@ -15,7 +19,7 @@ const preventDropdownClose = (event) => {
 };
 
 const TaskPanel = ({ tasks, loading, onTaskClick, onViewAll }) => {
-  const pendingTasks = tasks.filter((t) => !t.completed);
+  const pendingTasks = tasks.filter(isTaskPending);
 
   return (
     <div
@@ -62,7 +66,7 @@ const TaskPanel = ({ tasks, loading, onTaskClick, onViewAll }) => {
         ) : null}
 
         {tasks.map((item) => {
-          const isPending = !item.completed;
+          const isPending = isTaskPending(item);
           const assignedBy = item.created_by_name?.trim() || item.assigned_to_name?.trim() || "Admin";
 
           return (
@@ -137,6 +141,7 @@ const TaskPanel = ({ tasks, loading, onTaskClick, onViewAll }) => {
 
 const TaskHeaderButton = ({ buttonClassName, badgeClassName }) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -144,14 +149,27 @@ const TaskHeaderButton = ({ buttonClassName, badgeClassName }) => {
   const hasFetchedOnceRef = useRef(false);
   const previousPendingCountRef = useRef(0);
 
+  const syncQuickNotesCache = useCallback((data) => {
+    queryClient.setQueriesData({ queryKey: ["quickNotes"] }, (old) => {
+      if (old && typeof old === "object" && Array.isArray(old.Data)) {
+        return { ...old, status: true, Data: data };
+      }
+      return {
+        status: true,
+        Message: "Quick notes loaded successfully",
+        Data: data,
+      };
+    });
+  }, [queryClient]);
+
   const fetchTasks = useCallback(async () => {
     if (isFetchingRef.current) return;
     isFetchingRef.current = true;
     setLoading(true);
     try {
-      const res = await api.get("/dashboard/quick-notes");
+      const res = await api.get(ENDPOINTS.quickNotes.list);
       const data = Array.isArray(res?.data?.Data) ? res.data.Data : [];
-      const pendingCount = data.filter((t) => !t.completed).length;
+      const pendingCount = data.filter(isTaskPending).length;
 
       if (hasFetchedOnceRef.current && pendingCount > previousPendingCountRef.current) {
         playNotificationSound();
@@ -160,13 +178,15 @@ const TaskHeaderButton = ({ buttonClassName, badgeClassName }) => {
       previousPendingCountRef.current = pendingCount;
       hasFetchedOnceRef.current = true;
       setTasks(data);
+      // Push latest poll into React Query so Task Manager / Dashboard UI updates too
+      syncQuickNotesCache(data);
     } catch {
       // Keep task button usable even if API fails.
     } finally {
       isFetchingRef.current = false;
       setLoading(false);
     }
-  }, []);
+  }, [syncQuickNotesCache]);
 
   useEffect(() => {
     fetchTasks();
@@ -181,7 +201,7 @@ const TaskHeaderButton = ({ buttonClassName, badgeClassName }) => {
     };
   }, [fetchTasks]);
 
-  const pendingCount = tasks.filter((t) => !t.completed).length;
+  const pendingCount = tasks.filter(isTaskPending).length;
 
   const handleOpenChange = (nextOpen) => {
     setOpen(nextOpen);

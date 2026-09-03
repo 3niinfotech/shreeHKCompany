@@ -498,7 +498,7 @@ productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
 
   query = `SELECT ${columnName} ${queryConditions} ${filter} ${sortQuery} ${limitQuery} `;
 
-  const countQuery = `SELECT COUNT(id) as totalProducts, SUM(p.amount) as totalAmount ${queryConditions} ${filter}`;
+  const countQuery = `SELECT COUNT(id) as totalProducts, SUM(p.polish_pcs) as totalPcs, SUM(p.polish_carat) as totalCarat, SUM(p.amount) as totalAmount ${queryConditions} ${filter}`;
 
   connection.query(countQuery, (countError, countResult) => {
     if (countError) {
@@ -524,6 +524,8 @@ productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
       const response = {
         TotalData: {
           TotalItems: countResult[0]?.totalProducts || 0,
+          TotalPcs: countResult[0]?.totalPcs || 0,
+          TotalCarat: countResult[0]?.totalCarat || 0,
           TotalAmount: countResult[0]?.totalAmount || 0,
         },
         Data: rows,
@@ -745,6 +747,7 @@ productRouter.post("/product/mail", authenticateToken, async (req, res) => {
       email: validation.email,
       subject: validation.subject,
       content: validation.content,
+      companyId: buildUserContext(req).companyId,
     });
 
     return res.status(200).json({

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useLayoutEffect } from 'react';
+import React, { useState, useMemo, useRef, useLayoutEffect, useEffect } from 'react';
 import {
     Card,
     Row,
@@ -12,7 +12,6 @@ import {
     Form,
     DatePicker,
     Space,
-    Popconfirm,
     Segmented,
     Empty,
     Progress,
@@ -41,9 +40,9 @@ import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import { useFetchApi, usePostApiRequest, usePutApiRequest, useDeleteApiRequest } from '../api/ApiFunction';
 import { ENDPOINTS } from '../constants/endpoints';
-import { toast } from 'sonner';
 import '../assets/scss/pages/dashboard.scss';
 import PageHeroHeader from '../components/common/PageHeroHeader';
+import DeleteConfirmModal from '../components/common/masterCommon/DeleteConfirmModal';
 import useAuthStore from '../store/Auth.Store';
 
 export default function TaskManager() {
@@ -51,12 +50,39 @@ export default function TaskManager() {
     const user = useAuthStore((state) => state.user);
     const isSuperAdmin = user?.roll === 1 || Number(user?.roll) === 1;
 
-    const { data: apiResponse, isLoading, refetch } = useFetchApi('quickNotes', ENDPOINTS.quickNotes.list);
+    const { data: apiResponse, isLoading, refetch, dataUpdatedAt } = useFetchApi(
+        'quickNotes',
+        ENDPOINTS.quickNotes.list,
+        {},
+        'GET',
+        {
+            staleTime: 0,
+            gcTime: 0,
+            refetchOnMount: 'always',
+            refetchInterval: 10000,
+            refetchIntervalInBackground: true,
+            placeholderData: undefined,
+        }
+    );
     const { data: usersRes } = useFetchApi('usersList', ENDPOINTS.admin.users, {}, 'GET', { enabled: isSuperAdmin });
 
     const createMutation = usePostApiRequest(ENDPOINTS.quickNotes.create, 'quickNotes');
     const updateMutation = usePutApiRequest(ENDPOINTS.quickNotes.update, 'quickNotes');
     const deleteMutation = useDeleteApiRequest(ENDPOINTS.quickNotes.delete, 'quickNotes');
+
+    // Local list so UI updates immediately after create/update/delete
+    const [tasks, setTasks] = useState([]);
+
+    useEffect(() => {
+        setTasks(Array.isArray(apiResponse?.Data) ? apiResponse.Data : []);
+    }, [apiResponse, dataUpdatedAt]);
+
+    const refreshTasks = async () => {
+        const result = await refetch();
+        if (Array.isArray(result?.data?.Data)) {
+            setTasks(result.data.Data);
+        }
+    };
 
     const userOptions = useMemo(() => {
         if (!Array.isArray(usersRes?.Data)) return [];
@@ -65,10 +91,6 @@ export default function TaskManager() {
             value: u.id
         }));
     }, [usersRes]);
-
-    const tasks = useMemo(() => {
-        return Array.isArray(apiResponse?.Data) ? apiResponse.Data : [];
-    }, [apiResponse]);
 
     // Local states
     const [searchText, setSearchText] = useState('');
@@ -80,6 +102,7 @@ export default function TaskManager() {
     // Modal states
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState(null);
+    const [deleteModal, setDeleteModal] = useState({ open: false, record: null, bulk: false });
     const [form] = Form.useForm();
     const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
@@ -156,22 +179,51 @@ export default function TaskManager() {
         };
 
         if (editingTask) {
+            const taskId = editingTask.id;
+            // Instant UI update (before API returns)
+            setTasks((prev) =>
+                prev.map((task) =>
+                    Number(task.id) === Number(taskId)
+                        ? {
+                            ...task,
+                            ...payload,
+                            assigned_to_name:
+                                userOptions.find((u) => Number(u.value) === Number(payload.assigned_to))?.label
+                                || task.assigned_to_name,
+                        }
+                        : task
+                )
+            );
+            setEditingTask(null);
+            form.resetFields();
+
             updateMutation.mutate(
-                { id: editingTask.id, payload },
+                { id: taskId, payload },
                 {
-                    onSuccess: () => {
-                        toast.success('Task updated successfully');
-                        setEditingTask(null);
-                        form.resetFields();
-                    }
+                    onSuccess: (data) => {
+                        if (data?.Data) {
+                            setTasks((prev) =>
+                                prev.map((task) =>
+                                    Number(task.id) === Number(data.Data.id) ? { ...task, ...data.Data } : task
+                                )
+                            );
+                        }
+                        refreshTasks();
+                    },
+                    onError: () => {
+                        refreshTasks();
+                    },
                 }
             );
         } else {
             createMutation.mutate(payload, {
-                onSuccess: () => {
-                    toast.success('Task created successfully');
+                onSuccess: (data) => {
+                    if (data?.Data) {
+                        setTasks((prev) => [data.Data, ...prev]);
+                    }
                     setIsAddModalOpen(false);
                     form.resetFields();
+                    refreshTasks();
                 }
             });
         }
@@ -188,30 +240,91 @@ export default function TaskManager() {
     };
 
     const handleToggleComplete = (task) => {
-        updateMutation.mutate({
-            id: task.id,
-            payload: { completed: !task.completed }
-        });
+        const nextCompleted = !task.completed;
+        setTasks((prev) =>
+            prev.map((item) =>
+                Number(item.id) === Number(task.id)
+                    ? { ...item, completed: nextCompleted ? 1 : 0 }
+                    : item
+            )
+        );
+        updateMutation.mutate(
+            {
+                id: task.id,
+                payload: { completed: nextCompleted }
+            },
+            {
+                onSuccess: (data) => {
+                    if (data?.Data) {
+                        setTasks((prev) =>
+                            prev.map((item) =>
+                                Number(item.id) === Number(data.Data.id) ? { ...item, ...data.Data } : item
+                            )
+                        );
+                    }
+                    refreshTasks();
+                },
+                onError: () => refreshTasks(),
+            }
+        );
     };
 
-    const handleDeleteTask = (id) => {
-        deleteMutation.mutate(id);
+    const openDeleteTask = (task) => {
+        setDeleteModal({ open: true, record: task, bulk: false });
+    };
+
+    const openBulkDelete = () => {
+        if (!selectedRowKeys.length) return;
+        setDeleteModal({ open: true, record: null, bulk: true });
+    };
+
+    const closeDeleteModal = () => {
+        setDeleteModal({ open: false, record: null, bulk: false });
+    };
+
+    const handleConfirmDelete = () => {
+        if (deleteModal.bulk) {
+            if (!selectedRowKeys.length) {
+                closeDeleteModal();
+                return;
+            }
+            const ids = [...selectedRowKeys];
+            setTasks((prev) => prev.filter((task) => !ids.map(Number).includes(Number(task.id))));
+            setSelectedRowKeys([]);
+            closeDeleteModal();
+            ids.forEach((id) => {
+                deleteMutation.mutate(id, { onSuccess: () => refreshTasks() });
+            });
+            return;
+        }
+
+        const id = deleteModal.record?.id;
+        if (!id) {
+            closeDeleteModal();
+            return;
+        }
+        setTasks((prev) => prev.filter((task) => Number(task.id) !== Number(id)));
+        closeDeleteModal();
+        deleteMutation.mutate(id, {
+            onSuccess: () => refreshTasks(),
+            onError: () => refreshTasks(),
+        });
     };
 
     // Bulk actions
     const handleBulkMarkDone = () => {
         if (!selectedRowKeys.length) return;
+        const ids = selectedRowKeys.map(Number);
+        setTasks((prev) =>
+            prev.map((task) =>
+                ids.includes(Number(task.id)) ? { ...task, completed: 1 } : task
+            )
+        );
         selectedRowKeys.forEach(id => {
-            updateMutation.mutate({ id, payload: { completed: true } });
-        });
-        toast.success(`Marked ${selectedRowKeys.length} task(s) as complete`);
-        setSelectedRowKeys([]);
-    };
-
-    const handleBulkDelete = () => {
-        if (!selectedRowKeys.length) return;
-        selectedRowKeys.forEach(id => {
-            deleteMutation.mutate(id);
+            updateMutation.mutate(
+                { id, payload: { completed: true } },
+                { onSuccess: () => refreshTasks() }
+            );
         });
         setSelectedRowKeys([]);
     };
@@ -372,19 +485,12 @@ export default function TaskManager() {
                             icon={<Edit2 size={15} style={{ color: '#0284c7' }} />}
                             onClick={() => handleOpenEdit(record)}
                         />
-                        <Popconfirm
-                            title="Delete Task"
-                            description="Are you sure you want to delete this task?"
-                            onConfirm={() => handleDeleteTask(record.id)}
-                            okText="Yes"
-                            cancelText="No"
-                        >
-                            <Button
-                                type="text"
-                                size="small"
-                                icon={<Trash2 size={15} style={{ color: '#ef4444' }} />}
-                            />
-                        </Popconfirm>
+                        <Button
+                            type="text"
+                            size="small"
+                            icon={<Trash2 size={15} style={{ color: '#ef4444' }} />}
+                            onClick={() => openDeleteTask(record)}
+                        />
                     </Space>
                 ),
             }
@@ -413,7 +519,7 @@ export default function TaskManager() {
                         <Space size="small" wrap>
                             <Button
                                 icon={<ReloadOutlined />}
-                                onClick={() => refetch()}
+                                onClick={() => refreshTasks()}
                                 loading={isLoading}
                                 style={{ borderRadius: 8 }}
                             >
@@ -571,11 +677,9 @@ export default function TaskManager() {
                                         Mark ({selectedRowKeys.length}) Done
                                     </Button>
                                     {isSuperAdmin && (
-                                        <Popconfirm title="Delete selected tasks?" onConfirm={handleBulkDelete}>
-                                            <Button size="small" danger>
-                                                Delete ({selectedRowKeys.length})
-                                            </Button>
-                                        </Popconfirm>
+                                        <Button size="small" danger onClick={openBulkDelete}>
+                                            Delete ({selectedRowKeys.length})
+                                        </Button>
                                     )}
                                 </Space>
                             )}
@@ -705,7 +809,7 @@ export default function TaskManager() {
                                                         {isSuperAdmin && (
                                                             <Space size={4}>
                                                                 <Button type="text" size="small" icon={<Edit2 size={13} />} onClick={() => handleOpenEdit(task)} />
-                                                                <Button type="text" size="small" icon={<Trash2 size={13} style={{ color: '#ef4444' }} />} onClick={() => handleDeleteTask(task.id)} />
+                                                                <Button type="text" size="small" icon={<Trash2 size={13} style={{ color: '#ef4444' }} />} onClick={() => openDeleteTask(task)} />
                                                             </Space>
                                                         )}
                                                     </div>
@@ -722,6 +826,21 @@ export default function TaskManager() {
                 </Row>
                 )}
             </div>
+
+            {isSuperAdmin && (
+                <DeleteConfirmModal
+                    open={deleteModal.open}
+                    title={deleteModal.bulk ? "Delete Tasks" : "Delete Task"}
+                    entityName={
+                        deleteModal.bulk
+                            ? `${selectedRowKeys.length} selected task(s)`
+                            : (deleteModal.record?.text || "this task")
+                    }
+                    loading={deleteMutation.isPending}
+                    onCancel={closeDeleteModal}
+                    onConfirm={handleConfirmDelete}
+                />
+            )}
 
             {/* Create / Edit Modal (Super Admin only) */}
             {isSuperAdmin && (

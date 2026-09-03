@@ -25,7 +25,7 @@ const toneTheme = (label, tone) => ({
 
 /**
  * Action themes = inventory row condition colors (same as action panel tiles).
- * accent/bg = modal header; btnBg = Submit button.
+ * accent/bg = modal header; btnBg kept for non-submit accents (e.g. Add Stone).
  */
 export const INVENTORY_ACTION_THEME = {
   onMemo: toneTheme("On Memo", INVENTORY_ROW_TONES.red),
@@ -99,7 +99,7 @@ export const INVENTORY_ACTION_FIELDS = {
     { name: "remarks", label: "Description", type: "textarea", span: 12, rows: 1 },
   ],
   mail: [
-    { name: "toEmail", label: "To Email", type: "input", required: true, span: 12 },
+    { name: "toEmail", label: "To Email", type: "input", required: true, span: 12, rules: [{ type: "email", message: "Invalid email address" }] },
     { name: "subject", label: "Subject", type: "input", required: true, span: 12 },
     { name: "message", label: "Message", type: "textarea", required: true, span: 24 },
   ],
