@@ -162,7 +162,7 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
         { limit: LIMIT, offset }
     );
     const { mutate: saveParty, isLoading: isSubmitting } = usePostApiRequest(ENDPOINTS.partyWise.save, 'SaveParty');
-    const { mutate: partydelete, isPending: isDeleting } = useDeleteApiRequest(ENDPOINTS.partyWise.delete, 'deleteparty');
+    const { mutate: partydelete, isPending: isDeleting } = useDeleteApiRequest(ENDPOINTS.partyWise.delete, 'deleteparty', { queryParam: 'deleteId' });
 
     useEffect(() => {
         if (data?.Data) {

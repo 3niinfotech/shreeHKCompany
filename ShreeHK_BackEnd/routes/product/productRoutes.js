@@ -32,6 +32,75 @@ productRouter.use(express.json());
 const columnName =
   " p.id,p.mfg_code,p.diamond_no,p.sku,p.pair,p.polish_pcs,p.polish_carat,p.rap_price,p.cost,p.price,p.amount,p.main_group,p.sub_group,p.remark,p.location,p.date,p.company,p.inward_id,p.inward,p.group_type,p.lab,p.send_to_lab,p.outward,p.box_products,p.parcel_products,p.box_id,p.parcel_id,p.hold,p.visibility,p.parent_id,p.main_color,p.category,p.argyle_color,p.in_house_clarity,p.mining,p.origin,p.rapnet_upload,p.site_upload,pv.report_no,pv.shape,pv.color,pv.clarity,pv.size,pv.polish,pv.f_intensity,pv.symmentry,pv.cut,pv.mesurment,pv.table_pc,pv.depth_pc,pv.gridle,pv.intensity,pv.overtone,pv.package,pv.bgm,pv.eyeclean ";
 
+const ALLOWED_SORT_COLUMNS = {
+  id: "p.id",
+  "p.id": "p.id",
+  sku: "p.sku",
+  "p.sku": "p.sku",
+  lab: "p.lab",
+  "p.lab": "p.lab",
+  mfg_code: "p.mfg_code",
+  "p.mfg_code": "p.mfg_code",
+  diamond_no: "p.diamond_no",
+  "p.diamond_no": "p.diamond_no",
+  polish_carat: "p.polish_carat",
+  "p.polish_carat": "p.polish_carat",
+  carat: "p.polish_carat",
+  rap_price: "p.rap_price",
+  "p.rap_price": "p.rap_price",
+  cost: "p.cost",
+  "p.cost": "p.cost",
+  price: "p.price",
+  "p.price": "p.price",
+  amount: "p.amount",
+  "p.amount": "p.amount",
+  date: "p.date",
+  "p.date": "p.date",
+  location: "p.location",
+  "p.location": "p.location",
+  main_group: "p.main_group",
+  "p.main_group": "p.main_group",
+  sub_group: "p.sub_group",
+  "p.sub_group": "p.sub_group",
+  shape: "pv.shape",
+  "pv.shape": "pv.shape",
+  color: "pv.color",
+  "pv.color": "pv.color",
+  clarity: "pv.clarity",
+  "pv.clarity": "pv.clarity",
+  cut: "pv.cut",
+  "pv.cut": "pv.cut",
+  polish: "pv.polish",
+  "pv.polish": "pv.polish",
+  symmentry: "pv.symmentry",
+  "pv.symmentry": "pv.symmentry",
+  symmetry: "pv.symmentry",
+  f_intensity: "pv.f_intensity",
+  "pv.f_intensity": "pv.f_intensity",
+  fluorescence: "pv.f_intensity",
+  report_no: "pv.report_no",
+  "pv.report_no": "pv.report_no",
+  package: "pv.package",
+  "pv.package": "pv.package",
+  size: "pv.size",
+  "pv.size": "pv.size",
+  table: "pv.table_pc",
+  table_pc: "pv.table_pc",
+  "pv.table_pc": "pv.table_pc",
+  depth: "pv.depth_pc",
+  depth_pc: "pv.depth_pc",
+  "pv.depth_pc": "pv.depth_pc",
+  measurement: "pv.mesurment",
+  mesurment: "pv.mesurment",
+  "pv.mesurment": "pv.mesurment",
+  gridle: "pv.gridle",
+  "pv.gridle": "pv.gridle",
+  eyeclean: "pv.eyeclean",
+  "pv.eyeclean": "pv.eyeclean",
+  bgm: "pv.bgm",
+  "pv.bgm": "pv.bgm",
+};
+
 productRouter.get("/product/inventory/suggest", authenticateToken, async (req, res) => {
   try {
     const q = req.query.q;
@@ -82,77 +151,61 @@ productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
     }
   }
 
-  let pair =
-    (location =
-      sku =
-      carat =
-      type =
-      package =
-      shape =
-      color =
-      intensity =
-      overtone =
-      clarity =
-      f_intensity =
-      memo =
-      symmentry =
-      cut =
-      polish =
-      lab =
-      "");
+  const queryParams = [companyId];
+
+  let pair = "";
+  let location = "";
+  let sku = "";
+  let carat = "";
+  let type = "";
+  let package = "";
+  let shape = "";
+  let color = "";
+  let intensity = "";
+  let overtone = "";
+  let clarity = "";
+  let f_intensity = "";
+  let memo = "";
+  let symmentry = "";
+  let cut = "";
+  let polish = "";
+  let lab = "";
   let category = "";
 
-  // if (post.sku && post.sku !== "") {
-  //   post.sku = post.sku.replace(/\s+/g, "");
-  //   let tem = post.sku.split(",");
+  const parseCarat = (v) => {
+    if (v == null || v === "") return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
 
-  //   if (tem.length !== 1) {
-  //     let skua = tem.join("','");
-  //     sku = ` and ( p.mfg_code IN ('${skua}') or p.sku IN ('${skua}') or pv.report_no IN ('${skua}') )`;
-  //   } else {
-  //     sku = ` and ( p.mfg_code LIKE '%${post.sku}%' or p.sku LIKE '%${post.sku}%' or pv.report_no LIKE '%${post.sku}%' or p.barcode LIKE '%${post.sku}%' ) `;
-  //   }
-  // }
-
-  // if (post.limit) {
-  //   let oldL = post.limit;
-  //   let newL = post.limitTo;
-  //   limit = ` LIMIT ${oldL},${newL}`;
-  // }
-
+  let cFrom = null;
+  let cTo = null;
   if (form_type === "fancy") {
-    if (post.cfrom && post.cfrom !== "" && post.cto && post.cto !== "") {
-      carat = ` and p.polish_carat BETWEEN ${post.cfrom} and ${post.cto}`;
-    } else if (post.cfrom && post.cfrom !== "") {
-      carat = ` and p.polish_carat BETWEEN ${post.cfrom} and 9999`;
-    } else if (post.cto && post.cto !== "") {
-      carat = ` and p.polish_carat BETWEEN 0 and ${post.cto}`;
-    }
+    cFrom = parseCarat(post.cfrom);
+    cTo = parseCarat(post.cto);
   } else if (form_type === "white") {
-    if (post.cwfrom && post.cwfrom !== "" && post.cwto && post.cwto !== "") {
-      carat = ` and p.polish_carat BETWEEN ${post.cwfrom} and ${post.cwto}`;
-    } else if (post.cwfrom && post.cwfrom !== "") {
-      carat = ` and p.polish_carat BETWEEN ${post.cwfrom} and 9999`;
-    } else if (post.cwto && post.cwto !== "") {
-      carat = ` and p.polish_carat BETWEEN 0 and ${post.cwto}`;
-    }
+    cFrom = parseCarat(post.cwfrom);
+    cTo = parseCarat(post.cwto);
   } else {
-    if (post.clfrom && post.clfrom !== "" && post.clto && post.clto !== "") {
-      carat = ` and p.polish_carat BETWEEN ${post.clfrom} and ${post.clto}`;
-    } else if (post.clfrom && post.clfrom !== "") {
-      carat = ` and p.polish_carat BETWEEN ${post.clfrom} and 9999`;
-    } else if (post.clto && post.clto !== "") {
-      carat = ` and p.polish_carat BETWEEN 0 and ${post.clto}`;
-    }
+    cFrom = parseCarat(post.clfrom);
+    cTo = parseCarat(post.clto);
   }
 
-  if (post.lab) {
-    lab = " and ( ";
-    post.lab.forEach((v, k) => {
-      lab += ` p.lab = '${v}' `;
-      if (k !== post.lab.length - 1) lab += " || ";
-    });
-    lab += " ) ";
+  if (cFrom !== null && cTo !== null) {
+    carat = " and p.polish_carat BETWEEN ? and ?";
+    queryParams.push(cFrom, cTo);
+  } else if (cFrom !== null) {
+    carat = " and p.polish_carat BETWEEN ? and 9999";
+    queryParams.push(cFrom);
+  } else if (cTo !== null) {
+    carat = " and p.polish_carat BETWEEN 0 and ?";
+    queryParams.push(cTo);
+  }
+
+  if (post.lab && post.lab.length) {
+    const labPlaceholders = post.lab.map(() => "p.lab = ?").join(" || ");
+    lab = ` and ( ${labPlaceholders} ) `;
+    post.lab.forEach((v) => queryParams.push(v));
   }
 
   if (post.memo) {
@@ -170,12 +223,9 @@ productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
 
   if (post.type) {
     const typeValues = Array.isArray(post.type) ? post.type : [post.type];
-    type = " and (";
-    typeValues.forEach((v, k) => {
-      type += ` p.group_type = '${v}' `;
-      if (k !== typeValues.length - 1) type += " || ";
-    });
-    type += ") ";
+    const typePlaceholders = typeValues.map(() => "p.group_type = ?").join(" || ");
+    type = ` and (${typePlaceholders}) `;
+    typeValues.forEach((v) => queryParams.push(v));
   }
 
   let hold = "";
@@ -186,59 +236,43 @@ productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
 
   if (post.pair) pair = " and p.pair <> '' ";
 
-  if (post.shape) {
-    shape = " and (";
-    post.shape.forEach((v, k) => {
-      shape += ` pv.shape LIKE '%${v}%' `;
-      if (k !== post.shape.length - 1) shape += " || ";
-    });
-    shape += ") ";
+  if (post.shape && post.shape.length) {
+    const shapePlaceholders = post.shape.map(() => "pv.shape LIKE ?").join(" || ");
+    shape = ` and (${shapePlaceholders}) `;
+    post.shape.forEach((v) => queryParams.push(`%${v}%`));
   }
 
-  if (post.package) {
-    package = " and (";
-    post.package.forEach((v, k) => {
-      package += ` pv.package = '${v}' `;
-      if (k !== post.package.length - 1) package += " || ";
-    });
-    package += ") ";
+  if (post.package && post.package.length) {
+    const packagePlaceholders = post.package.map(() => "pv.package = ?").join(" || ");
+    package = ` and (${packagePlaceholders}) `;
+    post.package.forEach((v) => queryParams.push(v));
   }
 
   let size = "";
-  if (post.size) {
-    size = " and (";
-    post.size.forEach((v, k) => {
-      size += ` pv.size = '${v}' `;
-      if (k !== post.size.length - 1) size += " || ";
-    });
-    size += ") ";
+  if (post.size && post.size.length) {
+    const sizePlaceholders = post.size.map(() => "pv.size = ?").join(" || ");
+    size = ` and (${sizePlaceholders}) `;
+    post.size.forEach((v) => queryParams.push(v));
   }
 
-  if (post.location) {
-    location = " and (";
-    post.location.forEach((v, k) => {
-      location += ` p.location = '${v}' `;
-      if (k !== post.location.length - 1) location += " || ";
-    });
-    location += ") ";
+  if (post.location && post.location.length) {
+    const locPlaceholders = post.location.map(() => "p.location = ?").join(" || ");
+    location = ` and (${locPlaceholders}) `;
+    post.location.forEach((v) => queryParams.push(v));
   }
 
   if (post.color && form_type === "white") {
-    color = " and (";
-    post.color.forEach((v, k) => {
-      color += ` pv.color LIKE '${v}' || pv.color LIKE '${v}-%' `;
-      if (k !== post.color.length - 1) color += " || ";
+    const colorClauses = post.color.map(() => "pv.color LIKE ? || pv.color LIKE ?").join(" || ");
+    color = ` and (${colorClauses}) `;
+    post.color.forEach((v) => {
+      queryParams.push(v, `${v}-%`);
     });
-    color += ") ";
   }
 
   if (post.color && form_type === "fancy") {
-    color = " and (";
-    post.color.forEach((v, k) => {
-      color += ` pv.color = '${v}' `;
-      if (k !== post.color.length - 1) color += " || ";
-    });
-    color += ") ";
+    const colorPlaceholders = post.color.map(() => "pv.color = ?").join(" || ");
+    color = ` and (${colorPlaceholders}) `;
+    post.color.forEach((v) => queryParams.push(v));
   }
 
   if (form_type === "fancy") {
@@ -247,123 +281,93 @@ productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
     intensity = " and ( pv.intensity = '' || pv.intensity IS NULL )";
   }
 
-  if (post.intensity) {
-    intensity = " and (";
-    post.intensity.forEach((v, k) => {
-      intensity += ` pv.intensity = '${v}' `;
-      if (k !== post.intensity.length - 1) intensity += " || ";
-    });
-    intensity += ") ";
+  if (post.intensity && post.intensity.length) {
+    const intensityPlaceholders = post.intensity.map(() => "pv.intensity = ?").join(" || ");
+    intensity = ` and (${intensityPlaceholders}) `;
+    post.intensity.forEach((v) => queryParams.push(v));
   }
 
-  if (post.f_intensity) {
-    f_intensity = " and (";
-    post.f_intensity.forEach((v, k) => {
-      f_intensity += ` pv.f_intensity = '${v}' `;
-      if (k !== post.f_intensity.length - 1) f_intensity += " || ";
-    });
-    f_intensity += ") ";
+  if (post.f_intensity && post.f_intensity.length) {
+    const fIntensityPlaceholders = post.f_intensity.map(() => "pv.f_intensity = ?").join(" || ");
+    f_intensity = ` and (${fIntensityPlaceholders}) `;
+    post.f_intensity.forEach((v) => queryParams.push(v));
   }
 
-  if (post.clarity) {
-    clarity = " and (";
-    post.clarity.forEach((v, k) => {
-      clarity += ` pv.clarity = '${v}' `;
-      if (k !== post.clarity.length - 1) clarity += " || ";
-    });
-    clarity += ") ";
+  if (post.clarity && post.clarity.length) {
+    const clarityPlaceholders = post.clarity.map(() => "pv.clarity = ?").join(" || ");
+    clarity = ` and (${clarityPlaceholders}) `;
+    post.clarity.forEach((v) => queryParams.push(v));
   }
 
-  if (post.overtone) {
-    overtone = " and (";
-    post.overtone.forEach((v, k) => {
-      if (v === "None") v = "";
-      overtone += ` pv.overtone LIKE '%${v}%' `;
-      if (k !== post.overtone.length - 1) overtone += " || ";
+  if (post.overtone && post.overtone.length) {
+    const overtonePlaceholders = post.overtone.map(() => "pv.overtone LIKE ?").join(" || ");
+    overtone = ` and (${overtonePlaceholders}) `;
+    post.overtone.forEach((v) => {
+      const val = v === "None" ? "" : v;
+      queryParams.push(`%${val}%`);
     });
-    overtone += ") ";
   }
 
-  if (post.cut) {
-    cut = " and (";
-    post.cut.forEach((v, k) => {
-      cut += ` pv.cut = '${v}' `;
-      if (k !== post.cut.length - 1) cut += " || ";
-    });
-    cut += ") ";
+  if (post.cut && post.cut.length) {
+    const cutPlaceholders = post.cut.map(() => "pv.cut = ?").join(" || ");
+    cut = ` and (${cutPlaceholders}) `;
+    post.cut.forEach((v) => queryParams.push(v));
   }
 
   let main_group = "";
-  if (post.main_group) {
-    main_group = " and (";
-    post.main_group.forEach((v, k) => {
-      main_group += ` p.main_group = '${v}' `;
-      if (k !== post.main_group.length - 1) main_group += " || ";
-    });
-    main_group += ") ";
+  if (post.main_group && post.main_group.length) {
+    const mainGroupPlaceholders = post.main_group.map(() => "p.main_group = ?").join(" || ");
+    main_group = ` and (${mainGroupPlaceholders}) `;
+    post.main_group.forEach((v) => queryParams.push(v));
   }
 
   let sub_group = "";
-  if (post.sub_group) {
-    sub_group = " and (";
-    post.sub_group.forEach((v, k) => {
-      sub_group += ` p.sub_group = '${v}' `;
-      if (k !== post.sub_group.length - 1) sub_group += " || ";
-    });
-    sub_group += ") ";
+  if (post.sub_group && post.sub_group.length) {
+    const subGroupPlaceholders = post.sub_group.map(() => "p.sub_group = ?").join(" || ");
+    sub_group = ` and (${subGroupPlaceholders}) `;
+    post.sub_group.forEach((v) => queryParams.push(v));
   }
 
-  if (post.polish) {
-    polish = " and (";
-    post.polish.forEach((v, k) => {
-      polish += ` pv.polish = '${v}' `;
-      if (k !== post.polish.length - 1) polish += " || ";
-    });
-    polish += ") ";
+  if (post.polish && post.polish.length) {
+    const polishPlaceholders = post.polish.map(() => "pv.polish = ?").join(" || ");
+    polish = ` and (${polishPlaceholders}) `;
+    post.polish.forEach((v) => queryParams.push(v));
   }
 
-  if (post.symmentry) {
-    symmentry = " and (";
-    post.symmentry.forEach((v, k) => {
-      symmentry += ` pv.symmentry = '${v}' `;
-      if (k !== post.symmentry.length - 1) symmentry += " || ";
-    });
-    symmentry += ") ";
+  if (post.symmentry && post.symmentry.length) {
+    const symmentryPlaceholders = post.symmentry.map(() => "pv.symmentry = ?").join(" || ");
+    symmentry = ` and (${symmentryPlaceholders}) `;
+    post.symmentry.forEach((v) => queryParams.push(v));
   }
 
   if (post.category) {
-    const cats = Array.isArray(post.category) ? post.category : [post.category];
-    const ids = cats
-      .filter((c) => c != null && c !== "")
-      .map((c) => connection.escape(String(c)))
-      .join(",");
-    if (ids) category = ` and p.category IN (${ids}) `;
+    const cats = (Array.isArray(post.category) ? post.category : [post.category])
+      .filter((c) => c != null && c !== "");
+    if (cats.length) {
+      category = ` and p.category IN (${cats.map(() => "?").join(",")}) `;
+      cats.forEach((c) => queryParams.push(String(c)));
+    }
   }
+
+  const rawSortKey = String(post.sort || "").trim().toLowerCase();
+  const rawSortType = String(post.sorttype || "").trim().toUpperCase();
+  const safeSortDir = rawSortType === "DESC" ? "DESC" : "ASC";
 
   let sort = " p.lab desc,p.sku ";
-
   if (
-    post.sort &&
-    post.sort !== "" &&
-    post.sort !== "rapnet" &&
-    post.sort !== "discount"
+    rawSortKey &&
+    rawSortKey !== "rapnet" &&
+    rawSortKey !== "discount" &&
+    ALLOWED_SORT_COLUMNS[rawSortKey]
   ) {
-    sort = ` ${post.sort} `;
+    sort = ` ${ALLOWED_SORT_COLUMNS[rawSortKey]} ${safeSortDir} `;
   }
-
-  let ascType = "";
-  if (post.sorttype && post.sorttype !== "") {
-    ascType = ` ${post.sorttype} `;
-  }
-
-  sort = `${sort} ${ascType}`;
 
   // Newest stock first on page 1 unless caller passes explicit sort
   const newestFirst = post.sort ? "" : "p.id DESC, ";
   let group_type_sort = " FIELD(p.group_type, 'single','box','parcel'), ";
   if (post.lab) {
-    sort = " p.sku ";
-    sort = `${sort} ${ascType}`;
+    sort = ` p.sku ${safeSortDir} `;
     group_type_sort = "";
   }
 
@@ -379,7 +383,7 @@ productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
   // query — outward scope mirrors venya inventoryModel.php per filter branch
   let query = "";
   const inventoryBaseFrom =
-    ` FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id WHERE p.company=${companyId} and visibility=1 and polish_carat <>0`;
+    " FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id WHERE p.company = ? and visibility = 1 and polish_carat <> 0";
   const inventoryBoxParcel =
     " and (p.box_id='' || p.box_id IS NULL) and (p.parcel_id='' || p.parcel_id IS NULL)";
   let outwardScope = " and (p.outward='' || p.outward IS NULL)";
@@ -389,25 +393,33 @@ productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
 
   if (searchInput) {
     const searchTerms = searchInput.split(",").map((term) => term.trim()).filter(Boolean);
-    const searchConditions = searchTerms
-      .map((term) => {
-        const like = connection.escape(`%${term}%`);
-        const caratClause = /^\d/.test(term)
-          ? ` OR CAST(p.polish_carat AS CHAR) LIKE ${like}`
-          : "";
-        return `(
-          pv.report_no LIKE ${like}
-          OR p.sku LIKE ${like}
-          OR p.mfg_code LIKE ${like}
-          OR p.diamond_no LIKE ${like}
-          OR pv.shape LIKE ${like}
-          OR pv.cut LIKE ${like}
-          OR pv.polish LIKE ${like}
-          ${caratClause}
-        )`;
-      })
-      .join(" OR ");
-    searchClause = ` AND (${searchConditions})`;
+    if (searchTerms.length) {
+      const searchConditions = searchTerms
+        .map((term) => {
+          const caratClause = /^\d/.test(term)
+            ? " OR CAST(p.polish_carat AS CHAR) LIKE ?"
+            : "";
+          return `(
+            pv.report_no LIKE ?
+            OR p.sku LIKE ?
+            OR p.mfg_code LIKE ?
+            OR p.diamond_no LIKE ?
+            OR pv.shape LIKE ?
+            OR pv.cut LIKE ?
+            OR pv.polish LIKE ?
+            ${caratClause}
+          )`;
+        })
+        .join(" OR ");
+      searchClause = ` AND (${searchConditions})`;
+      searchTerms.forEach((term) => {
+        const likeVal = `%${term}%`;
+        queryParams.push(likeVal, likeVal, likeVal, likeVal, likeVal, likeVal, likeVal);
+        if (/^\d/.test(term)) {
+          queryParams.push(likeVal);
+        }
+      });
+    }
   }
 
   if (
@@ -494,13 +506,13 @@ productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
   }
 
   const queryConditions = `${inventoryBaseFrom}${outwardScope}${inventoryBoxParcel}${searchClause}`;
-  let limitQuery = `LIMIT ${limit} OFFSET ${paginationOffset}`;
+  let limitQuery = "LIMIT ? OFFSET ?";
 
   query = `SELECT ${columnName} ${queryConditions} ${filter} ${sortQuery} ${limitQuery} `;
 
   const countQuery = `SELECT COUNT(id) as totalProducts, SUM(p.polish_pcs) as totalPcs, SUM(p.polish_carat) as totalCarat, SUM(p.amount) as totalAmount ${queryConditions} ${filter}`;
 
-  connection.query(countQuery, (countError, countResult) => {
+  connection.query(countQuery, queryParams, (countError, countResult) => {
     if (countError) {
       return res
         .status(500)
@@ -511,7 +523,7 @@ productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
       return res.status(500).json({ error: "Count query returned no results" });
     }
 
-    connection.query(query, async (error, data) => {
+    connection.query(query, [...queryParams, limit, paginationOffset], async (error, data) => {
       if (error) return res.status(500).json({ error: error.message });
 
       let rows = data;
@@ -882,8 +894,8 @@ productRouter.get("/product/history", authenticateToken, async (req, res) => {
 
     // Get product history
     const history = await new Promise((resolve, reject) => {
-      let query = `SELECT * FROM dai_history WHERE product_id=${detail.id} ORDER BY id`;
-      connection.query(query, (error, data) => {
+      const historySql = "SELECT * FROM dai_history WHERE product_id = ? ORDER BY id";
+      connection.query(historySql, [detail.id], (error, data) => {
         if (error) {
           return reject({ error: "Error occurred while fetching data" });
         }

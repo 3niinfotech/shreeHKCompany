@@ -34,7 +34,7 @@ const ManageUser = () => {
     const { data: rolesData } = useFetchApi('getRolesList', ENDPOINTS.role.list);
 
     const { mutateAsync: saveUser } = usePostApiRequest(ENDPOINTS.admin.saveUser, 'getUsersAdmin');
-    const { mutate: deleteUser, isPending: isDeleting } = useDeleteApiRequest(ENDPOINTS.admin.deleteUser, 'getUsersAdmin');
+    const { mutate: deleteUser, isPending: isDeleting } = useDeleteApiRequest(ENDPOINTS.admin.deleteUser, 'getUsersAdmin', { queryParam: 'deleteId' });
 
     const [deleteModal, setDeleteModal] = useState({ open: false, record: null });
     const [inspectUser, setInspectUser] = useState(null);

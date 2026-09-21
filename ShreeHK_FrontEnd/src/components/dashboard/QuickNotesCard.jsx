@@ -20,23 +20,23 @@ const NotesTableSkeleton = ({ isSuperAdmin }) => (
   <table className="inventory-table notes-table" aria-hidden="true">
     <thead>
       <tr>
-        <th style={{ width: 45, textAlign: "center" }}>Status</th>
+        <th style={{ width: 42, textAlign: "center" }}>Done</th>
         <th>Task Description</th>
-        {isSuperAdmin && <th style={{ width: 130, textAlign: "center" }}>Assignee</th>}
-        <th style={{ width: 130, textAlign: "center" }}>Target Date</th>
-        <th style={{ width: 90, textAlign: "center" }}>Priority</th>
-        {isSuperAdmin && <th style={{ width: 80, textAlign: "center" }}>Actions</th>}
+        {isSuperAdmin && <th style={{ width: 110, textAlign: "center" }}>Assignee</th>}
+        <th style={{ width: 115, textAlign: "center" }}>Target Date</th>
+        <th style={{ width: 85, textAlign: "center" }}>Priority</th>
+        {isSuperAdmin && <th style={{ width: 75, textAlign: "center" }}>Actions</th>}
       </tr>
     </thead>
     <tbody>
-      {Array.from({ length: 5 }).map((_, i) => (
+      {Array.from({ length: 4 }).map((_, i) => (
         <tr key={i}>
-          <td style={{ textAlign: "center" }}><SkeletonBlock variant="icon" width={16} height={16} /></td>
-          <td><SkeletonBlock variant="text" width={`${70 + (i % 3) * 8}%`} height={12} /></td>
-          {isSuperAdmin && <td style={{ textAlign: "center" }}><SkeletonBlock variant="text" width="70%" height={12} /></td>}
-          <td style={{ textAlign: "center" }}><SkeletonBlock variant="text" width="80%" height={12} /></td>
-          <td style={{ textAlign: "center" }}><SkeletonBlock variant="text" width="60%" height={12} /></td>
-          {isSuperAdmin && <td style={{ textAlign: "center" }}><SkeletonBlock variant="icon" width={40} height={16} /></td>}
+          <td style={{ textAlign: "center" }}><SkeletonBlock variant="icon" width={16} height={16} style={{ margin: "0 auto" }} /></td>
+          <td><SkeletonBlock variant="text" width={`${65 + (i % 3) * 10}%`} height={13} /></td>
+          {isSuperAdmin && <td style={{ textAlign: "center" }}><SkeletonBlock variant="text" width="80%" height={13} style={{ margin: "0 auto" }} /></td>}
+          <td style={{ textAlign: "center" }}><SkeletonBlock variant="text" width="85%" height={13} style={{ margin: "0 auto" }} /></td>
+          <td style={{ textAlign: "center" }}><SkeletonBlock variant="text" width="70%" height={13} style={{ margin: "0 auto" }} /></td>
+          {isSuperAdmin && <td style={{ textAlign: "center" }}><SkeletonBlock variant="icon" width={44} height={18} style={{ margin: "0 auto" }} /></td>}
         </tr>
       ))}
     </tbody>
@@ -167,40 +167,40 @@ const QuickNotesCard = () => {
   const renderPriorityBadge = (p) => {
     switch (p?.toLowerCase()) {
       case "high":
-        return <Tag color="red" style={{ fontWeight: 600, borderRadius: 6, margin: 0 }}>High</Tag>;
+        return <span className="notes-badge notes-badge--high">High</span>;
       case "medium":
-        return <Tag color="gold" style={{ fontWeight: 600, borderRadius: 6, margin: 0 }}>Medium</Tag>;
+        return <span className="notes-badge notes-badge--medium">Medium</span>;
       case "low":
       default:
-        return <Tag color="green" style={{ fontWeight: 600, borderRadius: 6, margin: 0 }}>Low</Tag>;
+        return <span className="notes-badge notes-badge--low">Low</span>;
     }
   };
 
   const renderTargetDateTag = (tDate, completed) => {
     const todayStr = dayjs().format("YYYY-MM-DD");
-    if (!tDate) return null;
+    if (!tDate) return <span className="notes-date-muted">-</span>;
 
     if (completed) {
-      return <span style={{ color: "#64748b", fontSize: "0.78rem" }}>{dayjs(tDate).format("DD MMM YYYY")}</span>;
+      return <span className="notes-date-muted">{dayjs(tDate).format("DD MMM YYYY")}</span>;
     }
 
     if (tDate < todayStr) {
       return (
-        <Tag color="volcano" style={{ borderRadius: 6, fontWeight: 600, margin: 0 }}>
+        <span className="notes-badge notes-badge--overdue">
           Overdue ({dayjs(tDate).format("DD MMM")})
-        </Tag>
+        </span>
       );
     }
 
     if (tDate === todayStr) {
       return (
-        <Tag color="cyan" style={{ borderRadius: 6, fontWeight: 600, margin: 0 }}>
+        <span className="notes-badge notes-badge--today">
           Today ({dayjs(tDate).format("DD MMM")})
-        </Tag>
+        </span>
       );
     }
 
-    return <span style={{ color: "#0f172a", fontWeight: 500, fontSize: "0.78rem" }}>{dayjs(tDate).format("DD MMM YYYY")}</span>;
+    return <span className="notes-date-text">{dayjs(tDate).format("DD MMM YYYY")}</span>;
   };
 
   const pendingCount = notes.filter((n) => !n.completed).length;
@@ -249,19 +249,19 @@ const QuickNotesCard = () => {
           </div>
           <div className="notes-meta-bar">
             <div className="notes-meta-fields">
-              <div className="input-group-assignee" style={{ minWidth: 140, display: "flex", flexDirection: "column", gap: "4px" }}>
-                <label className="input-label-mini" style={{ color: "#64748B" }}>Assign To</label>
+              <div className="input-group-field input-group-assignee">
+                <label className="input-label-mini">Assign To</label>
                 <Select
                   value={assignedTo}
                   onChange={(val) => setAssignedTo(val)}
                   placeholder="Assign User"
                   size="small"
-                  style={{ width: "100%", padding: "4px 10px", borderRadius: "8px" }}
+                  className="notes-user-select"
                   options={userOptions}
                   allowClear
                 />
               </div>
-              <div className="input-group-date">
+              <div className="input-group-field input-group-date">
                 <label className="input-label-mini">Target Date</label>
                 <input
                   type="date"
@@ -270,7 +270,7 @@ const QuickNotesCard = () => {
                   onChange={(e) => setTargetDate(e.target.value)}
                 />
               </div>
-              <div className="input-group-priority">
+              <div className="input-group-field input-group-priority">
                 <label className="input-label-mini">Priority</label>
                 <Select
                   value={priority}
@@ -291,7 +291,7 @@ const QuickNotesCard = () => {
               onClick={handleAdd}
               disabled={createMutation.isPending}
             >
-              <Plus size={16} /> Add Task
+              <Plus size={15} /> Add Task
             </button>
           </div>
         </div>
@@ -304,12 +304,12 @@ const QuickNotesCard = () => {
           <table className="inventory-table notes-table">
             <thead>
               <tr>
-                <th style={{ width: 45, textAlign: "center" }}>Status</th>
-                <th>Task Description</th>
-                {isSuperAdmin && <th style={{ width: 130, textAlign: "center" }}>Assignee</th>}
-                <th style={{ width: 130, textAlign: "center" }}>Target Date</th>
-                <th style={{ width: 90, textAlign: "center" }}>Priority</th>
-                {isSuperAdmin && <th style={{ width: 80, textAlign: "center" }}>Actions</th>}
+                <th style={{ width: 42, textAlign: "center" }}>Done</th>
+                <th style={{ textAlign: "left" }}>Task Description</th>
+                {isSuperAdmin && <th style={{ width: 110, textAlign: "center" }}>Assignee</th>}
+                <th style={{ width: 115, textAlign: "center" }}>Target Date</th>
+                <th style={{ width: 85, textAlign: "center" }}>Priority</th>
+                {isSuperAdmin && <th style={{ width: 75, textAlign: "center" }}>Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -317,9 +317,13 @@ const QuickNotesCard = () => {
                 notes.map((note) => (
                   <tr
                     key={note.id}
-                    className={note.completed ? "completed-note-row" : ""}
-                    onClick={() => navigate("/task-manager")}
-                    style={{ cursor: "pointer" }}
+                    className={`notes-table-row ${note.completed ? "completed-note-row" : ""} ${editingId === note.id ? "is-editing-row" : ""}`}
+                    onClick={() => {
+                      if (editingId !== note.id) {
+                        navigate("/task-manager");
+                      }
+                    }}
+                    style={{ cursor: editingId === note.id ? "default" : "pointer" }}
                   >
                     <td style={{ textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
                       <input
@@ -327,9 +331,10 @@ const QuickNotesCard = () => {
                         checked={!!note.completed}
                         onChange={() => handleToggleComplete(note)}
                         className="note-checkbox"
+                        title={note.completed ? "Mark as Pending" : "Mark as Completed"}
                       />
                     </td>
-                    <td>
+                    <td className="note-text-cell" onClick={(e) => { if (editingId === note.id) e.stopPropagation(); }}>
                       {editingId === note.id ? (
                         <input
                           type="text"
@@ -343,7 +348,7 @@ const QuickNotesCard = () => {
                           autoFocus
                         />
                       ) : (
-                        <span className={`note-text ${note.completed ? "text-strikethrough" : ""}`}>
+                        <span className={`note-text ${note.completed ? "text-strikethrough" : ""}`} title={note.text}>
                           {note.text}
                         </span>
                       )}
@@ -355,17 +360,19 @@ const QuickNotesCard = () => {
                             value={editAssignedTo}
                             onChange={(v) => setEditAssignedTo(v)}
                             size="small"
-                            style={{ width: 120 }}
+                            className="edit-select-compact"
                             options={userOptions}
+                            placeholder="Select"
+                            allowClear
                           />
                         ) : (
-                          <Tag color="purple" style={{ borderRadius: 6, fontWeight: 500, margin: 0 }}>
+                          <span className="notes-badge notes-badge--assignee" title={note.assigned_to_name || "Self"}>
                             {note.assigned_to_name?.trim() || "Self"}
-                          </Tag>
+                          </span>
                         )}
                       </td>
                     )}
-                    <td style={{ textAlign: "center" }}>
+                    <td style={{ textAlign: "center" }} onClick={(e) => { if (editingId === note.id) e.stopPropagation(); }}>
                       {editingId === note.id ? (
                         <input
                           type="date"
@@ -377,12 +384,13 @@ const QuickNotesCard = () => {
                         renderTargetDateTag(note.target_date, note.completed)
                       )}
                     </td>
-                    <td style={{ textAlign: "center" }}>
+                    <td style={{ textAlign: "center" }} onClick={(e) => { if (editingId === note.id) e.stopPropagation(); }}>
                       {editingId === note.id ? (
                         <Select
                           value={editPriority}
                           onChange={(v) => setEditPriority(v)}
                           size="small"
+                          className="edit-select-compact"
                           options={[
                             { label: "High", value: "High" },
                             { label: "Medium", value: "Medium" },
@@ -398,20 +406,42 @@ const QuickNotesCard = () => {
                         <div className="note-actions">
                           {editingId === note.id ? (
                             <>
-                              <button type="button" className="action-btn action-btn--save" onClick={() => saveEditing(note.id)} title="Save Task">
+                              <button
+                                type="button"
+                                className="action-btn action-btn--save"
+                                onClick={() => saveEditing(note.id)}
+                                title="Save Task"
+                                disabled={updateMutation.isPending}
+                              >
                                 <Check size={14} />
                               </button>
-                              <button type="button" className="action-btn action-btn--cancel" onClick={cancelEditing} title="Cancel">
+                              <button
+                                type="button"
+                                className="action-btn action-btn--cancel"
+                                onClick={cancelEditing}
+                                title="Cancel"
+                              >
                                 <X size={14} />
                               </button>
                             </>
                           ) : (
                             <>
-                              <button type="button" className="action-btn action-btn--edit" onClick={() => startEditing(note)} title="Edit Task">
-                                <Edit2 size={14} />
+                              <button
+                                type="button"
+                                className="action-btn action-btn--edit"
+                                onClick={() => startEditing(note)}
+                                title="Edit Task"
+                              >
+                                <Edit2 size={13} />
                               </button>
-                              <button type="button" className="action-btn action-btn--delete" onClick={() => handleDelete(note.id)} title="Delete Task">
-                                <Trash2 size={14} />
+                              <button
+                                type="button"
+                                className="action-btn action-btn--delete"
+                                onClick={() => handleDelete(note.id)}
+                                title="Delete Task"
+                                disabled={deleteMutation.isPending}
+                              >
+                                <Trash2 size={13} />
                               </button>
                             </>
                           )}
@@ -422,10 +452,18 @@ const QuickNotesCard = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={isSuperAdmin ? 6 : 4} style={{ textAlign: "center", padding: "24px 16px", color: "#94a3b8" }}>
-                    {isSuperAdmin
-                      ? "No tasks found. Add a new task above with target date & priority."
-                      : "No tasks assigned to you."}
+                  <td colSpan={isSuperAdmin ? 6 : 4} className="notes-empty-td">
+                    <div className="notes-empty-state">
+                      <NotebookPen size={26} className="notes-empty-icon" />
+                      <span className="notes-empty-title">
+                        {isSuperAdmin ? "No tasks found" : "No tasks assigned to you"}
+                      </span>
+                      <span className="notes-empty-sub">
+                        {isSuperAdmin
+                          ? "Add a new task above with target date & priority."
+                          : "Tasks assigned to you will appear here."}
+                      </span>
+                    </div>
                   </td>
                 </tr>
               )}

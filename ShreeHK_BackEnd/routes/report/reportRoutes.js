@@ -144,27 +144,37 @@ reportRouter.post("/report/outstanding", authenticateToken, async (req, res) => 
   }
 
   try {
+    const filterParams = [];
+
     let party = "";
-    if (post.party && post.party !== "" && post.party !== "0") {
-      party = ` AND o.party = ${post.party}`;
+    if (post.party && post.party !== "" && post.party !== "0" && post.party !== 0) {
+      party = " AND o.party = ?";
+      filterParams.push(post.party);
     }
 
     const invoiceNo = post.invoiceno || post.invoice || "";
     let invoice = "";
     if (invoiceNo !== "") {
-      invoice = ` AND o.invoiceno LIKE '%${invoiceNo}%'`;
+      invoice = " AND o.invoiceno LIKE ?";
+      filterParams.push(`%${invoiceNo}%`);
     }
 
     let dateFilter = "";
     if (post.from || post.to) {
-      const from = post.from ? moment(post.from, "YYYY-MM-DD").format("YYYY-MM-DD") : "2010-01-01";
-      const to = post.to ? moment(post.to, "YYYY-MM-DD").format("YYYY-MM-DD") : "2050-12-31";
-      dateFilter = ` AND o.date BETWEEN '${from}' AND '${to}'`;
+      const from = post.from && moment(post.from, "YYYY-MM-DD").isValid()
+        ? moment(post.from, "YYYY-MM-DD").format("YYYY-MM-DD")
+        : "2010-01-01";
+      const to = post.to && moment(post.to, "YYYY-MM-DD").isValid()
+        ? moment(post.to, "YYYY-MM-DD").format("YYYY-MM-DD")
+        : "2050-12-31";
+      dateFilter = " AND o.date BETWEEN ? AND ?";
+      filterParams.push(from, to);
     }
 
     const page = parseInt(post.page, 10) || 1;
     const offset = (page - 1) * 10;
     let query = "";
+    let queryParams = [];
     const type = post.type;
     const userId = Number(post.userid ?? buildUserContext(req).userId) || 0;
 
@@ -179,22 +189,23 @@ reportRouter.post("/report/outstanding", authenticateToken, async (req, res) => 
                                  o.paid_amount,
                                  o.due_amount`;
     const saleFrom = `FROM dai_outward o
-                         LEFT JOIN dai_party p ON o.party = p.id AND p.company = ${companyId}
-                         LEFT JOIN dai_product dp ON FIND_IN_SET(dp.id, o.products) AND dp.company = ${companyId}`;
+                         LEFT JOIN dai_party p ON o.party = p.id AND p.company = ?
+                         LEFT JOIN dai_product dp ON FIND_IN_SET(dp.id, o.products) AND dp.company = ?`;
     const saleGroupBy = `GROUP BY o.id, o.entryno, o.type, o.invoiceno, p.name, o.reference, o.invoicedate, o.date, o.duedate, o.terms, o.final_amount, o.paid_amount, o.due_amount
                          ORDER BY o.date DESC, o.id DESC
-                         LIMIT ${offset}, 10`;
+                         LIMIT ?, 10`;
 
     if (type === "sale") {
       const userFilter = (userId === 16 || userId === 1) ? "" : " AND o.user != 16";
       query = `${saleSelect}
                          ${saleFrom}
-                         WHERE o.company = ${companyId}
+                         WHERE o.company = ?
                          AND o.type IN ('sale', 'export')
                          AND o.status IN ('on_sale', 'on_export')
                          ${userFilter}
                          ${party} ${invoice} ${dateFilter}
                          ${saleGroupBy}`;
+      queryParams = [companyId, companyId, companyId, ...filterParams, offset];
     } else if (type === "purchase") {
       const userFilter = (userId === 16 || userId === 1) ? "" : " AND o.user != 16";
       query = `SELECT o.id, o.entryno, o.inward_type as type, o.invoiceno, p.name, o.reference,
@@ -208,17 +219,18 @@ reportRouter.post("/report/outstanding", authenticateToken, async (req, res) => 
                                  o.paid_amount,
                                  o.due_amount
                          FROM dai_inward o
-                         LEFT JOIN dai_party p ON o.party = p.id AND p.company = ${companyId}
-                         WHERE o.company = ${companyId}
+                         LEFT JOIN dai_party p ON o.party = p.id AND p.company = ?
+                         WHERE o.company = ?
                          AND o.inward_type IN ('purchase', 'import')
                          AND (deleted = 0 OR deleted IS NULL)
                          ${userFilter}
                          ${party} ${invoice} ${dateFilter}
                          ORDER BY o.date DESC, o.id DESC
-                         LIMIT ${offset}, 10`;
+                         LIMIT ?, 10`;
+      queryParams = [companyId, companyId, ...filterParams, offset];
     }
 
-    connection.query(query, (error, data) => {
+    connection.query(query, queryParams, (error, data) => {
       if (error) {
         return res.status(201).json({
           status: false,

@@ -4,6 +4,7 @@ import { EditOutlined, PrinterOutlined, DeleteOutlined, ReloadOutlined } from '@
 import { Pencil, CircleCheck } from 'lucide-react';
 import dayjs from 'dayjs';
 import { useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useFetchApi, usePostApiRequest, useDeleteApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../constants/endpoints';
 import useFiltersFormFields from "../../hooks/useFiltersFormFields";
@@ -22,10 +23,11 @@ const LIMIT = 100;
 
 const ExpandedRowContent = ({ rowId }) => {
     const { data: productData, isLoading } = useFetchApi(
-        ['RowProducts', rowId],
+        'RowProducts',
         ENDPOINTS.outward.getProducts,
         { id: rowId },
-        'POST'
+        'POST',
+        { staleTime: 0, refetchOnMount: 'always' }
     );
 
     const innerColumns = [
@@ -76,6 +78,7 @@ const OutWord = () => {
     const [editingRecord, setEditingRecord] = useState(null);
     const [fetchedProducts, setFetchedProducts] = useState([]);
     const [deleteModal, setDeleteModal] = useState({ open: false, record: null });
+    const [printData, setPrintData] = useState(null);
     const [editForm] = Form.useForm();
 
     const [payload, setPayload] = useState({
@@ -85,15 +88,16 @@ const OutWord = () => {
     const [hasMore, setHasMore] = useState(true);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
 
+    const queryClient = useQueryClient();
     const { data: companyData, isLoading: isCompanyLoading } = useFetchApi('GetCompany', ENDPOINTS.company.options);
     const { mutate: updateTransaction } = usePostApiRequest(ENDPOINTS.outward.update, 'OutwardList', { showToast: true });
 
-    const { mutate: deleteOutward, isPending: isDeleting } = useDeleteApiRequest(ENDPOINTS.outward.delete, 'OutwardList');
+    const { mutate: deleteOutward, isPending: isDeleting } = useDeleteApiRequest(ENDPOINTS.outward.delete, 'OutwardList', { queryParam: 'deleteId' });
 
     const isFilterSelected = useMemo(() => !!(payload.party || payload.invoiceno || payload.type || payload.from || payload.to), [payload]);
 
-    const { data: outwardData, isLoading: outwardLoading, isFetching: outwardFetching, refetch } = useFetchApi(
-        ['OutwardList', payload.page, payload.party, payload.invoiceno, payload.type, payload.from, payload.to],
+    const { data: outwardData, isLoading: outwardLoading, isFetching: outwardFetching } = useFetchApi(
+        'OutwardList',
         ENDPOINTS.outward.list,
         payload,
         'POST',
@@ -101,7 +105,7 @@ const OutWord = () => {
     );
 
     const { data: editDetailData, isLoading: isProductLoading } = useFetchApi(
-        ['EditDetails', editId],
+        'EditDetails',
         `${ENDPOINTS.outward.getById}/?id=${editId}`,
         null,
         'GET',
@@ -178,9 +182,11 @@ const OutWord = () => {
         } else {
             if (newRecords.length > 0) {
                 setMainTableData(prev => {
-                    const existingIds = new Set(prev.map(item => item.id));
-                    const filtered = newRecords.filter(item => !existingIds.has(item.id));
-                    const updated = [...prev, ...filtered];
+                    const incomingMap = new Map(newRecords.map(item => [item.id, item]));
+                    const updatedPrev = prev.map(item => incomingMap.get(item.id) || item);
+                    const prevIds = new Set(prev.map(item => item.id));
+                    const brandNew = newRecords.filter(item => !prevIds.has(item.id));
+                    const updated = [...updatedPrev, ...brandNew];
                     if (updated.length >= total || newRecords.length < LIMIT) {
                         setHasMore(false);
                     }
@@ -191,7 +197,7 @@ const OutWord = () => {
             }
         }
         setIsFetchingMore(false);
-    }, [outwardData]);
+    }, [outwardData, payload.page]);
 
     useEffect(() => {
         const tableBody = tableRef.current?.querySelector('.ant-table-body');
@@ -258,6 +264,10 @@ const OutWord = () => {
     const handleSaveEdit = async () => {
         try {
             const values = await editForm.validateFields();
+            const formattedDate = values.date?.format ? values.date.format('YYYY-MM-DD') : (values.date ? dayjs(values.date).format('YYYY-MM-DD') : null);
+            const formattedInvoiceDate = values.invoicedate?.format ? values.invoicedate.format('YYYY-MM-DD') : (values.invoicedate ? dayjs(values.invoicedate).format('YYYY-MM-DD') : null);
+            const formattedDueDate = values.duedate?.format ? values.duedate.format('YYYY-MM-DD') : (values.duedate ? dayjs(values.duedate).format('YYYY-MM-DD') : null);
+
             const payload = {
                 id: editingRecord.id,
                 ...values,
@@ -265,24 +275,28 @@ const OutWord = () => {
                 citi: values.citi ? 1 : 0,
                 dbs: values.dbs ? 1 : 0,
                 sc: values.sc ? 1 : 0,
-                date: values.date?.toISOString(),
-                invoicedate: values.invoicedate?.toISOString(),
-                duedate: values.duedate?.toISOString(),
+                date: formattedDate,
+                invoicedate: formattedInvoiceDate,
+                duedate: formattedDueDate,
                 products: fetchedProducts,
                 update: {
                     ...values,
-                    date: values.date?.toISOString(),
-                    invoicedate: values.invoicedate?.toISOString(),
-                    duedate: values.duedate?.toISOString()
+                    date: formattedDate,
+                    invoicedate: formattedInvoiceDate,
+                    duedate: formattedDueDate,
                 }
             };
 
             updateTransaction(payload, {
-                onSuccess: () => {
+                onSuccess: (res) => {
+                    if (res?.status === false) return;
                     setIsEditModalOpen(false);
                     setEditId(null);
                     setFetchedProducts([]);
-                    refetch();
+                    queryClient.invalidateQueries({ queryKey: ['RowProducts'] });
+                    queryClient.invalidateQueries({ queryKey: ['EditDetails'] });
+                    queryClient.invalidateQueries({ queryKey: ['GetProductData'] });
+                    queryClient.invalidateQueries({ queryKey: ['myInventorySummary'] });
                 }
             });
         } catch (error) {
@@ -300,14 +314,18 @@ const OutWord = () => {
     };
 
     const handleDelete = () => {
-        if (deleteModal.record?.id) {
-            deleteOutward(deleteModal.record.id, {
-                onSuccess: () => {
-                    refetch();
-                    closeDelete();
-                },
-            });
-        }
+        const recordId = deleteModal.record?.id;
+        if (!recordId) return;
+        deleteOutward(recordId, {
+            onSuccess: (data) => {
+                if (data?.status !== false) {
+                    setMainTableData((prev) => prev.filter((item) => item.id !== recordId));
+                }
+                queryClient.invalidateQueries({ queryKey: ['GetProductData'] });
+                queryClient.invalidateQueries({ queryKey: ['myInventorySummary'] });
+                closeDelete();
+            },
+        });
     };
 
     const handleDirectPrint = (record) => {

@@ -14,7 +14,7 @@ const BalanceBook = () => {
 
     const { data, isLoading: isFetching, refetch } = useFetchApi('GetBalance', ENDPOINTS.balance.list);
     const { mutate: createbalanceBook, isLoading: isSubmitting } = usePostApiRequest(ENDPOINTS.balance.book, 'CeateBalance');
-    const { mutate: deleteBalance, isLoading: isDeleting } = useDeleteApiRequest(ENDPOINTS.balance.delete, 'deleteBalanceBook');
+    const { mutate: deleteBalance, isLoading: isDeleting } = useDeleteApiRequest(ENDPOINTS.balance.delete, 'deleteBalanceBook', { queryParam: 'deleteId' });
 
     const dataList = data?.Data;
 

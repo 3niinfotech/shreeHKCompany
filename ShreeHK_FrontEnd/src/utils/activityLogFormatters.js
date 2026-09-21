@@ -168,11 +168,11 @@ export function formatActionTypeLabel(actionType) {
     LOGOUT: "Logout",
     LOGIN_FAILED: "Failed login",
     VIEW: "Visit",
-    STOCK_IN: "Add",
-    STOCK_OUT: "Delete",
-    MEMO_CREATE: "Add",
-    MEMO_RETURN: "Edit",
-    TRANSFER: "Edit",
+    STOCK_IN: "Purchase",
+    STOCK_OUT: "Sale",
+    MEMO_CREATE: "Memo Out",
+    MEMO_RETURN: "Memo Return",
+    TRANSFER: "Transfer",
     EXPORT: "Export",
     PRINT: "Print",
     ATTEMPTED: "Attempted",
@@ -530,7 +530,8 @@ export function buildActivityNarrative(record) {
 
 export function getActionTone(actionType) {
   if (actionType === "CREATE" || actionType === "STOCK_IN") return "add";
-  if (actionType === "DELETE" || actionType === "STOCK_OUT") return "delete";
+  if (actionType === "STOCK_OUT") return "sale";
+  if (actionType === "DELETE") return "delete";
   if (actionType === "MEMO_CREATE" || actionType === "MEMO_RETURN") return "memo";
   if (actionType === "UPDATE" || actionType === "TRANSFER") return "edit";
   if (actionType === "LOGIN") return "login";

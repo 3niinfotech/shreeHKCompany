@@ -50,7 +50,7 @@ const ExpanseTableData = () => {
 
     // Delete API Hook - Make sure the endpoint matches your backend
     // ExpanseTableData.js ke andar mutation setup
-    const { mutate: deleteExpanse, isPending: isDeleting } = useDeleteApiRequest(ENDPOINTS.expanse.delete, 'expanseDataDelete');
+    const { mutate: deleteExpanse, isPending: isDeleting } = useDeleteApiRequest(ENDPOINTS.expanse.delete, 'expanseDataDelete', { queryParam: 'deleteId' });
 
     useEffect(() => {
         if (data && data.Data) {

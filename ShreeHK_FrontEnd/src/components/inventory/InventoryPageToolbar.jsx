@@ -3,6 +3,8 @@ import { Button, Form } from "antd";
 import { cssVar } from "../../theme";
 import InventoryFilterPanel from "./InventoryFilterPanel";
 
+import ExportExcelButton from "../common/ExportExcelButton";
+
 /**
  * Shared compact toolbar for inventory list pages (On Hand, Barcode, etc.).
  * Preserves existing filter form + action button behavior via props.
@@ -82,19 +84,18 @@ const InventoryPageToolbar = ({
             })}
           </Button.Group>
 
-          <Button
-            type="primary"
+          <ExportExcelButton
             icon={actionButtons.export.icon}
             onClick={() => onToolbarAction?.(actionButtons.export.key)}
           >
             {actionButtons.export.label}
-          </Button>
-          <Button
+          </ExportExcelButton>
+          <ExportExcelButton
             icon={actionButtons.iExport.icon}
             onClick={() => onToolbarAction?.(actionButtons.iExport.key)}
           >
             {actionButtons.iExport.label}
-          </Button>
+          </ExportExcelButton>
           <Button
             icon={actionButtons.mail.icon}
             onClick={() => onToolbarAction?.(actionButtons.mail.key)}

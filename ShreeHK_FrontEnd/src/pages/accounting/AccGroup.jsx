@@ -24,7 +24,7 @@ const AccGroup = () => {
 
   const { data, isLoading, isFetching, refetch } = useFetchApi("accGroups", ENDPOINTS.accountingGroup.list);
   const { mutate: saveRow, isPending: saving } = usePostApiRequest(ENDPOINTS.accountingGroup.save, "accGroups");
-  const { mutate: deleteRow, isPending: isDeleting } = useDeleteApiRequest(ENDPOINTS.accountingGroup.delete, "accGroups");
+  const { mutate: deleteRow, isPending: isDeleting } = useDeleteApiRequest(ENDPOINTS.accountingGroup.delete, "accGroups", { queryParam: "deleteId" });
 
   useEffect(() => {
     if (Array.isArray(data?.Data)) {

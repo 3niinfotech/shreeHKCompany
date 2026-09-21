@@ -587,6 +587,9 @@ const getUpdateString = updateString;
 /** Shared DB transaction — same pattern as outwardService.withTransaction */
 const runInTransaction = (callback) => {
   const connection = require("./connection.js");
+  const { auditStorage, getAuditContext } = require("./middleware/auditContext.js");
+  const ctx = getAuditContext();
+
   return new Promise((resolve, reject) => {
     connection.getConnection((err, conn) => {
       if (err) return reject(err);
@@ -594,7 +597,8 @@ const runInTransaction = (callback) => {
         new Promise((res, rej) => {
           conn.query(sql, values, (e, r) => (e ? rej(e) : res(r)));
         });
-      (async () => {
+
+      const executeInTransaction = async () => {
         try {
           await q("START TRANSACTION");
           const result = await callback(q);
@@ -610,7 +614,13 @@ const runInTransaction = (callback) => {
         } finally {
           conn.release();
         }
-      })();
+      };
+
+      if (ctx) {
+        auditStorage.run(ctx, executeInTransaction);
+      } else {
+        executeInTransaction();
+      }
     });
   });
 };

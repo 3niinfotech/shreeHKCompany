@@ -731,8 +731,6 @@ $compact-accent-hover: var(--color-primary-dark);
 }
 
 .actionTile_changePrice,
-.actionTile_export,
-.actionTile_iExport,
 .actionTile_mail {
   background: $row-blue-bg !important;
   border-color: color-mix(in srgb, $row-blue-bg 70%, $row-blue-text) !important;
@@ -750,6 +748,8 @@ $compact-accent-hover: var(--color-primary-dark);
   }
 }
 
+.actionTile_export,
+.actionTile_iExport,
 .actionTile_label,
 .actionTile_labelA4 {
   background: $row-green-bg !important;

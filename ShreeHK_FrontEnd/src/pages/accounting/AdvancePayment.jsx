@@ -22,6 +22,7 @@ const AdvancePayment = () => {
     const { form: addForm, resetAll } = useFormHandleChange();
 
     const { data: companyData } = useFetchApi('GetCompany', ENDPOINTS.company.options);
+    const { data: bookData } = useFetchApi('accBooks', ENDPOINTS.accountingTxn.books);
     const { refetch } = useFetchApi('advanceData', ENDPOINTS.advance.list, { limit: 100, offset: 0 });
     const { mutate: createAdvance, isLoading: isSubmitting } = usePostApiRequest(ENDPOINTS.advance.payment);
 
@@ -34,6 +35,17 @@ const AdvancePayment = () => {
         return companyData.Data.map(item => ({ label: item.name, value: item.id }));
     }, [companyData]);
 
+    const bookOptions = useMemo(() => {
+        const list = bookData?.Data || [];
+        return list.map((b) => {
+            if (b && typeof b === 'object' && b.value != null) {
+                return { value: String(b.value), label: String(b.label ?? b.value) };
+            }
+            const name = b?.name ?? String(b);
+            return { value: name, label: name };
+        });
+    }, [bookData]);
+
     const updatedFields = useMemo(() => {
         return advancePaymentFields.map(field => {
             const compact = { ...field, span: 6 };
@@ -44,12 +56,11 @@ const AdvancePayment = () => {
                 return { ...compact, type: 'select', options: [{ label: 'Dr', value: 'dr' }, { label: 'Cr', value: 'cr' }] };
             }
             if (field.name === 'booktype') {
-                const bookValues = [1, 2, 3, 45, 11, 22, 33, 85, 48];
-                return { ...compact, type: 'select', options: bookValues.map(n => ({ label: `Book ${n}`, value: n.toString() })) };
+                return { ...compact, type: 'select', options: bookOptions, placeholder: 'Select book' };
             }
             return compact;
         });
-    }, [companyOptions]);
+    }, [companyOptions, bookOptions]);
 
     const partyFields = useMemo(
         () => updatedFields.filter((f) => ['name', 'otherpartyname'].includes(f.name)),

@@ -985,21 +985,129 @@ async function deleteGia(id) {
   return { ok: true, message: "GIA record deleted" };
 }
 
-async function deleteOutwardStock(id) {
-  const oData = await getOutwardData(id);
-  await query("DELETE FROM dai_outward WHERE id = ?", [id]);
+async function deleteOutwardStock(id, options = {}) {
+  const moduleName = options.moduleName || "Outward Stock";
+  const result = await helper.runInTransaction(async (q) => {
+    const oRows = await q("SELECT * FROM dai_outward WHERE id = ?", [id]);
+    const oData = oRows[0] || null;
+    if (!oData) return { ok: false, message: "Outward record not found" };
+
+    const productIds = (oData.products || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    for (const pid of productIds) {
+      const pRows = await q("SELECT * FROM dai_product WHERE id = ?", [pid]);
+      const pdata = pRows[0] || null;
+      if (!pdata) continue;
+
+      // Handle split/child products from Box/Parcel (created via separateSale)
+      if (pdata.outward_parent) {
+        const parentRows = await q("SELECT * FROM dai_product WHERE id = ?", [pdata.outward_parent]);
+        const parentData = parentRows[0] || null;
+        if (parentData) {
+          const childPcs = Number(pdata.polish_pcs) || 0;
+          const childCarat = Number(pdata.polish_carat) || 0;
+          const parentPcs =
+            parentData.group_type === "box"
+              ? (Number(parentData.polish_pcs) || 0) + childPcs
+              : Number(parentData.polish_pcs) || 0;
+          const parentCarat = (Number(parentData.polish_carat) || 0) + childCarat;
+          const parentPrice = Number(parentData.price) || 0;
+          const parentAmount = Number((parentCarat * parentPrice).toFixed(2));
+
+          await q(
+            "UPDATE dai_product SET polish_pcs = ?, polish_carat = ?, amount = ? WHERE id = ?",
+            [parentPcs, parentCarat, parentAmount, parentData.id]
+          );
+
+          try {
+            const histPayload = {
+              product_id: parentData.id,
+              action: "outward_cancel",
+              party: oData.party || "",
+              narretion: oData.narretion || "",
+              date: moment().format("YYYY-MM-DD HH:mm:ss"),
+              description: `Outward cancelled: Restored ${childCarat} cts / ${childPcs} pcs from split child SKU ${pdata.sku}`,
+              pcs: childPcs,
+              carat: childCarat,
+              amount: parentAmount,
+              price: parentPrice,
+              sku: parentData.sku,
+              type: "cr",
+              invoice: oData.invoiceno || "",
+              entry_from: "outward",
+              entryno: id,
+              balance_pcs: parentPcs,
+              balance_carat: parentCarat,
+            };
+            const hData = helper.insertString(histPayload);
+            await q(`INSERT INTO dai_history (${hData[0]}) VALUES (${hData[1]})`);
+          } catch (histErr) {
+            console.error("deleteOutwardStock parent history error:", histErr);
+          }
+        }
+        // Deactivate the split child product so it doesn't remain as standalone stock
+        await q(
+          "UPDATE dai_product SET outward = '', visibility = 0, outward_parent = 0, site_upload = 0, rapnet_upload = 0 WHERE id = ?",
+          [pid]
+        );
+      } else {
+        // Standard standalone product restoration
+        await q(
+          "UPDATE dai_product SET outward = '', visibility = 1, is_uploadsite = 1, is_uploadrapnet = 1, site_upload = 0, rapnet_upload = 0 WHERE id = ?",
+          [pid]
+        );
+        try {
+          const histPayload = {
+            product_id: pid,
+            action: "outward_cancel",
+            party: oData.party || "",
+            narretion: oData.narretion || "",
+            date: moment().format("YYYY-MM-DD HH:mm:ss"),
+            description: `Outward ${oData.type || ""} cancelled: Restored to inventory`,
+            pcs: pdata.polish_pcs || 0,
+            carat: pdata.polish_carat || 0,
+            amount: pdata.amount || 0,
+            price: pdata.price || 0,
+            sku: pdata.sku,
+            type: "cr",
+            invoice: oData.invoiceno || "",
+            entry_from: "outward",
+            entryno: id,
+            balance_pcs: pdata.polish_pcs || 0,
+            balance_carat: pdata.polish_carat || 0,
+          };
+          const hData = helper.insertString(histPayload);
+          await q(`INSERT INTO dai_history (${hData[0]}) VALUES (${hData[1]})`);
+        } catch (histErr) {
+          console.error("deleteOutwardStock product history error:", histErr);
+        }
+      }
+    }
+
+    await q("DELETE FROM dai_outward WHERE id = ?", [id]);
+    return { ok: true, oData };
+  });
+
+  if (!result.ok) {
+    return result;
+  }
+
   try {
     await logAudit({
       actionType: "DELETE",
-      moduleName: "Outward Stock",
+      moduleName,
       recordId: id,
-      recordReference: oData?.invoiceno || String(id),
-      oldValue: oData || { id },
+      recordReference: result.oData?.invoiceno || String(id),
+      oldValue: result.oData || { id },
+      companyId: result.oData?.company,
     });
   } catch (e) {
     console.error("deleteOutwardStock audit:", e);
   }
-  return { ok: true, message: "Outward record deleted" };
+  return { ok: true, message: "Outward record deleted and stock restored" };
 }
 
 function getPrintStub(type, id) {

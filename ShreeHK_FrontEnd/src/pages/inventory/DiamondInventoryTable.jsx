@@ -489,7 +489,7 @@ const DiamondInventoryTable = () => {
   const [tableData, setTableData] = useState([]);
   const [isFetching, setIsFetching] = useState(false);
   const [tableHeight, setTableHeight] = useState(600);
-  const [stoneDetailModal, setStoneDetailModal] = useState({ open: false, data: null });
+  const [, setStoneDetailModal] = useState({ open: false, data: null });
   const [bulkActionModal, setBulkActionModal] = useState({ open: false, actionKey: null });
   const [syncLoading, setSyncLoading] = useState(false);
   const pageModalsRef = useRef(null);
@@ -504,7 +504,6 @@ const DiamondInventoryTable = () => {
     error: aiAlertError,
     panelOpen: aiPanelOpen,
     setPanelOpen: setAiPanelOpen,
-    runStockAlert,
   } = useAiStockAlert();
   const [successModal, setSuccessModal] = useState({
     open: false,
@@ -775,8 +774,10 @@ const DiamondInventoryTable = () => {
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.outMemo] });
     queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
+    queryClient.invalidateQueries({ queryKey: ["myInventorySummary"] });
     queryClient.invalidateQueries({ queryKey: ["OutwardList"] });
     queryClient.invalidateQueries({ queryKey: ["getIncrement"] });
+    await refetchInventory();
   };
 
   const handleSaleSubmit = async (payload) => {
@@ -790,8 +791,10 @@ const DiamondInventoryTable = () => {
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.sale] });
     queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
+    queryClient.invalidateQueries({ queryKey: ["myInventorySummary"] });
     queryClient.invalidateQueries({ queryKey: ["OutwardList"] });
     queryClient.invalidateQueries({ queryKey: ["getIncrement"] });
+    await refetchInventory();
   };
 
   const handleConsignSubmit = async (payload) => {
@@ -805,8 +808,10 @@ const DiamondInventoryTable = () => {
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.outMemo] });
     queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
+    queryClient.invalidateQueries({ queryKey: ["myInventorySummary"] });
     queryClient.invalidateQueries({ queryKey: ["OutwardList"] });
     queryClient.invalidateQueries({ queryKey: ["getIncrement"] });
+    await refetchInventory();
   };
 
   const handleLabSubmit = async (payload) => {
@@ -820,8 +825,10 @@ const DiamondInventoryTable = () => {
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.gia] });
     queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
+    queryClient.invalidateQueries({ queryKey: ["myInventorySummary"] });
     queryClient.invalidateQueries({ queryKey: ["OutwardList"] });
     queryClient.invalidateQueries({ queryKey: ["getIncrement"] });
+    await refetchInventory();
   };
 
   const handleExportSubmit = async (payload) => {
@@ -835,8 +842,10 @@ const DiamondInventoryTable = () => {
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.outMemo] });
     queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
+    queryClient.invalidateQueries({ queryKey: ["myInventorySummary"] });
     queryClient.invalidateQueries({ queryKey: ["OutwardList"] });
     queryClient.invalidateQueries({ queryKey: ["getIncrement"] });
+    await refetchInventory();
   };
 
   const handleRefreshRapnetFlags = async () => {
@@ -992,7 +1001,7 @@ const DiamondInventoryTable = () => {
       shouldCellUpdate: () => true,
       render: (id) => <SelectionCheckbox id={String(id)} />,
     },
-    { title: "No", key: "no", dataIndex: "no", width: 52, align: "center", fixed: "left", shouldCellUpdate: () => false },
+    { title: "No", key: "no", dataIndex: "no", width: 52, align: "center", fixed: "left" },
     {
       title: "Type",
       key: "groupType",
@@ -1001,18 +1010,17 @@ const DiamondInventoryTable = () => {
       align: "center",
       ellipsis: true,
       fixed: "left",
-      shouldCellUpdate: () => false,
       render: (text) =>
         text == null || text === ""
           ? "-"
           : <span style={{ textTransform: "capitalize" }}>{String(text)}</span>,
     },
     {
-      title: "SKU", key: "sku", dataIndex: "sku", width: 102, ellipsis: true, align: "center", shouldCellUpdate: () => false,
+      title: "SKU", key: "sku", dataIndex: "sku", width: 102, ellipsis: true, align: "center",
       render: (text, record) => <SkuLink sku={text} record={record} />,
     },
     {
-      title: "Lab", key: "lab", dataIndex: "lab", width: 58, align: "center", shouldCellUpdate: () => false,
+      title: "Lab", key: "lab", dataIndex: "lab", width: 58, align: "center",
       filters: [
         { text: 'GIA', value: 'gia' }, { text: 'IGI', value: 'IGI' },
         { text: 'CGL', value: 'CGL' }, { text: 'AGT', value: 'AGT' },
@@ -1024,7 +1032,7 @@ const DiamondInventoryTable = () => {
       }
     },
     {
-      title: "Certificate", key: "certificate", dataIndex: "certificate", width: 118, ellipsis: true, align: "center", shouldCellUpdate: () => false,
+      title: "Certificate", key: "certificate", dataIndex: "certificate", width: 118, ellipsis: true, align: "center",
       render: (text) => text ? (
         <a href={`https://www.gia.edu/report-check?reportno=${text}`} target="_blank" rel="noopener noreferrer">
           {text}
@@ -1032,7 +1040,7 @@ const DiamondInventoryTable = () => {
       ) : null
     },
     {
-      title: "Shape", key: "shape", dataIndex: "shape", width: 84, ellipsis: true, align: "center", shouldCellUpdate: () => false,
+      title: "Shape", key: "shape", dataIndex: "shape", width: 84, ellipsis: true, align: "center",
       filters: [
         { text: 'Round', value: 'Round' }, { text: 'Cushion', value: 'Cushion' },
         { text: 'Oval', value: 'Oval' }, { text: 'Heart', value: 'Heart' },
@@ -1043,14 +1051,13 @@ const DiamondInventoryTable = () => {
       ],
       onFilter: (value, record) => record.shape === value,
     },
-    { title: "PCS", key: "polishPcs", dataIndex: "polishPcs", width: 84, ellipsis: true, align: "center", shouldCellUpdate: () => false },
+    { title: "PCS", key: "polishPcs", dataIndex: "polishPcs", width: 84, ellipsis: true, align: "center" },
     {
       title: "Carat",
       key: "polishCarat",
       dataIndex: "polishCarat",
       width: 72,
       align: "right",
-      shouldCellUpdate: () => false,
       sorter: (a, b) => (Number(a.polishCarat) || 0) - (Number(b.polishCarat) || 0),
       render: (value, record) => (
         <InventoryCaratCell
@@ -1061,11 +1068,11 @@ const DiamondInventoryTable = () => {
         />
       ),
     },
-    { title: "Full Color", key: "color", dataIndex: "color", width: 74, ellipsis: true, align: "center", shouldCellUpdate: () => false },
-    { title: "Argyle Color", key: "argyleColor", dataIndex: "argyleColor", width: 109, ellipsis: true, align: "center", shouldCellUpdate: () => false },
-    { title: "In-House Clarity", key: "mainClarity", dataIndex: "mainClarity", width: 130, ellipsis: true, align: "center", shouldCellUpdate: () => false },
+    { title: "Full Color", key: "color", dataIndex: "color", width: 74, ellipsis: true, align: "center" },
+    { title: "Argyle Color", key: "argyleColor", dataIndex: "argyleColor", width: 109, ellipsis: true, align: "center" },
+    { title: "In-House Clarity", key: "mainClarity", dataIndex: "mainClarity", width: 130, ellipsis: true, align: "center" },
     {
-      title: "Clarity", key: "clarity", dataIndex: "clarity", width: 92, ellipsis: true, align: "center", shouldCellUpdate: () => false,
+      title: "Clarity", key: "clarity", dataIndex: "clarity", width: 92, ellipsis: true, align: "center",
       filters: [
         { text: 'FL', value: 'FL' }, { text: 'IF', value: 'IF' },
         { text: 'VVS1', value: 'VVS1' }, { text: 'VVS2', value: 'VVS2' },
@@ -1082,7 +1089,6 @@ const DiamondInventoryTable = () => {
       dataIndex: "rapPrice",
       width: 92,
       align: "center",
-      shouldCellUpdate: () => false,
       className: "inventory-finance-col inventory-rap-col",
       render: (v) =>
         v ? (
@@ -1098,7 +1104,6 @@ const DiamondInventoryTable = () => {
       dataIndex: "cost",
       width: 88,
       align: "center",
-      shouldCellUpdate: () => false,
       className: "inventory-finance-col inventory-cost-col",
       render: (v) =>
         v ? (
@@ -1114,7 +1119,6 @@ const DiamondInventoryTable = () => {
       dataIndex: "price",
       width: 92,
       align: "center",
-      shouldCellUpdate: () => false,
       className: "inventory-finance-col inventory-price-col",
       render: (v) => (
         <span className="inventory-finance-value inventory-price-value">${Number(v || 0).toLocaleString()}</span>
@@ -1127,26 +1131,25 @@ const DiamondInventoryTable = () => {
       dataIndex: "amount",
       width: 100,
       align: "right",
-      shouldCellUpdate: () => false,
       className: "inventory-finance-col inventory-amount-col",
       render: (v) => (
         <span className="inventory-finance-value inventory-amount-value">${Number(v || 0).toLocaleString()}</span>
       ),
       sorter: (a, b) => (Number(a.amount) || 0) - (Number(b.amount) || 0),
     },
-    { title: "Size", key: "size", dataIndex: "size", width: 68, ellipsis: true, align: "center", shouldCellUpdate: () => false },
-    { title: "Flourescence", key: "fluorescence", dataIndex: "fluorescence", width: 68, ellipsis: true, align: "center", shouldCellUpdate: () => false },
-    { title: "Cut", key: "cut", dataIndex: "cut", width: 56, ellipsis: true, align: "center", shouldCellUpdate: () => false },
-    { title: "Polish", key: "polish", dataIndex: "polish", width: 52, ellipsis: true, align: "center", shouldCellUpdate: () => false },
-    { title: "Symm", key: "symmetry", dataIndex: "symmetry", width: 52, ellipsis: true, align: "center", shouldCellUpdate: () => false },
-    { title: "Table%", key: "table", dataIndex: "table", width: 68, align: "center", shouldCellUpdate: () => false, sorter: (a, b) => (Number(a.table) || 0) - (Number(b.table) || 0) },
-    { title: "Depth%", key: "depth", dataIndex: "depth", width: 68, align: "center", shouldCellUpdate: () => false, sorter: (a, b) => (Number(a.depth) || 0) - (Number(b.depth) || 0) },
-    { title: "Measurmnt", key: "measurement", dataIndex: "measurement", width: 112, ellipsis: true, align: "center", shouldCellUpdate: () => false },
-    { title: "Girdle", key: "girdle", dataIndex: "girdle", width: 76, ellipsis: true, align: "center", shouldCellUpdate: () => false },
-    { title: "Mining", key: "mining", dataIndex: "mining", width: 76, ellipsis: true, align: "center", shouldCellUpdate: () => false },
-    { title: "Origin", key: "origin", dataIndex: "origin", width: 76, ellipsis: true, align: "center", shouldCellUpdate: () => false },
+    { title: "Size", key: "size", dataIndex: "size", width: 68, ellipsis: true, align: "center" },
+    { title: "Flourescence", key: "fluorescence", dataIndex: "fluorescence", width: 68, ellipsis: true, align: "center" },
+    { title: "Cut", key: "cut", dataIndex: "cut", width: 56, ellipsis: true, align: "center" },
+    { title: "Polish", key: "polish", dataIndex: "polish", width: 52, ellipsis: true, align: "center" },
+    { title: "Symm", key: "symmetry", dataIndex: "symmetry", width: 52, ellipsis: true, align: "center" },
+    { title: "Table%", key: "table", dataIndex: "table", width: 68, align: "center", sorter: (a, b) => (Number(a.table) || 0) - (Number(b.table) || 0) },
+    { title: "Depth%", key: "depth", dataIndex: "depth", width: 68, align: "center", sorter: (a, b) => (Number(a.depth) || 0) - (Number(b.depth) || 0) },
+    { title: "Measurmnt", key: "measurement", dataIndex: "measurement", width: 112, ellipsis: true, align: "center" },
+    { title: "Girdle", key: "girdle", dataIndex: "girdle", width: 76, ellipsis: true, align: "center" },
+    { title: "Mining", key: "mining", dataIndex: "mining", width: 76, ellipsis: true, align: "center" },
+    { title: "Origin", key: "origin", dataIndex: "origin", width: 76, ellipsis: true, align: "center" },
     {
-      title: "Intensity", key: "intensity", dataIndex: "intensity", width: 98, ellipsis: true, align: "center", shouldCellUpdate: () => false,
+      title: "Intensity", key: "intensity", dataIndex: "intensity", width: 98, ellipsis: true, align: "center",
       filters: [
         { text: 'Faint', value: 'Faint' }, { text: 'Very Light', value: 'Very Light' },
         { text: 'Light', value: 'Light' }, { text: 'Fancy Light', value: 'Fancy Light' },
@@ -1157,7 +1160,7 @@ const DiamondInventoryTable = () => {
       onFilter: (value, record) => record.intensity === value,
     },
     {
-      title: "Overtone", key: "overTone", dataIndex: "overTone", width: 90, ellipsis: true, align: "center", shouldCellUpdate: () => false,
+      title: "Overtone", key: "overTone", dataIndex: "overTone", width: 90, ellipsis: true, align: "center",
       filters: [
         { text: 'Bluish', value: 'Bluish' }, { text: 'Brownish', value: 'Brownish' },
         { text: 'Grayish', value: 'Grayish' }, { text: 'Greenish', value: 'Greenish' },
@@ -1167,10 +1170,10 @@ const DiamondInventoryTable = () => {
       ],
       onFilter: (value, record) => record.overTone === value,
     },
-    { title: "Color", key: "color", dataIndex: "color", width: 90, ellipsis: true, align: "center", shouldCellUpdate: () => false },
-    { title: "Location", key: "location", dataIndex: "location", width: 112, ellipsis: true, render: renderLocationWithFlag, align: "center", shouldCellUpdate: () => false },
+    { title: "Color", key: "color", dataIndex: "color", width: 90, ellipsis: true, align: "center" },
+    { title: "Location", key: "location", dataIndex: "location", width: 112, ellipsis: true, render: renderLocationWithFlag, align: "center" },
     {
-      title: "Package", key: "package", dataIndex: "package", width: 88, ellipsis: true, align: "center", shouldCellUpdate: () => false,
+      title: "Package", key: "package", dataIndex: "package", width: 88, ellipsis: true, align: "center",
       filters: [
         { text: 'SB', value: 'SB' }, { text: 'BAGS', value: 'BAGS' },
         { text: 'JEWEL', value: 'JEWEL' }, { text: 'BIG SB', value: 'BIG SB' },
@@ -1179,10 +1182,10 @@ const DiamondInventoryTable = () => {
       ],
       onFilter: (value, record) => record.package === value,
     },
-    { title: "BGM", key: "bgm", dataIndex: "bgm", width: 56, ellipsis: true, align: "center", shouldCellUpdate: () => false },
-    { title: "Eye Clean", key: "eyeClean", dataIndex: "eyeClean", width: 86, ellipsis: true, align: "center", shouldCellUpdate: () => false },
+    { title: "BGM", key: "bgm", dataIndex: "bgm", width: 56, ellipsis: true, align: "center" },
+    { title: "Eye Clean", key: "eyeClean", dataIndex: "eyeClean", width: 86, ellipsis: true, align: "center" },
     {
-      title: "Main Group", key: "group", dataIndex: "group", width: 114, ellipsis: true, align: "center", shouldCellUpdate: () => false,
+      title: "Main Group", key: "group", dataIndex: "group", width: 114, ellipsis: true, align: "center",
       filters: [
         { text: 'A+', value: 'A+' }, { text: 'BA', value: 'BA' },
         { text: 'YELLOW', value: 'YELLOW' }, { text: 'PINK', value: 'PINK' },
@@ -1192,7 +1195,7 @@ const DiamondInventoryTable = () => {
       ],
       onFilter: (value, record) => record.group === value,
     },
-    { title: "Sub Group", key: "subGroup", dataIndex: "subGroup", width: 96, ellipsis: true, align: "center", shouldCellUpdate: () => false },
+    { title: "Sub Group", key: "subGroup", dataIndex: "subGroup", width: 96, ellipsis: true, align: "center" },
     {
       title: "Remark",
       key: "remark",
@@ -1755,9 +1758,11 @@ const DiamondInventoryTable = () => {
               onConsignSubmit={handleConsignSubmit}
               onLabSubmit={handleLabSubmit}
               onExportSubmit={handleExportSubmit}
-              onAfterPackageOrReservation={() => {
+              onAfterPackageOrReservation={async () => {
                 clearSelection();
                 queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
+                queryClient.invalidateQueries({ queryKey: ["myInventorySummary"] });
+                await refetchInventory();
               }}
             />
           </Suspense>

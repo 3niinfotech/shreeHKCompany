@@ -13,6 +13,7 @@ import { useFetchApi } from '../../../api/ApiFunction';
 import { ENDPOINTS } from '../../../constants/endpoints';
 import { fetchProductDetail } from '../../../api/services/productService';
 import { sendToOutward } from '../../../api/services/outwardService';
+import { TRANSACTION_STOCK_KEYS } from '../../../api/services/transactionStockService';
 import { toastApiError, toastApiSuccess } from '../../../utils/apiToast';
 import useFormHandleChange from '../../../hooks/useFormHandleChange';
 import PageHeroHeader, { pageHeroHeaderStyles } from '../../../components/common/PageHeroHeader';
@@ -229,7 +230,7 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
               remark: fetched.remark || '',
             });
           }
-        } catch (e) {
+        } catch {
           // If SKU fetch failed, add manual row placeholder
           newItems.push({
             key: Date.now() + Math.random(),
@@ -468,6 +469,7 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
       queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.sale] });
       queryClient.invalidateQueries({ queryKey: ['OutwardList'] });
       queryClient.invalidateQueries({ queryKey: ['GetProductData'] });
+      queryClient.invalidateQueries({ queryKey: ['myInventorySummary'] });
       queryClient.invalidateQueries({ queryKey: ['getIncrement'] });
       navigate(config.returnPath);
     } catch (err) {

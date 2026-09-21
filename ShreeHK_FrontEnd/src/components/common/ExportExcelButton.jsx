@@ -9,14 +9,22 @@ const ExportExcelButton = ({
   size = "middle",
   className = "",
   children = "Export to Excel",
+  icon,
+  style,
 }) => (
   <Button
     type="primary"
     size={size}
-    icon={<FileExcelOutlined />}
+    icon={icon !== undefined ? icon : <FileExcelOutlined />}
     loading={loading}
     disabled={disabled}
     onClick={onClick}
+    style={{
+      backgroundColor: "var(--color-success)",
+      borderColor: "var(--color-success)",
+      color: "#ffffff",
+      ...style,
+    }}
     className={`${styles.exportBtn} ${className}`.trim()}
   >
     {children}

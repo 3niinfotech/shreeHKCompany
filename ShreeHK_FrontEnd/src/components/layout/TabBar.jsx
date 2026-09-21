@@ -70,19 +70,28 @@ const TabBar = () => {
 
   const tabItems = useMemo(
     () =>
-      tabs.map((tab) => ({
-        key: tab.key,
-        label: (
-          <span
-            onMouseEnter={() => prefetchRoute(tab.key === HOME_TAB.key ? homePath : tab.path)}
-            onMouseDown={handleTabPointerDown(tab)}
-          >
-            {renderTabLabel(tab)}
-          </span>
-        ),
-        closable: tab.closable !== false,
-      })),
-    [tabs, homePath, handleTabPointerDown]
+      tabs.map((tab) => {
+        let displayLabel = tab.label;
+        if (!displayLabel && tab.key !== HOME_TAB.key) {
+          const meta = resolveTabFromPath(tab.path || tab.key, userWithPerms, authorizedRoutes);
+          displayLabel = meta.label || "Page";
+        }
+        const displayTab = { ...tab, label: displayLabel };
+
+        return {
+          key: tab.key,
+          label: (
+            <span
+              onMouseEnter={() => prefetchRoute(tab.key === HOME_TAB.key ? homePath : tab.path)}
+              onMouseDown={handleTabPointerDown(tab)}
+            >
+              {renderTabLabel(displayTab)}
+            </span>
+          ),
+          closable: tab.closable !== false,
+        };
+      }),
+    [tabs, homePath, handleTabPointerDown, userWithPerms, authorizedRoutes]
   );
 
   const handleChange = (key) => {

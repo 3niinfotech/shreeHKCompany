@@ -108,6 +108,8 @@ const BulkUpdate = () => {
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['bulkupdate'] });
+            queryClient.invalidateQueries({ queryKey: ['GetProductData'] });
+            queryClient.invalidateQueries({ queryKey: ['myInventorySummary'] });
             if (Number(data?.error) === 0) {
                 toastApiSuccess(data);
                 setFileList([]);

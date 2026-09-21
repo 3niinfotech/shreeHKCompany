@@ -93,7 +93,7 @@ const ReservationModal = ({ open, selectedIds = [], partyHint = "", onClose, onS
           key="save"
           type="primary"
           className={styles.btnSave}
-          loading={loading}
+          loading={loading} 
           onClick={() => form.submit()}
         >
           Submit {theme.label}

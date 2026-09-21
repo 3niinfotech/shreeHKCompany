@@ -25,14 +25,14 @@ export const resolveTabFromPath = (pathname, user, authorizedRoutes) => {
 
   const routes = authorizedRoutes ?? getAuthorizedFlattenRoutes(user);
   const exact = routes.find((route) => route.path === normalized);
-  if (exact) {
+  if (exact && exact.name) {
     return { key: normalized, label: exact.name, path: normalized };
   }
 
   const dynamic = routes.find(
     (route) => route.path?.includes(":") && pathToRegex(route.path).test(normalized)
   );
-  if (dynamic) {
+  if (dynamic && dynamic.name) {
     return { key: normalized, label: dynamic.name, path: normalized };
   }
 

@@ -190,7 +190,14 @@ async function logActivityTx(q, payload) {
 
   try {
     await auditQuery(sql, values);
-    if (ctxStore) ctxStore.auditLogged = true;
+    if (ctxStore) {
+      ctxStore.auditLogged = true;
+      if (ctxStore.req) ctxStore.req._auditLogged = true;
+      if (ctxStore.res) {
+        ctxStore.res._auditLogged = true;
+        if (ctxStore.res.locals) ctxStore.res.locals._auditLogged = true;
+      }
+    }
     markAuditLogged();
   } catch (err) {
     console.error("[AUDIT LOG ERROR] Failed to record activity log entry:", err?.message || err, {

@@ -30,7 +30,7 @@ import AICertificateScannerModal from '../../../components/ai/AICertificateScann
 import { parseInwardImportExcel } from './inwardExcelImport';
 
 import defaultStyles from "../../../assets/scss/pages/transaction/inwardpurchase.module.scss";
-import PageHeroHeader, { pageHeroHeaderStyles } from '../../../components/common/PageHeroHeader';
+import PageHeroHeader from '../../../components/common/PageHeroHeader';
 
 const { Text } = Typography;
 
@@ -54,8 +54,8 @@ function formatProductsPayload(items) {
     mfg_code: item.mfgCode || "",
     diamond_no: item.dNo || "",
     sku: item.sku,
-    rought_pcs: item.rPcs?.toString() || "",
-    polish_pcs: item.pPcs?.toString() || "",
+    rought_pcs: (item.rPcs || item.pPcs || "")?.toString(),
+    polish_pcs: (item.pPcs || item.rPcs || "")?.toString(),
     polish_carat: item.pCarat?.toString() || "0",
     price: item.price?.toString() || "0",
     amount: item.amount?.toString() || "0",
@@ -252,6 +252,20 @@ const InwardTransactionForm = ({
 
   const handleUpdateCell = (key, field, value) => {
     updateTableValue(key, field, value, (item) => {
+      if (field === 'rPcs') {
+        return {
+          ...item,
+          rPcs: value,
+          pPcs: (!item.pPcs || item.pPcs === 0) ? value : item.pPcs,
+        };
+      }
+      if (field === 'pPcs') {
+        return {
+          ...item,
+          pPcs: value,
+          rPcs: (!item.rPcs || item.rPcs === 0) ? value : item.rPcs,
+        };
+      }
       if (field === 'pCarat' || field === 'price') {
         const carat = field === 'pCarat' ? (value || 0) : (item.pCarat || 0);
         const price = field === 'price' ? (value || 0) : (item.price || 0);
@@ -446,7 +460,7 @@ const InwardTransactionForm = ({
   );
 
   const totalStats = useMemo(() => items.reduce((acc, curr) => ({
-    pcs: acc.pcs + (curr.pPcs || 0), carats: acc.carats + (curr.pCarat || 0), amount: acc.amount + (curr.amount || 0)
+    pcs: acc.pcs + (curr.pPcs || curr.rPcs || 0), carats: acc.carats + (curr.pCarat || 0), amount: acc.amount + (curr.amount || 0)
   }), { pcs: 0, carats: 0, amount: 0 }), [items]);
 
   return (

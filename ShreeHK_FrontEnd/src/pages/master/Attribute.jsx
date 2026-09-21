@@ -28,7 +28,7 @@ const Attribute = () => {
 
   const { data, isLoading, refetch } = useFetchApi("attributes", ENDPOINTS.attribute.list);
   const { mutate: saveRow, isPending: saving } = usePostApiRequest(ENDPOINTS.attribute.save, "attributes");
-  const { mutate: deleteRow, isPending: isDeleting } = useDeleteApiRequest(ENDPOINTS.attribute.delete, "attributes");
+  const { mutate: deleteRow, isPending: isDeleting } = useDeleteApiRequest(ENDPOINTS.attribute.delete, "attributes", { queryParam: "deleteId" });
 
   useEffect(() => {
     if (data?.Data) {
