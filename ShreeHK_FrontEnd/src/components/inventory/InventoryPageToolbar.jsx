@@ -2,7 +2,6 @@ import React from "react";
 import { Button, Form } from "antd";
 import { cssVar } from "../../theme";
 import InventoryFilterPanel from "./InventoryFilterPanel";
-
 import ExportExcelButton from "../common/ExportExcelButton";
 
 /**
