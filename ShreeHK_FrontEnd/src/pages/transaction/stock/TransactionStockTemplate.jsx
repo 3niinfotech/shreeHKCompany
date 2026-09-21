@@ -150,7 +150,7 @@ const TransactionStockTemplate = ({
     { enabled: true, staleTime: 0, refetchOnMount: 'always' }
   );
 
-  const { mutate: deleteRecord, isPending: isDeleting } = useDeleteApiRequest(deleteEndpoint, deleteQueryKey || queryKey);
+  const { mutate: deleteRecord, isPending: isDeleting } = useDeleteApiRequest(deleteEndpoint, deleteQueryKey || queryKey, { queryParam: 'deleteId' });
 
   const editSaveEndpoint = actions.editSaveEndpoint || ENDPOINTS.outward.update;
   const { mutate: updateOutwardRecord, isPending: isUpdating } = usePostApiRequest(
@@ -233,6 +233,9 @@ const TransactionStockTemplate = ({
           return key === queryKey;
         },
       });
+      queryClient.invalidateQueries({ queryKey: ['GetProductData'] });
+      queryClient.invalidateQueries({ queryKey: ['myInventorySummary'] });
+      queryClient.invalidateQueries({ queryKey: ['OutwardList'] });
       if (infiniteScroll) {
         setHasMore(true);
         setScrollFetching(false);
@@ -493,9 +496,13 @@ const TransactionStockTemplate = ({
       };
 
       updateOutwardRecord(payload, {
-        onSuccess: () => {
+        onSuccess: (res) => {
+          if (res?.status === false) return;
+          queryClient.invalidateQueries({ queryKey: ['GetProductData'] });
+          queryClient.invalidateQueries({ queryKey: ['myInventorySummary'] });
+          queryClient.invalidateQueries({ queryKey: ['OutwardList'] });
+          queryClient.invalidateQueries({ queryKey: ['StockEditDetails'] });
           closeEditModal();
-          refreshList();
         },
       });
     } catch (error) {
@@ -536,9 +543,28 @@ const TransactionStockTemplate = ({
   };
 
   const handleDelete = () => {
-    if (!deleteModal.record?.id) return;
-    deleteRecord(deleteModal.record.id, {
-      onSuccess: () => { refreshList(); closeDelete(); },
+    const recordId = deleteModal.record?.id;
+    if (!recordId) return;
+    deleteRecord(recordId, {
+      onSuccess: (data) => {
+        if (data?.status !== false) {
+          setAllGroups((prev) => prev.filter((item) => item.id !== recordId));
+        }
+        queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = query.queryKey?.[0];
+            if (Array.isArray(key)) return key[0] === queryKey;
+            return key === queryKey;
+          },
+        });
+        queryClient.invalidateQueries({ queryKey: ['GetProductData'] });
+        queryClient.invalidateQueries({ queryKey: ['myInventorySummary'] });
+        queryClient.invalidateQueries({ queryKey: ['OutwardList'] });
+        if (typeof refetch === 'function') {
+          refetch();
+        }
+        closeDelete();
+      },
     });
   };
 

@@ -48,7 +48,7 @@ const accGroupFields = [
 
 const accSubgroupFields = [
   { type: "input", label: "Sub Group Name", name: "name", required: true, span: 24 },
-  { type: "number", label: "Group Id", name: "group_id", required: false, span: 24 },
+  { type: "select", label: "Under", name: "under", required: false, span: 24, placeholder: "Select Under Group", options: [] },
 ];
 
 export { companyFields, shippingFields, originFields, labFields, categoryFields, attributeFields, accGroupFields, accSubgroupFields };

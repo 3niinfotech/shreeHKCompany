@@ -50,7 +50,7 @@ const AdvanceTableData = () => {
 
     // Delete API Hook - Make sure the endpoint matches your backend
     // AdvanceTableData.js ke andar mutation setup
-    const { mutate: deleteExpanse, isPending: isDeleting } = useDeleteApiRequest(ENDPOINTS.advance.delete, 'advanceDataDelete');
+    const { mutate: deleteExpanse, isPending: isDeleting } = useDeleteApiRequest(ENDPOINTS.advance.delete, 'advanceDataDelete', { queryParam: 'deleteId' });
 
     useEffect(() => {
         if (data && data.Data) {
@@ -83,7 +83,8 @@ const AdvanceTableData = () => {
         if (record) {
             setSelectedRecord({
                 ...record,
-                date: record.date ? dayjs(record.date) : null
+                date: record.date ? dayjs(record.date) : null,
+                assign_date: record.assign_date ? dayjs(record.assign_date) : null,
             });
         } else {
             setSelectedRecord(null);
@@ -94,7 +95,8 @@ const AdvanceTableData = () => {
         const payload = {
             ...values,
             id: selectedRecord?.id || null,
-            date: values.date ? values.date.format('YYYY-MM-DD') : null
+            date: values.date ? (values.date.format ? values.date.format('YYYY-MM-DD') : values.date) : null,
+            assign_date: values.assign_date ? (values.assign_date.format ? values.assign_date.format('YYYY-MM-DD') : values.assign_date) : null,
         };
 
         saveExpanse(payload, {
@@ -129,18 +131,26 @@ const AdvanceTableData = () => {
     };
 
     const columns = useMemo(() => [
-        { title: 'No.', key: 'index', width: 70, render: (_, __, i) => i + 1 },
-        { title: 'Date', dataIndex: 'date', key: 'date', render: (d) => (d && dayjs(d).isValid() ? dayjs(d).format('DD-MM-YYYY') : (d?.split('T')[0] || '-')) },
-        { title: 'Party', dataIndex: 'party', key: 'party', render: (party) => resolvePartyName(party) },
-        { title: 'Amount', dataIndex: 'amount', key: 'amount', align: 'right' },
-        { title: 'Book Type', dataIndex: 'type', key: 'type' },
+        { title: 'No.', key: 'index', width: 60, render: (_, __, i) => i + 1 },
+        { title: 'Date', dataIndex: 'date', key: 'date', width: 110, render: (d) => (d && dayjs(d).isValid() ? dayjs(d).format('DD-MM-YYYY') : (d?.split('T')[0] || '-')) },
+        { title: 'Use Date', dataIndex: 'assign_date', key: 'assign_date', width: 110, render: (d) => (d && dayjs(d).isValid() ? dayjs(d).format('DD-MM-YYYY') : (d?.split('T')[0] || '-')) },
+        { title: 'Invoice', dataIndex: 'invoice', key: 'invoice', width: 120, render: (inv, r) => inv || r.invoice_id || '-' },
+        { title: 'Party', dataIndex: 'party', key: 'party', width: 220, render: (party, r) => r.party_name || resolvePartyName(party) },
+        { title: 'Amount', dataIndex: 'amount', key: 'amount', align: 'right', width: 110, render: (v) => v != null && v !== '' ? Number(v).toFixed(2) : '-' },
+        { title: 'Used', dataIndex: 'use_amount', key: 'use_amount', align: 'right', width: 110, render: (v) => v != null && v !== '' ? Number(v).toFixed(2) : '-' },
+        { title: 'Balance', dataIndex: 'balance_amount', key: 'balance_amount', align: 'right', width: 110, render: (v, r) => v != null && v !== '' ? Number(v).toFixed(2) : (r.amount ? (Number(r.amount) - Number(r.use_amount || 0)).toFixed(2) : '-') },
+        { title: 'Book Type', dataIndex: 'type', key: 'type', width: 100 },
         { title: 'Description', dataIndex: 'description', key: 'description', ellipsis: true },
     ], [resolvePartyName]);
 
     const expanseFields = useMemo(() => [
         { name: 'date', label: 'Date', type: 'date', required: true, span: 12 },
+        { name: 'assign_date', label: 'Use Date', type: 'date', required: false, span: 12 },
+        { name: 'invoice', label: 'Invoice', type: 'input', required: false, span: 12 },
         { name: 'party', label: 'Party', type: 'select', options: partyOptions, required: true, span: 12 },
-        { name: 'amount', label: 'Amount', type: 'number', required: true, span: 12 },
+        { name: 'amount', label: 'Amount', type: 'number', required: true, span: 8 },
+        { name: 'use_amount', label: 'Used Amount', type: 'number', required: false, span: 8 },
+        { name: 'balance_amount', label: 'Balance Amount', type: 'number', required: false, span: 8 },
         { name: 'type', label: 'Type', type: 'select', options: [{ label: "DR", value: "dr" }, { label: "CR", value: "cr" }], required: true, span: 12 },
         { name: 'description', label: 'Description', type: 'textarea', span: 24 },
     ], [partyOptions]);

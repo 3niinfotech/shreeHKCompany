@@ -12,7 +12,7 @@ const CurrancyRate = () => {
 
     const { data: apiResponse, isLoading: isFetching, refetch } = useFetchApi('fetchCurrancyData', ENDPOINTS.currency.list);
     const { mutate: createCurrncyRate, isLoading: isSubmitting } = usePostApiRequest(ENDPOINTS.currency.save, 'fetchCurrancyData');
-    const { mutate: deleteCurrncyRate, isLoading: isDeleting } = useDeleteApiRequest(ENDPOINTS.currency.delete, 'fetchCurrancyData');
+    const { mutate: deleteCurrncyRate, isLoading: isDeleting } = useDeleteApiRequest(ENDPOINTS.currency.delete, 'fetchCurrancyData', { queryParam: 'deleteId' });
     console.log("apiResponse :", apiResponse);
 
     const dataList = apiResponse?.Data;

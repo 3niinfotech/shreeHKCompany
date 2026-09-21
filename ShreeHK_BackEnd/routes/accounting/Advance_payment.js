@@ -15,9 +15,16 @@ AdvancePayment.get("/advance/get", authenticateToken, (req, res) => {
         });
     }
 
-    const query = `SELECT id, party, date, type, book, cheque, amount, description, company, user FROM acc_advance WHERE company = ?`;
+    const query = `
+        SELECT a.id, a.party, a.date, a.type, a.book, a.cheque, a.amount, a.use_amount, a.balance_amount, a.invoice, a.invoice_id, a.assign_date, a.description, a.company, a.user,
+               p.name AS party_name
+        FROM acc_advance a
+        LEFT JOIN dai_party p ON (a.party = CAST(p.id AS CHAR) OR a.party = p.name) AND (p.company = ? OR p.company IS NULL)
+        WHERE (a.deleted = 0 OR a.deleted IS NULL) AND a.company = ?
+        ORDER BY a.id DESC
+    `;
 
-    connection.query(query, [companyId], (err, result) => {
+    connection.query(query, [companyId, companyId], (err, result) => {
         if (err) {
             return res.status(500).json({ err: err.message });
         }
@@ -38,6 +45,10 @@ AdvancePayment.post("/advance-payment", authenticateToken, (req, res) => {
     const type = req.body.type ?? req.body["dr-cr"] ?? "";
     const cheque = req.body.cheque ?? req.body.cheque_no ?? "";
     const amount = req.body.amount ?? 0;
+    const use_amount = req.body.use_amount !== undefined ? req.body.use_amount : null;
+    const balance_amount = req.body.balance_amount !== undefined ? req.body.balance_amount : null;
+    const invoice = req.body.invoice ?? req.body.invoice_id ?? "";
+    const assign_date = req.body.assign_date ?? req.body.use_date ?? null;
     const description = req.body.description ?? "";
     const company = req.body.company ?? contextCompanyId;
     const user = req.body.user ?? "";
@@ -46,15 +57,15 @@ AdvancePayment.post("/advance-payment", authenticateToken, (req, res) => {
 
     const query = isUpdate
         ? `UPDATE acc_advance
-           SET party = ?, date = ?, type = ?, book = ?, cheque = ?, amount = ?, description = ?, company = ?, user = ?
+           SET party = ?, date = ?, type = ?, book = ?, cheque = ?, amount = ?, use_amount = ?, balance_amount = ?, invoice = ?, assign_date = ?, description = ?, company = ?, user = ?
            WHERE id = ?`
         : `INSERT INTO acc_advance 
-           (party, date, type, book, cheque, amount, description, company, user) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+           (party, date, type, book, cheque, amount, use_amount, balance_amount, invoice, assign_date, description, company, user) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
     const queryValues = isUpdate
-        ? [party, date, type, book, cheque, amount, description, company, user, id]
-        : [party, date, type, book, cheque, amount, description, company, user];
+        ? [party, date, type, book, cheque, amount, use_amount, balance_amount, invoice, assign_date, description, company, user, id]
+        : [party, date, type, book, cheque, amount, use_amount, balance_amount, invoice, assign_date, description, company, user];
 
     const newValue = {
         party,
@@ -64,6 +75,10 @@ AdvancePayment.post("/advance-payment", authenticateToken, (req, res) => {
         book,
         cheque,
         amount,
+        use_amount,
+        balance_amount,
+        invoice,
+        assign_date,
         description,
         company,
         user,
@@ -88,14 +103,14 @@ AdvancePayment.post("/advance-payment", authenticateToken, (req, res) => {
 
             res.status(isUpdate ? 200 : 201).json({
                 message: isUpdate ? "Advance payment updated successfully!" : "Advance payment created successfully!",
-                Data: { id: savedId, party, date, type, cheque, amount, book, description, company, user },
+                Data: { id: savedId, party, date, type, cheque, amount, use_amount, balance_amount, invoice, assign_date, book, description, company, user },
             });
         });
     };
 
     if (isUpdate) {
         connection.query(
-            `SELECT party, date, type, book, cheque, amount, description, company, user FROM acc_advance WHERE id = ?`,
+            `SELECT party, date, type, book, cheque, amount, use_amount, balance_amount, invoice, assign_date, description, company, user FROM acc_advance WHERE id = ?`,
             [id],
             (fetchErr, rows) => {
                 if (fetchErr) {

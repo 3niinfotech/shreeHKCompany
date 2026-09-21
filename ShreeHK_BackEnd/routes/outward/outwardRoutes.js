@@ -2,12 +2,13 @@ const express = require("express");
 const connection = require("../../connection.js");
 const helper = require("../../helper.js");
 const productHelper = require("../../productHelper.js");
+const moment = require("moment");
 const { authenticateToken } = require("../../authMiddleware.js");
 const outwardService = require("./outwardService.js");
 const { validateHoldBodyMiddleware } = require("./holdValidation.js");
 const outwardRouter = express.Router();
 const { buildUserContext } = require("../../tenantHelper.js");
-const { fetchRowById, auditCrud } = require("../../services/auditMutationHelper.js");
+const { deleteOutwardStock } = require("../transaction/transactionStockService.js");
 outwardRouter.use(express.json());
 
 outwardRouter.post(
@@ -74,43 +75,60 @@ outwardRouter.post("/outward/list", authenticateToken, async (req, res) => {
   }
 
   try {
+    const filterParams = [];
+
     // 1. Dynamic Conditions
-    let party = (post.party && post.party !== "0") ? ` AND o.party = ${post.party}` : "";
+    let party = "";
+    if (post.party && post.party !== "0" && post.party !== 0) {
+      party = " AND o.party = ?";
+      filterParams.push(post.party);
+    }
 
     // Yahan fix: Frontend se 'invoiceno' aa raha hai, backend 'invoice' check kar raha tha
-    let invoiceNo = (post.invoiceno && post.invoiceno !== "") ? ` AND o.invoiceno LIKE '%${post.invoiceno}%'` : "";
+    let invoiceNo = "";
+    if (post.invoiceno && post.invoiceno !== "") {
+      invoiceNo = " AND o.invoiceno LIKE ?";
+      filterParams.push(`%${post.invoiceno}%`);
+    }
 
     let dateFilter = "";
     if (post.from || post.to) {
-      const from = post.from ? moment(post.from, "YYYY-MM-DD").format("YYYY-MM-DD") : "2010-01-01";
-      const to = post.to ? moment(post.to, "YYYY-MM-DD").format("YYYY-MM-DD") : "2050-12-31";
-      dateFilter = ` AND o.date BETWEEN '${from}' AND '${to}'`;
+      const from = post.from && moment(post.from, "YYYY-MM-DD").isValid()
+        ? moment(post.from, "YYYY-MM-DD").format("YYYY-MM-DD")
+        : "2010-01-01";
+      const to = post.to && moment(post.to, "YYYY-MM-DD").isValid()
+        ? moment(post.to, "YYYY-MM-DD").format("YYYY-MM-DD")
+        : "2050-12-31";
+      dateFilter = " AND o.date BETWEEN ? AND ?";
+      filterParams.push(from, to);
     }
 
     // 2. Base Query Logic
     let typeFilter = "";
     if (post.type === "memo" || post.type === "consign") {
-      typeFilter = ` AND o.type IN ('memo', 'consign') AND o.status IN ('on_memo', 'on_consign')`;
+      typeFilter = " AND o.type IN ('memo', 'consign') AND o.status IN ('on_memo', 'on_consign')";
     } else if (post.type === "sale" || post.type === "export") {
-      typeFilter = ` AND o.type IN ('sale', 'export') AND o.status IN ('on_sale', 'on_export')`;
+      typeFilter = " AND o.type IN ('sale', 'export') AND o.status IN ('on_sale', 'on_export')";
     } else {
       // Agar type khali hai toh crash na ho, default filter laga dein
-      typeFilter = ` AND o.type IN ('memo', 'consign', 'sale', 'export')`;
+      typeFilter = " AND o.type IN ('memo', 'consign', 'sale', 'export')";
     }
 
     // 3. User Logic
     let userFilter = (post.userid === 16 || post.userid === 1) ? "" : " AND o.user != 16";
 
     // 4. Pagination Fix (Offset calculation)
-    const limit = parseInt(post.limit) || 100;
-    const page = parseInt(post.page) || 1;
+    const limit = parseInt(post.limit, 10) || 100;
+    const page = parseInt(post.page, 10) || 1;
     const offset = (page - 1) * limit;
 
     const baseFromWhere = `FROM dai_outward o
-                   LEFT JOIN dai_party p ON o.party = p.id AND p.company = ${companyId}
-                   LEFT JOIN dai_product dp ON FIND_IN_SET(dp.id, o.products) AND dp.company = ${companyId}
-                   WHERE o.company = ${companyId} 
+                   LEFT JOIN dai_party p ON o.party = p.id AND p.company = ?
+                   LEFT JOIN dai_product dp ON FIND_IN_SET(dp.id, o.products) AND dp.company = ?
+                   WHERE o.company = ? 
                    ${typeFilter} ${userFilter} ${party} ${invoiceNo} ${dateFilter}`;
+
+    const countParams = [companyId, companyId, companyId, ...filterParams];
 
     const query = `SELECT o.id, o.entryno, o.type, o.invoiceno, p.name as party, o.reference,
                           DATE_FORMAT(o.invoicedate, '%d-%m-%Y') AS invoicedate,
@@ -121,17 +139,19 @@ outwardRouter.post("/outward/list", authenticateToken, async (req, res) => {
                    ${baseFromWhere}
                    GROUP BY o.id, o.entryno, o.type, o.invoiceno, p.name, o.reference, o.invoicedate, o.date, o.final_amount
                    ORDER BY o.date DESC, o.id DESC
-                   LIMIT ${offset}, ${limit}`;
+                   LIMIT ?, ?`;
+
+    const queryParams = [companyId, companyId, companyId, ...filterParams, offset, limit];
 
     const countQuery = `SELECT COUNT(DISTINCT o.id) as total ${baseFromWhere}`;
 
-    connection.query(countQuery, (countError, countData) => {
+    connection.query(countQuery, countParams, (countError, countData) => {
       if (countError) {
         console.error("Outward count SQL Error:", countError);
         return res.status(201).json({ status: false, message: "Database Error", error: countError.sqlMessage });
       }
 
-      connection.query(query, (error, data) => {
+      connection.query(query, queryParams, (error, data) => {
         if (error) {
           console.error("SQL Error:", error);
           return res.status(201).json({ status: false, message: "Database Error", error: error.sqlMessage });
@@ -165,9 +185,9 @@ outwardRouter.get("/outward/", authenticateToken, (req, res) => {
   }
 
   try {
-    let query = `SELECT * FROM dai_outward WHERE id = ${id} AND company = ${companyId}`;
+    let query = "SELECT * FROM dai_outward WHERE id = ? AND company = ?";
 
-    connection.query(query, (error, data) => {
+    connection.query(query, [id, companyId], (error, data) => {
       if (error) {
         return res.status(201).json({
           status: false,
@@ -178,10 +198,16 @@ outwardRouter.get("/outward/", authenticateToken, (req, res) => {
 
       if (data && data.length > 0) {
         let products = data[0]["products"];
-        if (products != "") {
-          let pquery = `SELECT * FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id WHERE p.company = ${companyId} AND p.id IN(${products})`;
+        const productIds = String(products || "")
+          .split(",")
+          .map((p) => parseInt(p.trim(), 10))
+          .filter((p) => Number.isInteger(p) && p > 0);
 
-          connection.query(pquery, (error, pdata) => {
+        if (productIds.length > 0) {
+          const placeholders = productIds.map(() => "?").join(",");
+          let pquery = `SELECT * FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id WHERE p.company = ? AND p.id IN (${placeholders})`;
+
+          connection.query(pquery, [companyId, ...productIds], (error, pdata) => {
             if (error) {
               return res.status(201).json({
                 status: false,
@@ -242,10 +268,9 @@ outwardRouter.post("/outward/getProducts", authenticateToken, async (req, res) =
   }
 
   try {
-    let responseData = {};
-    let query = `SELECT * FROM dai_outward WHERE id = ${id} AND company = ${companyId}`;
+    let query = "SELECT * FROM dai_outward WHERE id = ? AND company = ?";
 
-    connection.query(query, (error, data) => {
+    connection.query(query, [id, companyId], (error, data) => {
       if (error) {
         return res.status(201).json({
           status: false,
@@ -254,13 +279,18 @@ outwardRouter.post("/outward/getProducts", authenticateToken, async (req, res) =
         });
       }
 
-
       if (data && data.length > 0) {
         let products = data[0]["products"];
-        if (products != "") {
-          let pquery = `SELECT * FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id WHERE p.company = ${companyId} AND p.id IN(${products})`;
+        const productIds = String(products || "")
+          .split(",")
+          .map((p) => parseInt(p.trim(), 10))
+          .filter((p) => Number.isInteger(p) && p > 0);
 
-          connection.query(pquery, (error, pdata) => {
+        if (productIds.length > 0) {
+          const placeholders = productIds.map(() => "?").join(",");
+          let pquery = `SELECT * FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id WHERE p.company = ? AND p.id IN (${placeholders})`;
+
+          connection.query(pquery, [companyId, ...productIds], (error, pdata) => {
             if (error) {
               return res.status(201).json({
                 status: false,
@@ -305,30 +335,15 @@ outwardRouter.delete("/outward", authenticateToken, async (req, res) => {
   }
 
   try {
-    const oldRow = await fetchRowById("dai_outward", id);
-    if (!oldRow) {
-      return res.status(404).json({ status: false, message: "Record not found in database" });
+    const result = await deleteOutwardStock(id, { moduleName: "Outward" });
+    if (!result.ok) {
+      return res.status(404).json({ status: false, message: result.message || "Record not found" });
     }
-
-    await new Promise((resolve, reject) => {
-      connection.query(`DELETE FROM dai_outward WHERE id = ?`, [id], (err, result) => {
-        if (err) reject(err);
-        else resolve(result);
-      });
-    });
-
-    await auditCrud({
-      actionType: "DELETE",
-      moduleName: "Outward",
-      recordId: id,
-      recordReference: oldRow.invoiceno || String(id),
-      oldValue: oldRow,
-    });
-
-    return res.status(200).json({ status: true, message: "Record deleted successfully" });
+    return res.status(200).json({ status: true, message: result.message || "Record deleted successfully" });
   } catch (err) {
     return res.status(500).json({ status: false, message: err.sqlMessage || err.message });
   }
 });
 
 module.exports = outwardRouter;
+

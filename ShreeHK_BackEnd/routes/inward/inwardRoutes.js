@@ -90,8 +90,6 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
     const incre_id = await helper.getIncrementEntry("inward", companyId);
     const reference = await helper.getIncrementEntry("reference", companyId);
 
-    const newReference = parseInt(reference, 10) + 1;
-
     const invoicedate = moment(post.invoicedate, "DD-MM-YYYY").format("YYYY-MM-DD");
     post.duedate = post.terms
       ? moment(post.duedate, "DD-MM-YYYY").format("YYYY-MM-DD")
@@ -104,223 +102,237 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
     post.deleted = 0;
     post.user = userid;
 
-    const data = helper.insertString(post);
-    const sql = `INSERT INTO dai_inward (${data[0]}) VALUES (${data[1]})`;
+    const result = await helper.runInTransaction(async (q) => {
+      // 1. Insert inward header
+      const data = helper.insertString(post);
+      const insertResult = await q(`INSERT INTO dai_inward (${data[0]}) VALUES (${data[1]})`);
+      const lid = insertResult.insertId;
 
-    connection.query(sql, async (err, result) => {
-      if (err) return res.status(201).json({ status: false, message: err });
-
-      const lid = result.insertId;
+      // 2. Increment IDs
       const temp = incre_id.split("-");
-      temp[1] = parseInt(temp[1]) + 1;
+      temp[1] = parseInt(temp[1], 10) + 1;
       const setNewid = `${temp[0]}-${temp[1]}`;
+      await q(
+        "UPDATE dai_incrementid SET inward = ?, reference = ? WHERE company = ?",
+        [setNewid, parseInt(reference, 10) + 1, companyId]
+      );
 
-      const updateSql = `UPDATE dai_incrementid SET inward='${setNewid}', reference='${parseInt(reference) + 1}' WHERE company=${companyId}`;
+      // 3. Import category entry if applicable
+      if (post.inward_type === "import") {
+        await q(
+          "INSERT INTO category (name, parent) VALUES (?, ?)",
+          [moment().format("DD-MM-YYYY"), 0]
+        );
+      }
 
-      connection.query(updateSql, async (err) => {
-        if (err) return res.status(201).json({ status: false, message: err });
+      let iTotal = 0;
+      let iCarat = 0;
+      let iPcs = 0;
+      const iProducts = [];
+      const skuArray = [];
+      const insertedItems = [];
 
+      // 4. Sequential processing of product items to avoid race conditions
+      for (const r of (Array.isArray(products) ? products : [])) {
+        if (!r.sku || !r.polish_carat || !r.price || !r.amount) continue;
+
+        const skuRows = await q(
+          "SELECT * FROM dai_product WHERE sku = ? AND company = ? LIMIT 1",
+          [String(r.sku).trim(), companyId]
+        );
+        let SkuData = skuRows[0] || null;
+
+        // Normalize Pcs: If polish_pcs is empty/0, fallback to rought_pcs (and vice versa)
+        if (!r.polish_pcs || Number(r.polish_pcs) === 0) {
+          if (r.rought_pcs && Number(r.rought_pcs) > 0) {
+            r.polish_pcs = r.rought_pcs;
+          }
+        }
+        if (!r.rought_pcs || Number(r.rought_pcs) === 0) {
+          if (r.polish_pcs && Number(r.polish_pcs) > 0) {
+            r.rought_pcs = r.polish_pcs;
+          }
+        }
+
+        const itemAmount = Number(r.amount) || 0;
+        const itemCarat = Number(r.polish_carat) || 0;
+        const itemPcs = Number(r.polish_pcs) || 0;
+
+        iTotal += itemAmount;
+        iCarat += itemCarat;
+        if (itemPcs) iPcs += itemPcs;
+
+        r.date = new Date().toISOString().slice(0, 19).replace("T", " ");
+        r.inward_id = lid;
+        r.company = companyId;
+        r.purchase_pcs = r.polish_pcs ?? "";
+        r.purchase_carat = r.polish_carat ?? "0";
+        r.purchase_price = r.price ?? "0";
+        r.purchase_amount = r.amount ?? "0";
+        r.user = userid;
+
+        // Logic for group_type
+        let group = "";
+        const gtype = r.group_type;
+        const pc = Number(r.polish_pcs) || 0;
+        if (pc === 1 && (gtype === "box" || gtype === "parcel")) group = gtype;
+        else if (pc === 1 && (!gtype || gtype === "single")) group = "single";
+        else if (pc > 1) group = "box";
+        else group = "parcel";
+
+        if (SkuData && SkuData.group_type === "single") continue;
+
+        r.group_type = group;
+        r.inward = post.inward_type;
+        r.site_upload = 1;
+        r.rapnet_upload = 1;
+
+        const attr = r.attr || {};
+        delete r.attr;
+
+        // Clean extra fields that do not exist in dai_product
+        const extraFields = ["bgm", "package", "measurements", "certificate"];
+        extraFields.forEach((field) => delete r[field]);
+
+        if (!SkuData || Object.keys(SkuData).length === 0) {
+          r.visibility = 1;
+        } else {
+          r.visibility = 0;
+          r.parent_id = SkuData.id;
+          SkuData.child_count = (Number(SkuData.child_count) || 0) + 1;
+          r.sku = `${r.sku}-${SkuData.child_count}`;
+        }
+
+        skuArray.push(r.sku);
+
+        const rData = helper.insertString(r);
+        const pResult = await q(`INSERT INTO dai_product (${rData[0]}) VALUES (${rData[1]})`);
+        const pid = pResult.insertId;
+        iProducts.push(pid);
+        insertedItems.push({ id: pid, sku: r.sku });
+
+        attr.product_id = pid;
+        const attrData = helper.insertString(attr);
+        await q(`INSERT INTO dai_product_value (${attrData[0]}) VALUES (${attrData[1]})`);
+
+        const action =
+          post.inward_type === "purchase" ? post.inward_type : `in_${post.inward_type}`;
         try {
-        let iTotal = 0, iCarat = 0, iPcs = 0;
-        const iProducts = [];
-        const skuArray = [];
-
-        if (post.inward_type === "import") {
-          await new Promise((resolve, reject) => {
-            connection.query(
-              "INSERT INTO category (name, parent) VALUES (?, ?)",
-              [moment().format("DD-MM-YYYY"), 0],
-              (catErr) => (catErr ? reject(catErr) : resolve())
-            );
-          });
-        }
-
-        const promises = products.map(async (r) => {
-            if (!r.sku || !r.polish_carat || !r.price || !r.amount) return;
-
-            const SkuData = await productHelper.getDetail(r.sku, "p.sku");
-            iTotal += parseFloat(r.amount);
-            iCarat += parseFloat(r.polish_carat);
-            if (r.polish_pcs) iPcs += parseFloat(r.polish_pcs);
-
-            r.date = new Date().toISOString().slice(0, 19).replace("T", " ");
-            r.inward_id = lid;
-            r.company = companyId;
-            r.purchase_pcs = r.polish_pcs;
-            r.purchase_carat = r.polish_carat;
-            r.purchase_price = r.price;
-            r.purchase_amount = r.amount;
-            r.user = userid;
-
-            // Logic for group_type
-            let group = "";
-            const gtype = r.group_type;
-            const pc = parseFloat(r.polish_pcs);
-            if ((pc === 1) && (gtype === "box" || gtype === "parcel")) group = gtype;
-            else if ((pc === 1) && (!gtype || gtype === "single")) group = "single";
-            else if (pc > 1) group = "box";
-            else group = "parcel";
-
-            if (SkuData && SkuData.group_type === "single") return;
-
-            r.group_type = group;
-            r.inward = post.inward_type;
-            r.site_upload = 1;
-            r.rapnet_upload = 1;
-
-            const attr = r.attr || {};
-            delete r.attr;
-
-            // --- START FIX: CLEAN EXTRA FIELDS ---
-            // Remove fields that do not exist in dai_product table
-            const extraFields = ['bgm', 'package', 'measurements', 'certificate'];
-            extraFields.forEach(field => delete r[field]);
-            // --- END FIX ---
-
-            if (!SkuData || Object.keys(SkuData).length === 0) {
-              r.visibility = 1;
-            } else {
-              r.visibility = 0;
-              r.parent_id = SkuData.id;
-              SkuData.child_count = (SkuData.child_count || 0) + 1;
-              r.sku = `${r.sku}-${SkuData.child_count}`;
-            }
-
-            skuArray.push(r.sku);
-
-            const rData = helper.insertString(r);
-            const productSql = `INSERT INTO dai_product (${rData[0]}) VALUES (${rData[1]})`;
-
-            return new Promise((resolve, reject) => {
-              connection.query(productSql, (err, result) => {
-                if (err) return reject(err);
-
-                const pid = result.insertId;
-                iProducts.push(pid);
-                attr.product_id = pid;
-
-                logAudit({
-                  actionType: "CREATE",
-                  moduleName: "Diamond Stock",
-                  recordId: pid,
-                  recordReference: r.sku,
-                  newValue: { sku: r.sku, inward_id: lid },
-                  companyId,
-                }).catch(console.error);
-
-                const attrData = helper.insertString(attr);
-                const attrSql = `INSERT INTO dai_product_value (${attrData[0]}) VALUES (${attrData[1]})`;
-
-                connection.query(attrSql, async (err) => {
-                  if (err) return reject(err);
-
-                  const action =
-                    post.inward_type === "purchase" ? post.inward_type : `in_${post.inward_type}`;
-                  try {
-                    await helper.addHistory({
-                      product_id: pid,
-                      action,
-                      party: post.party || "",
-                      narretion: post.narretion || "",
-                      date: post.invoicedate,
-                      description: `New Stone ${post.inward_type} with reference no is ${post.reference}`,
-                      pcs: r.polish_pcs,
-                      carat: r.polish_carat,
-                      balance_pcs: r.polish_pcs,
-                      balance_carat: r.polish_carat,
-                      amount: r.amount,
-                      price: r.price,
-                      sku: r.sku,
-                      type: "cr",
-                      invoice: post.invoiceno || "",
-                      entry_from: "inward",
-                      entryno: lid,
-                      user: userid,
-                    });
-                  } catch (histErr) {
-                    console.error("inward/save addHistory:", histErr);
-                  }
-
-                  if (SkuData && (SkuData.group_type === "box" || SkuData.group_type === "parcel")) {
-                    const updateSkuSql = `UPDATE dai_product SET polish_pcs=polish_pcs+${parseFloat(r.purchase_pcs)}, polish_carat=polish_carat+${parseFloat(r.purchase_carat)}, child_count=${SkuData.child_count} WHERE id=${SkuData.id}`;
-                    connection.query(updateSkuSql, async (updErr) => {
-                      if (updErr) return reject(updErr);
-                      try {
-                        await helper.addHistory({
-                          product_id: SkuData.id,
-                          action: post.inward_type,
-                          party: post.party || "",
-                          narretion: post.narretion || "",
-                          date: post.invoicedate,
-                          description: `New Stone ${post.inward_type} with reference no is ${post.reference}`,
-                          pcs: r.polish_pcs,
-                          carat: r.polish_carat,
-                          amount: r.amount,
-                          price: r.price,
-                          sku: r.sku,
-                          type: "cr",
-                          invoice: post.invoiceno || "",
-                          entry_from: "inward",
-                          entryno: lid,
-                          user: userid,
-                        });
-                      } catch (histErr) {
-                        console.error("inward/save parent addHistory:", histErr);
-                      }
-                      resolve();
-                    });
-                  } else {
-                    resolve();
-                  }
-                });
-              });
-            });
-          });
-
-          await Promise.all(promises);
-
-        const finalUpdateSql = `UPDATE dai_inward SET products='${iProducts.join(",")}', due_amount=${iTotal}, final_amount=${iTotal}, carat=${iCarat}, pcs=${iPcs} WHERE id=${lid}`;
-
-        connection.query(finalUpdateSql, (finalErr) => {
-          if (finalErr) return res.status(201).json({ status: false, message: finalErr });
-
-          const track = {
-            product_id: iProducts.join(","),
-            action: post.inward_type,
-            date: new Date().toISOString().slice(0, 19).replace("T", " "),
-            description: `New Stone import with ${post.inward_type} sku: ${skuArray.join(",")}`,
+          const histPayload = {
+            product_id: pid,
+            action,
+            party: post.party || "",
+            narretion: post.narretion || "",
+            date: post.invoicedate,
+            description: `New Stone ${post.inward_type} with reference no is ${post.reference}`,
+            pcs: r.polish_pcs ?? "",
+            carat: Number(r.polish_carat) || 0,
+            balance_pcs: r.polish_pcs ?? "",
+            balance_carat: Number(r.polish_carat) || 0,
+            amount: Number(r.amount) || 0,
+            price: Number(r.price) || 0,
+            sku: r.sku,
+            type: "cr",
+            invoice: post.invoiceno || "",
+            entry_from: "inward",
+            entryno: lid,
             user: userid,
-            company: companyId,
           };
-
-          const trackData = helper.insertString(track);
-          const trackSql = `INSERT INTO user_track (${trackData[0]}) VALUES (${trackData[1]})`;
-
-          connection.query(trackSql, (trackErr) => {
-            if (trackErr) return res.status(201).json({ status: false, message: trackErr });
-            logAudit({
-              actionType: "STOCK_IN",
-              moduleName: "Inward",
-              recordId: lid,
-              recordReference: String(reference),
-              newValue: { inward_id: lid, products: iProducts, skus: skuArray },
-              companyId,
-            }).catch(console.error);
-            const typeLabel = getInwardTypeLabel(post.inward_type);
-            res.status(201).json({ status: true, message: `${typeLabel} created successfully.` });
-          });
-        });
-        } catch (innerErr) {
-          console.error("inward/save product loop:", innerErr);
-          return res.status(500).json({
-            status: false,
-            message: innerErr.sqlMessage || innerErr.message || "Failed to save inward products.",
-          });
+          const hData = helper.insertString(histPayload);
+          await q(`INSERT INTO dai_history (${hData[0]}) VALUES (${hData[1]})`);
+        } catch (histErr) {
+          console.error("inward/save addHistory error:", histErr);
         }
-      });
+
+        // Parameterized update for parent Box/Parcel
+        if (SkuData && (SkuData.group_type === "box" || SkuData.group_type === "parcel")) {
+          const addPcs = Number(r.purchase_pcs ?? r.polish_pcs) || 0;
+          const addCarat = Number(r.purchase_carat ?? r.polish_carat) || 0;
+          const childCount = Number(SkuData.child_count) || 0;
+
+          await q(
+            "UPDATE dai_product SET polish_pcs = polish_pcs + ?, polish_carat = polish_carat + ?, child_count = ? WHERE id = ?",
+            [addPcs, addCarat, childCount, SkuData.id]
+          );
+
+          try {
+            const parentHist = {
+              product_id: SkuData.id,
+              action: post.inward_type,
+              party: post.party || "",
+              narretion: post.narretion || "",
+              date: post.invoicedate,
+              description: `New Stone ${post.inward_type} with reference no is ${post.reference}`,
+              pcs: r.polish_pcs ?? "",
+              carat: Number(r.polish_carat) || 0,
+              amount: Number(r.amount) || 0,
+              price: Number(r.price) || 0,
+              sku: r.sku,
+              type: "cr",
+              invoice: post.invoiceno || "",
+              entry_from: "inward",
+              entryno: lid,
+              user: userid,
+            };
+            const phData = helper.insertString(parentHist);
+            await q(`INSERT INTO dai_history (${phData[0]}) VALUES (${phData[1]})`);
+          } catch (histErr) {
+            console.error("inward/save parent addHistory error:", histErr);
+          }
+        }
+      }
+
+      // Parameterized update for final inward summary
+      await q(
+        "UPDATE dai_inward SET products = ?, due_amount = ?, final_amount = ?, carat = ?, pcs = ? WHERE id = ?",
+        [iProducts.join(","), iTotal, iTotal, iCarat, iPcs, lid]
+      );
+
+      const track = {
+        product_id: iProducts.join(","),
+        action: post.inward_type,
+        date: new Date().toISOString().slice(0, 19).replace("T", " "),
+        description: `New Stone import with ${post.inward_type} sku: ${skuArray.join(",")}`,
+        user: userid,
+        company: companyId,
+      };
+      const trackData = helper.insertString(track);
+      await q(`INSERT INTO user_track (${trackData[0]}) VALUES (${trackData[1]})`);
+
+      return { lid, iProducts, skuArray, insertedItems };
     });
+
+    // Per-product CREATE audit log for each created diamond stock item (executed post-commit)
+    if (result.insertedItems && result.insertedItems.length > 0) {
+      for (const item of result.insertedItems) {
+        logAudit({
+          actionType: "CREATE",
+          moduleName: "Diamond Stock",
+          recordId: item.id,
+          recordReference: item.sku ? String(item.sku) : undefined,
+          newValue: { id: item.id, sku: item.sku, inward_id: result.lid },
+          companyId,
+        }).catch(console.error);
+      }
+    }
+
+    logAudit({
+      actionType: "STOCK_IN",
+      moduleName: "Inward",
+      recordId: result.lid,
+      recordReference: String(reference),
+      newValue: { inward_id: result.lid, products: result.iProducts, skus: result.skuArray },
+      companyId,
+    }).catch(console.error);
+
+    const typeLabel = getInwardTypeLabel(post.inward_type);
+    return res.status(200).json({ status: true, message: `${typeLabel} created successfully.` });
   } catch (error) {
-    res.status(500).json({ status: false, message: error.message });
+    console.error("inward/save error:", error);
+    return res.status(500).json({
+      status: false,
+      message: error.sqlMessage || error.message || "Failed to save inward transaction.",
+    });
   }
 });
 

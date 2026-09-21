@@ -92,9 +92,15 @@
   }
 
   .exportBtn {
-    background: var(--color-primary);
-    border-color: var(--color-primary);
+    background: var(--color-success) !important;
+    border-color: var(--color-success) !important;
+    color: #fff !important;
     border-radius: var(--radius-control);
+
+    &:hover {
+      background: color-mix(in srgb, var(--color-success) 88%, #000) !important;
+      border-color: color-mix(in srgb, var(--color-success) 88%, #000) !important;
+    }
   }
 }
 

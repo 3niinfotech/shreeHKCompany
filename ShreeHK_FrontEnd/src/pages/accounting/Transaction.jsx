@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { Select, DatePicker, Typography, Button } from 'antd';
 import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
 import {
@@ -24,23 +24,50 @@ const Transaction = () => {
     const [fromDate, setFromDate] = useState(null);
     const [toDate, setToDate] = useState(null);
     const [dataSource, setDataSource] = useState([]);
+    const [initialLoading, setInitialLoading] = useState(true);
 
     const { data: bookData } = useFetchApi('accBooks', ENDPOINTS.accountingTxn.books);
     const { data: companyData } = useFetchApi('GetCompany', ENDPOINTS.company.options);
-    const { mutate: fetchTxn, isLoading } = usePostApiRequest(ENDPOINTS.accountingTxn.list, 'accTransaction', { showToast: false });
+    const { mutate: fetchTxn, isPending: mutationLoading } = usePostApiRequest(ENDPOINTS.accountingTxn.list, 'accTransaction', { showToast: false });
 
-    const bookOptions = bookData?.Data || [];
+    const isTableLoading = initialLoading || mutationLoading;
+
+    const bookOptions = useMemo(() => {
+        const list = bookData?.Data || [];
+        return list.map((b) => {
+            if (b && typeof b === 'object' && b.value != null) {
+                return { value: String(b.value), label: String(b.label ?? b.value) };
+            }
+            const name = b?.name ?? String(b);
+            return { value: name, label: name };
+        });
+    }, [bookData]);
+
     const partyOptions = useMemo(() => {
         const list = companyData?.Data || [];
         return list.map((c) => ({ value: c.name, label: c.name }));
     }, [companyData]);
 
+    const partyNameById = useMemo(() => {
+        const map = new Map();
+        (companyData?.Data || []).forEach((c) => {
+            if (c?.id != null) map.set(String(c.id), c.name);
+            if (c?.name) map.set(String(c.name), c.name);
+        });
+        return map;
+    }, [companyData]);
+
+    const resolvePartyName = (val) => {
+        if (val == null || val === '') return '-';
+        return partyNameById.get(String(val)) || String(val);
+    };
+
     const columns = [
         { title: 'No', dataIndex: 'no', key: 'no', width: 50, align: 'center' },
         { title: 'Date', dataIndex: 'date', key: 'date', width: 100, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
-        { title: 'Account', dataIndex: 'account', key: 'account', width: 120 },
-        { title: 'Party', dataIndex: 'party', key: 'party', width: 130 },
-        { title: 'Other Party', dataIndex: 'otherParty', key: 'otherParty', width: 130 },
+        { title: 'Account', dataIndex: 'account', key: 'account', width: 100 },
+        { title: 'Party', dataIndex: 'party', key: 'party', width: 230, render: (v) => resolvePartyName(v) },
+        { title: 'Other Party', dataIndex: 'otherParty', key: 'otherParty', width: 230, render: (v) => resolvePartyName(v) },
         { title: 'Cheque', dataIndex: 'cheque', key: 'cheque', width: 100 },
         { title: 'Description', dataIndex: 'description', key: 'description', ellipsis: true },
         { title: 'Credit', dataIndex: 'credit', key: 'credit', width: 100, align: 'right', className: 'text-success' },
@@ -51,17 +78,29 @@ const Transaction = () => {
         },
     ];
 
-    const handleSearch = () => {
-        fetchTxn({
+    const handleSearch = useCallback((overrideFilters) => {
+        const isOverride = overrideFilters && typeof overrideFilters === 'object' && !overrideFilters.nativeEvent && !overrideFilters.target && !overrideFilters._reactName;
+        const filters = isOverride ? overrideFilters : {
             book: selectedBook || undefined,
             party: party || undefined,
             otherParty: otherParty || undefined,
             fromDate: fromDate ? dayjs(fromDate).format('DD-MM-YYYY') : undefined,
             toDate: toDate ? dayjs(toDate).format('DD-MM-YYYY') : undefined,
-        }, {
+        };
+
+        fetchTxn(filters, {
             onSuccess: (res) => setDataSource((res?.data || []).map((r, i) => ({ ...r, key: i }))),
+            onSettled: () => setInitialLoading(false),
         });
-    };
+    }, [fetchTxn, selectedBook, party, otherParty, fromDate, toDate]);
+
+    // Load default data on page mount
+    useEffect(() => {
+        fetchTxn({}, {
+            onSuccess: (res) => setDataSource((res?.data || []).map((r, i) => ({ ...r, key: i }))),
+            onSettled: () => setInitialLoading(false),
+        });
+    }, [fetchTxn]);
 
     const handleClearFilters = () => {
         setSelectedBook('');
@@ -69,6 +108,10 @@ const Transaction = () => {
         setOtherParty('');
         setFromDate(null);
         setToDate(null);
+        fetchTxn({}, {
+            onSuccess: (res) => setDataSource((res?.data || []).map((r, i) => ({ ...r, key: i }))),
+            onSettled: () => setInitialLoading(false),
+        });
     };
 
     const activeFilterCount = [
@@ -80,20 +123,19 @@ const Transaction = () => {
     ].filter(Boolean).length;
 
     const tableRef = useRef(null);
-    const tableHeight = useTableBodyScrollHeight(tableRef, [dataSource.length, isLoading]);
+    const tableHeight = useTableBodyScrollHeight(tableRef, [dataSource.length, isTableLoading]);
 
     return (
         <div className={styles.pageContainer}>
             <AdvancedFilterPanel
                 title="Filter Transactions"
-                subtitle="Select book, party, and date range to load account transactions."
-                activeCount={activeFilterCount}
+                subtitle=""
                 onClear={handleClearFilters}
                 clearDisabled={!activeFilterCount}
-                onSearch={handleSearch}
-                searchLoading={isLoading}
+                onSearch={() => handleSearch()}
+                searchLoading={isTableLoading}
                 extraActions={(
-                    <Button type="default" icon={<ReloadOutlined />} className={filterPanelStyles.btnClear} onClick={handleSearch} loading={isLoading}>
+                    <Button type="default" icon={<ReloadOutlined />} className={filterPanelStyles.btnClear} onClick={() => handleSearch()} loading={isTableLoading}>
                         Reload
                     </Button>
                 )}
@@ -105,11 +147,8 @@ const Transaction = () => {
                         className={filterPanelStyles.filterControl}
                         value={selectedBook || undefined}
                         onChange={(v) => setSelectedBook(v || '')}
-                    >
-                        {bookOptions.map((b) => (
-                            <Option key={b.value} value={b.value}>{b.label}</Option>
-                        ))}
-                    </Select>
+                        options={bookOptions}
+                    />
                 </FilterField>
 
                 <FilterField label="Party" icon={<TeamOutlined />}>
@@ -167,16 +206,16 @@ const Transaction = () => {
             </AdvancedFilterPanel>
 
             <div ref={tableRef} className={`${styles.tableWrap} erp-table-container`}>
-            <SkeletonAwareTable
-                dataSource={dataSource}
-                columns={columns}
-                loading={isLoading}
-                pagination={{ pageSize: 50 }}
-                bordered
-                size="small"
-                scroll={{ x: 'max-content', y: tableHeight }}
-                className={styles.customTable}
-            />
+                <SkeletonAwareTable
+                    dataSource={dataSource}
+                    columns={columns}
+                    loading={isTableLoading}
+                    pagination={{ pageSize: 50 }}
+                    bordered
+                    size="small"
+                    scroll={{ x: 'max-content', y: tableHeight }}
+                    className={styles.customTable}
+                />
             </div>
         </div>
     );

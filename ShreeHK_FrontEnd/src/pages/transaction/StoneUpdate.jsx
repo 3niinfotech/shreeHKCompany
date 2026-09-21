@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useLocation } from "react-router-dom";
 import { Form, Button, Divider, Row, Col, Empty, Input } from 'antd';
+import { useQueryClient } from '@tanstack/react-query';
 import { SearchOutlined } from '@ant-design/icons';
 import { Save, Box } from "lucide-react";
 import AIPriceSuggestBlock from '../../components/ai/AIPriceSuggestBlock';
@@ -27,6 +28,7 @@ const StoneUpdate = () => {
     const theme = useThemeColors();
     const [form] = Form.useForm();
     const { resetAll } = useFormHandleChange(initialFormData);
+    const queryClient = useQueryClient();
     const [searchValue, setSearchValue] = useState("");
     const [showForm, setShowForm] = useState(false);
 
@@ -96,7 +98,12 @@ const StoneUpdate = () => {
         if (!productId) return;
 
         const payload = mapFormToApi({ ...formValues, id: productId });
-        saveMutation.mutate(payload);
+        saveMutation.mutate(payload, {
+            onSuccess: () => {
+                queryClient.invalidateQueries({ queryKey: ['GetProductData'] });
+                queryClient.invalidateQueries({ queryKey: ['myInventorySummary'] });
+            },
+        });
     };
 
     useEffect(() => {

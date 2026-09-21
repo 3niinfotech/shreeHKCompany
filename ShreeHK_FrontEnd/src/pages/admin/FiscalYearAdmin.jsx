@@ -35,7 +35,8 @@ const FiscalYearAdmin = () => {
   );
   const { mutate: deleteYear, isPending: isDeleting } = useDeleteApiRequest(
     ENDPOINTS.portal.deleteYear,
-    "fiscalYears"
+    "fiscalYears",
+    { queryParam: "deleteId" }
   );
 
   const rows = data?.Data || [];

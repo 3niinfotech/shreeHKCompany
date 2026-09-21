@@ -8,14 +8,21 @@ const accSubgroupRouter = express.Router();
 accSubgroupRouter.use(express.json());
 
 accSubgroupRouter.get("/accounting/subgroup", authenticateToken, (req, res) => {
-  connection.query("SELECT * FROM acc_subgroup ORDER BY name", (err, data) => {
+  const sql = `
+    SELECT s.id, s.name, s.under, g.name AS under_name
+    FROM acc_subgroup s
+    LEFT JOIN acc_group g ON (s.under = g.id OR s.under = g.name)
+    ORDER BY s.name
+  `;
+  connection.query(sql, (err, data) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ TotalItems: data.length, Data: data });
   });
 });
 
 accSubgroupRouter.post("/accounting/subgroup/save", authenticateToken, async (req, res) => {
-  const { id, name, group_id } = req.body;
+  const { id, name } = req.body;
+  const under = req.body.under !== undefined ? req.body.under : (req.body.group_id !== undefined ? req.body.group_id : null);
   if (!name) return res.status(400).json({ error: "name required" });
 
   try {
@@ -27,10 +34,9 @@ accSubgroupRouter.post("/accounting/subgroup/save", authenticateToken, async (re
       }
 
       if (id) {
-        // await q("UPDATE acc_subgroup SET name = ?, group_id = ? WHERE id = ?", [
-        await q("UPDATE acc_subgroup SET name = ? WHERE id = ?", [
+        await q("UPDATE acc_subgroup SET name = ?, `under` = ? WHERE id = ?", [
           name,
-          group_id || null,
+          under,
           id,
         ]);
         const newRows = await q("SELECT * FROM acc_subgroup WHERE id=?", [id]);
@@ -43,10 +49,9 @@ accSubgroupRouter.post("/accounting/subgroup/save", authenticateToken, async (re
           newValue: newRows[0],
         });
       } else {
-        // const result = await q("INSERT INTO acc_subgroup (name, group_id) VALUES (?, ?)", [
-        const result = await q("INSERT INTO acc_subgroup (name) VALUES (?, ?)", [
+        const result = await q("INSERT INTO acc_subgroup (name, `under`) VALUES (?, ?)", [
           name,
-          group_id || null,
+          under,
         ]);
         const newRows = await q("SELECT * FROM acc_subgroup WHERE id=?", [result.insertId]);
         await logAuditInTx(q, {

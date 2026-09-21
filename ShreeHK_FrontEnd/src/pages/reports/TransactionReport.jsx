@@ -15,6 +15,8 @@ import { exportReportToExcel } from '../../utils/reportExcelExport';
 import styles from '../../assets/scss/pages/report/TransactionReport.module.scss';
 import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
 import { SkuLink } from '../../hooks/useSkuModalAction';
+import useAiSalesReport from '../../components/ai/useAiSalesReport';
+import AIResultPanel from '../../components/ai/AIResultPanel';
 
 const { Text } = Typography;
 const SALE_STATUS_OPTIONS = [
@@ -141,6 +143,7 @@ const TransactionReport = () => {
         error: aiReportError,
         panelOpen: aiPanelOpen,
         setPanelOpen: setAiPanelOpen,
+        runSalesReport,
     } = useAiSalesReport();
 
     const handleSearch = () => {

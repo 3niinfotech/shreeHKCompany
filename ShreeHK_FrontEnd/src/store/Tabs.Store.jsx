@@ -23,8 +23,13 @@ const useTabsStore = create(
         set((state) => {
           const existing = state.tabs.find((t) => t.path === path);
           if (existing) {
-            if (state.activeKey === existing.key) return state;
-            return { activeKey: existing.key };
+            const hasNewValidLabel = Boolean(tab.label && tab.label !== existing.label);
+            const updatedTabs = hasNewValidLabel
+              ? state.tabs.map((t) => (t.path === path ? { ...t, label: tab.label } : t))
+              : state.tabs;
+
+            if (state.activeKey === existing.key && !hasNewValidLabel) return state;
+            return { tabs: updatedTabs, activeKey: existing.key };
           }
 
           const key = tab.key ?? path;

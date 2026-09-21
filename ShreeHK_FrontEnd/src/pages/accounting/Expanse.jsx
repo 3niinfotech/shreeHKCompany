@@ -23,6 +23,7 @@ const ExpensePayment = () => {
     const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
 
     const { data: companyData, refetch: refetchCompanyOptions } = useFetchApi('GetCompany', ENDPOINTS.company.options);
+    const { data: bookData } = useFetchApi('accBooks', ENDPOINTS.accountingTxn.books);
     const { data: expanseData, refetch } = useFetchApi('expanseData', ENDPOINTS.expanse.list, { limit: 100, offset: 0 });
     const { mutate: createExpense, isLoading: isSubmitting } = usePostApiRequest(ENDPOINTS.expanse.payment, 'expanseData');
     const { mutate: saveCompanyMutation, isLoading: isCompanySaving } = usePostApiRequest(ENDPOINTS.company.save, 'companies');
@@ -31,6 +32,17 @@ const ExpensePayment = () => {
         if (!companyData?.Data) return [];
         return companyData.Data.map((item) => ({ label: item.name, value: item.id }));
     }, [companyData]);
+
+    const bookOptions = useMemo(() => {
+        const list = bookData?.Data || [];
+        return list.map((b) => {
+            if (b && typeof b === 'object' && b.value != null) {
+                return { value: String(b.value), label: String(b.label ?? b.value) };
+            }
+            const name = b?.name ?? String(b);
+            return { value: name, label: name };
+        });
+    }, [bookData]);
 
     const updatedFields = useMemo(() => {
         return expenseFields.map((field) => {
@@ -42,12 +54,11 @@ const ExpensePayment = () => {
                 return { ...compact, type: 'select', options: [{ label: 'Dr', value: 'dr' }, { label: 'Cr', value: 'cr' }] };
             }
             if (field.name === 'booktype') {
-                const bookValues = [1, 2, 3, 45, 11, 22, 33, 45, 85, 48];
-                return { ...compact, type: 'select', options: bookValues.map((n) => ({ label: `Book ${n}`, value: n.toString() })) };
+                return { ...compact, type: 'select', options: bookOptions, placeholder: 'Select book' };
             }
             return compact;
         });
-    }, [companyOptions]);
+    }, [companyOptions, bookOptions]);
 
     const partyFields = useMemo(
         () => updatedFields.filter((f) => ['name', 'otherpartyname'].includes(f.name)),

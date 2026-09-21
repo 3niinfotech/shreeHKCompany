@@ -38,7 +38,7 @@ export const usePostApiRequest = (url, successKey, options = {}) => {
     const { showToast = true } = options;
     const queryClient = useQueryClient();
 
-    return useMutation({
+    const mutation = useMutation({
         mutationFn: async (payload) => {
             const res = await api.post(url, payload);
             return res.data;
@@ -46,7 +46,6 @@ export const usePostApiRequest = (url, successKey, options = {}) => {
         onSuccess: (data) => {
             if (successKey) {
                 queryClient.invalidateQueries({ queryKey: [successKey] });
-                queryClient.refetchQueries({ queryKey: [successKey], type: "active" });
             }
             if (showToast) {
                 if (data?.status === false) toastApiError({ response: { data } });
@@ -57,6 +56,11 @@ export const usePostApiRequest = (url, successKey, options = {}) => {
             if (showToast) toastApiError(error);
         }
     });
+
+    return {
+        ...mutation,
+        isLoading: mutation.isPending,
+    };
 };
 
 /**
@@ -69,7 +73,7 @@ export const usePutApiRequest = (url, successKey, options = {}) => {
     const { showToast = true } = options;
     const queryClient = useQueryClient();
 
-    return useMutation({
+    const mutation = useMutation({
         mutationFn: async ({ id, payload }) => {
             const res = await api.put(`${url}/${id}`, payload);
             return res.data;
@@ -77,7 +81,6 @@ export const usePutApiRequest = (url, successKey, options = {}) => {
         onSuccess: (data) => {
             if (successKey) {
                 queryClient.invalidateQueries({ queryKey: [successKey] });
-                queryClient.refetchQueries({ queryKey: [successKey], type: "active" });
             }
             if (showToast) {
                 if (data?.status === false) toastApiError({ response: { data } });
@@ -88,6 +91,11 @@ export const usePutApiRequest = (url, successKey, options = {}) => {
             if (showToast) toastApiError(error);
         }
     });
+
+    return {
+        ...mutation,
+        isLoading: mutation.isPending,
+    };
 };
 
 /**
@@ -97,25 +105,32 @@ export const usePutApiRequest = (url, successKey, options = {}) => {
  * @param {{ showToast?: boolean }} options
  */
 export const useDeleteApiRequest = (url, successKey, options = {}) => {
-    const { showToast = true } = options;
+    const { showToast = true, queryParam } = options;
     const queryClient = useQueryClient();
 
-    return useMutation({
+    const mutation = useMutation({
         mutationFn: async (id) => {
-            const res = await api.delete(url, {
-                params: { deleteId: id }
-            });
+            const res = queryParam
+                ? await api.delete(url, { params: { [queryParam]: id } })
+                : await api.delete(`${url}/${id}`);
             return res.data;
         },
         onSuccess: (data) => {
             if (successKey) {
                 queryClient.invalidateQueries({ queryKey: [successKey] });
-                queryClient.refetchQueries({ queryKey: [successKey], type: "active" });
             }
-            if (showToast) toastDeleted(data);
+            if (showToast) {
+                if (data?.status === false) toastApiError({ response: { data } });
+                else toastDeleted(data?.message || 'Record deleted successfully');
+            }
         },
         onError: (error) => {
             if (showToast) toastApiError(error);
         }
     });
+
+    return {
+        ...mutation,
+        isLoading: mutation.isPending,
+    };
 };

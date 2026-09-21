@@ -10,6 +10,7 @@ import useInventoryList from "../../hooks/useInventoryList";
 import { mapInventoryRowCamel } from "../../utils/inventoryApiFilters";
 import { singleStoneColumns } from "./inventoryBoxParcelColumns.jsx";
 import AddDiamondToBoxModal from "./AddDiamondToBoxModal";
+import { useQueryClient } from "@tanstack/react-query";
 import { useFetchApi } from "../../api/ApiFunction";
 import { ENDPOINTS } from "../../constants/endpoints";
 import { addStonesToParcel } from "../../api/services/productService";
@@ -24,6 +25,7 @@ const SingleToParcel = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [saving, setSaving] = useState(false);
+  const queryClient = useQueryClient();
 
   const {
     tableData,
@@ -73,6 +75,9 @@ const SingleToParcel = () => {
         toastApiSuccess(res);
         setIsModalOpen(false);
         setSelectedRowKeys([]);
+        queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
+        queryClient.invalidateQueries({ queryKey: ["myInventorySummary"] });
+        queryClient.invalidateQueries({ queryKey: ["ParcelOptions"] });
         refresh();
       } else {
         toastApiError({ response: { data: res } });

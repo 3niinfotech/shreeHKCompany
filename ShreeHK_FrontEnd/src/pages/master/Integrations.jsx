@@ -25,7 +25,7 @@ const Integrations = () => {
     try {
       let rawData = [];
       try {
-        const res = await api.get(ENDPOINTS.inventory.list, { params: { limit: 500 } });
+        const res = await api.get(ENDPOINTS.product.inventory, { params: { limit: 500 } });
         rawData = res.data?.Data || res.data?.data || res.data || [];
       } catch (e) {
         rawData = [];

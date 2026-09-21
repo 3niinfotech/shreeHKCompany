@@ -124,7 +124,7 @@ const ActivityLogFlatTable = ({
             <div className={styles.whenCell}>
               <span>{formatActivityDate(val)}</span>
               <span className={styles.whenTime}>{formatActivityTime(val)}</span>
-              <span className={styles.whenRelative}>{formatActivityRelativeTime(val)}</span>
+              {/* <span className={styles.whenRelative}>{formatActivityRelativeTime(val)}</span> */}
             </div>
           </Tooltip>
         ) : "—"

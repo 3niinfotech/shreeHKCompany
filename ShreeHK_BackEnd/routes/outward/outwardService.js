@@ -110,6 +110,9 @@ async function insertOutwardRow(q, post, productsCsv) {
 }
 
 function withTransaction(callback) {
+  const { auditStorage, getAuditContext } = require("../../middleware/auditContext.js");
+  const ctx = getAuditContext();
+
   return new Promise((resolve, reject) => {
     connection.getConnection((err, conn) => {
       if (err) return reject(err);
@@ -117,7 +120,8 @@ function withTransaction(callback) {
         new Promise((res, rej) => {
           conn.query(sql, values, (e, r) => (e ? rej(e) : res(r)));
         });
-      (async () => {
+
+      const executeInTransaction = async () => {
         try {
           await q("START TRANSACTION");
           const result = await callback(q);
@@ -133,7 +137,13 @@ function withTransaction(callback) {
         } finally {
           conn.release();
         }
-      })();
+      };
+
+      if (ctx) {
+        auditStorage.run(ctx, executeInTransaction);
+      } else {
+        executeInTransaction();
+      }
     });
   });
 }

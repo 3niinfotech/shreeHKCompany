@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { Select, DatePicker, Typography, Button } from 'antd';
 import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
 import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
@@ -9,7 +9,7 @@ import { ENDPOINTS } from '../../constants/endpoints';
 import AdvancedFilterPanel, { FilterField, filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
 import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
 import ExportExcelButton from '../../components/common/ExportExcelButton';
-import { exportReportToExcel } from '../../utils/reportExcelExport';
+import { exportPartyReportToExcel } from '../../utils/reportExcelExport';
 import styles from '../../assets/scss/pages/accountings/transaction.module.scss';
 
 const { Text } = Typography;
@@ -34,10 +34,14 @@ const AccPartyReport = () => {
   const [toDate, setToDate] = useState(null);
   const [dataSource, setDataSource] = useState([]);
   const [exporting, setExporting] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   const { data: bookData } = useFetchApi('accBooks', ENDPOINTS.accountingTxn.books);
   const { data: partyData } = useFetchApi('accPartyList', ENDPOINTS.partyWise.list, { limit: 500, offset: 0 });
-  const { mutate: fetchTxn, isLoading } = usePostApiRequest(ENDPOINTS.accountingTxn.list, 'accPartyReport', { showToast: false });
+  const { data: companyData } = useFetchApi('GetCompany', ENDPOINTS.company.options);
+  const { mutate: fetchTxn, isPending: mutationLoading } = usePostApiRequest(ENDPOINTS.accountingTxn.list, 'accPartyReport', { showToast: false });
+
+  const isTableLoading = initialLoading || mutationLoading;
 
   const bookOptions = useMemo(() => {
     const list = bookData?.Data || [];
@@ -49,10 +53,29 @@ const AccPartyReport = () => {
       return { value: name, label: name };
     });
   }, [bookData]);
+
   const partyOptions = useMemo(() => {
     const list = partyData?.Data || [];
     return list.map((p) => ({ value: String(p.id), label: p.name }));
   }, [partyData]);
+
+  const partyNameById = useMemo(() => {
+    const map = new Map();
+    (partyData?.Data || []).forEach((p) => {
+      if (p?.id != null) map.set(String(p.id), p.name);
+      if (p?.name) map.set(String(p.name), p.name);
+    });
+    (companyData?.Data || []).forEach((c) => {
+      if (c?.id != null) map.set(String(c.id), c.name);
+      if (c?.name) map.set(String(c.name), c.name);
+    });
+    return map;
+  }, [partyData, companyData]);
+
+  const resolvePartyName = (val) => {
+    if (val == null || val === '') return '-';
+    return partyNameById.get(String(val)) || String(val);
+  };
 
   const selectedPartyName = useMemo(
     () => partyOptions.find((p) => p.value === partyId)?.label || '',
@@ -62,10 +85,10 @@ const AccPartyReport = () => {
   const columns = [
     { title: 'No', dataIndex: 'no', key: 'no', width: 50, align: 'center' },
     { title: 'Date', dataIndex: 'date', key: 'date', width: 100, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
-    { title: 'Account', dataIndex: 'account', key: 'account', width: 120 },
-    { title: 'Party', dataIndex: 'party', key: 'party', width: 130 },
-    { title: 'Other Party', dataIndex: 'otherParty', key: 'otherParty', width: 130 },
-    { title: 'Cheque', dataIndex: 'cheque', key: 'cheque', width: 100 },
+    { title: 'Account', dataIndex: 'account', key: 'account', width: 90 },
+    { title: 'Party', dataIndex: 'party', key: 'party', width: 260, render: (v) => resolvePartyName(v) },
+    { title: 'Other Party', dataIndex: 'otherParty', key: 'otherParty', width: 260, render: (v) => resolvePartyName(v) },
+    { title: 'Cheque', dataIndex: 'cheque', key: 'cheque', width: 150 },
     { title: 'Description', dataIndex: 'description', key: 'description', ellipsis: true },
     { title: 'Credit', dataIndex: 'credit', key: 'credit', width: 100, align: 'right' },
     { title: 'Debit', dataIndex: 'debit', key: 'debit', width: 100, align: 'right' },
@@ -75,16 +98,29 @@ const AccPartyReport = () => {
     },
   ];
 
-  const handleSearch = () => {
-    fetchTxn({
+  const handleSearch = useCallback((overrideFilters) => {
+    const isOverride = overrideFilters && typeof overrideFilters === 'object' && !overrideFilters.nativeEvent && !overrideFilters.target && !overrideFilters._reactName;
+    const filters = isOverride ? overrideFilters : {
       book: selectedBook || undefined,
       party: selectedPartyName || undefined,
+      partyId: partyId || undefined,
       fromDate: fromDate ? dayjs(fromDate).format('DD-MM-YYYY') : undefined,
       toDate: toDate ? dayjs(toDate).format('DD-MM-YYYY') : undefined,
-    }, {
+    };
+
+    fetchTxn(filters, {
       onSuccess: (res) => setDataSource((res?.data || []).map((r, i) => ({ ...r, key: i }))),
+      onSettled: () => setInitialLoading(false),
     });
-  };
+  }, [fetchTxn, selectedBook, selectedPartyName, partyId, fromDate, toDate]);
+
+  // Load default data on page mount
+  useEffect(() => {
+    fetchTxn({}, {
+      onSuccess: (res) => setDataSource((res?.data || []).map((r, i) => ({ ...r, key: i }))),
+      onSettled: () => setInitialLoading(false),
+    });
+  }, [fetchTxn]);
 
   const handleExport = async () => {
     if (!dataSource.length) {
@@ -93,10 +129,22 @@ const AccPartyReport = () => {
     }
     setExporting(true);
     try {
-      await exportReportToExcel({
-        headers: EXPORT_HEADERS,
-        rows: dataSource,
-        fileName: 'accounting_party_report',
+      const titleParts = [selectedPartyName, selectedBook].filter(Boolean);
+      const title = titleParts.length > 0 ? `${titleParts.join(' ')} Report` : 'Party Report';
+      const fileName = titleParts.length > 0
+        ? `${titleParts.join('_').replace(/[^a-zA-Z0-9_-]/g, '_')}_Report`
+        : 'Party_Report';
+
+      const exportRows = dataSource.map((r) => ({
+        ...r,
+        party: resolvePartyName(r.party),
+        otherParty: resolvePartyName(r.otherParty),
+      }));
+
+      await exportPartyReportToExcel({
+        rows: exportRows,
+        title,
+        fileName,
         sheetName: 'Party Report',
       });
       toastSuccess('Exported to Excel');
@@ -112,36 +160,28 @@ const AccPartyReport = () => {
     setPartyId('');
     setFromDate(null);
     setToDate(null);
+    fetchTxn({}, {
+      onSuccess: (res) => setDataSource((res?.data || []).map((r, i) => ({ ...r, key: i }))),
+    });
   };
 
   const activeFilterCount = [selectedBook, partyId, fromDate, toDate].filter(Boolean).length;
   const tableRef = useRef(null);
-  const tableHeight = useTableBodyScrollHeight(tableRef, [dataSource.length, isLoading]);
+  const tableHeight = useTableBodyScrollHeight(tableRef, [dataSource.length, isTableLoading]);
 
   return (
     <div className={styles.pageContainer}>
-      {/* <PageHeroHeader
-          breadcrumb="ACCOUNTING / REPORTS"
-          title="Accounting Party Report"
-          icon={<TeamOutlined />}
-          actions={(
-            <Button type="primary" icon={<FileUp size={16} />} loading={exporting} onClick={handleExport} disabled={!dataSource.length}>
-              Export to Excel
-            </Button>
-          )}
-        /> */}
-
       <AdvancedFilterPanel
         title="Filter Party Report"
         subtitle="Select accounting party (dai_party), book, and date range."
         activeCount={activeFilterCount}
         onClear={handleClearFilters}
         clearDisabled={!activeFilterCount}
-        onSearch={handleSearch}
-        searchLoading={isLoading}
+        onSearch={() => handleSearch()}
+        searchLoading={isTableLoading}
         extraActions={(
           <>
-            <Button type="default" icon={<ReloadOutlined />} className={filterPanelStyles.btnClear} onClick={handleSearch} loading={isLoading}>
+            <Button type="default" icon={<ReloadOutlined />} className={filterPanelStyles.btnClear} onClick={() => handleSearch()} loading={isTableLoading}>
               Reload
             </Button>
             <ExportExcelButton
@@ -197,7 +237,7 @@ const AccPartyReport = () => {
         <SkeletonAwareTable
           columns={columns}
           dataSource={dataSource}
-          loading={isLoading}
+          loading={isTableLoading}
           scroll={{ x: 1100, y: tableHeight }}
           pagination={{ pageSize: 50, showSizeChanger: true }}
           size="small"
