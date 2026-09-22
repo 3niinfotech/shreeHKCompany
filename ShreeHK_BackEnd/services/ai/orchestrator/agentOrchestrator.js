@@ -127,6 +127,17 @@ CRITICAL ZERO HALLUCINATION RULES:
    "\n\n*— Source: Live MySQL query executed via ${toolName}*"
 `;
     finalUserPrompt = `User question: "${message}"\nLive Database Query Output:\n${realDataStr}`;
+  } else if (toolExecutionResult && !toolExecutionResult.success) {
+    finalSystemPrompt = `
+You are the ShreeHK Diamond ERP Intelligent Assistant.
+A live query was attempted via [${toolName}], but was denied or encountered an error:
+"${toolExecutionResult.error}"
+
+CRITICAL INSTRUCTIONS:
+1. Inform the user clearly and politely in Hinglish/English that access was denied or cannot be retrieved due to permission restrictions.
+2. Under NO circumstances fabricate or hallucinate any diamond, customer, party, or financial values.
+`;
+    finalUserPrompt = `User question: "${message}"\nTool Error: ${toolExecutionResult.error}`;
   } else {
     // Fallback: Default brain context or direct generation
     const { systemPrompt, userPrompt } = buildAgentPrompt({

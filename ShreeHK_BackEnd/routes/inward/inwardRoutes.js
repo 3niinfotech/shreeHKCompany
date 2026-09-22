@@ -628,7 +628,10 @@ inwardRouter.get("/inward/", authenticateToken, (req, res) => {
   }
 
   try {
-    const query = `SELECT * FROM dai_inward WHERE id = ? AND (deleted = 0 OR deleted IS NULL)`;
+    const query = `SELECT i.*, p.name AS party_name, p.address AS party_address, p.pincode AS party_pincode, p.country AS party_country, p.contact_number AS party_contact, p.fax AS party_fax, p.contact_person
+      FROM dai_inward i
+      LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party = p.id OR i.party = p.name)
+      WHERE i.id = ? AND (i.deleted = 0 OR i.deleted IS NULL)`;
 
     connection.query(query, [id], (error, data) => {
       if (error) {

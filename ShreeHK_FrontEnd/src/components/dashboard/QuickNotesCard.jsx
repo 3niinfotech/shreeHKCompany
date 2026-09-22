@@ -206,7 +206,7 @@ const QuickNotesCard = () => {
   const pendingCount = notes.filter((n) => !n.completed).length;
 
   return (
-    <Card bordered={false} id="quick-notes-section" className="dashboard-card dashboard-card--luxury quick-notes-card dashboard-fill-card">
+    <Card variant="borderless" id="quick-notes-section" className="dashboard-card dashboard-card--luxury quick-notes-card dashboard-fill-card">
       <div className="card-header">
         <div className="card-title-group">
           <span className="card-icon-badge card-icon-badge--primary">

@@ -223,6 +223,14 @@ function buildPurchasePage(data) {
   const avgPrice = totalCarat > 0 ? totalAmount / totalCarat : 0;
 
   const party = data.party || {};
+  const partyName = party.name || party.party_name || party.p_name || data.party_name || (typeof data.party === "string" ? data.party : "") || "—";
+  const partyAddress = party.address || party.party_address || party.p_address || data.party_address || data.address || "";
+  const partyPincode = party.pincode || party.party_pincode || party.p_pincode || data.party_pincode || data.pincode || "";
+  const partyCountry = party.country || party.party_country || party.p_country || data.party_country || data.country || "";
+  const partyContactPerson = party.contactPerson || party.contact_person || party.p_contact_person || data.contact_person || "";
+  const partyContact = party.contact || party.party_contact || party.contact_number || party.p_contact || party.phone || party.tel || data.party_contact || data.contact_number || "";
+  const partyFax = party.fax || party.party_fax || party.p_fax || data.party_fax || data.fax || "";
+
   const date = fmtDate(data.date);
   const ref = escapeHtml(data.reference || "");
   const invNo = escapeHtml(data.invoiceNo || "");
@@ -267,14 +275,14 @@ function buildPurchasePage(data) {
     <table cellspacing="0" style="width:100%;text-align:left;font-size:12px;">
       <tr>
         <td style="width:60%;text-align:left;">
-          <p style="margin:0 0 2px;padding-bottom:2px;color:${VENYA_BLUE}"><b>From. ${escapeHtml(party.name || "—")}</b></p>
-          ${party.address ? `<p style="margin:0 0 2px;padding-bottom:2px;">${escapeHtml(party.address)},</p>` : ""}
-          <p style="margin:0 0 2px;padding-bottom:2px;">${party.pincode ? `${escapeHtml(party.pincode)}, ` : ""}${escapeHtml(party.country || "")}</p>
-          ${party.contactPerson ? `<p style="margin:0 0 2px;padding-bottom:2px;">${escapeHtml(party.contactPerson)}</p>` : ""}
-          <p style="margin:0 0 2px;">
-            ${party.contact ? `<b style="color:${VENYA_PINK}">Tel:</b> ${escapeHtml(party.contact)} &nbsp;&nbsp;` : ""}
-            ${party.fax ? `<b style="color:${VENYA_PINK}">Fax:</b> ${escapeHtml(party.fax)}` : ""}
-          </p>
+          <p style="margin:0 0 2px;padding-bottom:2px;color:${VENYA_BLUE}"><b>From. ${escapeHtml(partyName)}</b></p>
+          ${partyAddress ? `<p style="margin:0 0 2px;padding-bottom:2px;">${escapeHtml(partyAddress)},</p>` : ""}
+          ${partyPincode || partyCountry ? `<p style="margin:0 0 2px;padding-bottom:2px;">${partyPincode ? `${escapeHtml(partyPincode)}, ` : ""}${escapeHtml(partyCountry)}</p>` : ""}
+          ${partyContactPerson ? `<p style="margin:0 0 2px;padding-bottom:2px;">${escapeHtml(partyContactPerson)}</p>` : ""}
+          ${partyContact || partyFax ? `<p style="margin:0 0 2px;">
+            ${partyContact ? `<b style="color:${VENYA_PINK}">Tel:</b> ${escapeHtml(partyContact)} &nbsp;&nbsp;` : ""}
+            ${partyFax ? `<b style="color:${VENYA_PINK}">Fax:</b> ${escapeHtml(partyFax)}` : ""}
+          </p>` : ""}
         </td>
         <td style="width:10%;"></td>
         <td style="width:30%;text-align:left;font-size:13px;">
@@ -370,16 +378,23 @@ function buildLogoCell(company = {}) {
 function buildPartyBlock(party = {}, variant = "invoice") {
   const prefix = variant === "purchase" ? "From." : "To.";
   const nameStyle = variant === "memo" ? `color:${VENYA_PINK}` : `color:${VENYA_BLUE}`;
+  const name = party.name || party.party_name || party.p_name || (typeof party === "string" ? party : "") || "—";
+  const address = party.address || party.party_address || party.p_address || "";
+  const pincode = party.pincode || party.party_pincode || party.p_pincode || "";
+  const country = party.country || party.party_country || party.p_country || "";
+  const contactPerson = party.contactPerson || party.contact_person || party.p_contact_person || "";
+  const contact = party.contact || party.party_contact || party.contact_number || party.p_contact || party.phone || party.tel || "";
+  const fax = party.fax || party.party_fax || party.p_fax || "";
 
   return `<td style="width:60%;text-align:left;">
-    <p style="margin:0 0 2px;padding-bottom:2px;${nameStyle}"><b>${prefix} ${escapeHtml(party.name || "—")}</b></p>
-    ${party.address ? `<p style="margin:0 0 2px;padding-bottom:2px;">${escapeHtml(party.address)},</p>` : ""}
-    <p style="margin:0 0 2px;padding-bottom:2px;">${party.pincode ? `${escapeHtml(party.pincode)}, ` : ""}${escapeHtml(party.country || "")}</p>
-    ${party.contactPerson ? `<p style="margin:0 0 2px;padding-bottom:2px;">${escapeHtml(party.contactPerson)}</p>` : ""}
-    <p style="margin:0 0 2px;">
-      ${party.contact ? `<b style="color:${VENYA_PINK}">Tel:</b> ${escapeHtml(party.contact)} &nbsp;&nbsp;` : ""}
-      ${party.fax ? `<b style="color:${VENYA_PINK}">Fax:</b> ${escapeHtml(party.fax)}` : ""}
-    </p>
+    <p style="margin:0 0 2px;padding-bottom:2px;${nameStyle}"><b>${prefix} ${escapeHtml(name)}</b></p>
+    ${address ? `<p style="margin:0 0 2px;padding-bottom:2px;">${escapeHtml(address)},</p>` : ""}
+    ${pincode || country ? `<p style="margin:0 0 2px;padding-bottom:2px;">${pincode ? `${escapeHtml(pincode)}, ` : ""}${escapeHtml(country)}</p>` : ""}
+    ${contactPerson ? `<p style="margin:0 0 2px;padding-bottom:2px;">${escapeHtml(contactPerson)}</p>` : ""}
+    ${contact || fax ? `<p style="margin:0 0 2px;">
+      ${contact ? `<b style="color:${VENYA_PINK}">Tel:</b> ${escapeHtml(contact)} &nbsp;&nbsp;` : ""}
+      ${fax ? `<b style="color:${VENYA_PINK}">Fax:</b> ${escapeHtml(fax)}` : ""}
+    </p>` : ""}
   </td>`;
 }
 

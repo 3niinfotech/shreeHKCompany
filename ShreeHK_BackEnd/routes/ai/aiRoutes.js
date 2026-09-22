@@ -64,7 +64,8 @@ const handleAiError = (res, err) => {
 
 aiRouter.post("/stock-alert", authenticateToken, async (req, res) => {
   try {
-    const inventory = await aiData.getStockAlertContext();
+    const companyId = req.user?.companyId || req.companyId;
+    const inventory = await aiData.getStockAlertContext(companyId);
     const systemPrompt =
       "Diamond inventory expert for Shreehk ERP. Natural Hinglish. Analyze data and give low-stock alerts + reorder tips. Conversational, not robotic.";
     const userPrompt = `Inventory data: ${JSON.stringify(inventory)}. Low stock alerts aur reorder suggestions do.`;
@@ -90,9 +91,10 @@ aiRouter.post("/price-suggest", authenticateToken, async (req, res) => {
 
 aiRouter.post("/sales-report", authenticateToken, async (req, res) => {
   try {
+    const companyId = req.user?.companyId || req.companyId;
     let salesData = req.body?.salesData;
     if (!salesData || (Array.isArray(salesData) && salesData.length === 0)) {
-      salesData = await aiData.getSalesLast30Days();
+      salesData = await aiData.getSalesLast30Days(companyId);
     }
     const systemPrompt =
       "Tu ek business analyst hai diamond industry ka. Natural Hinglish report likho.";
@@ -106,12 +108,13 @@ aiRouter.post("/sales-report", authenticateToken, async (req, res) => {
 
 aiRouter.post("/customer-insight", authenticateToken, async (req, res) => {
   try {
+    const companyId = req.user?.companyId || req.companyId;
     const { customerId, purchaseHistory, preferences } = req.body || {};
     let historyPayload = purchaseHistory;
     let partyInfo = null;
 
     if (customerId) {
-      const loaded = await aiData.getPartyPurchaseHistory(customerId);
+      const loaded = await aiData.getPartyPurchaseHistory(customerId, companyId);
       partyInfo = loaded.party;
       if (!historyPayload || (Array.isArray(historyPayload) && historyPayload.length === 0)) {
         historyPayload = loaded.sales;
@@ -148,8 +151,9 @@ aiRouter.post("/chat", authenticateToken, async (req, res) => {
 
 aiRouter.post("/barcode-lookup", authenticateToken, async (req, res) => {
   try {
+    const companyId = req.user?.companyId || req.companyId;
     const { barcodeData } = req.body || {};
-    const dbMatches = await aiData.lookupProductByBarcode(barcodeData);
+    const dbMatches = await aiData.lookupProductByBarcode(barcodeData, companyId);
 
     const systemPrompt =
       "Diamond inventory barcode expert. Natural Hinglish. Explain best match from database results clearly.";

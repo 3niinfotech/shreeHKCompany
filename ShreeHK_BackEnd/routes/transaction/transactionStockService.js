@@ -257,7 +257,7 @@ async function listGia(post, userContext = {}) {
   );
   const rows = await query(
     `SELECT o.*, ${PARTY_FIELDS} FROM dai_outward o
-     LEFT JOIN dai_party p ON o.party = p.id
+     LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name)
      WHERE o.company = ? AND o.type = 'lab' AND o.status = 'on_lab'
      ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${dateClause}
      ORDER BY o.date DESC, o.id DESC LIMIT ? OFFSET ?`,
@@ -297,7 +297,7 @@ async function listInwardStock(post, userContext = {}) {
   const dateClause = buildDateFilterClause("i", post, params);
   const rows = await query(
     `SELECT i.*, ${PARTY_FIELDS} FROM dai_inward i
-     LEFT JOIN dai_party p ON i.party = p.id
+     LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party = p.id OR i.party = p.name)
      WHERE (i.deleted = 0 OR i.deleted IS NULL) AND i.company = ?
      AND i.inward_type IN ('memo','consign')
      ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${dateClause}
@@ -349,7 +349,7 @@ async function listPurchaseStock(post, userContext = {}) {
   const listParams = limitClause ? [...params, limit, offset] : params;
   const rows = await query(
     `SELECT i.*, ${PARTY_FIELDS} FROM dai_inward i
-     LEFT JOIN dai_party p ON i.party = p.id
+     LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party = p.id OR i.party = p.name)
      WHERE (i.deleted = 0 OR i.deleted IS NULL) AND i.company = ?
      AND i.inward_type IN ('import','purchase','consign')
      ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${dateClause}
@@ -429,7 +429,7 @@ async function listOutwardStock(post, stockType, userContext = {}) {
   );
   const rows = await query(
     `SELECT o.*, ${PARTY_FIELDS} FROM dai_outward o
-     LEFT JOIN dai_party p ON o.party = p.id
+     LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name)
      WHERE o.company = ? ${typeClause}
      ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${skuClause} ${dateClause}
      ORDER BY o.date DESC, o.id DESC LIMIT ? OFFSET ?`,

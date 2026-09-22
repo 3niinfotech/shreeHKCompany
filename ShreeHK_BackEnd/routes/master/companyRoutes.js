@@ -149,7 +149,7 @@ companyRouter.delete("/company/delete", authenticateToken, async (req, res) => {
 // Get Option
 companyRouter.get("/company/getOption", authenticateToken, (req, res) => {
   const companyId = buildUserContext(req).companyId;
-  const query = `SELECT id,name FROM dai_party WHERE company = ? ORDER BY name`;
+  const query = `SELECT id, name, address, country, pincode, email, contact_number, fax, contact_person FROM dai_party WHERE company = ? ORDER BY name`;
 
   connection.query(query, [companyId], (error, data) => {
     if (error) return res.status(500).json({ error: error.message });
