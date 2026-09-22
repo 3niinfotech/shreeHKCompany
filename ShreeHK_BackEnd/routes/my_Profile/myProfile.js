@@ -116,12 +116,11 @@ router.get('/api/profile/me', authenticateToken, (req, res) => {
         if (results.length === 0) return res.status(404).json({ status: false, message: 'User not found.' });
 
         const u = results[0];
-        const computedDesignation = u.designation || u.role_name || (u.roll === 1 ? 'Super Admin' : 'Admin');
         res.json({
             status: true,
             data: {
                 ...u,
-                designation: computedDesignation,
+                designation: u.designation || '',
                 // React form ke liye
                 fname: u.first_name,
                 lname: u.last_name,

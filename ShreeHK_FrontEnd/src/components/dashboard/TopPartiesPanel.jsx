@@ -3,7 +3,7 @@ import { SkeletonChart, SkeletonList } from "../common/skeleton";
 import BreakdownDonut from "./BreakdownDonut";
 
 const TopPartiesPanel = ({ parties, isLoading, onViewReport, textMuted }) => (
-  <Card bordered={false} className="dashboard-card chart-card chart-card--luxury">
+  <Card variant="borderless" className="dashboard-card chart-card chart-card--luxury">
     <div className="card-header">
       <span className="card-title-text">Top Parties</span>
       <a className="view-report-link" onClick={onViewReport}>View Report</a>
@@ -35,7 +35,7 @@ export const StockBreakdownCard = ({
   fallbackColor,
   colors,
 }) => (
-  <Card bordered={false} className="dashboard-card chart-card chart-card--luxury">
+  <Card variant="borderless" className="dashboard-card chart-card chart-card--luxury">
     <div className="card-header">
       <span className="card-title-text">{title}</span>
       <a className="view-report-link" onClick={onViewReport}>View Report</a>

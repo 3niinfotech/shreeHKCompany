@@ -9,11 +9,23 @@ import styles from '../../../assets/scss/pages/accountings/mybalance.module.scss
 
 const CurrancyRate = () => {
     const [rows, setRows] = useState([]);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
-    const { data: apiResponse, isLoading: isFetching, refetch } = useFetchApi('fetchCurrancyData', ENDPOINTS.currency.list);
+    const { data: apiResponse, isFetching, refetch } = useFetchApi('fetchCurrancyData', ENDPOINTS.currency.list);
     const { mutate: createCurrncyRate, isLoading: isSubmitting } = usePostApiRequest(ENDPOINTS.currency.save, 'fetchCurrancyData');
     const { mutate: deleteCurrncyRate, isLoading: isDeleting } = useDeleteApiRequest(ENDPOINTS.currency.delete, 'fetchCurrancyData', { queryParam: 'deleteId' });
-    console.log("apiResponse :", apiResponse);
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        try {
+            await Promise.all([
+                refetch(),
+                new Promise((resolve) => setTimeout(resolve, 500))
+            ]);
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
 
     const dataList = apiResponse?.Data;
 
@@ -88,8 +100,8 @@ const CurrancyRate = () => {
                     </div>
                 </div>
                 <div className={styles.cardActions}>
-                    <button className={styles.btnAdd} onClick={() => refetch()} disabled={isFetching}>
-                        <RefreshCcw size={14} /> Refresh
+                    <button className={styles.btnAdd} onClick={handleRefresh} disabled={isFetching || isRefreshing}>
+                        <RefreshCcw size={14} className={isRefreshing ? 'spin' : ''} /> Refresh
                     </button>
                     <button className={styles.btnAdd} onClick={handleAdd}>
                         <Plus size={14} /> Add New
@@ -113,7 +125,7 @@ const CurrancyRate = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {isFetching ? (
+                        {isFetching || isRefreshing ? (
                             Array.from({ length: 6 }).map((_, i) => (
                                 <tr key={`sk-${i}`}>
                                     <td><SkeletonBlock width={24} height={12} /></td>

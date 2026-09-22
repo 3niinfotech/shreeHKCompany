@@ -16,6 +16,7 @@ function sanitizeStoneFields(stone, context) {
   const isSuperAdmin = Number(context.roleId) === 1;
   const cleaned = { ...stone };
   if (!isSuperAdmin) {
+    delete cleaned.cost;
     delete cleaned.cost_price;
     delete cleaned.cost_rate;
     delete cleaned.purchase_price;

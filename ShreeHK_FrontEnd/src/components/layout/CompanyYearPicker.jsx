@@ -320,11 +320,11 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
       onCancel={force ? undefined : onClose}
       footer={null}
       closable={!force}
-      maskClosable={!force}
+      mask={{ closable: !force }}
       centered
       className={styles.companyYearModal}
       width="min(1080px, calc(100vw - 32px))"
-      destroyOnClose
+      destroyOnHidden
     >
       {loading ? (
         <div className={styles.companyGrid} aria-hidden="true">

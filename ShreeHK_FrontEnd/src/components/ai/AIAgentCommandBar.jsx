@@ -70,7 +70,7 @@ export default function AIAgentCommandBar({ open, onClose, onExecutePrompt }) {
         closable={false}
         width={560}
         style={{ top: '15%' }}
-        bodyStyle={{ padding: '16px' }}
+        styles={{ body: { padding: '16px' } }}
       >
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2 border-b pb-3">

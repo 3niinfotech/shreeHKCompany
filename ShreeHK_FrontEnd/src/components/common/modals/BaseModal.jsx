@@ -55,8 +55,8 @@ const BaseModal = ({
             onCancel={onClose}
             width={width}
             centered
-            destroyOnClose
-            maskClosable={false}
+            destroyOnHidden
+            mask={{ closable: false }}
             className={modalCls || undefined}
             rootClassName={rootCls || undefined}
             footer={[

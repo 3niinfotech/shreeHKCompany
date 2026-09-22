@@ -17,8 +17,8 @@ const INVENTORY_SELECT = `
     p.price, p.cost, p.amount, p.hold, p.barcode, p.outward, p.lab
 `;
 
-async function getStockAlertContext() {
-  const cid = helper.resolveCompanyId();
+async function getStockAlertContext(companyId) {
+  const cid = helper.resolveCompanyId(companyId);
   const base = ON_HAND_BASE(cid);
   const [countRows, holdRows, shapeRows, clarityRows, sampleRows] = await Promise.all([
     helper.query(`SELECT COUNT(p.id) AS total ${base}`, [cid]),
@@ -56,8 +56,8 @@ async function getStockAlertContext() {
   };
 }
 
-async function getInventorySnapshot(limit = 40) {
-  const cid = helper.resolveCompanyId();
+async function getInventorySnapshot(limit = 40, companyId) {
+  const cid = helper.resolveCompanyId(companyId);
   const base = ON_HAND_BASE(cid);
   const safeLimit = Math.min(Math.max(Number(limit) || 40, 1), 40);
   const sql = `${INVENTORY_SELECT} ${base} ORDER BY p.sku LIMIT ?`;
@@ -93,27 +93,30 @@ async function getInventorySnapshot(limit = 40) {
   };
 }
 
-async function getSalesLast30Days() {
+async function getSalesLast30Days(companyId) {
+  const cid = helper.resolveCompanyId(companyId);
   const sql = `
     SELECT
       o.id, o.entryno, o.type, o.invoiceno, p.name AS party_name,
       o.date, o.final_amount, o.paid_amount, o.due_amount, o.status
     FROM dai_outward o
     LEFT JOIN dai_party p ON o.party = p.id
-    WHERE o.type IN ('sale', 'export')
+    WHERE o.company = ?
+      AND o.type IN ('sale', 'export')
       AND o.status IN ('on_sale', 'on_export', 'sold', 'exported')
       AND o.date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
     ORDER BY o.date DESC
     LIMIT 20
   `;
-  return helper.query(sql);
+  return helper.query(sql, [cid]);
 }
 
-async function getPartyPurchaseHistory(partyId) {
+async function getPartyPurchaseHistory(partyId, companyId) {
   if (!partyId) return { party: null, sales: [] };
+  const cid = helper.resolveCompanyId(companyId);
 
-  const partySql = `SELECT id, name, address, contact_number FROM dai_party WHERE id = ? LIMIT 1`;
-  const partyRows = await helper.query(partySql, [partyId]);
+  const partySql = `SELECT id, name, address, contact_number FROM dai_party WHERE id = ? AND company = ? LIMIT 1`;
+  const partyRows = await helper.query(partySql, [partyId, cid]);
   const party = partyRows[0] || null;
 
   const salesSql = `
@@ -121,21 +124,22 @@ async function getPartyPurchaseHistory(partyId) {
       o.id, o.entryno, o.invoiceno, o.type, o.date,
       o.final_amount, o.paid_amount, o.due_amount, o.status
     FROM dai_outward o
-    WHERE o.party = ?
+    WHERE o.company = ?
+      AND o.party = ?
       AND o.type IN ('sale', 'export', 'memo')
     ORDER BY o.date DESC
     LIMIT 8
   `;
-  const sales = await helper.query(salesSql, [partyId]);
+  const sales = await helper.query(salesSql, [cid, partyId]);
 
   return { party, sales };
 }
 
-async function lookupProductByBarcode(barcodeData) {
+async function lookupProductByBarcode(barcodeData, companyId) {
   const raw = String(barcodeData || "").trim();
   if (!raw) return [];
 
-  const cid = helper.resolveCompanyId();
+  const cid = helper.resolveCompanyId(companyId);
   const sql = `
     SELECT
       p.id, p.sku, p.barcode, pv.shape, p.polish_carat, pv.color, pv.clarity,
@@ -151,8 +155,8 @@ async function lookupProductByBarcode(barcodeData) {
   return helper.query(sql, [cid, raw, raw, like, like]);
 }
 
-async function getInventoryContextSummary() {
-  return getStockAlertContext();
+async function getInventoryContextSummary(companyId) {
+  return getStockAlertContext(companyId);
 }
 
 module.exports = {

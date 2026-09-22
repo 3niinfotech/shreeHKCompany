@@ -277,7 +277,7 @@ const Dashboard = () => {
             transactions={recentTransactions}
             isLoading={isLoading}
             onViewAll={() => navigate("/accounting/account-transaction")}
-            onAddNew={() => navigate("/transaction/inward")}
+            onAddNew={() => navigate("/transaction/inward/import")}
           />
         </Col>
         <Col xs={24} lg={24} xl={8} className="dashboard-grid__col">

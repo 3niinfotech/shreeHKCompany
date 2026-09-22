@@ -1,15 +1,12 @@
 import { Edit2, Trash2, Plus, Search } from "lucide-react";
 import { Table, Button, Input, Space, Card, Typography } from "antd";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import { AppstoreOutlined } from "@ant-design/icons";
 import useThemeColors from "../../../hooks/useThemeColors";
 import useTableBodyScrollHeight from "../../../hooks/useTableBodyScrollHeight";
 import PageHeroHeader from "../PageHeroHeader";
 import useTableSkeleton from "../skeleton/useTableSkeleton";
-import ExportExcelButton from "../ExportExcelButton";
 import styles from "../../../assets/scss/pages/master/company.module.scss";
-import { exportReportToExcel } from "../../../utils/reportExcelExport";
-import { toastSuccess } from "../../../utils/toastNotify";
 
 const { Text } = Typography;
 
@@ -82,43 +79,11 @@ const MasterListTable = ({
 
     const tableHeight = useTableBodyScrollHeight(tableRef, [tableData.length, loading]);
 
-    const resolveRowKey = (record, index) => {
-        if (record?.__isSkeleton) return record._skeletonKey ?? `skeleton-${index}`;
-        if (record == null) return `row-${index}`;
-        if (typeof rowKey === "function") return rowKey(record, index);
-        return record[rowKey] ?? `row-${index}`;
-    };
-
-    const [exporting, setExporting] = useState(false);
-
-    const handleExportExcel = async () => {
-        if (!safeDataSource || !safeDataSource.length) return;
-        setExporting(true);
-        try {
-            const exportHeaders = columns
-                .map((col, idx) => ({
-                    title: typeof col.title === 'string' ? col.title : (col.key || `Col_${idx}`),
-                    key: col.dataIndex || col.key || `col_${idx}`,
-                    width: col.width ? Math.min(30, Math.max(12, Math.floor(col.width / 5))) : 20,
-                }))
-                .filter(h => h.title && h.title !== "Edit / Delete" && h.key !== "action");
-
-            await exportReportToExcel({
-                headers: exportHeaders.length ? exportHeaders : [
-                    { title: "ID", key: "id", width: 10 },
-                    { title: "Name", key: "name", width: 25 },
-                    { title: "Description", key: "description", width: 30 }
-                ],
-                rows: safeDataSource,
-                fileName: `${title.replace(/\s+/g, "_")}_Export`,
-                sheetName: title.slice(0, 31),
-            });
-            toastSuccess(`Exported ${safeDataSource.length} ${title} record(s) to Excel.`);
-        } catch (err) {
-            console.error("Master Export Failed:", err);
-        } finally {
-            setExporting(false);
-        }
+    const resolveRowKey = (record) => {
+        if (record?.__isSkeleton) return record._skeletonKey ?? record?.id ?? "skeleton";
+        if (record == null) return "null-row";
+        if (typeof rowKey === "function") return rowKey(record);
+        return record[rowKey] ?? record.id ?? record.key ?? record.code ?? "row";
     };
 
     return (

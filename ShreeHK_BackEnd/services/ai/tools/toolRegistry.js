@@ -5,6 +5,41 @@
  */
 
 const aiLogger = require("../utils/aiLogger.js");
+const {
+  hasPagePermission,
+  isSuperAdminRoll,
+  getPermissionsForRoll,
+} = require("../../../permissionHelper.js");
+
+const TOOL_PERMISSIONS = {
+  // Inventory Tools
+  searchInventory: ["inventory.my_inventory", "inventory.on_hand_stock", "inventory.categorize"],
+  getStoneById: ["inventory.my_inventory", "inventory.on_hand_stock", "inventory.barcode", "transaction.stone_update"],
+  getInventorySummary: ["inventory.my_inventory", "inventory.on_hand_stock", "core.dashboard"],
+  getStoneHistory: ["inventory.my_inventory", "reports.stone_history", "inventory.barcode"],
+  getInventoryStatistics: ["inventory.my_inventory", "inventory.on_hand_stock", "core.dashboard"],
+  getAvailableStones: ["inventory.my_inventory", "inventory.on_hand_stock"],
+  getHoldStones: ["inventory.my_inventory", "inventory.on_hand_stock"],
+  getMemoStones: ["inventory.my_inventory", "inventory.on_hand_stock", "transaction.out_memo"],
+  getLabStones: ["inventory.my_inventory", "inventory.on_hand_stock", "transaction.gia_memo"],
+  getSoldStones: ["inventory.my_inventory", "transaction.sale_stock", "reports.sale_stock"],
+  getExportStones: ["inventory.my_inventory", "outward.main", "transaction.sale_stock"],
+
+  // Party & Financial/Transaction Tools
+  getPartiesList: ["master.company", "accounting.party_wise", "accounting.transactions"],
+  getPartyById: ["master.company", "accounting.party_wise", "accounting.transactions"],
+  getPartyOutstanding: ["accounting.party_wise", "reports.outstanding", "accounting.transactions"],
+  getPartyTransactions: ["accounting.party_wise", "reports.transaction", "accounting.transactions"],
+  getOutwardStock: ["outward.main", "transaction.out_memo", "transaction.sale_stock"],
+  getInwardStock: ["transaction.inward", "transaction.purchase_stock", "transaction.in_memo"],
+  getTransactionDetails: ["outward.main", "transaction.out_memo", "transaction.sale_stock", "transaction.inward", "transaction.purchase_stock"],
+  getOutstandingSummary: ["reports.outstanding", "accounting.transactions"],
+
+  // Analytics Tools
+  detectAnomalies: ["inventory.my_inventory", "reports.sale_stock", "core.dashboard"],
+  forecastDemand: ["reports.sale_stock", "reports.transaction", "core.dashboard"],
+  suggestPrice: ["transaction.stone_update", "inventory.my_inventory"],
+};
 
 const toolRegistry = new Map();
 
@@ -47,6 +82,31 @@ async function executeTool(toolName, params, context) {
       success: false,
       error: `Tool '${toolName}' is not registered in AI Tool Registry.`,
     };
+  }
+
+  // Enforce existing ERP RBAC permissions before executing database query
+  const requiredPageKeys = TOOL_PERMISSIONS[toolName];
+  if (requiredPageKeys && requiredPageKeys.length > 0) {
+    const isSuperAdmin = isSuperAdminRoll(context?.roleId);
+    if (!isSuperAdmin) {
+      let userPerms = context?.permissions;
+      if (!userPerms || !userPerms.length) {
+        try {
+          userPerms = await getPermissionsForRoll(context?.roleId);
+        } catch {
+          userPerms = [];
+        }
+      }
+      const isAllowed = requiredPageKeys.some((pageKey) => hasPagePermission(userPerms, pageKey));
+      if (!isAllowed) {
+        aiLogger.warn("ToolRegistry", `Permission denied for tool: ${toolName}`, { userId: context?.userId, roleId: context?.roleId });
+        return {
+          success: false,
+          toolName,
+          error: "You do not have permission to access this resource.",
+        };
+      }
+    }
   }
 
   try {

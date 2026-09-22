@@ -23,7 +23,7 @@ const KpiCard = ({
   const isUp = Number(changePct) >= 0;
 
   return (
-    <Card bordered={false} className={`stat-card stat-card--${variant}`} styles={{ body: { height: "100%" } }}>
+    <Card variant="borderless" className={`stat-card stat-card--${variant}`} styles={{ body: { height: "100%" } }}>
       <div className="stat-card-shine" aria-hidden="true" />
       <div className="stat-card-body">
         <div className="stat-card-top">

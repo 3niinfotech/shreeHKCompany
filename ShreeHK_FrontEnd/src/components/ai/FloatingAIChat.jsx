@@ -225,12 +225,13 @@ const FloatingAIChat = () => {
 
       <Drawer
         placement="right"
-        width={isExpanded ? 720 : 440}
+        size={isExpanded ? "large" : "default"}
+        styles={{ wrapper: { width: isExpanded ? 720 : 440 } }}
         open={open}
         onClose={() => setOpen(false)}
         className={styles.drawerRoot}
         closable={false}
-        destroyOnClose={false}
+        destroyOnHidden={false}
       >
         <div className={styles.chatShell}>
           <header className={styles.header}>

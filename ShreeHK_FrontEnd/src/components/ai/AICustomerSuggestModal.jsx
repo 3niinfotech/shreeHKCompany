@@ -43,7 +43,7 @@ const AICustomerSuggestModal = ({ open, onClose, customerId, customerName }) => 
       onCancel={onClose}
       footer={null}
       width={640}
-      destroyOnClose
+      destroyOnHidden
     >
       {loading ? (
         <Spin />

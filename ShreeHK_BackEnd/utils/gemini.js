@@ -32,10 +32,6 @@ async function askAI(systemPrompt, userPrompt, options = {}) {
   for (const modelName of MODEL_FALLBACKS) {
     try {
       console.log("Calling Gemini model:", modelName);
-      console.log(
-        "Calling Gemini with key:",
-        `${String(apiKey).slice(0, 8)}...`
-      );
 
       const model = genAI.getGenerativeModel({
         model: modelName,

@@ -26,7 +26,7 @@ const StockValueTrendCard = ({
   const title = usingFallback ? "Sale Value Trend" : "Stock Value Trend";
 
   return (
-    <Card bordered={false} className="dashboard-card dashboard-card--luxury chart-card chart-card--luxury chart-card--wide">
+    <Card variant="borderless" className="dashboard-card dashboard-card--luxury chart-card chart-card--luxury chart-card--wide">
       <div className="card-header">
         <div className="card-title-group">
           <div>

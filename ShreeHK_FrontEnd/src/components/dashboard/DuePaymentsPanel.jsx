@@ -97,7 +97,7 @@ const DuePaymentsPanel = ({
   isLoading,
   onViewAll,
 }) => (
-  <Card bordered={false} className="dashboard-card dashboard-card--luxury due-payments-card dashboard-fill-card">
+  <Card variant="borderless" className="dashboard-card dashboard-card--luxury due-payments-card dashboard-fill-card">
     <div className="card-header">
       <div className="card-title-group">
         <span className="card-icon-badge card-icon-badge--danger">

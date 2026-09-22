@@ -61,14 +61,15 @@ export function mapTransactionToInvoice(record, options = {}) {
   const vatAmount = toNumber(record?.vat_amount);
   const adjustments = finalAmount - subtotal - vatAmount;
 
+  const rawParty = record?.party && typeof record.party === "object" ? record.party : {};
   const party = {
-    name: record?.party_name || record?.party || "—",
-    address: record?.party_address || record?.address || "",
-    pincode: record?.party_pincode || record?.pincode || "",
-    country: record?.party_country || record?.country || "",
-    contact: record?.party_contact || record?.contact_number || "",
-    fax: record?.party_fax || record?.fax || "",
-    contactPerson: record?.contact_person || "",
+    name: record?.party_name || rawParty.name || (typeof record?.party === "string" ? record.party : "") || record?.p_name || "—",
+    address: record?.party_address || rawParty.address || record?.address || record?.p_address || "",
+    pincode: record?.party_pincode || rawParty.pincode || record?.pincode || record?.p_pincode || "",
+    country: record?.party_country || rawParty.country || record?.country || record?.p_country || "",
+    contact: record?.party_contact || rawParty.contact || rawParty.contact_number || record?.contact_number || record?.p_contact || record?.contact || record?.phone || record?.tel || "",
+    fax: record?.party_fax || rawParty.fax || record?.fax || record?.p_fax || "",
+    contactPerson: record?.contact_person || rawParty.contactPerson || rawParty.contact_person || record?.contactPerson || record?.p_contact_person || "",
   };
 
   const companyPayload = {

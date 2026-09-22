@@ -8,7 +8,7 @@ const RecentTransactionsPanel = ({
   onViewAll,
   onAddNew,
 }) => (
-  <Card bordered={false} className="dashboard-card dashboard-card--luxury recent-txn-card dashboard-fill-card">
+  <Card variant="borderless" className="dashboard-card dashboard-card--luxury recent-txn-card dashboard-fill-card">
     <div className="card-header">
       <div className="card-title-group">
         <span className="card-icon-badge card-icon-badge--primary">

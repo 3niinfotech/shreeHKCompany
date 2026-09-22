@@ -344,14 +344,14 @@ const MyAccount = () => {
                                 : profile?.user_name || 'Admin User'}
                         </Title>
 
-                        <Space size={6} wrap style={{ marginBottom: 12, justifyContent: 'center', flexDirection: 'column' }}>
+                        <Space size={6} wrap style={{ marginBottom: 12, justifyContent: 'center' }}>
                             {isSuperAdmin
                                 ? <Tag icon={<CrownOutlined />} color="gold" style={{ padding: '2px 10px', borderRadius: '12px', fontWeight: 600 }}>Super Admin</Tag>
                                 : <Tag color="blue" style={{ padding: '2px 10px', borderRadius: '12px', fontWeight: 600 }}>{profile?.role_name || 'Admin'}</Tag>
                             }
-                            {profile?.designation && (
+                            {Boolean(profile?.designation?.trim()) && profile.designation.trim().toLowerCase() !== (isSuperAdmin ? 'super admin' : (profile?.role_name || 'admin')).toLowerCase() && (
                                 <Tag icon={<IdcardOutlined />} color="cyan" style={{ padding: '2px 10px', borderRadius: '12px', fontWeight: 600 }}>
-                                    {profile.designation}
+                                    {profile.designation.trim()}
                                 </Tag>
                             )}
                         </Space>
