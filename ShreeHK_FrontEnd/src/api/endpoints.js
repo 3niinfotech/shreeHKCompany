@@ -115,6 +115,7 @@ export const ENDPOINTS = {
         list: "/advance/get",
         payment: "/advance-payment",
         delete: "/advance-delete",
+        assignedInvoice: "/advance/assigned-invoice",
     },
     partyWise: {
         list: "/partywisetransaction",

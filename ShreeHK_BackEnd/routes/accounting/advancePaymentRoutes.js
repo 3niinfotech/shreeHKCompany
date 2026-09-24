@@ -21,6 +21,19 @@ AdvancePayment.get("/advance/get", authenticateToken, async (req, res) => {
   }
 });
 
+// GET assigned invoice details API (with attached stones and payment history)
+AdvancePayment.get("/advance/assigned-invoice", authenticateToken, async (req, res) => {
+  try {
+    const companyId = buildUserContext(req).companyId;
+    const invoiceId = req.query.invoiceId || req.query.id;
+    const type = req.query.type || "outward";
+    const result = await advanceService.getAssignedInvoice(invoiceId, type, companyId);
+    res.status(result.status).json(result.data);
+  } catch (err) {
+    res.status(500).json({ status: false, error: err.message });
+  }
+});
+
 // POST advance payment API (Create or Update)
 AdvancePayment.post("/advance-payment", authenticateToken, async (req, res) => {
   try {

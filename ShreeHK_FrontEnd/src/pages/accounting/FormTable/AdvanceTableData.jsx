@@ -1,9 +1,12 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { Space, Button, Tooltip } from 'antd';
+import { EyeOutlined } from '@ant-design/icons';
 import { useDeleteApiRequest, useFetchApi, usePostApiRequest } from '../../../api/ApiFunction';
 import { ENDPOINTS } from '../../../api/endpoints';
 import AccountingMasterTemplate from '../../../components/common/accounting/AccountingMasterTemplate';
 import ExportExcelButton from '../../../components/common/ExportExcelButton';
 import { exportAdvanceExcel } from '../../../components/pages/Advance/advanceExcelExport';
+import AdvanceAssignedInvoiceModal from '../../../components/pages/Advance/AdvanceAssignedInvoiceModal';
 import dayjs from 'dayjs';
 import { ConfirmDeleteModal } from "../../../components/common/modals";
 
@@ -16,6 +19,8 @@ const AdvanceTableData = () => {
 
     // Delete Modal State
     const [deleteModal, setDeleteModal] = useState({ open: false, record: null });
+    // Assigned Invoice Modal State
+    const [assignedInvoiceModal, setAssignedInvoiceModal] = useState({ open: false, record: null });
 
     const limit = 100;
 
@@ -138,7 +143,44 @@ const AdvanceTableData = () => {
         { title: 'Date', dataIndex: 'date', key: 'date', width: 110, render: (d) => (d && dayjs(d).isValid() ? dayjs(d).format('DD-MM-YYYY') : (d?.split('T')[0] || '-')) },
         { title: 'Use Date', dataIndex: 'assign_date', key: 'assign_date', width: 110, render: (d) => (d && dayjs(d).isValid() ? dayjs(d).format('DD-MM-YYYY') : (d?.split('T')[0] || '-')) },
         { title: 'Invoice', dataIndex: 'invoice', key: 'invoice', width: 120, render: (inv, r) => inv || r.invoice_id || '-' },
-        { title: 'Party', dataIndex: 'party', key: 'party', width: 220, render: (party, r) => r.party_name || resolvePartyName(party) },
+        {
+            title: 'Party',
+            dataIndex: 'party',
+            key: 'party',
+            width: 220,
+            render: (party, r) => {
+                const hasInvoice = Boolean(r.invoice_id || r.invoice);
+                const partyLabel = r.party_name || resolvePartyName(party);
+                return (
+                    <Space size={6} align="center">
+                        {hasInvoice && (
+                            <Tooltip title="View Assigned Invoice">
+                                <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<EyeOutlined style={{ color: '#0284c7', fontSize: '15px' }} />}
+                                    style={{
+                                        padding: '0 4px',
+                                        height: '24px',
+                                        minWidth: '24px',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        backgroundColor: 'rgba(2, 132, 199, 0.08)',
+                                        borderRadius: '4px',
+                                    }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setAssignedInvoiceModal({ open: true, record: r });
+                                    }}
+                                />
+                            </Tooltip>
+                        )}
+                        <span>{partyLabel}</span>
+                    </Space>
+                );
+            },
+        },
         { title: 'Amount', dataIndex: 'amount', key: 'amount', align: 'right', width: 110, render: (v) => v != null && v !== '' ? Number(v).toFixed(2) : '-' },
         { title: 'Used', dataIndex: 'use_amount', key: 'use_amount', align: 'right', width: 110, render: (v) => v != null && v !== '' ? Number(v).toFixed(2) : '-' },
         { title: 'Balance', dataIndex: 'balance_amount', key: 'balance_amount', align: 'right', width: 110, render: (v, r) => v != null && v !== '' ? Number(v).toFixed(2) : (r.amount ? (Number(r.amount) - Number(r.use_amount || 0)).toFixed(2) : '-') },
@@ -211,6 +253,13 @@ const AdvanceTableData = () => {
                 loading={isDeleting}
                 onCancel={closeDelete}
                 onConfirm={handleDelete}
+            />
+
+            <AdvanceAssignedInvoiceModal
+                open={assignedInvoiceModal.open}
+                record={assignedInvoiceModal.record}
+                onClose={() => setAssignedInvoiceModal({ open: false, record: null })}
+                resolvePartyName={resolvePartyName}
             />
         </>
     );

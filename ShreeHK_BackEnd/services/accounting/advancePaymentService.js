@@ -209,8 +209,41 @@ async function deleteAdvancePayment(id, companyId, auditContext = {}) {
   };
 }
 
+/**
+ * Fetch assigned invoice details with attached stones and transactions
+ * @param {string|number} invoiceId
+ * @param {'outward'|'inward'} type
+ * @param {number} companyId
+ */
+async function getAssignedInvoice(invoiceId, type = "outward", companyId) {
+  if (!companyId || companyId <= 0) {
+    return {
+      status: 200,
+      data: { status: false, message: "Invalid company context", Data: null },
+    };
+  }
+
+  if (!invoiceId) {
+    return {
+      status: 400,
+      data: { status: false, message: "Missing invoiceId" },
+    };
+  }
+
+  const result = await advanceRepository.getAssignedInvoiceDetails(invoiceId, type, companyId);
+  return {
+    status: 200,
+    data: {
+      status: true,
+      message: "Assigned invoice fetched successfully",
+      Data: result,
+    },
+  };
+}
+
 module.exports = {
   getAdvancePayments,
   saveAdvancePayment,
   deleteAdvancePayment,
+  getAssignedInvoice,
 };
