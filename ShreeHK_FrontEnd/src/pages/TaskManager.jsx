@@ -39,7 +39,7 @@ import { ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import { useFetchApi, usePostApiRequest, usePutApiRequest, useDeleteApiRequest } from '../api/ApiFunction';
-import { ENDPOINTS } from '../constants/endpoints';
+import { ENDPOINTS } from '../api/endpoints';
 import '../assets/scss/pages/dashboard.scss';
 import PageHeroHeader from '../components/common/PageHeroHeader';
 import DeleteConfirmModal from '../components/common/masterCommon/DeleteConfirmModal';

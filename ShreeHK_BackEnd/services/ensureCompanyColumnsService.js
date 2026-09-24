@@ -15,7 +15,10 @@ const ensureCompanyColumns = async () => {
       { table: "dai_currencyrate", col: "company", def: "INT NOT NULL DEFAULT 1" },
       { table: "dai_shipping", col: "company", def: "INT NOT NULL DEFAULT 1" },
       { table: "dai_origin", col: "company", def: "INT NOT NULL DEFAULT 1" },
+      { table: "dai_lab", col: "company", def: "INT NOT NULL DEFAULT 1" },
       { table: "category", col: "company", def: "INT NOT NULL DEFAULT 1" },
+      { table: "acc_group", col: "company", def: "INT NOT NULL DEFAULT 1" },
+      { table: "acc_subgroup", col: "company", def: "INT NOT NULL DEFAULT 1" },
     ];
 
     for (const item of tablesToMigrate) {

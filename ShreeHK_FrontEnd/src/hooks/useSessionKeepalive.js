@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { api } from "../api/axiosInstance";
-import { ENDPOINTS } from "../constants/endpoints";
+import { api } from "../api/client/axiosInstance";
+import { ENDPOINTS } from "../api/endpoints";
 import useAuthStore from "../store/Auth.Store";
 
 const KEEPALIVE_MS = 30 * 1000;

@@ -4,8 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { SkeletonDropdownPanel } from "../common/skeleton";
 import { NotebookPen, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../../api/axiosInstance";
-import { ENDPOINTS } from "../../constants/endpoints";
+import { api } from "../../api/client/axiosInstance";
+import { ENDPOINTS } from "../../api/endpoints";
 import { playNotificationSound } from "../../utils/soundNotify";
 import styles from "../../assets/scss/components/notificationDropdown.module.scss";
 

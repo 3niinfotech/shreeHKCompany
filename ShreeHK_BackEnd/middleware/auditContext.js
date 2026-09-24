@@ -72,7 +72,15 @@ const refreshAuditContextFromReq = async (req) => {
     : current?.userRole || "";
 
   if (current) {
-    Object.assign(current, {
+    const path = String(req.path || req.url?.split("?")[0] || "").slice(0, 255);
+    const isPolling =
+      path.startsWith("/notification") ||
+      path.startsWith("/health") ||
+      path.startsWith("/session") ||
+      path.startsWith("/admin/activity-log") ||
+      path.startsWith("/dashboard/summary");
+
+    const updates = {
       userId: req.user?.user_id ?? current.userId ?? null,
       userName: req.user?.username ?? current.userName ?? "Unknown",
       userRoleId: req.user?.roll ?? current.userRoleId ?? null,
@@ -80,15 +88,20 @@ const refreshAuditContextFromReq = async (req) => {
       companyId: req.companyId ?? req.user?.companyId ?? current.companyId ?? 1,
       ipAddress: getClientIp(req),
       userAgent: String(req.headers["user-agent"] ?? current.userAgent ?? "").slice(0, 512),
-      requestPath: String(req.path || req.url?.split("?")[0] || "").slice(0, 255),
-      requestMethod: req.method || "GET",
-      pagePath: req.headers["x-audit-page-path"]
-        ? String(req.headers["x-audit-page-path"]).slice(0, 255)
-        : current.pagePath ?? null,
-      pageLabel: req.headers["x-audit-page-label"]
-        ? String(req.headers["x-audit-page-label"]).slice(0, 100)
-        : current.pageLabel ?? null,
-    });
+    };
+
+    if (!isPolling) {
+      updates.requestPath = path;
+      updates.requestMethod = req.method || "POST";
+      if (req.headers["x-audit-page-path"]) {
+        updates.pagePath = String(req.headers["x-audit-page-path"]).slice(0, 255);
+      }
+      if (req.headers["x-audit-page-label"]) {
+        updates.pageLabel = String(req.headers["x-audit-page-label"]).slice(0, 100);
+      }
+    }
+
+    Object.assign(current, updates);
   }
 };
 

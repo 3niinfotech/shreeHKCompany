@@ -2,6 +2,7 @@ const express = require("express");
 const connection = require("../../connection.js");
 const { authenticateToken } = require("../../authMiddleware.js");
 const { buildUserContext } = require("../../tenantHelper.js");
+const helper = require("../../helper.js");
 const reportService = require("./reportService.js");
 const reportRouter = express.Router();
 const moment = require("moment");
@@ -232,21 +233,22 @@ reportRouter.post("/report/outstanding", authenticateToken, async (req, res) => 
 
     connection.query(query, queryParams, (error, data) => {
       if (error) {
-        return res.status(201).json({
+        console.error("GET /report/outstanding query error:", error);
+        return res.status(500).json({
           status: false,
-          message: "Error in Fetching data ",
-          Data: error,
+          message: "Unable to generate outstanding report.",
         });
       }
 
       if (data && data.length > 0) {
-        res.status(201).json({ status: true, Data: data });
+        res.status(200).json({ status: true, Data: data });
       } else {
-        res.status(201).json({ status: true, Data: [] });
+        res.status(200).json({ status: true, Data: [] });
       }
     });
   } catch (error) {
-    res.status(201).json({ status: false, message: error.message });
+    console.error("GET /report/outstanding handler exception:", error);
+    res.status(500).json({ status: false, message: "Unable to generate outstanding report." });
   }
 });
 
@@ -328,10 +330,10 @@ const reportQuery = (sql, values = []) => new Promise((resolve, reject) => {
 
 const getOutstandingTable = (type) => {
   if (["sale", "export"].includes(String(type).toLowerCase())) {
-    return { table: "dai_outward", linkColumn: "sale_id", paymentType: "dr" };
+    return { table: "dai_outward", linkColumn: "sale_id", paymentType: "cr" };
   }
   if (["purchase", "import"].includes(String(type).toLowerCase())) {
-    return { table: "dai_inward", linkColumn: "purchase_id", paymentType: "cr" };
+    return { table: "dai_inward", linkColumn: "purchase_id", paymentType: "dr" };
   }
   return null;
 };
@@ -387,21 +389,26 @@ reportRouter.post("/report/outstanding/installment", authenticateToken, async (r
   if (!id || !target || amount <= 0) return res.status(400).json({ status: false, message: "Valid entry and amount are required" });
 
   try {
-    const rows = await reportQuery(`SELECT * FROM ${target.table} WHERE id = ? AND company = ?`, [id, companyId]);
-    if (!rows.length) return res.status(404).json({ status: false, message: "Entry not found" });
-    const row = rows[0];
-    const dueAmount = Number(row.due_amount) || 0;
-    if (amount > dueAmount) return res.status(400).json({ status: false, message: "Payment cannot exceed due amount" });
+    const result = await helper.runInTransaction(async (q) => {
+      const rows = await q(`SELECT * FROM ${target.table} WHERE id = ? AND company = ? FOR UPDATE`, [id, companyId]);
+      if (!rows.length) throw new Error("Entry not found");
+      const row = rows[0];
+      const dueAmount = Number(row.due_amount) || 0;
+      if (amount > dueAmount) throw new Error("Payment cannot exceed due amount");
 
-    await reportQuery(
-      `INSERT INTO acc_transaction (party, date, type, book, cheque, amount, description, ${target.linkColumn}, company)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [row.party, date || new Date().toISOString().slice(0, 10), target.paymentType, book, cheque, amount, description, id, companyId],
-    );
-    const paidAmount = (Number(row.paid_amount) || 0) + amount;
-    const remainingDue = (Number(row.final_amount) || 0) - paidAmount;
-    await reportQuery(`UPDATE ${target.table} SET paid_amount = ?, due_amount = ? WHERE id = ? AND company = ?`, [paidAmount, remainingDue, id, companyId]);
-    return res.json({ status: true, message: "Installment saved successfully", data: { paidAmount, dueAmount: remainingDue } });
+      await q(
+        `INSERT INTO acc_transaction (party, date, type, book, cheque, amount, description, ${target.linkColumn}, company)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [row.party, date || new Date().toISOString().slice(0, 10), target.paymentType, book, cheque, amount, description, id, companyId],
+      );
+      const paidAmount = (Number(row.paid_amount) || 0) + amount;
+      const remainingDue = (Number(row.final_amount) || 0) - paidAmount;
+      await q(`UPDATE ${target.table} SET paid_amount = ?, due_amount = ? WHERE id = ? AND company = ?`, [paidAmount, remainingDue, id, companyId]);
+
+      return { paidAmount, dueAmount: remainingDue };
+    });
+
+    return res.json({ status: true, message: "Installment saved successfully", data: result });
   } catch (error) {
     return res.status(500).json({ status: false, message: error.message });
   }

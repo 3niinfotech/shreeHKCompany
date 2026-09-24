@@ -1,12 +1,15 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useDeleteApiRequest, useFetchApi, usePostApiRequest } from '../../../api/ApiFunction';
-import { ENDPOINTS } from '../../../constants/endpoints';
-import AccountingMasterTemplate from '../../../hooks/AccountingMasterTemplate';
+import { ENDPOINTS } from '../../../api/endpoints';
+import AccountingMasterTemplate from '../../../components/common/accounting/AccountingMasterTemplate';
+import ExportExcelButton from '../../../components/common/ExportExcelButton';
+import { exportAdvanceExcel } from '../../../components/pages/Advance/advanceExcelExport';
 import dayjs from 'dayjs';
 import { ConfirmDeleteModal } from "../../../components/common/modals";
 
 const AdvanceTableData = () => {
     const [allData, setAllData] = useState([]);
+    const [isExporting, setIsExporting] = useState(false);
     const [offset, setOffset] = useState(0);
     const [hasMore, setHasMore] = useState(true);
     const [selectedRecord, setSelectedRecord] = useState(null);
@@ -155,6 +158,12 @@ const AdvanceTableData = () => {
         { name: 'description', label: 'Description', type: 'textarea', span: 24 },
     ], [partyOptions]);
 
+    const handleExportExcel = async () => {
+        setIsExporting(true);
+        await exportAdvanceExcel(allData, resolvePartyName);
+        setIsExporting(false);
+    };
+
     return (
         <>
             <AccountingMasterTemplate
@@ -170,6 +179,13 @@ const AdvanceTableData = () => {
                 onSave={handleSave}
                 onDelete={openDelete}
                 addPagePath="/accounting/advance"
+                extraActions={
+                    <ExportExcelButton
+                        onClick={handleExportExcel}
+                        loading={isExporting}
+                        disabled={!allData || allData.length === 0}
+                    />
+                }
                 onRefresh={async () => {
                     setHasMore(true);
                     if (offset !== 0) {

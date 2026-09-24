@@ -1,5 +1,5 @@
-import { api } from "../axiosInstance";
-import { ENDPOINTS } from "../../constants/endpoints";
+import { api } from "../client/axiosInstance";
+import { ENDPOINTS } from "../../api/endpoints";
 
 export const loginUser = async (payload) => {
     const res = await api.post(ENDPOINTS.auth.login, payload);

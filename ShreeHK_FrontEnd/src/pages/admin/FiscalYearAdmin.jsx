@@ -8,7 +8,7 @@ import {
 import {
   useFetchApi, usePostApiRequest, usePutApiRequest, useDeleteApiRequest,
 } from "../../api/ApiFunction";
-import { ENDPOINTS } from "../../constants/endpoints";
+import { ENDPOINTS } from "../../api/endpoints";
 import dayjs from "dayjs";
 import PageHeroHeader from "../../components/common/PageHeroHeader";
 import SkeletonAwareTable from "../../components/common/skeleton/SkeletonAwareTable";

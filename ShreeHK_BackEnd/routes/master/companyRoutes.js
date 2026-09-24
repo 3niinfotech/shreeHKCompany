@@ -119,16 +119,59 @@ companyRouter.post("/company/save", authenticateToken, async (req, res) => {
 
 // Delete
 companyRouter.delete("/company/delete", authenticateToken, async (req, res) => {
-  const id = parseInt(req.query.deleteId);
+  const id = parseInt(req.query.deleteId, 10);
   const companyId = buildUserContext(req).companyId;
   if (!id || isNaN(id)) {
     return res.status(400).json({ error: "Invalid or missing deleteId" });
   }
+  if (!companyId || companyId <= 0) {
+    return res.status(400).json({ error: "Invalid tenant company context" });
+  }
 
   try {
-    await helper.runInTransaction(async (q) => {
+    const errorMsg = await helper.runInTransaction(async (q) => {
       const rows = await q("SELECT * FROM dai_party WHERE id=? AND company=?", [id, companyId]);
       const oldRow = rows[0] || null;
+      if (!oldRow) {
+        throw new Error("Party not found");
+      }
+
+      // 1. Inward check
+      const inw = await q(
+        "SELECT id FROM dai_inward WHERE (party = ? OR party = ?) AND company = ? AND (deleted = 0 OR deleted IS NULL) LIMIT 1",
+        [String(id), oldRow.name || "", companyId]
+      );
+      if (inw.length > 0) {
+        return "Cannot delete party: Active or historical transactions are linked to this party.";
+      }
+
+      // 2. Outward check
+      const out = await q(
+        "SELECT id FROM dai_outward WHERE (party = ? OR party = ?) AND company = ? LIMIT 1",
+        [String(id), oldRow.name || "", companyId]
+      );
+      if (out.length > 0) {
+        return "Cannot delete party: Active or historical transactions are linked to this party.";
+      }
+
+      // 3. Accounting transactions check
+      const txn = await q(
+        "SELECT id FROM acc_transaction WHERE (party = ? OR other_party = ? OR party = ? OR other_party = ?) AND company = ? AND (deleted = 0 OR deleted IS NULL) LIMIT 1",
+        [String(id), String(id), oldRow.name || "", oldRow.name || "", companyId]
+      );
+      if (txn.length > 0) {
+        return "Cannot delete party: Active or historical transactions are linked to this party.";
+      }
+
+      // 4. Advance payments check
+      const adv = await q(
+        "SELECT id FROM acc_advance WHERE (party = ? OR party = ?) AND company = ? AND (deleted = 0 OR deleted IS NULL) LIMIT 1",
+        [id, String(id), companyId]
+      );
+      if (adv.length > 0) {
+        return "Cannot delete party: Active or historical transactions are linked to this party.";
+      }
+
       await q("DELETE FROM dai_party WHERE id=? AND company=?", [id, companyId]);
       await logAuditInTx(q, {
         actionType: "DELETE",
@@ -138,11 +181,18 @@ companyRouter.delete("/company/delete", authenticateToken, async (req, res) => {
         oldValue: oldRow,
         companyId,
       });
+
+      return null;
     });
 
-    res.status(201).json({ message: "Company deleted successfully" });
+    if (errorMsg) {
+      return res.status(409).json({ error: errorMsg, message: errorMsg });
+    }
+
+    res.status(200).json({ message: "Company deleted successfully" });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    const status = error.message === "Party not found" ? 404 : 500;
+    res.status(status).json({ error: error.message });
   }
 });
 

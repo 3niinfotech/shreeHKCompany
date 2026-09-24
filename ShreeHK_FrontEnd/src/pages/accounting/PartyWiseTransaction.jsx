@@ -13,12 +13,12 @@ import {
     SearchOutlined,
     ReloadOutlined,
 } from '@ant-design/icons';
-import DynamicFormField from "../../hooks/DynamicFormField"
+import DynamicFormField from "../../components/common/ui/DynamicFormField"
 import { BaseModal, FormModal } from "../../components/common/modals";
 import { Pencil, CircleCheck } from "lucide-react";
 import "../../assets/scss/masterEdit.scss";
 import { useDeleteApiRequest, useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
-import { ENDPOINTS } from '../../constants/endpoints';
+import { ENDPOINTS } from '../../api/endpoints';
 import { ConfirmDeleteModal } from "../../components/common/modals";
 import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
 import styles from '../../assets/scss/pages/accountings/PartyWiseTransaction.module.scss';
@@ -101,6 +101,7 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
     const [editingId, setEditingId] = useState(null);
     const [editingName, setEditingName] = useState('');
     const [editingRecord, setEditingRecord] = useState(null);
+    const [totalCount, setTotalCount] = useState(0);
     const [allData, setAllData] = useState([]);
     const [deleteModal, setDeleteModal] = useState({ open: false, record: null });
     const [offset, setOffset] = useState(0);
@@ -110,6 +111,18 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
     const [exporting, setExporting] = useState(false);
     const tableRef = useRef(null);
     const tableScrollY = useTableBodyScrollHeight(tableRef, [allData.length, searchText]);
+
+    const filteredData = React.useMemo(() => {
+        if (!searchText || !searchText.trim()) return allData;
+        const q = searchText.toLowerCase().trim();
+        return allData.filter(item =>
+            (item.name && item.name.toLowerCase().includes(q)) ||
+            (item.under_group && item.under_group.toLowerCase().includes(q)) ||
+            (item.under_subgroup && item.under_subgroup.toLowerCase().includes(q)) ||
+            (item.contact_number && String(item.contact_number).includes(q)) ||
+            (item.address && item.address.toLowerCase().includes(q))
+        );
+    }, [allData, searchText]);
 
     const rowSelection = {
         selectedRowKeys,
@@ -166,6 +179,8 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
 
     useEffect(() => {
         if (data?.Data) {
+            const total = Number(data.TotalItems ?? data.total ?? data.Total) || 0;
+            if (total > 0) setTotalCount(total);
             const newRecords = Array.isArray(data.Data) ? data.Data : [data.Data];
             if (newRecords.length > 0) {
                 setAllData(prev => {
@@ -334,6 +349,14 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
                 icon={<TeamOutlined />}
                 actions={(
                     <Space wrap>
+                        <Input
+                            placeholder="Search party, group, phone..."
+                            prefix={<SearchOutlined style={{ color: cssVar('color-text-muted') }} />}
+                            value={searchText}
+                            onChange={(e) => setSearchText(e.target.value)}
+                            allowClear
+                            style={{ width: 230 }}
+                        />
                         <Button icon={<ReloadOutlined />} loading={isFetching || isRefetching} onClick={resetAndRefetch}>
                             Refresh
                         </Button>
@@ -353,7 +376,7 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
                 <div ref={tableRef} className="erp-table-container">
                     <SkeletonAwareTable
                         columns={columns}
-                        dataSource={allData}
+                        dataSource={filteredData}
                         rowKey="id"
                         rowSelection={rowSelection}
                         loading={isFetching && offset === 0}
@@ -363,14 +386,28 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
                         scroll={{ y: tableScrollY }}
                         onScroll={handleTableScroll}
                         rowClassName={(record) => record.id === selectedRowKey ? styles.activeRow : ''}
-                        footer={() => (
-                            <div style={{ textAlign: 'center', padding: 4, fontSize: 12, color: cssVar('color-text-muted') }}>
-                                {(isRefetching || scrollFetching) ? (
-                                  <SkeletonBlock variant="text" width="100px" height={12} style={{ margin: '0 auto' }} />
-                                ) :
-                                    hasMore ? 'Scroll down for more...' : `Total ${allData.length} records`}
-                            </div>
-                        )}
+                        footer={() => {
+                            const showingCount = filteredData.length;
+                            const totalDisplay = totalCount || allData.length;
+                            return (
+                                <div style={{ textAlign: 'center', padding: '6px 12px', fontSize: 13, color: cssVar('color-text-secondary') }}>
+                                    {(isRefetching || scrollFetching) ? (
+                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                                            <SkeletonBlock variant="text" width="160px" height={14} style={{ margin: '0 auto' }} />
+                                        </div>
+                                    ) : (
+                                        <span>
+                                            Showing <strong>{showingCount}</strong> of <strong>{totalDisplay}</strong> records
+                                            {hasMore && !searchText.trim() ? (
+                                                <span style={{ color: cssVar('color-text-muted'), marginLeft: 8 }}>
+                                                    · Scroll down to load more...
+                                                </span>
+                                            ) : null}
+                                        </span>
+                                    )}
+                                </div>
+                            );
+                        }}
                     />
                 </div>
             </Card>

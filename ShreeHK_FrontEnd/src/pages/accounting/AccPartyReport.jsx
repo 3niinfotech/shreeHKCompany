@@ -5,7 +5,7 @@ import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify'
 import { BookOutlined, TeamOutlined, CalendarOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
-import { ENDPOINTS } from '../../constants/endpoints';
+import { ENDPOINTS } from '../../api/endpoints';
 import AdvancedFilterPanel, { FilterField, filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
 import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
 import ExportExcelButton from '../../components/common/ExportExcelButton';

@@ -248,12 +248,51 @@ async function getGroupReport(post, companyId, userId) {
     const outwardRows = await queryAsync(sql, values);
     const partyMap = await getPartyMap();
 
+    // Batch fetch products and return records to eliminate N+1 loop queries
+    const allProductIds = [];
+    const allReturnIds = [];
     for (const row of outwardRows) {
-      const ids = (row.products || "").split(",").filter(Boolean);
+      const ids = (row.products || "").split(",").map((s) => s.trim()).filter(Boolean);
+      allProductIds.push(...ids);
+
+      if ((report === "close_memo" || report === "close_sale") && !row.products && row.out_product) {
+        const retIds = (row.out_product || "").split(",").map((s) => s.trim()).filter(Boolean);
+        allReturnIds.push(...retIds);
+      }
+    }
+
+    const uniqueProductIds = [...new Set(allProductIds)];
+    const uniqueReturnIds = [...new Set(allReturnIds)];
+
+    const productMap = {};
+    if (uniqueProductIds.length > 0) {
+      const placeholders = uniqueProductIds.map(() => "?").join(",");
+      const prodSql = `SELECT p.*, pv.* FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id WHERE p.id IN (${placeholders})${mainGroup.sql}${subGroup.sql}`;
+      const prodRows = await queryAsync(prodSql, [...uniqueProductIds, ...mainGroup.values, ...subGroup.values]);
+      for (const p of prodRows) {
+        productMap[p.id] = p;
+      }
+    }
+
+    const returnMap = {};
+    if (uniqueReturnIds.length > 0) {
+      const placeholders = uniqueReturnIds.map(() => "?").join(",");
+      const retSql = `SELECT pr.price AS r_price, pr.amount AS r_amount, pr.*, p.*, pv.*
+        FROM dai_product_return pr
+        INNER JOIN dai_product p ON p.id = pr.product_id
+        INNER JOIN dai_product_value pv ON pr.product_id = pv.product_id
+        WHERE pr.id IN (${placeholders})${mainGroup.sql}${subGroup.sql}`;
+      const retRows = await queryAsync(retSql, [...uniqueReturnIds, ...mainGroup.values, ...subGroup.values]);
+      for (const r of retRows) {
+        returnMap[r.id] = r;
+      }
+    }
+
+    for (const row of outwardRows) {
+      const ids = (row.products || "").split(",").map((s) => s.trim()).filter(Boolean);
       for (const id of ids) {
-        const prodSql = `SELECT p.*, pv.* FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id WHERE p.id = ?${mainGroup.sql}${subGroup.sql}`;
-        const prodRows = await queryAsync(prodSql, [id, ...mainGroup.values, ...subGroup.values]);
-        prodRows.forEach((p) => {
+        const p = productMap[id];
+        if (p) {
           data.push({
             ...p,
             party: row.party,
@@ -262,19 +301,14 @@ async function getGroupReport(post, companyId, userId) {
             entryno: row.entryno,
             invoiceno: row.invoiceno,
           });
-        });
+        }
       }
 
       if ((report === "close_memo" || report === "close_sale") && !row.products && row.out_product) {
-        const retIds = (row.out_product || "").split(",").filter(Boolean);
+        const retIds = (row.out_product || "").split(",").map((s) => s.trim()).filter(Boolean);
         for (const rid of retIds) {
-          const retSql = `SELECT pr.price AS r_price, pr.amount AS r_amount, pr.*, p.*, pv.*
-            FROM dai_product_return pr
-            INNER JOIN dai_product p ON p.id = pr.product_id
-            INNER JOIN dai_product_value pv ON pr.product_id = pv.product_id
-            WHERE pr.id = ?${mainGroup.sql}${subGroup.sql}`;
-          const retRows = await queryAsync(retSql, [rid, ...mainGroup.values, ...subGroup.values]);
-          retRows.forEach((p) => {
+          const p = returnMap[rid];
+          if (p) {
             data.push({
               ...p,
               party: row.party,
@@ -283,7 +317,7 @@ async function getGroupReport(post, companyId, userId) {
               entryno: row.entryno,
               invoiceno: row.invoiceno,
             });
-          });
+          }
         }
       }
     }
@@ -293,10 +327,21 @@ async function getGroupReport(post, companyId, userId) {
     const inwardRows = await queryAsync(sql, [companyId, ...partyFilter.values, ...dateCol.values]);
     const partyMap = await getPartyMap();
 
-    for (const row of inwardRows) {
+    const inwardIds = inwardRows.map((r) => r.id).filter(Boolean);
+    const inwardProductsByInwardId = {};
+    if (inwardIds.length > 0) {
+      const placeholders = inwardIds.map(() => "?").join(",");
       const prodSql = `SELECT p.*, pv.* FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id
-        WHERE p.inward_id = ?${mainGroup.sql}${subGroup.sql}`;
-      const prods = await queryAsync(prodSql, [row.id, ...mainGroup.values, ...subGroup.values]);
+        WHERE p.inward_id IN (${placeholders})${mainGroup.sql}${subGroup.sql}`;
+      const prods = await queryAsync(prodSql, [...inwardIds, ...mainGroup.values, ...subGroup.values]);
+      for (const p of prods) {
+        if (!inwardProductsByInwardId[p.inward_id]) inwardProductsByInwardId[p.inward_id] = [];
+        inwardProductsByInwardId[p.inward_id].push(p);
+      }
+    }
+
+    for (const row of inwardRows) {
+      const prods = inwardProductsByInwardId[row.id] || [];
       prods.forEach((p) => {
         data.push({
           ...p,

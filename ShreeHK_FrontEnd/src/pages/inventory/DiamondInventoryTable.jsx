@@ -8,11 +8,11 @@ import { DownOutlined, DownloadOutlined, ReloadOutlined } from "@ant-design/icon
 import InventorySmartSearch from "../../components/inventory/InventorySmartSearch";
 import { useQueryClient } from "@tanstack/react-query";
 import { useFetchApi } from "../../api/ApiFunction";
-import { ENDPOINTS } from "../../constants/endpoints";
-import { api } from "../../api/axiosInstance";
+import { ENDPOINTS } from "../../api/endpoints";
+import { api } from "../../api/client/axiosInstance";
 import { sendToOutward } from "../../api/services/outwardService";
 import { TRANSACTION_STOCK_KEYS } from "../../api/services/transactionStockService";
-import { toastApiSuccess, toastApiError } from "../../utils/apiToast";
+import { toastApiSuccess, toastApiError } from "../../utils/toastNotify";
 import InventoryFilterPanel from "../../components/inventory/InventoryFilterPanel";
 import InventoryFilterGroups from "../../components/inventory/InventoryFilterGroups";
 import InventoryCompactFilterRow from "../../components/inventory/InventoryCompactFilterRow";
@@ -234,7 +234,17 @@ const EditableRemarkCell = React.memo(function EditableRemarkCell({ id, value, o
   );
 });
 
-const MemoizedInventoryRow = React.memo((props) => <tr {...props} />);
+const MemoizedInventoryRow = React.memo(function MemoizedInventoryRow(props) {
+  const context = useContext(SelectionContext);
+  const rowId = props["data-row-key"];
+  const isSelected = useRowSelectionState(context?.store, rowId);
+
+  const mergedClassName = isSelected
+    ? `${props.className || ""} ant-table-row-selected inventory-row-selected`.trim()
+    : props.className;
+
+  return <tr {...props} className={mergedClassName} />;
+});
 
 const InventoryTableFooter = React.memo(function InventoryTableFooter({ showTotalStats, selectedStats }) {
   return (
@@ -1006,17 +1016,24 @@ const DiamondInventoryTable = () => {
       title: "Type",
       key: "groupType",
       dataIndex: "groupType",
-      width: 96,
+      width: 60,
       align: "center",
       ellipsis: true,
       fixed: "left",
+      filters: [
+        { text: "Box", value: "box" },
+        { text: "Parcel", value: "parcel" },
+        { text: "Single", value: "single" },
+      ],
+      onFilter: (value, record) =>
+        String(record.groupType || "").toLowerCase() === String(value).toLowerCase(),
       render: (text) =>
         text == null || text === ""
           ? "-"
           : <span style={{ textTransform: "capitalize" }}>{String(text)}</span>,
     },
     {
-      title: "SKU", key: "sku", dataIndex: "sku", width: 102, ellipsis: true, align: "center",
+      title: "SKU", key: "sku", dataIndex: "sku", width: 100, ellipsis: true, align: "center",
       render: (text, record) => <SkuLink sku={text} record={record} />,
     },
     {

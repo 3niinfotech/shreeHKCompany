@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Form } from "antd";
 import { useQueryClient } from "@tanstack/react-query";
 import { useFetchApi } from "../api/ApiFunction";
-import { ENDPOINTS } from "../constants/endpoints";
+import { ENDPOINTS } from "../api/endpoints";
 import { buildOnHandApiFilters, mapInventoryRowSnake } from "../utils/inventoryApiFilters";
 import useTableBodyScrollHeight from "./useTableBodyScrollHeight";
 

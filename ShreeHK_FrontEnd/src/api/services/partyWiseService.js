@@ -1,5 +1,5 @@
-import { api } from "../axiosInstance";
-import { ENDPOINTS } from "../../constants/endpoints";
+import { api } from "../client/axiosInstance";
+import { ENDPOINTS } from "../../api/endpoints";
 
 export const fetchPartyWiseList = async (params) => {
     const res = await api.get(ENDPOINTS.partyWise.list, { params });

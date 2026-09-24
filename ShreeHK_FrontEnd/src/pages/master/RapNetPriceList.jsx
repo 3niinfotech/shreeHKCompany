@@ -3,10 +3,10 @@ import dayjs from 'dayjs';
 import { Alert, Button, Space, Typography } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
-import { toastApiSuccess, toastApiError, getApiErrorMessage } from '../../utils/apiToast';
+import { toastApiSuccess, toastApiError, getApiErrorMessage } from '../../utils/toastNotify';
 import { MasterListTable } from '../../components/common/table';
 import { useFetchApi } from '../../api/ApiFunction';
-import { ENDPOINTS } from '../../constants/endpoints';
+import { ENDPOINTS } from '../../api/endpoints';
 
 const { Text } = Typography;
 

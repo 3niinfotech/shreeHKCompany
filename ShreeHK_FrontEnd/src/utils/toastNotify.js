@@ -1,7 +1,13 @@
 import { createElement } from "react";
 import { toast } from "sonner";
 import { CircleCheck, CircleX, Info, TriangleAlert } from "lucide-react";
-import { pickApiMessage } from "./apiMessage";
+import {
+  pickApiMessage,
+  getApiSuccessMessage,
+  getApiErrorMessage,
+} from "./apiMessage";
+
+export { pickApiMessage, getApiSuccessMessage, getApiErrorMessage };
 
 const iconSize = 18;
 const iconStroke = 2.25;
@@ -90,4 +96,18 @@ export function toastDeleted(data) {
     icon: toastIcon(CircleX),
     duration: DEFAULT_DURATION,
   });
+}
+
+/** API response success helper */
+export function toastApiSuccess(data, options) {
+  const msg = getApiSuccessMessage(data);
+  if (msg) toastSuccess(msg, options);
+  return msg;
+}
+
+/** API response error helper */
+export function toastApiError(error, options) {
+  const msg = getApiErrorMessage(error);
+  if (msg) toastError(msg, options);
+  return msg;
 }

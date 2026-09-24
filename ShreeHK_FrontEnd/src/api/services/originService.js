@@ -1,5 +1,5 @@
-import { api } from "../axiosInstance";
-import { ENDPOINTS } from "../../constants/endpoints";
+import { api } from "../client/axiosInstance";
+import { ENDPOINTS } from "../../api/endpoints";
 
 export const fetchOrigins = async (params) => {
     const res = await api.get(ENDPOINTS.origin.list, { params });

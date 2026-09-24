@@ -8,13 +8,78 @@ const SYSTEM_USER = {
   userRoleId: null,
 };
 
-const SKIP_FIELDS = new Set(["pass", "password", "token"]);
+const REDACT_FIELDS = new Set([
+  "pass",
+  "password",
+  "token",
+  "oldPassword",
+  "newPassword",
+]);
+
+const DIFF_SKIP_FIELDS = new Set([
+  "pass",
+  "password",
+  "token",
+  "oldPassword",
+  "newPassword",
+  "requestPath",
+  "requestMethod",
+  "requestQuery",
+  "queryParams",
+  "pageContext",
+  "statusCode",
+  "updated_at",
+  "created_at",
+  "_auditLogged",
+]);
+
+function isBlank(val) {
+  return val === null || val === undefined || (typeof val === "string" && val.trim() === "");
+}
+
+function areValuesEqual(a, b) {
+  // If both are null, undefined, or empty/whitespace string, treat as equal
+  if (isBlank(a) && isBlank(b)) return true;
+
+  // If only one is blank, they are genuinely different
+  if (isBlank(a) !== isBlank(b)) return false;
+
+  // Strict equality
+  if (a === b) return true;
+
+  // Number vs numeric string: e.g. 100 vs "100", 0 vs "0", 12.5 vs "12.5"
+  if (typeof a === "number" && typeof b === "string" && b.trim() !== "" && !Number.isNaN(Number(b))) {
+    if (Number(a) === Number(b)) return true;
+  }
+  if (typeof b === "number" && typeof a === "string" && a.trim() !== "" && !Number.isNaN(Number(a))) {
+    if (Number(a) === Number(b)) return true;
+  }
+
+  // String comparison after trimming
+  if (typeof a === "string" && typeof b === "string") {
+    if (a.trim() === b.trim()) return true;
+  }
+
+  // Boolean vs boolean-like (e.g. true vs 1 / "1", false vs 0 / "0")
+  const isBoolLike = (v) => v === true || v === false || v === 0 || v === 1 || v === "0" || v === "1" || v === "true" || v === "false";
+  if (isBoolLike(a) && isBoolLike(b) && (typeof a === "boolean" || typeof b === "boolean")) {
+    const toBool = (v) => v === true || v === 1 || v === "1" || v === "true";
+    return toBool(a) === toBool(b);
+  }
+
+  // Object / Array comparison
+  if (typeof a === "object" && typeof b === "object" && a !== null && b !== null) {
+    return JSON.stringify(a) === JSON.stringify(b);
+  }
+
+  return JSON.stringify(a) === JSON.stringify(b);
+}
 
 function safeJson(value) {
   if (value == null) return null;
   try {
     const clone = JSON.parse(JSON.stringify(value, (key, val) => {
-      if (SKIP_FIELDS.has(key)) return "[REDACTED]";
+      if (REDACT_FIELDS.has(key)) return "[REDACTED]";
       return val;
     }));
     return clone;
@@ -46,10 +111,10 @@ function diffFields(oldVal, newVal) {
   const keys = new Set([...Object.keys(aFlat || {}), ...Object.keys(bFlat || {})]);
   const changed = [];
   keys.forEach((key) => {
-    if (SKIP_FIELDS.has(key)) return;
+    if (DIFF_SKIP_FIELDS.has(key)) return;
     const a = aFlat[key];
     const b = bFlat[key];
-    if (JSON.stringify(a) !== JSON.stringify(b)) changed.push(key);
+    if (!areValuesEqual(a, b)) changed.push(key);
   });
   return changed;
 }

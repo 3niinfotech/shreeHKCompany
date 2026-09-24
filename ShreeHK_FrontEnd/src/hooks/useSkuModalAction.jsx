@@ -15,8 +15,8 @@ import {
   SwapOutlined,
   CloseOutlined,
 } from "@ant-design/icons";
-import { api } from "../api/axiosInstance";
-import { ENDPOINTS } from "../constants/endpoints";
+import { api } from "../api/client/axiosInstance";
+import { ENDPOINTS } from "../api/endpoints";
 import {
   buildStoneHistoryUrl,
   buildTransferHistoryUrl,

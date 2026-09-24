@@ -12,12 +12,12 @@ import {
 } from 'antd';
 import { FileSpreadsheet, Upload as UploadIcon, Download } from 'lucide-react';
 import { loadXlsx } from '../../utils/loadXlsx';
-import DynamicFormField from '../../hooks/DynamicFormField';
+import DynamicFormField from '../../components/common/ui/DynamicFormField';
 import styles from '../../assets/scss/pages/master/bulkupdate.module.scss';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import api from '../../api/axiosInstance';
-import { ENDPOINTS } from '../../constants/endpoints';
-import { toastApiSuccess, toastApiError } from '../../utils/apiToast';
+import api from '../../api/client/axiosInstance';
+import { ENDPOINTS } from '../../api/endpoints';
+import { toastApiSuccess, toastApiError } from '../../utils/toastNotify';
 
 const { Text } = Typography;
 const HEADER_BG = "1D3557";

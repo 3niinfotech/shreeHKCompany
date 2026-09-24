@@ -8,8 +8,8 @@ const { authenticateToken, isSuperAdmin } = require("../../authMiddleware.js");
 const { logAuditInTx } = require("../../services/auditIntegration.js");
 const { ensureUserActiveColumn } = require("../../services/userActiveColumnService.js");
 const { isUserOnline } = require("../../services/userPresenceService.js");
+const { hashPassword, validatePasswordPolicy } = require("../../services/passwordService.js");
 const AdminUserRouter = express.Router();
-const md5 = require('md5');
 AdminUserRouter.use(express.json());
 
 const profileStorage = multer.diskStorage({
@@ -251,9 +251,10 @@ AdminUserRouter.post('/admin-manage-user', authenticateToken, isSuperAdmin, hand
                 }
 
                 if (password && password.trim() !== "") {
+                    const hashedPassword = hashPassword(password);
                     await q(
                         `UPDATE user SET first_name = ?, last_name = ?, user_name = ?, user_email = ?, mobile = ?, roll = ?, pass = ?, is_active = ?, ${extraSet.join(", ")} WHERE user_id = ?`,
-                        [fname, lname, username, email, mobileno, userroll, md5(password), activeVal, ...extraParams, userId],
+                        [fname, lname, username, email, mobileno, userroll, hashedPassword, activeVal, ...extraParams, userId],
                     );
                 } else {
                     await q(
@@ -287,9 +288,10 @@ AdminUserRouter.post('/admin-manage-user', authenticateToken, isSuperAdmin, hand
         }
 
         const insertId = await helper.runInTransaction(async (q) => {
+            const hashedPassword = hashPassword(password);
             const result = await q(
                 `INSERT INTO user (first_name, last_name, user_name, user_email, mobile, roll, pass, is_active, department, designation, joining_date, profile_image, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [fname, lname, username, email, mobileno, userroll, md5(password), activeVal, departmentVal, designationVal, joiningDateVal, profileImageVal, req.user?.user_id || null],
+                [fname, lname, username, email, mobileno, userroll, hashedPassword, activeVal, departmentVal, designationVal, joiningDateVal, profileImageVal, req.user?.user_id || null],
             );
             const newRows = await q(
                 "SELECT user_id, first_name, last_name, user_name, user_email, mobile, roll, is_active FROM user WHERE user_id = ?",
@@ -405,7 +407,12 @@ AdminUserRouter.post('/addNewUser', authenticateToken, isSuperAdmin, async (req,
         VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
 
-    connection.query(insertQuery, [fname, lname, username, email, mobileno, userroll, md5(password)], (insertErr, insertResult) => {
+    const policyErr = validatePasswordPolicy(password);
+    if (policyErr) {
+        return res.status(400).json({ status: false, message: policyErr });
+    }
+    const hashedPassword = hashPassword(password);
+    connection.query(insertQuery, [fname, lname, username, email, mobileno, userroll, hashedPassword], (insertErr, insertResult) => {
         if (insertErr) {
             return res.status(500).json({ message: insertErr.message });
         }

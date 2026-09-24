@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { toastWarning } from "../utils/toastNotify";
-import useFiltersFormFields from "./useFiltersFormFields";
+import useFiltersFormFields from "../components/common/filters/FilterFormFields";
 import useInventoryList from "./useInventoryList";
 import useInventoryHoldActions from "./useInventoryHoldActions";
 import useInventoryChangePriceActions from "./useInventoryChangePriceActions";

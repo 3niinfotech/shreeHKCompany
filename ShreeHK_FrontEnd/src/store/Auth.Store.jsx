@@ -1,8 +1,8 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { normalizeAuthUser } from "../utils/authUtils";
-import { api } from "../api/axiosInstance";
-import { ENDPOINTS } from "../constants/endpoints";
+import { api } from "../api/client/axiosInstance";
+import { ENDPOINTS } from "../api/endpoints";
 
 /** Coarse granularity keeps persisted writes and subscriber re-renders infrequent. */
 const ACTIVITY_WRITE_INTERVAL_MS = 30 * 1000;

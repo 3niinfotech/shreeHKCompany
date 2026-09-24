@@ -3,7 +3,7 @@
 const express = require("express");
 const router = express.Router();
 const connection = require("../../connection.js");
-const md5 = require('md5');
+const { hashPassword, verifyPassword, validatePasswordPolicy } = require('../../services/passwordService.js');
 const { authenticateToken, isSuperAdmin } = require('../../authMiddleware.js');
 const { fetchRowById, auditCrud } = require('../../services/auditMutationHelper.js');
 const multer = require('multer');
@@ -157,8 +157,9 @@ router.post('/api/profile/change-password', authenticateToken, (req, res) => {
     if (!oldPass || !newPass) {
         return res.status(400).json({ status: false, message: 'Both passwords required.' });
     }
-    if (newPass.length < 3) {
-        return res.status(400).json({ status: false, message: 'New password must be at least 3 characters.' });
+    const policyErr = validatePasswordPolicy(newPass);
+    if (policyErr) {
+        return res.status(400).json({ status: false, message: policyErr });
     }
 
     // Step 1: Purana password verify karo
@@ -166,14 +167,15 @@ router.post('/api/profile/change-password', authenticateToken, (req, res) => {
         if (err) return res.status(500).json({ status: false, message: err.message });
         if (results.length === 0) return res.status(404).json({ status: false, message: 'User not found.' });
 
-        if (md5(oldPass) !== results[0].pass) {
+        if (!verifyPassword(oldPass, results[0].pass)) {
             return res.status(400).json({ status: false, message: 'Current password is incorrect.' });
         }
 
-        // Step 2: Naya password save karo
+        // Step 2: Naya password save karo (bcrypt)
+        const hashed = hashPassword(newPass);
         connection.query(
             'UPDATE user SET pass = ? WHERE user_id = ?',
-            [md5(newPass), userId],
+            [hashed, userId],
             (err2) => {
                 if (err2) return res.status(500).json({ status: false, message: err2.message });
                 res.json({ status: true, message: 'Password changed successfully.' });
@@ -210,7 +212,7 @@ router.get('/api/admin/users/:id', authenticateToken, isSuperAdmin, (req, res) =
     const { id } = req.params;
     const query = `
         SELECT user_id, user_name, user_email, first_name, last_name,
-               mobile, roll, profile_image, address, company_name,
+               mobile, roll, profile_image, address, company_name
         FROM user WHERE user_id = ?
     `;
     connection.query(query, [id], (err, results) => {
@@ -233,6 +235,11 @@ router.post('/api/admin/users/create', authenticateToken, isSuperAdmin, (req, re
         return res.status(400).json({ status: false, message: 'user_name, user_email, password required.' });
     }
 
+    const policyErr = validatePasswordPolicy(password);
+    if (policyErr) {
+        return res.status(400).json({ status: false, message: policyErr });
+    }
+
     const userRoll = roll === 1 ? 1 : 2; // Sirf 1 ya 2
 
     // Email duplicate check
@@ -240,13 +247,14 @@ router.post('/api/admin/users/create', authenticateToken, isSuperAdmin, (req, re
         if (err) return res.status(500).json({ status: false, message: err.message });
         if (exists.length > 0) return res.status(409).json({ status: false, message: 'Username or email already exists.' });
 
+        const hashed = hashPassword(password);
         const query = `
-            INSERT INTO user (user_name, user_email, first_name, last_name, mobile, pass, roll, company_name)
+            INSERT INTO user (user_name, user_email, first_name, last_name, mobile, pass, roll, designation, company_name)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         connection.query(
             query,
-            [user_name, user_email, first_name, last_name, mobile, md5(password), userRoll, designation, company_name],
+            [user_name, user_email, first_name, last_name, mobile, hashed, userRoll, designation, company_name],
             (err2, result) => {
                 if (err2) return res.status(500).json({ status: false, message: err2.message });
                 res.json({ status: true, message: 'User created successfully.', user_id: result.insertId });
@@ -265,11 +273,12 @@ router.post('/api/admin/users/:id/update', authenticateToken, isSuperAdmin, (req
     const query = `
         UPDATE user 
         SET user_name = ?, user_email = ?, first_name = ?, last_name = ?,
-            mobile = ?, company_name = ?, roll = ?
+            mobile = ?, designation = ?, company_name = ?, roll = ?
         WHERE user_id = ?
     `;
-    connection.query(query, [user_name, user_email, first_name, last_name, mobile, designation, company_name, userRoll, id], (err) => {
+    connection.query(query, [user_name, user_email, first_name, last_name, mobile, designation, company_name, userRoll, id], (err, result) => {
         if (err) return res.status(500).json({ status: false, message: err.message });
+        if (result.affectedRows === 0) return res.status(404).json({ status: false, message: 'User not found or access denied.' });
         res.json({ status: true, message: 'User updated successfully.' });
     });
 });
@@ -279,8 +288,9 @@ router.post('/api/admin/users/:id/reset-password', authenticateToken, isSuperAdm
     const { id } = req.params;
     const { newPass } = req.body;
 
-    if (!newPass || newPass.length < 3) {
-        return res.status(400).json({ status: false, message: 'Password must be at least 3 characters.' });
+    const policyErr = validatePasswordPolicy(newPass);
+    if (policyErr) {
+        return res.status(400).json({ status: false, message: policyErr });
     }
 
     // Super admin apna password yahan se reset nahi kar sakta
@@ -288,9 +298,10 @@ router.post('/api/admin/users/:id/reset-password', authenticateToken, isSuperAdm
         return res.status(400).json({ status: false, message: 'Use /change-password for your own password.' });
     }
 
-    connection.query('UPDATE user SET pass = ? WHERE user_id = ?', [md5(newPass), id], (err, result) => {
+    const hashed = hashPassword(newPass);
+    connection.query('UPDATE user SET pass = ? WHERE user_id = ?', [hashed, id], (err, result) => {
         if (err) return res.status(500).json({ status: false, message: err.message });
-        if (result.affectedRows === 0) return res.status(404).json({ status: false, message: 'User not found.' });
+        if (result.affectedRows === 0) return res.status(404).json({ status: false, message: 'User not found or access denied.' });
         res.json({ status: true, message: 'Password reset successfully.' });
     });
 });
@@ -307,8 +318,9 @@ router.post('/api/admin/users/:id/change-role', authenticateToken, isSuperAdmin,
         return res.status(400).json({ status: false, message: 'You cannot change your own role.' });
     }
 
-    connection.query('UPDATE user SET roll = ? WHERE user_id = ?', [roll, id], (err) => {
+    connection.query('UPDATE user SET roll = ? WHERE user_id = ?', [roll, id], (err, result) => {
         if (err) return res.status(500).json({ status: false, message: err.message });
+        if (result.affectedRows === 0) return res.status(404).json({ status: false, message: 'User not found or access denied.' });
         res.json({ status: true, message: `Role changed to ${roll === 1 ? 'super_admin' : 'admin'}.` });
     });
 });

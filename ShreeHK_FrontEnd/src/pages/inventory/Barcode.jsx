@@ -3,7 +3,7 @@ import { Input, Button } from "antd";
 import { toastSuccess, toastError, toastWarning } from "../../utils/toastNotify";
 import { ReloadOutlined } from "@ant-design/icons";
 import MasterTableTemplate from "./MasterTableTemplate";
-import useFiltersFormFields from "../../hooks/useFiltersFormFields";
+import useFiltersFormFields from "../../components/common/filters/FilterFormFields";
 import useInventoryList from "../../hooks/useInventoryList";
 import useInventoryHoldActions from "../../hooks/useInventoryHoldActions";
 import useInventoryChangePriceActions from "../../hooks/useInventoryChangePriceActions";

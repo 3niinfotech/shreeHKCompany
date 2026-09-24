@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Input, Spin, Tooltip } from "antd";
 import { toastError, toastWarning } from "../../utils/toastNotify";
 import { AudioOutlined, SearchOutlined } from "@ant-design/icons";
-import { api } from "../../api/axiosInstance";
-import { ENDPOINTS } from "../../constants/endpoints";
+import { api } from "../../api/client/axiosInstance";
+import { ENDPOINTS } from "../../api/endpoints";
 import useSpeechRecognition from "../../hooks/useSpeechRecognition";
 import styles from "../../assets/scss/components/inventorySmartSearch.module.scss";
 

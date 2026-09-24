@@ -2,6 +2,7 @@ const express = require("express");
 const jwt = require("jsonwebtoken");
 const helper = require("../../helper.js");
 const { authenticateToken } = require("../../authMiddleware.js");
+const { buildUserContext } = require("../../tenantHelper.js");
 const {
   addSubscriber,
   removeSubscriber,
@@ -30,7 +31,10 @@ const ensureReadStateTable = async () => {
   );
 };
 
-const getUserCompanyId = (req) => Number(req.companyId ?? req.user?.companyId) || helper.DEFAULT_COMPANY_ID;
+const getUserCompanyId = (req) => {
+  const ctx = buildUserContext(req);
+  return Number(ctx.companyId) || 0;
+};
 const getUserId = (req) => Number(req.user?.user_id) || helper.DEFAULT_USER_ID;
 
 const authenticateStreamToken = (req, res, next) => {
@@ -46,6 +50,9 @@ const authenticateStreamToken = (req, res, next) => {
       return res.status(403).json({ status: false, message: "Forbidden access" });
     }
     req.user = user;
+    if (user?.companyId) {
+      req.companyId = Number(user.companyId);
+    }
     next();
   });
 };
@@ -66,6 +73,9 @@ const getLastReadIdSql = `
 
 notificationRouter.get("/notification/stream", authenticateStreamToken, (req, res) => {
   const companyId = getUserCompanyId(req);
+  if (!companyId || companyId <= 0) {
+    return res.status(403).json({ status: false, message: "Valid tenant company context required" });
+  }
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
@@ -95,6 +105,14 @@ notificationRouter.get("/notification", authenticateToken, async (req, res) => {
 
     const companyId = getUserCompanyId(req);
     const userId = getUserId(req);
+    if (!companyId || companyId <= 0) {
+      return res.status(200).json({
+        TotalItems: 0,
+        UnreadCount: 0,
+        LastReadId: 0,
+        Data: [],
+      });
+    }
     const limit = Math.min(toPositiveInt(req.query.limit, DEFAULT_LIMIT), MAX_LIMIT);
     const offset = toPositiveInt(req.query.offset, 0);
     const paginationOffset = offset * limit;

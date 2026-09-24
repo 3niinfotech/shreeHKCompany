@@ -11,7 +11,7 @@
 //   Sparkles,
 // } from 'lucide-react';
 // import useAuthStore from '../../store/Auth.Store';
-// import { api } from '../../api/axiosInstance';
+// import { api } from '../../api/client/axiosInstance';
 // import { Link, useNavigate } from 'react-router-dom';
 // import { resolveUploadUrl } from '../../utils/uploadBaseUrl';
 // import styles from '../../assets/scss/components/profileDropdown.module.scss';
@@ -314,7 +314,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import useAuthStore from '../../store/Auth.Store';
-import { api } from '../../api/axiosInstance';
+import { api } from '../../api/client/axiosInstance';
 import { Link, useNavigate } from 'react-router-dom';
 import { resolveUploadUrl } from '../../utils/uploadBaseUrl';
 import { formatLastActive } from '../../utils/relativeTime';

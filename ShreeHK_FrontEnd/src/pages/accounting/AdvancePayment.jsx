@@ -7,11 +7,11 @@ import {
     BetweenHorizontalEnd, SaveAll, RotateCcw, Plus,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import DynamicFormField from '../../hooks/DynamicFormField';
+import DynamicFormField from '../../components/common/ui/DynamicFormField';
 import useFormHandleChange from '../../hooks/useFormHandleChange';
 import { advancePaymentFields } from './data';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
-import { ENDPOINTS } from '../../constants/endpoints';
+import { ENDPOINTS } from '../../api/endpoints';
 import PageHeroHeader, { pageHeroHeaderStyles } from '../../components/common/PageHeroHeader';
 import styles from '../../assets/scss/pages/accountings/expanse.module.scss';
 

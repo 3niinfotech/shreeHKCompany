@@ -4,12 +4,12 @@ import { RefreshCcw, PlusCircle, Trash2, CheckCircle } from 'lucide-react';
 import dayjs from 'dayjs';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { toastApiError } from '../../../utils/apiToast';
-import DynamicForm from '../../../hooks/DynamicFormField';
+import { toastApiError } from '../../../utils/toastNotify';
+import DynamicForm from '../../../components/common/ui/DynamicFormField';
 import { useFetchApi, usePostApiRequest } from '../../../api/ApiFunction';
-import { ENDPOINTS } from '../../../constants/endpoints';
+import { ENDPOINTS } from '../../../api/endpoints';
 import useFormHandleChange from '../../../hooks/useFormHandleChange';
-import ValidationTableModal from '../../../hooks/ValidationTableModal';
+import ValidationTableModal from '../../../components/common/modals/ValidationTableModal';
 import styles from '../../../assets/scss/pages/transaction/inwardpurchase.module.scss';
 import PageHeroHeader, { pageHeroHeaderStyles } from '../../../components/common/PageHeroHeader';
 import { SwapOutlined } from '@ant-design/icons';
@@ -207,14 +207,12 @@ const InwardEntryForm = ({
         return {
           ...item,
           rPcs: value,
-          pPcs: (!item.pPcs || item.pPcs === 0) ? value : item.pPcs,
         };
       }
       if (field === 'pPcs') {
         return {
           ...item,
           pPcs: value,
-          rPcs: (!item.rPcs || item.rPcs === 0) ? value : item.rPcs,
         };
       }
       if (field === 'pCarat' || field === 'price') {

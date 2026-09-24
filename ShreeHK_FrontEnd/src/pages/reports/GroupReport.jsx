@@ -4,7 +4,7 @@ import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify'
 import dayjs from 'dayjs';
 import useFormHandleChange from '../../hooks/useFormHandleChange';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
-import { ENDPOINTS } from '../../constants/endpoints';
+import { ENDPOINTS } from '../../api/endpoints';
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
 import { ReloadOutlined } from '@ant-design/icons';
 import ExportExcelButton from '../../components/common/ExportExcelButton';
@@ -103,7 +103,7 @@ const GroupReport = () => {
     const toUsDate = (value) => {
         if (!value) return '';
         const s = String(value).trim();
-        const m = s.match(/^(\d{1,2})[/\-](\d{1,2})[/\-](\d{2,4})$/);
+        const m = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
         if (m) {
             const dd = m[1].padStart(2, '0');
             const mm = m[2].padStart(2, '0');

@@ -24,7 +24,7 @@ import {
   Minimize2,
 } from "lucide-react";
 import { sendAgentQuery, sendAiChat, fetchUserThreads, fetchThreadHistory, deleteUserThread } from "../../api/services/aiService";
-import { pickApiMessage } from "../../utils/apiToast";
+import { pickApiMessage } from "../../utils/toastNotify";
 import useSpeechRecognition from "../../hooks/useSpeechRecognition";
 import AIAgentCommandBar from "./AIAgentCommandBar";
 import sdLogo from "../../assets/loader/icon.png";

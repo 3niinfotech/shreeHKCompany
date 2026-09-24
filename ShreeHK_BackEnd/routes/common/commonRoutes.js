@@ -27,6 +27,10 @@ commonRouter.get("/common/getIncrement", authenticateToken, async (req, res) => 
       });
     });
 
+    if (user && typeof user.inward === "string" && user.inward.includes("NaN")) {
+      user.inward = user.inward.replace(/-?NaN/gi, "") || "1";
+    }
+
     if (user && user.company != null) {
       try {
         const companies = await metaQuery(

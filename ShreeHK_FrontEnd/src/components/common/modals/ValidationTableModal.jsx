@@ -1,8 +1,8 @@
 import React from "react";
 import { Table } from "antd";
-import WarningActionModal from "../components/common/modals/WarningActionModal";
+import WarningActionModal from "./WarningActionModal";
 import { Info, Check, AlertCircle } from "lucide-react";
-import { SkuLink } from "./useSkuModalAction";
+import { SkuLink } from "../../../hooks/useSkuModalAction";
 
 const EXIST_COLUMNS = [
     {

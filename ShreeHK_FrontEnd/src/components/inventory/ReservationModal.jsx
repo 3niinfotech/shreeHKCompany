@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Modal, Form, Input, DatePicker, Button, Typography, Row, Col } from "antd";
 import dayjs from "dayjs";
 import { postProductHold } from "../../api/services/holdService";
-import { toastApiSuccess, toastApiError } from "../../utils/apiToast";
+import { toastApiSuccess, toastApiError } from "../../utils/toastNotify";
 import { toast } from "sonner";
 import { getActionTheme } from "./inventoryActionConfig";
 import styles from "../../assets/scss/components/inventoryBulkActionModal.module.scss";

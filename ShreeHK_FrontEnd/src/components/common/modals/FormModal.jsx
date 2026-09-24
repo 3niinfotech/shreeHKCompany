@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Form } from "antd";
 import { toast } from "sonner";
-import DynamicFormField from "../../../hooks/DynamicFormField";
+import DynamicFormField from "../../../components/common/ui/DynamicFormField";
 import BaseModal from "./BaseModal";
 
 /**

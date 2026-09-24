@@ -11,8 +11,8 @@ const { touchUserPresence, clearUserPresence } = require('../../services/userPre
 const helper = require("../../helper.js");
 const { logAudit } = require("../../services/auditIntegration.js");
 const { getRollCompanyIds } = require("../../tenantHelper.js");
+const { verifyAndMigratePassword } = require("../../services/passwordService.js");
 const userRouter = express.Router();
-const md5 = require('md5');
 
 const SECRET_KEY = process.env.JWT_SECRET || 'NitechDigitalServices';
 
@@ -108,8 +108,13 @@ userRouter.post('/user/login', async (req, res) => {
       return res.status(403).json({ status: false, message: 'Your account is inactive. Contact administrator.' });
     }
 
-    const hash = md5(password);
-    if (hash !== user.pass) {
+    const isPasswordValid = verifyAndMigratePassword(password, user.pass, (newBcryptHash) => {
+      connection.query("UPDATE user SET pass = ? WHERE user_id = ?", [newBcryptHash, user.user_id], (uErr) => {
+        if (uErr) console.error("Error migrating user password to bcrypt:", uErr);
+      });
+    });
+
+    if (!isPasswordValid) {
       await logFailedLogin(req, { username, user, reason: "Invalid password" });
       return res.status(401).json({ status: false, message: 'Invalid password.' });
     }

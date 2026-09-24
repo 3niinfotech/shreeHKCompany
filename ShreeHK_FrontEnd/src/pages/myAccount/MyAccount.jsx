@@ -14,7 +14,7 @@ import {
     HistoryOutlined, RightOutlined, ControlOutlined
 } from '@ant-design/icons';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
-import { ENDPOINTS } from '../../constants/endpoints';
+import { ENDPOINTS } from '../../api/endpoints';
 import { resolveUploadUrl } from '../../utils/uploadBaseUrl';
 import useThemeColors from '../../hooks/useThemeColors';
 import { cssVar } from '../../theme';

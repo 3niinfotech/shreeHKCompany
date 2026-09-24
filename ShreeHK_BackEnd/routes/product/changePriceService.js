@@ -46,14 +46,15 @@ const updatePrice = async (productMap, userContext) => {
     const isAllEmpty = entry?.price === "" && entry?.cost === "" && entry?.rap_price === "";
     if (isAllEmpty) continue;
 
-    const detail = await repository.getProductDetail(pid);
+    const companyId = userContext?.companyId || null;
+    const detail = await repository.getProductDetail(pid, companyId);
     if (!detail) continue;
 
     pidList.push(pid);
     skuList.push(detail.sku);
 
     const { updates, hasPrice } = buildUpdatePayload(entry, detail);
-    result = await repository.updateProductById(pid, updates);
+    result = await repository.updateProductById(pid, updates, companyId);
 
     if (hasPrice) {
       const oldPrice = detail.price;

@@ -1,3 +1,5 @@
+import { trackExportAudit } from "./auditExportTracker";
+
 /**
  * Shared Excel export for report tables (Venya reportExport parity).
  */
@@ -58,6 +60,13 @@ export async function exportReportToExcel({
   const now = new Date();
   const stamp = `${String(now.getDate()).padStart(2, '0')}${String(now.getMonth() + 1).padStart(2, '0')}${now.getFullYear()}`;
   XLSX.writeFile(wb, `${fileName}_${stamp}.xlsx`);
+
+  trackExportAudit({
+    moduleName: title || sheetName || fileName || "Report",
+    fileName,
+    count: rows.length,
+    format: "xlsx",
+  });
 }
 
 const BLACK_BORDER = {
@@ -414,6 +423,13 @@ export async function exportPartyReportToExcel({
   const now = new Date();
   const stamp = `${String(now.getDate()).padStart(2, '0')}${String(now.getMonth() + 1).padStart(2, '0')}${now.getFullYear()}`;
   XLSX.writeFile(wb, `${fileName}_${stamp}.xlsx`);
+
+  trackExportAudit({
+    moduleName: title || sheetName || fileName || "Report",
+    fileName,
+    count: rows.length,
+    format: "xlsx",
+  });
 }
 
 export default exportReportToExcel;

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Form } from 'antd';
 import { ArrowLeftRight, Repeat, RotateCcw } from 'lucide-react';
-import DynamicForm from '../../../hooks/DynamicFormField';
+import DynamicForm from '../../../components/common/ui/DynamicFormField';
 import useFormHandleChange from '../../../hooks/useFormHandleChange';
 import styles from '../../../assets/scss/pages/accountings/mybalance.module.scss';
 

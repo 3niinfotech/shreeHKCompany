@@ -1,6 +1,6 @@
 import React from "react";
 import { Checkbox, Form } from "antd";
-import DynamicForm from "../../hooks/DynamicFormField";
+import DynamicForm from "../../components/common/ui/DynamicFormField";
 import panelStyles from "../../assets/scss/components/inventoryFilterPanel.module.scss";
 
 /**

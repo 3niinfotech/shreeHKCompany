@@ -7,7 +7,7 @@ import { MasterListTable } from "../../components/common/table";
 import MasterFormAddModal from "../../components/common/masterCommon/MasterFormAddModal";
 import MasterFormEditModal from "../../components/common/masterCommon/MasterFormEditModal";
 import { useFetchApi, usePostApiRequest, useDeleteApiRequest } from "../../api/ApiFunction";
-import { ENDPOINTS } from "../../constants/endpoints";
+import { ENDPOINTS } from "../../api/endpoints";
 import useModal from "../../hooks/common/useModal";
 
 const columns = [{ title: "Group Name", dataIndex: "name", key: "name" }];

@@ -20,11 +20,11 @@ const Dashboard = React.lazy(() => import("../pages/DashBoard"));
 const TaskManager = React.lazy(() => import("../pages/TaskManager"));
 
 // --- 2. MASTER DROPDOWN PAGE ---
-const Company = React.lazy(() => import("../pages/master/Company"));
-const Shipping = React.lazy(() => import("../pages/master/Shipping"));
-const Origin = React.lazy(() => import("../pages/master/Origin"));
-const Lab = React.lazy(() => import("../pages/master/Lab"));
-const Category = React.lazy(() => import("../pages/master/Category"));
+const Company = React.lazy(() => import("../pages/master/Company/index"));
+const Shipping = React.lazy(() => import("../pages/master/Shipping/index"));
+const Origin = React.lazy(() => import("../pages/master/Origin/index"));
+const Lab = React.lazy(() => import("../pages/master/Lab/index"));
+const Category = React.lazy(() => import("../pages/master/Category/index"));
 const RapNetPriceList = React.lazy(() => import("../pages/master/RapNetPriceList"));
 const BulkUpdate = React.lazy(() => import("../pages/master/BulkUpdate"));
 const ImportFormat = React.lazy(() => import("../pages/master/ImportFormat"));

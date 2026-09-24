@@ -1,7 +1,7 @@
 import React from 'react';
 import { Form, Input, Select, DatePicker, Checkbox, Radio } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
-import "../assets/scss/hooks/useFiltersFormFields.scss";
+import "../../../assets/scss/hooks/useFiltersFormFields.scss";
 
 const { RangePicker } = DatePicker;
 

@@ -1,11 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useApiQuery } from "../../api/query/useApiQuery";
 
 const useEntityList = (queryKey, fetchFn, params = {}, options = {}) => {
-    return useQuery({
+    return useApiQuery({
         queryKey: [queryKey, params],
         queryFn: () => fetchFn(params),
-        staleTime: 5 * 60 * 1000,
-        placeholderData: (previousData) => previousData,
         ...options,
     });
 };

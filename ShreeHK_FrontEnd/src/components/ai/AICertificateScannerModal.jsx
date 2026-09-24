@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Modal, Upload, Button, Tag, Spin, Card, Typography, Space } from 'antd';
 import { Sparkles, UploadCloud, CheckCircle2, AlertCircle, FileSearch, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
-import axiosInstance from '../../api/axiosInstance';
+import axiosInstance from '../../api/client/axiosInstance';
 
 const { Text, Title } = Typography;
 

@@ -16,6 +16,13 @@ const SKIP_PATH_PREFIXES = [
   "/uploads/",
 ];
 
+const SKIP_PATH_PATTERNS = [
+  "checkexist",
+  "check-exist",
+  "getincrement",
+  "checkduplicate",
+];
+
 /** High-frequency GET endpoints — skip to avoid flooding the audit table */
 const NOISY_GET_PREFIXES = [
   "/notification",
@@ -49,9 +56,40 @@ function sanitizeBody(body) {
 function shouldSkipRequest(method, path) {
   if (isPublicApiPath(path)) return true;
   if (SKIP_PATH_PREFIXES.some((prefix) => path.startsWith(prefix))) return true;
+  const lower = String(path || "").toLowerCase();
+  if (SKIP_PATH_PATTERNS.some((pattern) => lower.includes(pattern))) return true;
   if (method === "GET" && NOISY_GET_PREFIXES.some((prefix) => path.startsWith(prefix))) return true;
   return false;
 }
+
+const READ_ONLY_POST_PATTERNS = [
+  "/list",
+  "/get",
+  "/search",
+  "/filter",
+  "/report",
+  "/summary",
+  "/options",
+  "/preview",
+  "/count",
+  "/check",
+  "/fetch",
+  "/trends",
+  "/query",
+  "/tree",
+  "/stats",
+  "/history",
+  "/calculate",
+  "/checkexist",
+  "/check-exist",
+  "/getincrement",
+  "/grid",
+  "/find",
+  "/detail",
+  "/holddetail",
+  "/party-report",
+  "/balance-report",
+];
 
 function inferActionType(method, path, body) {
   if (method === "GET") return "API_READ";
@@ -60,6 +98,11 @@ function inferActionType(method, path, body) {
   if (p.includes("export") || p.includes("i-export")) return "EXPORT";
   if (p.includes("print") || p.includes("label")) return "PRINT";
   if (p.includes("download")) return "EXPORT";
+
+  // If this POST is a search / list / report / fetch query, it is READ, never CREATE!
+  if (READ_ONLY_POST_PATTERNS.some((pattern) => p.includes(pattern))) {
+    return "API_READ";
+  }
 
   const rawId = body?.id ?? body?.deleteId ?? body?.user_id;
   const numId = Number(rawId);

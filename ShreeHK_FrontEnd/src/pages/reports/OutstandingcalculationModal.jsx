@@ -3,14 +3,14 @@ import { Button, DatePicker, Input, InputNumber, Modal } from "antd";
 import dayjs from "dayjs";
 import { CalendarDays, Check, CircleDollarSign, CreditCard, FileText, Hash, Landmark, Percent, ReceiptText, RotateCcw, ShieldCheck, WalletCards, X } from "lucide-react";
 import { usePostApiRequest } from "../../api/ApiFunction";
-import { ENDPOINTS } from "../../constants/endpoints";
+import { ENDPOINTS } from "../../api/endpoints";
 import styles from "../../assets/scss/pages/report/outstandingCalculationModal.module.scss";
 
 const money = (value) => Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const InputLabel = ({ children }) => <label className={styles.inputLabel}>{children}</label>;
-const InfoItem = ({ icon: IconComponent, label, value, alert }) => <div className={styles.infoItem}><span className={styles.infoIcon}><IconComponent size={17} /></span><div><span>{label}</span><strong className={alert ? styles.alertValue : ""}>{value}</strong></div></div>;
-const Stat = ({ icon: IconComponent, label, value, tone }) => <div className={`${styles.stat} ${styles[tone]}`}><span><IconComponent size={19} /></span><div><label>{label}</label><strong>{value}</strong></div></div>;
+const InfoItem = ({ icon: Icon, label, value, alert }) => <div className={styles.infoItem}><span className={styles.infoIcon}>{Icon && <Icon size={17} />}</span><div><span>{label}</span><strong className={alert ? styles.alertValue : ""}>{value}</strong></div></div>;
+const Stat = ({ icon: Icon, label, value, tone }) => <div className={`${styles.stat} ${styles[tone]}`}><span>{Icon && <Icon size={19} />}</span><div><label>{label}</label><strong>{value}</strong></div></div>;
 
 const OutstandingCalculationModal = ({ open, onClose, data, onSaved }) => {
     const [lessPercent, setLessPercent] = useState(0);

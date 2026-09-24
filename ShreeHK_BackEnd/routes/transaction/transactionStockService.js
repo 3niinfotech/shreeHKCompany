@@ -3,7 +3,7 @@ const productHelper = require("../../productHelper.js");
 const moment = require("moment");
 
 const { query, insertString, getIncrementEntry, addHistory, addUserTrack, DEFAULT_COMPANY_ID } = helper;
-const { logAudit } = require("../../services/auditIntegration.js");
+const { logAudit, logAuditInTx } = require("../../services/auditIntegration.js");
 const { diffFields } = require("../../services/auditService.js");
 
 const addHistoryAudited = async (
@@ -34,6 +34,18 @@ const addHistoryAudited = async (
     console.error("transactionStock audit:", e);
   }
 };
+
+function advanceSequenceValue(val) {
+  const str = String(val ?? "").trim();
+  const parts = str.split("-");
+  if (parts.length >= 2) {
+    const num = parseInt(parts[1], 10);
+    parts[1] = String(Number.isNaN(num) ? 1 : num + 1);
+    return parts.join("-");
+  }
+  const parsed = parseInt(str, 10);
+  return Number.isNaN(parsed) ? "1" : String(parsed + 1);
+}
 
 function buildUserFilter(alias, userId) {
   if (userId === 16 || userId === 1) return { clause: "", params: [] };
@@ -446,20 +458,29 @@ async function listOutwardStock(post, stockType, userContext = {}) {
   return { ok: true, Data: data, TotalItems: countRows[0]?.total || 0 };
 }
 
-async function getOutwardData(id) {
+async function getOutwardData(id, companyId = null) {
+  if (companyId) {
+    const rows = await query("SELECT * FROM dai_outward WHERE id = ? AND company = ?", [id, companyId]);
+    return rows[0] || null;
+  }
   const rows = await query("SELECT * FROM dai_outward WHERE id = ?", [id]);
   return rows[0] || null;
 }
 
-async function getInwardData(id) {
+async function getInwardData(id, companyId = null) {
+  if (companyId) {
+    const rows = await query("SELECT * FROM dai_inward WHERE id = ? AND company = ?", [id, companyId]);
+    return rows[0] || null;
+  }
   const rows = await query("SELECT * FROM dai_inward WHERE id = ?", [id]);
   return rows[0] || null;
 }
 
 async function returnGia(post, userContext = {}) {
   const outid = post.outid;
-  const oData = await getOutwardData(outid);
-  if (!oData) return { ok: false, message: "GIA record not found" };
+  const companyId = userContext.companyId || null;
+  const oData = await getOutwardData(outid, companyId);
+  if (!oData) return { ok: false, message: "GIA record not found or access denied" };
   const lab = oData.lab;
   let oProducts = (oData.products || "").split(",").filter(Boolean);
   const record = post.record || {};
@@ -523,9 +544,10 @@ async function returnGia(post, userContext = {}) {
   return { ok: true, message: "GIA return saved successfully" };
 }
 
-async function returnInwardMemo(post) {
-  const inData = await getInwardData(post.id);
-  if (!inData) return { ok: false, message: "Inward record not found" };
+async function returnInwardMemo(post, userContext = {}) {
+  const companyId = userContext.companyId || null;
+  const inData = await getInwardData(post.id, companyId);
+  if (!inData) return { ok: false, message: "Inward record not found or access denied" };
   const products = post.products || [];
   const inProducts = (inData.products || "").split(",").filter(Boolean);
   let returnProducts = (inData.return_products || "").split(",").filter(Boolean);
@@ -577,9 +599,14 @@ async function returnInwardMemo(post) {
   return { ok: true, message: "In memo return completed" };
 }
 
-async function returnOutwardMemo(post) {
-  const mdata = await getOutwardData(post.id);
-  if (!mdata) return { ok: false, message: "Outward record not found" };
+async function returnOutwardMemo(post, userContext = {}) {
+  const companyId = userContext.companyId || null;
+  if (!Array.isArray(post.products) || post.products.length === 0) {
+    return { ok: false, message: "No stones selected for return" };
+  }
+
+  const mdata = await getOutwardData(post.id, companyId);
+  if (!mdata) return { ok: false, message: "Outward record not found or access denied" };
   const products = (post.products || []).map(String);
   let returnProduct = (mdata.return_products || "").split(",").filter(Boolean);
   const mp = [];
@@ -592,6 +619,13 @@ async function returnOutwardMemo(post) {
     const pdata = await getProductDetail(pid);
     if (!pdata) continue;
 
+    if (pdata.outward !== "memo" && pdata.outward !== "consign" && !pdata.outward_parent) {
+      return {
+        ok: false,
+        message: `Stone ${pdata.sku || pid} cannot be returned: current outward status is '${pdata.outward || "available"}' (expected 'memo').`,
+      };
+    }
+
     if (pdata.outward_parent) {
       const edata = await getProductDetail(pdata.outward_parent);
       if (edata) {
@@ -600,9 +634,12 @@ async function returnOutwardMemo(post) {
             ? parseFloat(edata.polish_pcs) + parseFloat(pdata.polish_pcs)
             : parseFloat(edata.polish_pcs);
         const parentCarat = parseFloat(edata.polish_carat) + parseFloat(pdata.polish_carat);
-        await query("UPDATE dai_product SET polish_pcs=?, polish_carat=? WHERE id = ?", [
+        const parentPrice = Number(edata.price) || 0;
+        const parentAmount = Number((parentCarat * parentPrice).toFixed(2));
+        await query("UPDATE dai_product SET polish_pcs=?, polish_carat=?, amount=? WHERE id = ?", [
           parentPcs,
           parentCarat,
+          parentAmount,
           edata.id,
         ]);
         await addHistoryAudited({
@@ -621,8 +658,8 @@ async function returnOutwardMemo(post) {
           invoice: mdata.invoiceno,
           entry_from: "outward",
           entryno: mdata.id,
-          balance_pcs: edata.polish_pcs,
-          balance_carat: edata.polish_carat,
+          balance_pcs: parentPcs,
+          balance_carat: parentCarat,
         });
       }
       await query("UPDATE dai_product SET outward='', visibility=0, outward_parent=0 WHERE id = ?", [pid]);
@@ -651,78 +688,89 @@ async function returnOutwardMemo(post) {
     returnProduct.push(pid);
   }
 
+  // Recalculate remaining final amount on outward memo header
+  let remainingFinalAmount = 0;
+  if (mp.length > 0) {
+    const placeholders = mp.map(() => "?").join(",");
+    const remainingRows = await query(
+      `SELECT SUM(COALESCE(sell_amount, amount, 0)) AS total_amount FROM dai_product WHERE id IN (${placeholders})`,
+      mp
+    );
+    remainingFinalAmount = Number(remainingRows?.[0]?.total_amount || 0);
+  }
+
   returnProduct = [...new Set(returnProduct)];
   if (!mp.length) {
-    await query("UPDATE dai_outward SET products='', status='close_memo', return_products=? WHERE id = ?", [
-      returnProduct.join(","),
-      post.id,
-    ]);
+    await query(
+      "UPDATE dai_outward SET products='', status='close_memo', return_products=?, final_amount=0, due_amount=0 WHERE id = ?",
+      [returnProduct.join(","), post.id]
+    );
   } else {
-    await query("UPDATE dai_outward SET products=?, return_products=? WHERE id = ?", [
-      mp.join(","),
-      returnProduct.join(","),
-      post.id,
-    ]);
+    const paidAmount = Number(mdata.paid_amount || 0);
+    const dueAmount = Math.max(0, remainingFinalAmount - paidAmount);
+    await query(
+      "UPDATE dai_outward SET products=?, return_products=?, final_amount=?, due_amount=? WHERE id = ?",
+      [mp.join(","), returnProduct.join(","), remainingFinalAmount, dueAmount, post.id]
+    );
   }
   return { ok: true, message: "Out memo return completed" };
 }
 
 async function outwardMemoToSale(post, userContext = {}) {
   const memoId = post.memo_id || post.id;
-  const mdata = await getOutwardData(memoId);
-  if (!mdata) return { ok: false, message: "Memo not found" };
-  const products = post.products || [];
-  const record = post.record || {};
-  const type = post.type || "sale";
-  const incre_id = await getIncrementEntry("outward");
-  const invoice = await getIncrementEntry("invoice");
   const companyId = userContext.companyId || DEFAULT_COMPANY_ID;
   const userId = userContext.userId || helper.DEFAULT_USER_ID;
 
-  const outProducts = [];
-  const soldSkus = [];
-  let amount = 0;
+  return helper.runInTransaction(async (q) => {
+    const memoRows = await q("SELECT * FROM dai_outward WHERE id = ? AND company = ?", [memoId, companyId]);
+    const mdata = memoRows[0] || null;
+    if (!mdata) throw new Error("Memo not found");
 
-  for (const pid of products) {
-    const pdata = await getProductDetail(pid);
-    if (!pdata) continue;
-    soldSkus.push(pdata.sku);
-    const rec = record[pid] || record[String(pid)] || {
-      price: pdata.sell_price || pdata.price,
-      polish_pcs: pdata.polish_pcs,
-      polish_carat: pdata.polish_carat,
-    };
-    const sellAmount = parseFloat(rec.price) * parseFloat(rec.polish_carat || pdata.polish_carat);
-    amount += sellAmount;
-    outProducts.push(pid);
+    const products = (post.products || []).map(String);
+    const record = post.record || {};
+    const type = post.type || "sale";
 
-    const oldSnapshot = {
-      outward: pdata.outward,
-      sell_price: pdata.sell_price,
-      sell_amount: pdata.sell_amount,
-      polish_pcs: pdata.polish_pcs,
-      polish_carat: pdata.polish_carat,
-      sku: pdata.sku,
-      party: mdata.party,
-    };
+    // Sequence generation locked to company
+    const seqRows = await q("SELECT outward, invoice FROM dai_incrementid WHERE company = ? FOR UPDATE", [companyId]);
+    let curOutward = seqRows?.[0]?.outward;
+    let curInvoice = seqRows?.[0]?.invoice;
+    if (curOutward == null || curInvoice == null) {
+      curOutward = (await getIncrementEntry("outward", companyId)) || 1;
+      curInvoice = (await getIncrementEntry("invoice", companyId)) || 1;
+    }
+    const incre_id = curOutward;
+    const invoice = curInvoice;
+    const nextOutward = advanceSequenceValue(curOutward);
+    const nextInvoice = advanceSequenceValue(curInvoice);
 
-    await query(
-      "UPDATE dai_product SET outward=?, sell_price=?, sell_amount=?, site_upload=0, rapnet_upload=0 WHERE id = ?",
-      [type, rec.price, sellAmount, pid]
-    );
+    const outProducts = [];
+    const soldSkus = [];
+    let amount = 0;
 
-    const newSnapshot = {
-      outward: type,
-      sell_price: rec.price,
-      sell_amount: sellAmount,
-      polish_pcs: pdata.polish_pcs,
-      polish_carat: pdata.polish_carat,
-      sku: pdata.sku,
-      party: post.party || mdata.party,
-    };
+    for (const pid of products) {
+      const prodRows = await q("SELECT * FROM dai_product WHERE id = ? AND company = ?", [pid, companyId]);
+      const pdata = prodRows[0] || null;
+      if (!pdata) continue;
+      soldSkus.push(pdata.sku);
+      const rec = record[pid] || record[String(pid)] || {
+        price: pdata.sell_price || pdata.price,
+        polish_pcs: pdata.polish_pcs,
+        polish_carat: pdata.polish_carat,
+      };
+      const sellAmount = parseFloat(rec.price) * parseFloat(rec.polish_carat || pdata.polish_carat);
+      amount += sellAmount;
+      outProducts.push(pid);
 
-    await addHistoryAudited(
-      {
+      const updateResult = await q(
+        "UPDATE dai_product SET outward=?, sell_price=?, sell_amount=?, site_upload=0, rapnet_upload=0 WHERE id = ? AND company = ? AND (outward = 'memo' OR outward = 'consign')",
+        [type, rec.price, sellAmount, pid, companyId]
+      );
+      if (updateResult.affectedRows === 0) {
+        throw new Error(`Stone ${pdata.sku || pid} is not on active memo (already sold or returned), please refresh`);
+      }
+
+
+      const histPayload = {
         product_id: pid,
         action: type,
         party: post.party || mdata.party,
@@ -733,140 +781,143 @@ async function outwardMemoToSale(post, userContext = {}) {
         sku: pdata.sku,
         type: "dr",
         invoice: invoice,
-      },
-      "Diamond Stock",
-      "STOCK_OUT",
-      {
-        oldValue: oldSnapshot,
-        newValue: newSnapshot,
+      };
+      if (histPayload.description) histPayload.description = histPayload.description.toUpperCase();
+      const hData = insertString(histPayload);
+      await q(`INSERT INTO dai_history (${hData[0]}) VALUES (${hData[1]})`);
+    }
+
+    const salePost = {
+      company: companyId,
+      user: userId,
+      entryno: incre_id,
+      invoiceno: invoice,
+      type,
+      status: type === "export" ? "on_export" : "on_sale",
+      party: post.party || mdata.party,
+      reference: mdata.reference,
+      date: moment().format("YYYY-MM-DD"),
+      invoicedate: moment().format("YYYY-MM-DD"),
+      products: outProducts.join(","),
+      final_amount: amount,
+      due_amount: amount,
+    };
+    const data = insertString(salePost);
+    const result = await q(`INSERT INTO dai_outward (${data[0]}) VALUES (${data[1]})`);
+    const newOutwardId = result.insertId;
+
+    const remaining = (mdata.products || "")
+      .split(",")
+      .filter((id) => id && !products.map(String).includes(String(id)));
+    await q("UPDATE dai_outward SET products=? WHERE id = ?", [remaining.join(","), memoId]);
+
+    // Persist company increment sequence
+    await q("UPDATE dai_incrementid SET outward = ?, invoice = ? WHERE company = ?", [nextOutward, nextInvoice, companyId]);
+
+    try {
+      await logAuditInTx(q, {
+        actionType: "STOCK_OUT",
+        moduleName: "Sale",
+        recordId: newOutwardId,
+        recordReference: String(invoice),
+        newValue: {
+          ...salePost,
+          id: newOutwardId,
+          skus: soldSkus,
+          memo_id: memoId,
+        },
+        description: `Memo converted to sale — invoice ${invoice}, SKUs: ${soldSkus.join(", ")}`,
         companyId,
-      },
-    );
-  }
+      });
+    } catch (auditErr) {
+      console.error("outwardMemoToSale audit:", auditErr);
+    }
 
-  const salePost = {
-    company: companyId,
-    user: userId,
-    entryno: incre_id,
-    invoiceno: invoice,
-    type,
-    status: type === "export" ? "on_export" : "on_sale",
-    party: post.party || mdata.party,
-    reference: mdata.reference,
-    date: moment().format("YYYY-MM-DD"),
-    invoicedate: moment().format("YYYY-MM-DD"),
-    products: outProducts.join(","),
-    final_amount: amount,
-    due_amount: amount,
-  };
-  const data = insertString(salePost);
-  const result = await query(`INSERT INTO dai_outward (${data[0]}) VALUES (${data[1]})`);
-
-  try {
-    const outwardRows = await query("SELECT * FROM dai_outward WHERE id = ? LIMIT 1", [result.insertId]);
-    await logAudit({
-      actionType: "STOCK_OUT",
-      moduleName: "Sale",
-      recordId: result.insertId,
-      recordReference: String(invoice),
-      newValue: outwardRows[0] || {
-        ...salePost,
-        id: result.insertId,
-        skus: soldSkus,
-        memo_id: memoId,
-      },
-      description: `Memo converted to sale — invoice ${invoice}, SKUs: ${soldSkus.join(", ")}`,
-      companyId,
-    });
-  } catch (auditErr) {
-    console.error("outwardMemoToSale audit:", auditErr);
-  }
-
-  const remaining = (mdata.products || "")
-    .split(",")
-    .filter((id) => id && !products.map(String).includes(String(id)));
-  await query("UPDATE dai_outward SET products=? WHERE id = ?", [remaining.join(","), memoId]);
-
-  try {
-    await helper.notifyStoneSale({
-      sellerName: userContext.username,
-      sellerId: userId,
-      skus: soldSkus,
-      outwardId: result.insertId,
-      invoiceNo: invoice,
-      companyId,
-    });
-  } catch (notificationError) {
-    console.error("Memo to sale notification error:", notificationError);
-  }
-
-  return { ok: true, message: "Memo converted to sale", id: result.insertId };
+    return { ok: true, message: "Memo converted to sale", id: newOutwardId };
+  });
 }
 
 async function inwardMemoToPurchase(post, userContext = {}) {
   const memoId = post.memo_id || post.id;
-  const memoData = await getInwardData(memoId);
-  if (!memoData) return { ok: false, message: "In memo not found" };
-  const products = post.products || [];
-  const record = post.record || {};
-  const incre_id = await getIncrementEntry("inward");
-  const reference = await getIncrementEntry("reference");
   const companyId = userContext.companyId || DEFAULT_COMPANY_ID;
   const userId = userContext.userId || helper.DEFAULT_USER_ID;
 
-  const outProducts = [];
-  let iTotal = 0;
-  let iCarat = 0;
-  let iPcs = 0;
+  return helper.runInTransaction(async (q) => {
+    const memoRows = await q("SELECT * FROM dai_inward WHERE id = ? AND company = ?", [memoId, companyId]);
+    const memoData = memoRows[0] || null;
+    if (!memoData) throw new Error("In memo not found");
 
-  for (const pid of products) {
-    const pdata = await getProductDetail(pid);
-    if (!pdata) continue;
-    const rec = record[pid] || record[String(pid)] || { price: pdata.price };
-    const price = rec.price || pdata.price;
-    const amount = parseFloat(pdata.polish_carat) * parseFloat(price);
-    iTotal += amount;
-    iCarat += parseFloat(pdata.polish_carat);
-    iPcs += parseFloat(pdata.polish_pcs || 0);
-    outProducts.push(pid);
-    await query(
-      `UPDATE dai_product SET purchase_price=?, purchase_amount=?, price=?, amount=?, inward='', site_upload=0, rapnet_upload=0 WHERE id = ?`,
-      [price, amount, price, amount, pid]
-    );
-  }
+    const products = (post.products || []).map(String);
+    const record = post.record || {};
 
-  const purchasePost = {
-    company: companyId,
-    user: userId,
-    entryno: incre_id,
-    reference,
-    inward_type: "purchase",
-    party: post.party || memoData.party,
-    invoiceno: post.invoiceno || memoData.invoiceno,
-    invoicedate: moment().format("YYYY-MM-DD"),
-    date: moment().format("YYYY-MM-DD"),
-    duedate: moment().format("YYYY-MM-DD"),
-    products: outProducts.join(","),
-    final_amount: iTotal,
-    due_amount: iTotal,
-    carat: iCarat,
-    pcs: iPcs,
-    deleted: 0,
-    narretion: post.narretion || "",
-  };
-  const data = insertString(purchasePost);
-  const result = await query(`INSERT INTO dai_inward (${data[0]}) VALUES (${data[1]})`);
-  const newId = result.insertId;
+    const seqRows = await q("SELECT inward, reference FROM dai_incrementid WHERE company = ? FOR UPDATE", [companyId]);
+    let curInward = seqRows?.[0]?.inward;
+    let curRef = seqRows?.[0]?.reference;
+    if (curInward == null || curRef == null) {
+      curInward = (await getIncrementEntry("inward", companyId)) || 1;
+      curRef = (await getIncrementEntry("reference", companyId)) || 1;
+    }
+    const incre_id = curInward;
+    const reference = curRef;
+    const nextInward = advanceSequenceValue(curInward);
+    const nextRef = advanceSequenceValue(curRef);
 
-  for (const pid of outProducts) {
-    await query("UPDATE dai_product SET inward_id=? WHERE id = ?", [newId, pid]);
-    const pdata = await getProductDetail(pid);
-    if (!pdata) continue;
-    const rec = record[pid] || record[String(pid)] || {};
-    const price = rec.price || pdata.price;
-    const amount = parseFloat(pdata.polish_carat) * parseFloat(price);
-    try {
-      await addHistoryAudited({
+    const outProducts = [];
+    let iTotal = 0;
+    let iCarat = 0;
+    let iPcs = 0;
+
+    for (const pid of products) {
+      const prodRows = await q("SELECT * FROM dai_product WHERE id = ?", [pid]);
+      const pdata = prodRows[0] || null;
+      if (!pdata) continue;
+      const rec = record[pid] || record[String(pid)] || { price: pdata.price };
+      const price = rec.price || pdata.price;
+      const amount = parseFloat(pdata.polish_carat) * parseFloat(price);
+      iTotal += amount;
+      iCarat += parseFloat(pdata.polish_carat);
+      iPcs += parseFloat(pdata.polish_pcs || 0);
+      outProducts.push(pid);
+
+      await q(
+        `UPDATE dai_product SET purchase_price=?, purchase_amount=?, price=?, amount=?, inward='', site_upload=0, rapnet_upload=0 WHERE id = ?`,
+        [price, amount, price, amount, pid]
+      );
+    }
+
+    const purchasePost = {
+      company: companyId,
+      user: userId,
+      entryno: incre_id,
+      reference,
+      inward_type: "purchase",
+      party: post.party || memoData.party,
+      invoiceno: post.invoiceno || memoData.invoiceno,
+      invoicedate: moment().format("YYYY-MM-DD"),
+      date: moment().format("YYYY-MM-DD"),
+      duedate: moment().format("YYYY-MM-DD"),
+      products: outProducts.join(","),
+      final_amount: iTotal,
+      due_amount: iTotal,
+      carat: iCarat,
+      pcs: iPcs,
+      deleted: 0,
+      narretion: post.narretion || "",
+    };
+    const data = insertString(purchasePost);
+    const result = await q(`INSERT INTO dai_inward (${data[0]}) VALUES (${data[1]})`);
+    const newId = result.insertId;
+
+    for (const pid of outProducts) {
+      await q("UPDATE dai_product SET inward_id=? WHERE id = ?", [newId, pid]);
+      const prodRows = await q("SELECT * FROM dai_product WHERE id = ?", [pid]);
+      const pdata = prodRows[0] || null;
+      if (!pdata) continue;
+      const rec = record[pid] || record[String(pid)] || {};
+      const price = rec.price || pdata.price;
+      const amount = parseFloat(pdata.polish_carat) * parseFloat(price);
+
+      const histPayload = {
         product_id: pid,
         action: "purchase",
         party: purchasePost.party,
@@ -883,18 +934,35 @@ async function inwardMemoToPurchase(post, userContext = {}) {
         balance_pcs: pdata.polish_pcs,
         balance_carat: pdata.polish_carat,
         user: userId,
-      });
-    } catch (histErr) {
-      console.error("inwardMemoToPurchase addHistory:", histErr);
+      };
+      if (histPayload.description) histPayload.description = histPayload.description.toUpperCase();
+      const hData = insertString(histPayload);
+      await q(`INSERT INTO dai_history (${hData[0]}) VALUES (${hData[1]})`);
     }
-  }
 
-  const remaining = (memoData.products || "")
-    .split(",")
-    .filter((id) => id && !products.map(String).includes(String(id)));
-  await query("UPDATE dai_inward SET products=? WHERE id = ?", [remaining.join(","), memoId]);
+    const remaining = (memoData.products || "")
+      .split(",")
+      .filter((id) => id && !products.map(String).includes(String(id)));
+    await q("UPDATE dai_inward SET products=? WHERE id = ?", [remaining.join(","), memoId]);
 
-  return { ok: true, message: "Memo converted to purchase", id: newId };
+    // Persist company increment sequence
+    await q("UPDATE dai_incrementid SET inward = ?, reference = ? WHERE company = ?", [nextInward, nextRef, companyId]);
+
+    try {
+      await logAuditInTx(q, {
+        actionType: "STOCK_IN",
+        moduleName: "Inward Stock",
+        recordId: newId,
+        recordReference: String(purchasePost.invoiceno || reference || newId),
+        newValue: { ...purchasePost, id: newId },
+        companyId,
+      });
+    } catch (auditErr) {
+      console.error("inwardMemoToPurchase audit:", auditErr);
+    }
+
+    return { ok: true, message: "Memo converted to purchase", id: newId };
+  });
 }
 
 async function toggleInwardType(post) {
@@ -942,35 +1010,94 @@ async function outwardToExport(post) {
 
 async function deleteInwardStock(id) {
   const inData = await getInwardData(id);
-  if (!inData) return { ok: false, message: "Record not found" };
-  const products = (inData.products || "").split(",").filter(Boolean);
-  for (const pid of products) {
-    await query("DELETE FROM dai_product_value WHERE product_id = ?", [pid]);
-    await query("DELETE FROM dai_product WHERE id = ?", [pid]);
+  if (!inData) return { ok: false, message: "Inward record not found" };
+
+  const products = (inData.products || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const returnProducts = (inData.return_products || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const allProductIds = [...new Set([...products, ...returnProducts])];
+
+  // 1. Check if any accounting payments / transactions exist for this inward
+  const companyId = inData.company || DEFAULT_COMPANY_ID;
+  const paymentRows = await query(
+    `SELECT id FROM acc_transaction WHERE purchase_id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL) LIMIT 1`,
+    [String(id), companyId]
+  );
+  const hasPaidAmount = Number(inData.paid_amount || 0) > 0;
+  if ((paymentRows && paymentRows.length > 0) || hasPaidAmount) {
+    return {
+      ok: false,
+      message: `Cannot delete Inward #${inData.invoiceno || inData.entryno || id}: Payment transactions are already recorded against this bill.`,
+    };
   }
-  await query("UPDATE dai_inward SET deleted=1 WHERE id = ?", [id]);
-  try {
-    await logAudit({
-      actionType: "DELETE",
-      moduleName: "Inward Stock",
-      recordId: id,
-      recordReference: inData.invoiceno || String(id),
-      oldValue: inData,
-    });
-  } catch (e) {
-    console.error("deleteInwardStock audit:", e);
+
+  // 2. Inspect active lifecycle status of all items
+  const blockingReasons = [];
+  if (allProductIds.length > 0) {
+    const placeholders = allProductIds.map(() => "?").join(",");
+    const productRows = await query(
+      `SELECT id, sku, outward, outward_parent, child_count, box_id, parcel_id, parent_id, visibility 
+       FROM dai_product 
+       WHERE id IN (${placeholders})`,
+      allProductIds
+    );
+
+    for (const prod of productRows) {
+      const outwardStatus = String(prod.outward || "").trim();
+      if (outwardStatus && outwardStatus !== "") {
+        blockingReasons.push(`SKU ${prod.sku || prod.id} is currently on ${outwardStatus}`);
+      } else if (Number(prod.child_count) > 0) {
+        blockingReasons.push(`SKU ${prod.sku || prod.id} has split child stones`);
+      } else if (prod.box_id || prod.parcel_id || (prod.parent_id && Number(prod.parent_id) > 0)) {
+        blockingReasons.push(`SKU ${prod.sku || prod.id} is assigned to a container / parent`);
+      }
+    }
   }
-  return { ok: true, message: "Inward record deleted" };
+
+  if (blockingReasons.length > 0) {
+    return {
+      ok: false,
+      message: `Cannot delete Inward #${inData.invoiceno || inData.entryno || id}: ${blockingReasons.slice(0, 3).join("; ")}${blockingReasons.length > 3 ? ` and ${blockingReasons.length - 3} more items` : ""}.`,
+    };
+  }
+
+  // 3. Atomically delete unreferenced inward stock inside transaction
+  return helper.runInTransaction(async (q) => {
+    for (const pid of allProductIds) {
+      await q("DELETE FROM dai_product_value WHERE product_id = ?", [pid]);
+      await q("DELETE FROM dai_history WHERE product_id = ?", [pid]);
+      await q("DELETE FROM dai_product WHERE id = ?", [pid]);
+    }
+    await q("UPDATE dai_inward SET deleted = 1 WHERE id = ?", [id]);
+
+    try {
+      await logAudit({
+        actionType: "DELETE",
+        moduleName: "Inward Stock",
+        recordId: id,
+        recordReference: inData.invoiceno || String(id),
+        oldValue: inData,
+        companyId: inData.company,
+      });
+    } catch (e) {
+      console.error("deleteInwardStock audit:", e);
+    }
+
+    return { ok: true, message: "Inward record deleted and stock removed successfully" };
+  });
 }
 
-async function deleteGia(id) {
-  const oData = await getOutwardData(id);
-  if (!oData) return { ok: false, message: "Record not found" };
+async function deleteGia(id, companyId = null) {
+  const oData = await getOutwardData(id, companyId);
+  if (!oData) return { ok: false, message: "Record not found or access denied" };
   const products = (oData.products || "").split(",").filter(Boolean);
   for (const pid of products) {
     await query("UPDATE dai_product SET outward='', visibility=1 WHERE id = ?", [pid]);
   }
-  await query("DELETE FROM dai_outward WHERE id = ?", [id]);
+  if (companyId) {
+    await query("DELETE FROM dai_outward WHERE id = ? AND company = ?", [id, companyId]);
+  } else {
+    await query("DELETE FROM dai_outward WHERE id = ?", [id]);
+  }
   try {
     await logAudit({
       actionType: "DELETE",
@@ -978,6 +1105,7 @@ async function deleteGia(id) {
       recordId: id,
       recordReference: oData.invoiceno || String(id),
       oldValue: oData,
+      companyId: oData.company,
     });
   } catch (e) {
     console.error("deleteGia audit:", e);
@@ -987,10 +1115,13 @@ async function deleteGia(id) {
 
 async function deleteOutwardStock(id, options = {}) {
   const moduleName = options.moduleName || "Outward Stock";
+  const companyId = options.companyId || null;
   const result = await helper.runInTransaction(async (q) => {
-    const oRows = await q("SELECT * FROM dai_outward WHERE id = ?", [id]);
+    const oRows = companyId
+      ? await q("SELECT * FROM dai_outward WHERE id = ? AND company = ?", [id, companyId])
+      : await q("SELECT * FROM dai_outward WHERE id = ?", [id]);
     const oData = oRows[0] || null;
-    if (!oData) return { ok: false, message: "Outward record not found" };
+    if (!oData) return { ok: false, message: "Outward record not found or access denied" };
 
     const productIds = (oData.products || "")
       .split(",")
@@ -1087,7 +1218,11 @@ async function deleteOutwardStock(id, options = {}) {
       }
     }
 
-    await q("DELETE FROM dai_outward WHERE id = ?", [id]);
+    if (companyId) {
+      await q("DELETE FROM dai_outward WHERE id = ? AND company = ?", [id, companyId]);
+    } else {
+      await q("DELETE FROM dai_outward WHERE id = ?", [id]);
+    }
     return { ok: true, oData };
   });
 

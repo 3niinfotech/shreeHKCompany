@@ -228,11 +228,24 @@ async function separateSale(q, v, edata, type, post) {
   const childSku = `${edata.sku}-${child}`;
   const tp = Number(v.polish_pcs) || 0;
   const tc = Number(v.polish_carat) || 0;
+  const availableCarat = Number(edata.polish_carat) || 0;
+  const availablePcs = Number(edata.polish_pcs) || 0;
+
+  if (tc <= 0 || tc > availableCarat) {
+    throw new Error(
+      `Insufficient stock for SKU ${edata.sku}: available ${availableCarat} ct / ${availablePcs} pcs, requested ${tc} ct / ${tp} pcs`
+    );
+  }
 
   if (edata.group_type === "box") {
-    edata.polish_pcs = (Number(edata.polish_pcs) || 0) - tp;
+    if (tp <= 0 || tp > availablePcs) {
+      throw new Error(
+        `Insufficient stock for SKU ${edata.sku}: available ${availableCarat} ct / ${availablePcs} pcs, requested ${tc} ct / ${tp} pcs`
+      );
+    }
+    edata.polish_pcs = availablePcs - tp;
   }
-  edata.polish_carat = (Number(edata.polish_carat) || 0) - tc;
+  edata.polish_carat = availableCarat - tc;
   edata.amount = Number((edata.polish_carat * edata.price).toFixed(2));
 
   const now = new Date().toISOString().slice(0, 19).replace("T", " ");
@@ -599,10 +612,14 @@ async function sendTo(rawPost, userContext = {}) {
           const samount = sprice * stockCarat;
           const saleCtx = buildSaleContext(post);
           const stoneBefore = buildProductAuditSnapshot(edata, saleCtx);
-          await q(
-            `UPDATE ${TABLE_PRODUCT} SET sell_price = ?, sell_amount = ?, outward = ?, site_upload = 0, rapnet_upload = 0 WHERE id = ?`,
-            [sprice, samount, type, pid]
+          const updateResult = await q(
+            `UPDATE ${TABLE_PRODUCT} SET sell_price = ?, sell_amount = ?, outward = ?, site_upload = 0, rapnet_upload = 0 WHERE id = ? AND company = ? AND (outward IS NULL OR outward = '')`,
+            [sprice, samount, type, pid, companyId]
           );
+          if (updateResult.affectedRows === 0) {
+            throw new Error(`Stone ${edata.sku || pid} is already dispatched or on memo, please refresh and try again`);
+          }
+
           await addHistoryTx(q, {
             product_id: pid,
             action: type,
@@ -1028,9 +1045,12 @@ async function updateOutward(rawPost) {
                 ? (Number(edata.polish_pcs) || 0) + (Number(pdata.polish_pcs) || 0)
                 : Number(edata.polish_pcs) || 0;
             const parentCarat = (Number(edata.polish_carat) || 0) + (Number(pdata.polish_carat) || 0);
-            await q(`UPDATE ${TABLE_PRODUCT} SET polish_pcs=?, polish_carat=?, outward='' WHERE id = ?`, [
+            const parentPrice = Number(edata.price) || 0;
+            const parentAmount = Number((parentCarat * parentPrice).toFixed(2));
+            await q(`UPDATE ${TABLE_PRODUCT} SET polish_pcs=?, polish_carat=?, amount=?, outward='' WHERE id = ?`, [
               parentPcs,
               parentCarat,
+              parentAmount,
               edata.id,
             ]);
             await addHistoryTx(q, {
@@ -1287,4 +1307,5 @@ module.exports = {
   getHoldDetail,
   normalizeHoldIds,
   updateOutward,
+  separateSale,
 };

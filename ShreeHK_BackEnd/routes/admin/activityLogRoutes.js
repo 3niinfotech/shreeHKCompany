@@ -9,6 +9,8 @@ const { logActivity } = require("../../services/auditService.js");
 const { PAGE_BY_KEY } = require("../../config/permissionRegistry.js");
 const { refreshAuditContextFromReq } = require("../../middleware/auditContext.js");
 const { isUserOnline } = require("../../services/userPresenceService.js");
+const { verifyPassword } = require("../../services/passwordService.js");
+const connection = require("../../connection.js");
 
 const activityLogRouter = express.Router();
 
@@ -29,6 +31,59 @@ const canDeleteAudit = async (req) => {
   const permissions =
     req.user.permissions || (await getPermissionsForRoll(req.user.roll));
   return hasPerm(permissions, "admin.activity_history");
+};
+
+/** Verify admin password for critical / sensitive audit history deletion */
+const verifyAdminPassword = async (req) => {
+  const adminPassword =
+    req.body?.password ||
+    req.body?.adminPassword ||
+    req.query?.password ||
+    req.query?.adminPassword ||
+    req.headers["x-admin-password"];
+
+  if (!adminPassword || typeof adminPassword !== "string" || !adminPassword.trim()) {
+    return { ok: false, status: 400, message: "Admin password is required to delete activity logs." };
+  }
+
+  const userId = req.user?.user_id;
+  if (!userId) {
+    return { ok: false, status: 401, message: "User session not found." };
+  }
+
+  const userRow = await new Promise((resolve, reject) => {
+    connection.query(
+      "SELECT user_id, user_name, pass, roll FROM user WHERE user_id = ? LIMIT 1",
+      [userId],
+      (err, results) => {
+        if (err) return reject(err);
+        resolve(results?.[0] || null);
+      },
+    );
+  });
+
+  if (!userRow || !userRow.pass) {
+    return { ok: false, status: 401, message: "User record not found." };
+  }
+
+  const isValid = verifyPassword(adminPassword.trim(), userRow.pass);
+  if (!isValid) {
+    logActivity({
+      actionType: "ATTEMPTED",
+      moduleName: "Activity History",
+      recordReference: "DELETE_ATTEMPT_FAILED_PASSWORD",
+      description: `Failed password verification during activity log delete attempt by ${userRow.user_name || req.user?.username || "Admin"}`,
+      status: "ATTEMPTED",
+      userId: userRow.user_id,
+      userName: userRow.user_name,
+      userRoleId: userRow.roll,
+      companyId: req.companyId || req.user?.companyId || 1,
+    }).catch(() => {});
+
+    return { ok: false, status: 401, message: "Incorrect password. Authorization failed." };
+  }
+
+  return { ok: true, user: userRow };
 };
 
 const getAuditCompanyScope = (req) => {
@@ -290,6 +345,43 @@ function buildUiEventDescription(username, actionType, pageLabel, ev) {
       return `${who} UI action on ${page}${label ? ` — ${label}` : ""}`;
   }
 }
+
+activityLogRouter.post(
+  "/admin/activity-log/track-export",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      await refreshAuditContextFromReq(req);
+      const pagePath = String(req.body?.path || "").trim();
+      const format = String(req.body?.format || "xlsx").toUpperCase();
+      const count = Number(req.body?.count) || 0;
+      const moduleName = req.body?.moduleName || resolvePageLabel(pagePath) || "Report";
+      const recordReference = String(req.body?.recordReference || req.body?.fileName || `${count} rows`).slice(0, 255);
+      const description =
+        req.body?.description ||
+        `${req.user?.username || "User"} exported ${moduleName} to ${format}${count ? ` (${count} rows)` : ""}`;
+
+      await logActivity({
+        actionType: "EXPORT",
+        moduleName,
+        recordReference,
+        newValue: {
+          path: pagePath,
+          format,
+          count,
+          fileName: req.body?.fileName || null,
+        },
+        description,
+        companyId: req.companyId || req.user?.companyId || 1,
+      });
+
+      res.json({ status: true });
+    } catch (err) {
+      console.error("activity-log track-export:", err);
+      res.status(500).json({ status: false, message: err.message || "Track export failed." });
+    }
+  },
+);
 
 activityLogRouter.post(
   "/admin/activity-log/track-ui",
@@ -660,6 +752,11 @@ activityLogRouter.delete(
         return res.status(403).json({ status: false, message: "Access denied." });
       }
 
+      const passCheck = await verifyAdminPassword(req);
+      if (!passCheck.ok) {
+        return res.status(passCheck.status).json({ status: false, message: passCheck.message });
+      }
+
       const { where, values } = buildFilters(req.query, getAuditCompanyScope(req));
       const countRows = await auditQuery(
         `SELECT COUNT(*) AS total FROM dai_activity_log WHERE ${where}`,
@@ -672,6 +769,17 @@ activityLogRouter.delete(
       }
 
       await auditQuery(`DELETE FROM dai_activity_log WHERE ${where}`, values);
+
+      logActivity({
+        actionType: "DELETE",
+        moduleName: "Activity History",
+        recordReference: `BATCH_${total}_RECORDS`,
+        description: `${passCheck.user?.user_name || req.user?.username || "Admin"} deleted ${total} activity log records after password verification.`,
+        userId: passCheck.user?.user_id,
+        userName: passCheck.user?.user_name,
+        userRoleId: passCheck.user?.roll,
+        companyId: req.companyId || req.user?.companyId || 1,
+      }).catch(() => {});
 
       res.status(200).json({
         status: true,
@@ -695,7 +803,12 @@ activityLogRouter.delete(
         return res.status(403).json({ status: false, message: "Access denied." });
       }
 
-      const id = parseInt(req.query.deleteId, 10);
+      const passCheck = await verifyAdminPassword(req);
+      if (!passCheck.ok) {
+        return res.status(passCheck.status).json({ status: false, message: passCheck.message });
+      }
+
+      const id = parseInt(req.query.deleteId || req.body?.deleteId, 10);
       if (!id) {
         return res.status(400).json({ status: false, message: "Invalid or missing deleteId." });
       }
@@ -712,6 +825,18 @@ activityLogRouter.delete(
       }
 
       await auditQuery(`DELETE FROM dai_activity_log WHERE ${idWhere}`, idValues);
+
+      logActivity({
+        actionType: "DELETE",
+        moduleName: "Activity History",
+        recordId: id,
+        recordReference: String(id),
+        description: `${passCheck.user?.user_name || req.user?.username || "Admin"} deleted activity log #${id} after password verification.`,
+        userId: passCheck.user?.user_id,
+        userName: passCheck.user?.user_name,
+        userRoleId: passCheck.user?.roll,
+        companyId: req.companyId || req.user?.companyId || 1,
+      }).catch(() => {});
 
       res.status(200).json({
         status: true,

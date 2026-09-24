@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { SkeletonBlock } from '../../../components/common/skeleton';
 import { Activity, RefreshCw } from 'lucide-react';
-import { CurrencyFlag } from './currencyFlags';
+import { CurrencyFlag } from "../../../utils/currencyFlags";
 import styles from '../../../assets/scss/pages/accountings/mybalance.module.scss';
 import { cssVar } from '../../../theme';
 

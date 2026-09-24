@@ -19,8 +19,8 @@ import {
   UploadOutlined,
 } from "@ant-design/icons";
 import { useFetchApi, usePostApiRequest } from "../../api/ApiFunction";
-import { ENDPOINTS } from "../../constants/endpoints";
-import DynamicForm from "../../hooks/DynamicFormField";
+import { ENDPOINTS } from "../../api/endpoints";
+import DynamicForm from "../../components/common/ui/DynamicFormField";
 import { tenantCompanyFields } from "./tenantCompanyData";
 import PageHeroHeader from "../../components/common/PageHeroHeader";
 import useAuthStore from "../../store/Auth.Store";

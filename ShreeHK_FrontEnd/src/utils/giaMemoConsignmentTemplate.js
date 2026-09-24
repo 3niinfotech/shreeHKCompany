@@ -124,7 +124,7 @@ function buildSenderBlock() {
   return `<strong>${escapeHtml(VENYA_SENDER.name)}</strong>${lines}`;
 }
 
-function buildTableRows(rows, minRows = 5) {
+function _buildTableRows(rows, minRows = 5) {
   const padded = [...rows];
   while (padded.length < minRows) {
     padded.push({ no: padded.length + 1, sku: "", description: "", pcs: "", carats: "", price: "", amount: "" });

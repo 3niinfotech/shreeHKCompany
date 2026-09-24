@@ -10,11 +10,11 @@ import {
   CheckCircleFilled,
   SafetyOutlined,
 } from "@ant-design/icons";
-import { api } from "../../api/axiosInstance";
-import { ENDPOINTS } from "../../constants/endpoints";
+import { api } from "../../api/client/axiosInstance";
+import { ENDPOINTS } from "../../api/endpoints";
 import useAuthStore from "../../store/Auth.Store";
 import { ArrowLeftOutlined } from "@ant-design/icons";
-import { toastApiSuccess, toastApiError } from "../../utils/apiToast";
+import { toastApiSuccess, toastApiError } from "../../utils/toastNotify";
 import { SkeletonBlock, SkeletonCard } from "../common/skeleton";
 import styles from "../../assets/scss/pages/admin/companyYearPicker.module.scss";
 

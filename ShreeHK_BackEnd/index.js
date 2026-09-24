@@ -18,12 +18,12 @@ const commonRouter = require("./routes/common/commonRoutes.js");
 const notificationRouter = require("./routes/common/notificationRoutes.js");
 const outwardRouter = require("./routes/outward/outwardRoutes.js");
 const reportRouter = require("./routes/report/reportRoutes.js");
-const AdminUserRouter = require("./routes/adminUser/AddAdminUser.js");
-const ExpansePayment = require("./routes/accounting/Expanse_Payment.js");
-const AdvancePayment = require("./routes/accounting/Advance_payment.js");
-const MyBalanceBook = require("./routes/my_Balance/Balance_Book.js");
+const AdminUserRouter = require("./routes/adminUser/addAdminUserRoutes.js");
+const ExpansePayment = require("./routes/accounting/expensePaymentRoutes.js");
+const AdvancePayment = require("./routes/accounting/advancePaymentRoutes.js");
+const MyBalanceBook = require("./routes/my_Balance/balanceBookRoutes.js");
 const CurrencyRate = require("./routes/my_Balance/Currency_Rate.js");
-const Roll = require("./routes/adminUser/Roll.js");
+const Roll = require("./routes/adminUser/rollRoutes.js");
 const Transaction = require("./routes/accounting/Transaction.js");
 const PartyWiseTransaction = require("./routes/accounting/PartyWiseTransaction.js");
 const MyProfile = require("./routes/my_Profile/myProfile.js");
@@ -147,6 +147,18 @@ app.get(
   isSuperAdmin,
   (req, res) => res.json({ status: true, Data: legacyApps.outOfScopeApps }),
 );
+
+// Global error handling middleware (catches unhandled errors across all routes)
+app.use((err, req, res, next) => {
+  console.error(`[Unhandled Error] ${req.method} ${req.url}:`, err);
+  const isProduction = process.env.NODE_ENV === "production";
+  const statusCode = err.status || err.statusCode || 500;
+  res.status(statusCode).json({
+    status: false,
+    message: err.userFacingMessage || (statusCode < 500 ? err.message : "Internal server error"),
+    ...(isProduction ? {} : { error: err.message, stack: err.stack }),
+  });
+});
 
 const { ensureActivityLogTableOnMeta } = require("./scripts/ensureActivityLogTable.js");
 const { ensureUserActiveColumn } = require("./services/userActiveColumnService.js");

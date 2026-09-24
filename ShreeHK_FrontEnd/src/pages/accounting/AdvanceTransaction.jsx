@@ -4,7 +4,7 @@ import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTa
 import { TeamOutlined, CalendarOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
-import { ENDPOINTS } from '../../constants/endpoints';
+import { ENDPOINTS } from '../../api/endpoints';
 import AdvancedFilterPanel, { FilterField, filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
 import { cssVar } from '../../theme';
 import styles from '../../assets/scss/pages/accountings/advanceTransaction.module.scss';

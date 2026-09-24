@@ -5,7 +5,7 @@ import TransactionInvoice from "./TransactionInvoice";
 import { mapTransactionToInvoice } from "../../../utils/mapTransactionToInvoice";
 import { printTransactionInvoice } from "../../../utils/printTransactionInvoice";
 import { useFetchApi } from "../../../api/ApiFunction";
-import { ENDPOINTS } from "../../../constants/endpoints";
+import { ENDPOINTS } from "../../../api/endpoints";
 
 const PRINT_ROOT_CLASS = "transaction-invoice-print-root";
 

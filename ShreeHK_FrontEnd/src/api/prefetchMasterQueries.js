@@ -1,5 +1,5 @@
-import { api } from "./axiosInstance";
-import { ENDPOINTS } from "../constants/endpoints";
+import { api } from "./client/axiosInstance";
+import { ENDPOINTS } from "../api/endpoints";
 
 const STALE_MS = 5 * 60 * 1000;
 const GC_MS = 30 * 60 * 1000;
