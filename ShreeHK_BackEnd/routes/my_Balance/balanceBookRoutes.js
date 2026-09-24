@@ -243,16 +243,27 @@ MyBalanceBook.post("/my-balance-book", authenticateToken, async (req, res) => {
 
 // 3. DELETE API
 MyBalanceBook.delete("/my-balance-delete", authenticateToken, async (req, res) => {
-    const id = req.query.deleteId;
+    const companyId = buildUserContext(req).companyId;
+    const id = parseInt(req.query.deleteId, 10);
 
-    if (!id) {
+    if (!id || isNaN(id)) {
         return res.status(400).json({ error: "ID is required" });
+    }
+    if (!companyId || companyId <= 0) {
+        return res.status(400).json({ error: "Invalid tenant company context" });
     }
 
     try {
-        const oldRow = await fetchRowById("dai_balance", id);
+        const rows = await new Promise((resolve, reject) => {
+            connection.query(`SELECT * FROM dai_balance WHERE id = ? AND company = ? LIMIT 1`, [id, companyId], (err, r) => (err ? reject(err) : resolve(r)));
+        });
+        const oldRow = rows && rows.length > 0 ? rows[0] : null;
+        if (!oldRow) {
+            return res.status(404).json({ error: "Balance record not found" });
+        }
+
         await new Promise((resolve, reject) => {
-            connection.query(`DELETE FROM dai_balance WHERE id = ?`, [id], (error) => {
+            connection.query(`DELETE FROM dai_balance WHERE id = ? AND company = ?`, [id, companyId], (error) => {
                 if (error) reject(error);
                 else resolve();
             });

@@ -1,14 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
-import { Alert, Tag, Button, Tooltip } from "antd";
+import { Alert, Tag, Button, Tooltip, Space } from "antd";
 import {
   EyeOutlined,
   EyeInvisibleOutlined,
   CrownOutlined,
   SafetyCertificateOutlined,
   UserOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
-import { api } from "../../api/axiosInstance";
-import { ENDPOINTS } from "../../constants/endpoints";
+import { api } from "../../api/client/axiosInstance";
+import { ENDPOINTS } from "../../api/endpoints";
 import ActivityUnifiedDataCell from "./ActivityUnifiedDataCell";
 import ActivityLogDetail from "./ActivityLogDetail";
 import {
@@ -33,6 +34,8 @@ const ActivityLogFlatTable = ({
   autoRefreshMs = 0,
   onSynced,
   showDataColumns = false,
+  canDelete = false,
+  onDeleteRow,
 }) => {
   const [data, setData] = useState([]);
   const [total, setTotal] = useState(0);
@@ -133,7 +136,7 @@ const ActivityLogFlatTable = ({
     {
       title: "User",
       key: "who",
-      width: 140,
+      width: 160,
       fixed: "left",
       render: (_, record) => {
         const roleStr = String(record.userRole || "User").trim();
@@ -170,7 +173,8 @@ const ActivityLogFlatTable = ({
       title: "Action",
       dataIndex: "actionType",
       key: "actionType",
-      width: 82,
+      width: 100,
+      align: "center",
       render: (type) => {
         const tone = getActionTone(type);
         return (
@@ -193,33 +197,78 @@ const ActivityLogFlatTable = ({
       title: "Summary",
       key: "summary",
       ellipsis: true,
-      render: (_, record) => (
-        <span className={styles.summaryInline}>
-          {buildActivityNarrative(record) || record.description || "—"}
-        </span>
-      ),
+      render: (_, record) => {
+        const msg = (record.description && typeof record.description === "string" && record.description.trim())
+          ? record.description.trim()
+          : buildActivityNarrative(record) || "—";
+        return (
+          <Tooltip title={msg} placement="topLeft">
+            <span className={styles.summaryInline}>
+              {msg}
+            </span>
+          </Tooltip>
+        );
+      },
     },
     {
-      title: "Data",
+      title: "Action",
       key: "dataToggle",
-      width: 100,
+      width: canDelete ? 160 : 90,
       fixed: "right",
       render: (_, record) => {
         const isOpen = expandedRowKeys.includes(record.key);
         return (
-          <Button
-            type="link"
-            size="small"
-            className={styles.showDataBtn}
-            icon={isOpen ? <EyeInvisibleOutlined /> : <EyeOutlined />}
-            onClick={(e) => toggleRowDetail(record, e)}
-          >
-            {isOpen ? "Hide" : "Show"}
-          </Button>
+          <Space size={6} align="center">
+            <Tag
+              color={isOpen ? "default" : "blue"}
+              style={{
+                cursor: "pointer",
+                margin: 0,
+                padding: "2px 8px",
+                fontSize: 11,
+                fontWeight: 500,
+                borderRadius: 4,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                userSelect: "none",
+              }}
+              icon={isOpen ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+              onClick={(e) => toggleRowDetail(record, e)}
+            >
+              {isOpen ? "Hide" : "Show"}
+            </Tag>
+            {canDelete ? (
+              <Tooltip title="Delete this log record">
+                <Tag
+                  color="error"
+                  style={{
+                    cursor: "pointer",
+                    margin: 0,
+                    padding: "2px 8px",
+                    fontSize: 11,
+                    fontWeight: 500,
+                    borderRadius: 4,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    userSelect: "none",
+                  }}
+                  icon={<DeleteOutlined />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteRow?.(record);
+                  }}
+                >
+                  Delete
+                </Tag>
+              </Tooltip>
+            ) : null}
+          </Space>
         );
       },
     },
-  ], [expandedRowKeys]);
+  ], [expandedRowKeys, canDelete, onDeleteRow]);
 
   const dataColumns = useMemo(() => [
     {
@@ -256,46 +305,46 @@ const ActivityLogFlatTable = ({
   return (
     <>
       <div ref={tableRef} className="erp-table-container">
-      {error ? (
-        <Alert
-          type="error"
-          showIcon
-          message={error}
-          className={styles.tableError}
-          action={<Button size="small" onClick={() => fetchRows(page, pageSize)}>Retry</Button>}
+        {error ? (
+          <Alert
+            type="error"
+            showIcon
+            message={error}
+            className={styles.tableError}
+            action={<Button size="small" onClick={() => fetchRows(page, pageSize)}>Retry</Button>}
+          />
+        ) : null}
+        <SkeletonAwareTable
+          className={styles.unifiedTable}
+          columns={columns}
+          dataSource={data}
+          loading={loading}
+          size="small"
+          bordered
+          scroll={{ x: showDataColumns ? 1400 : 1000, y: tableHeight }}
+          rowClassName={(record) => styles[`rowTone--${getActionTone(record.actionType)}`]}
+          expandable={{
+            expandedRowKeys,
+            expandedRowRender: (record) => <ActivityLogDetail record={record} compact />,
+            rowExpandable: () => true,
+            expandIcon: () => null,
+            showExpandColumn: false,
+          }}
+          pagination={{
+            current: page,
+            pageSize,
+            total,
+            showSizeChanger: true,
+            pageSizeOptions: ["25", "50", "100", "200"],
+            showTotal: (t) => `${t} activity record(s)`,
+            onChange: (p, size) => {
+              setPage(p);
+              setPageSize(size);
+              setExpandedRowKeys([]);
+              fetchRows(p, size);
+            },
+          }}
         />
-      ) : null}
-      <SkeletonAwareTable
-        className={styles.unifiedTable}
-        columns={columns}
-        dataSource={data}
-        loading={loading}
-        size="small"
-        bordered
-        scroll={{ x: showDataColumns ? 1400 : 1000, y: tableHeight }}
-        rowClassName={(record) => styles[`rowTone--${getActionTone(record.actionType)}`]}
-        expandable={{
-          expandedRowKeys,
-          expandedRowRender: (record) => <ActivityLogDetail record={record} compact />,
-          rowExpandable: () => true,
-          expandIcon: () => null,
-          showExpandColumn: false,
-        }}
-        pagination={{
-          current: page,
-          pageSize,
-          total,
-          showSizeChanger: true,
-          pageSizeOptions: ["25", "50", "100", "200"],
-          showTotal: (t) => `${t} activity record(s)`,
-          onChange: (p, size) => {
-            setPage(p);
-            setPageSize(size);
-            setExpandedRowKeys([]);
-            fetchRows(p, size);
-          },
-        }}
-      />
       </div>
     </>
   );

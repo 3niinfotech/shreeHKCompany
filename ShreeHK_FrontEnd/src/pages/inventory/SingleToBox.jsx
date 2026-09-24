@@ -5,14 +5,14 @@ import {
 import { toastWarning } from "../../utils/toastNotify";
 import { InboxOutlined, ReloadOutlined } from "@ant-design/icons";
 import { Search, PackagePlus } from "lucide-react";
-import { toastApiSuccess, toastApiError } from "../../utils/apiToast";
+import { toastApiSuccess, toastApiError } from "../../utils/toastNotify";
 import useInventoryList from "../../hooks/useInventoryList";
 import { mapInventoryRowCamel } from "../../utils/inventoryApiFilters";
 import { singleStoneColumns } from "./inventoryBoxParcelColumns.jsx";
 import AddDiamondToBoxModal from "./AddDiamondToBoxModal";
 import { useQueryClient } from "@tanstack/react-query";
 import { useFetchApi } from "../../api/ApiFunction";
-import { ENDPOINTS } from "../../constants/endpoints";
+import { ENDPOINTS } from "../../api/endpoints";
 import { addStonesToBox } from "../../api/services/productService";
 import PageHeroHeader from "../../components/common/PageHeroHeader";
 import useTableSkeleton from "../../components/common/skeleton/useTableSkeleton";

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo } from "react";
 import MasterTableTemplate from "./MasterTableTemplate";
 import { toastWarning } from "../../utils/toastNotify";
-import useFiltersFormFields from "../../hooks/useFiltersFormFields";
+import useFiltersFormFields from "../../components/common/filters/FilterFormFields";
 import useInventoryList from "../../hooks/useInventoryList";
 import useInventoryHoldActions from "../../hooks/useInventoryHoldActions";
 import useInventoryChangePriceActions from "../../hooks/useInventoryChangePriceActions";
@@ -34,7 +34,7 @@ import InventoryFilterPresets from "../../components/inventory/InventoryFilterPr
 import InventorySummaryToolbar from "../../components/inventory/InventorySummaryToolbar";
 import { mapInventoryRowCamel } from "../../utils/inventoryApiFilters";
 import { useFetchApi } from "../../api/ApiFunction";
-import { ENDPOINTS } from "../../constants/endpoints";
+import { ENDPOINTS } from "../../api/endpoints";
 import { cssVar } from "../../theme";
 
 import "../../assets/scss/pages/inventory/onHand_module.scss";

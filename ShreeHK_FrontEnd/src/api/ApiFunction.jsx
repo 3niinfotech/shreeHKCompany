@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "./axiosInstance";
-import { toastApiSuccess, toastApiError } from "../utils/apiToast";
+import { api } from "./client/axiosInstance";
+import { toastApiSuccess, toastApiError } from "../utils/toastNotify";
 import { toastDeleted } from "../utils/toastNotify";
 
 /**

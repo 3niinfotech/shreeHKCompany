@@ -9,7 +9,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
-import { ENDPOINTS } from '../../constants/endpoints';
+import { ENDPOINTS } from '../../api/endpoints';
 import AdvancedFilterPanel, { FilterField, filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
 import styles from '../../assets/scss/pages/accountings/transaction.module.scss';
 import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';

@@ -13,7 +13,7 @@ import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import useAuthStore from "../../store/Auth.Store";
 import { useFetchApi, usePostApiRequest, usePutApiRequest, useDeleteApiRequest } from "../../api/ApiFunction";
-import { ENDPOINTS } from "../../constants/endpoints";
+import { ENDPOINTS } from "../../api/endpoints";
 import { SkeletonBlock } from "../common/skeleton";
 
 const NotesTableSkeleton = ({ isSuperAdmin }) => (

@@ -7,7 +7,7 @@ import UserQuickInspectPanel from '../../components/admin/UserQuickInspectPanel'
 import { useFetchApi, usePostApiRequest, useDeleteApiRequest } from '../../api/ApiFunction';
 const MasterTemplate = lazy(() => import('../../components/common/masterCommon/MasterPageTemplate'));
 const ConfirmDeleteModal = lazy(() => import("../../components/common/modals/ConfirmDeleteModal"));
-import { ENDPOINTS } from '../../constants/endpoints';
+import { ENDPOINTS } from '../../api/endpoints';
 import { resolveUploadUrl } from '../../utils/uploadBaseUrl';
 
 const formatDate = (value) => (value && dayjs(value).isValid() ? dayjs(value).format('DD-MM-YYYY') : '-');

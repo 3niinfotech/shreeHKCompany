@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { trackExportAudit } from "./auditExportTracker";
 
 /**
  * Venya PHP inventory Export (fn=exportToExcel) clone using ExcelJS.
@@ -560,8 +561,19 @@ export const exportVenyaInventoryExcel = async ({
   ];
 
   // Write Excel file buffer and trigger download
+  const fileName = buildVenyaFileName();
   const buffer = await workbook.xlsx.writeBuffer();
-  triggerFileDownload(buffer, buildVenyaFileName());
+  triggerFileDownload(buffer, fileName);
+
+  trackExportAudit({
+    moduleName: isInventoryAttribute ? "Inventory I.Export" : "Inventory Export",
+    fileName,
+    count: rows.length,
+    format: "xlsx",
+  });
 
   return rows.length;
 };
+
+export const exportVenyaInventoryToExcel = exportVenyaInventoryExcel;
+export default exportVenyaInventoryExcel;

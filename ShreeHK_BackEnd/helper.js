@@ -25,13 +25,15 @@ const safeEscape = (val) => {
   return connection.escape(val);
 };
 
+const SAFE_COLUMN_REGEX = /^[a-zA-Z0-9_]+$/;
+
 const insertString = (post) => {
   try {
     const names = [];
     const values = [];
 
     for (const key of Object.keys(post)) {
-      if (key === 'id' || key === 'NaN') continue;
+      if (key === 'id' || key === 'NaN' || !SAFE_COLUMN_REGEX.test(key)) continue;
       names.push(key);
       values.push(safeEscape(post[key]));
     }
@@ -47,7 +49,7 @@ const updateString = (post) => {
     const parts = [];
 
     for (const key of Object.keys(post)) {
-      if (key === 'id' || key === 'company' || key === 'fn' || key === 'NaN') continue;
+      if (key === 'id' || key === 'company' || key === 'fn' || key === 'NaN' || !SAFE_COLUMN_REGEX.test(key)) continue;
       parts.push(`${key}=${safeEscape(post[key])}`);
     }
 

@@ -3,7 +3,7 @@ import { Table, Card, Form, Select, Input, DatePicker, Button } from 'antd';
 import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
 import dayjs from 'dayjs';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
-import { ENDPOINTS } from '../../constants/endpoints';
+import { ENDPOINTS } from '../../api/endpoints';
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
 import { ReloadOutlined } from '@ant-design/icons';
 import ExportExcelButton from '../../components/common/ExportExcelButton';

@@ -3,9 +3,9 @@ import { Input, Space } from 'antd';
 import { SkeletonBlock } from '../../../components/common/skeleton';
 import { BookOpen, Plus, Save, Check, Pencil, Trash2, RefreshCcw } from 'lucide-react';
 import { useFetchApi, usePostApiRequest, useDeleteApiRequest } from '../../../api/ApiFunction';
-import { ENDPOINTS } from '../../../constants/endpoints';
+import { ENDPOINTS } from '../../../api/endpoints';
 import { ConfirmDeleteModal } from '../../../components/common/modals';
-import { CurrencyFlag } from './currencyFlags';
+import { CurrencyFlag } from "../../../utils/currencyFlags";
 import styles from '../../../assets/scss/pages/accountings/mybalance.module.scss';
 
 const BalanceBook = () => {

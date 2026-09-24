@@ -13,11 +13,11 @@ import {
   SafetyCertificateOutlined, BankOutlined, CheckCircleOutlined,
 } from '@ant-design/icons';
 
-import DynamicForm from '../../hooks/DynamicFormField';
+import DynamicForm from '../../components/common/ui/DynamicFormField';
 import PageHeroHeader, { pageHeroHeaderStyles } from '../../components/common/PageHeroHeader';
 import styles from '../../assets/scss/pages/admin/advanceRollPage.module.scss';
 import { useFetchApi, usePostApiRequest, usePutApiRequest, useDeleteApiRequest } from '../../api/ApiFunction';
-import { ENDPOINTS } from '../../constants/endpoints';
+import { ENDPOINTS } from '../../api/endpoints';
 import {
   buildPermissionFormGroupsFromModules,
   getAllConfigurablePageKeys,

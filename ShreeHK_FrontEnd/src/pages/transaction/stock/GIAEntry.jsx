@@ -1,6 +1,7 @@
 import React from 'react';
-import OutwardEntryForm from './OutwardEntryForm';
+import TransactionStockEntry from './TransactionStockEntry';
 
-const GIAEntry = () => <OutwardEntryForm outwardType="lab" />;
+const GIAEntry = () => <TransactionStockEntry type="GIA" />;
 
 export default GIAEntry;
+

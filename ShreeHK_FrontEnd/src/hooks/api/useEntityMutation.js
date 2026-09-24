@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toastApiSuccess, toastApiError } from "../../utils/apiToast";
+import { toastApiSuccess, toastApiError } from "../../utils/toastNotify";
 import { toastDeleted } from "../../utils/toastNotify";
 
 export const useEntityPostMutation = (mutationFn, successKey, defaultOptions = {}) => {

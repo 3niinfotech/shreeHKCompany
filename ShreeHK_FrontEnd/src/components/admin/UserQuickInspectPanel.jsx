@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Avatar, Spin } from "antd";
 import { CloseOutlined, HistoryOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
-import { api } from "../../api/axiosInstance";
-import { ENDPOINTS } from "../../constants/endpoints";
+import { api } from "../../api/client/axiosInstance";
+import { ENDPOINTS } from "../../api/endpoints";
 import { resolveUploadUrl } from "../../utils/uploadBaseUrl";
 import {
     buildActivityNarrative,

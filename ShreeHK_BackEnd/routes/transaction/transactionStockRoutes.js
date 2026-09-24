@@ -61,7 +61,7 @@ transactionStockRouter.post("/transaction/gia/return", authenticateToken, async 
 
 transactionStockRouter.post("/transaction/inward-stock/return", authenticateToken, async (req, res) => {
   try {
-    const result = await stockService.returnInwardMemo(req.body);
+    const result = await stockService.returnInwardMemo(req.body, buildUserContext(req));
     return res.status(200).json({ status: result.ok, message: result.message });
   } catch (error) {
     console.error("inward return error:", error);
@@ -81,7 +81,7 @@ transactionStockRouter.post("/transaction/inward-stock/memo-to-purchase", authen
 
 transactionStockRouter.post("/transaction/outward-stock/return", authenticateToken, async (req, res) => {
   try {
-    const result = await stockService.returnOutwardMemo(req.body);
+    const result = await stockService.returnOutwardMemo(req.body, buildUserContext(req));
     return res.status(200).json({ status: result.ok, message: result.message });
   } catch (error) {
     console.error("outward return error:", error);
@@ -123,7 +123,8 @@ transactionStockRouter.delete("/transaction/inward-stock", authenticateToken, as
   const id = parseInt(req.query.deleteId, 10);
   if (!id) return res.status(400).json({ status: false, message: "Invalid deleteId" });
   try {
-    const result = await stockService.deleteInwardStock(id);
+    const userContext = buildUserContext(req);
+    const result = await stockService.deleteInwardStock(id, { userContext });
     return res.status(200).json({ status: result.ok, message: result.message });
   } catch (error) {
     console.error("delete inward error:", error);
@@ -135,7 +136,8 @@ transactionStockRouter.delete("/transaction/gia", authenticateToken, async (req,
   const id = parseInt(req.query.deleteId, 10);
   if (!id) return res.status(400).json({ status: false, message: "Invalid deleteId" });
   try {
-    const result = await stockService.deleteGia(id);
+    const userContext = buildUserContext(req);
+    const result = await stockService.deleteGia(id, userContext.companyId);
     return res.status(200).json({ status: result.ok, message: result.message });
   } catch (error) {
     console.error("delete gia error:", error);
@@ -147,7 +149,8 @@ transactionStockRouter.delete("/transaction/outward-stock", authenticateToken, a
   const id = parseInt(req.query.deleteId, 10);
   if (!id) return res.status(400).json({ status: false, message: "Invalid deleteId" });
   try {
-    const result = await stockService.deleteOutwardStock(id);
+    const userContext = buildUserContext(req);
+    const result = await stockService.deleteOutwardStock(id, { companyId: userContext.companyId });
     return res.status(200).json({ status: result.ok, message: result.message });
   } catch (error) {
     console.error("delete outward stock error:", error);

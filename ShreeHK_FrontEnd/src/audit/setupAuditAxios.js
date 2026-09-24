@@ -1,4 +1,4 @@
-import { api } from "../api/axiosInstance";
+import { api } from "../api/client/axiosInstance";
 import { getAuditPageContext } from "./auditUiTracker";
 
 let installed = false;

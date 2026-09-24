@@ -1,6 +1,6 @@
 import React from 'react';
-import OutwardEntryForm from './OutwardEntryForm';
+import TransactionStockEntry from './TransactionStockEntry';
 
-const ConsignEntry = () => <OutwardEntryForm outwardType="consign" />;
+const ConsignEntry = () => <TransactionStockEntry type="CONSIGN" />;
 
 export default ConsignEntry;

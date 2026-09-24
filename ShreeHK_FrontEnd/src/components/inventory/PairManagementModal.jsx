@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Modal, Form, Input, Alert, Table, Button, Space } from "antd";
 import { toastWarning } from "../../utils/toastNotify";
-import { api } from "../../api/axiosInstance";
-import { ENDPOINTS } from "../../constants/endpoints";
-import { toastApiSuccess, toastApiError } from "../../utils/apiToast";
+import { api } from "../../api/client/axiosInstance";
+import { ENDPOINTS } from "../../api/endpoints";
+import { toastApiSuccess, toastApiError } from "../../utils/toastNotify";
 import { SkuLink } from "../../hooks/useSkuModalAction";
 
 /**

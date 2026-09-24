@@ -4,7 +4,7 @@ import { Modal, Tag, Table } from "antd";
 import { SkeletonDetail, SkeletonList } from "../common/skeleton";
 import { DollarCircleOutlined, ExperimentOutlined, InfoCircleOutlined, HistoryOutlined } from "@ant-design/icons";
 import { useFetchApi } from "../../api/ApiFunction";
-import { ENDPOINTS } from "../../constants/endpoints";
+import { ENDPOINTS } from "../../api/endpoints";
 import LocationWithFlag from "./LocationWithFlag";
 import styles from "../../assets/scss/components/inventoryStoneDetailModal.module.scss";
 import { cssVar } from "../../theme";

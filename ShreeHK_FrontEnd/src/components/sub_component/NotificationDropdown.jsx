@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Dropdown, Empty } from "antd";
 import { SkeletonDropdownPanel } from "../common/skeleton";
 import { Bell, CheckCheck, IndianRupee, LogIn, Package, Sparkles } from "lucide-react";
-import { api } from "../../api/axiosInstance";
+import { api } from "../../api/client/axiosInstance";
 import { playNotificationSound } from "../../utils/soundNotify";
 import styles from "../../assets/scss/components/notificationDropdown.module.scss";
 
@@ -179,14 +179,18 @@ const NotificationDropdown = ({ buttonClassName, badgeClassName }) => {
     openRef.current = open;
   }, [open]);
 
-  const getAuthToken = () => {
+  const getAuthContext = () => {
     try {
       const raw = localStorage.getItem("auth-storage");
-      if (!raw) return "";
+      if (!raw) return { token: "", companyId: "" };
       const parsed = JSON.parse(raw);
-      return parsed?.state?.token || "";
+      const state = parsed?.state || {};
+      return {
+        token: state.token || "",
+        companyId: state.companyId || "",
+      };
     } catch {
-      return "";
+      return { token: "", companyId: "" };
     }
   };
 
@@ -195,13 +199,28 @@ const NotificationDropdown = ({ buttonClassName, badgeClassName }) => {
     if (Notification.permission !== "granted") return;
 
     const messageLines = formatMessageLines(item?.message);
-    const body = messageLines[0] || "You have a new notification.";
+    const body = messageLines.slice(0, 3).join("\n") || "You have a new notification.";
     const title = cleanTitle(item?.title) || "New notification";
     const suffix = unreadCount > 1 ? ` (${unreadCount} unread)` : "";
 
     try {
-      const notification = new Notification(`${title}${suffix}`, { body });
-      setTimeout(() => notification.close(), 7000);
+      const notification = new Notification(`${title}${suffix}`, {
+        body,
+        icon: "/favicon.ico",
+        tag: `shreehk-${item?.id || Date.now()}`,
+        requireInteraction: false,
+      });
+
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+      };
+
+      setTimeout(() => {
+        try {
+          notification.close();
+        } catch (_) {}
+      }, 9000);
     } catch {
       // Ignore browser notification errors silently.
     }
@@ -211,6 +230,23 @@ const NotificationDropdown = ({ buttonClassName, badgeClassName }) => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
     if (Notification.permission !== "default") return;
     Notification.requestPermission().catch(() => { });
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (Notification.permission === "default") {
+      const askPermission = () => {
+        Notification.requestPermission().catch(() => {});
+        window.removeEventListener("click", askPermission);
+        window.removeEventListener("keydown", askPermission);
+      };
+      window.addEventListener("click", askPermission, { once: true });
+      window.addEventListener("keydown", askPermission, { once: true });
+      return () => {
+        window.removeEventListener("click", askPermission);
+        window.removeEventListener("keydown", askPermission);
+      };
+    }
   }, []);
 
   const fetchNotifications = useCallback(async ({ offset = 0, append = false, force = false } = {}) => {
@@ -260,7 +296,7 @@ const NotificationDropdown = ({ buttonClassName, badgeClassName }) => {
   }, [fetchNotifications]);
 
   useEffect(() => {
-    const token = getAuthToken();
+    const { token, companyId } = getAuthContext();
     if (!token || typeof EventSource === "undefined") return undefined;
 
     let disposed = false;
@@ -270,11 +306,16 @@ const NotificationDropdown = ({ buttonClassName, badgeClassName }) => {
     const connectStream = () => {
       if (disposed) return;
 
+      const currentAuth = getAuthContext();
+      if (!currentAuth.token) return;
+
       const normalizedBase = String(api?.defaults?.baseURL || "");
       const base = normalizedBase.endsWith("/")
         ? normalizedBase.slice(0, -1)
         : normalizedBase;
-      const streamUrl = `${base}/notification/stream?token=${encodeURIComponent(token)}`;
+      const streamUrl = `${base}/notification/stream?token=${encodeURIComponent(currentAuth.token)}${
+        currentAuth.companyId ? `&companyId=${encodeURIComponent(currentAuth.companyId)}` : ""
+      }`;
 
       source = new EventSource(streamUrl);
       eventSourceRef.current = source;

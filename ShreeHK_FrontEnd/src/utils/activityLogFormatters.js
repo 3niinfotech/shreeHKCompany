@@ -54,15 +54,35 @@ const FIELD_LABELS = {
   sell_price: "Sell Price",
   sell_amount: "Sell Amount",
   price: "Price",
-  polish_carat: "Carat",
-  polish_pcs: "Pcs",
+  cost: "Cost",
+  p_carat: "P.Carat (Polish)",
+  r_carat: "R.Carat (Rough)",
+  polish_carat: "Polish Carat",
+  rought_carat: "Rough Carat",
+  p_pcs: "P.Pcs (Polish)",
+  r_pcs: "R.Pcs (Rough)",
+  polish_pcs: "Polish Pcs",
+  rought_pcs: "Rough Pcs",
+  mfg_code: "MFG Code",
+  mfg: "MFG Code",
+  d_no: "D. No",
+  dno: "D. No",
   description: "Description",
   type: "Type",
   date: "Date",
   invoicedate: "Invoice Date",
   invoiceno: "Invoice No",
+  invoice_no: "Invoice No",
   invoice: "Invoice",
   reference: "Reference",
+  entryno: "Entry No",
+  entry_no: "Entry No",
+  terms: "Terms (Days)",
+  duedate: "Due Date",
+  due_date: "Due Date",
+  total_pcs: "Total Pcs",
+  total_carat: "Total Carat",
+  total_amount: "Total Amount",
   book: "Book",
   cheque: "Cheque",
   name: "Name",
@@ -71,6 +91,7 @@ const FIELD_LABELS = {
   outward: "Outward",
   hold: "Hold",
   group_type: "Group Type",
+  loc: "Location",
   location: "Location",
   main_group: "Main Group",
   sub_group: "Sub Group",
@@ -106,6 +127,7 @@ const FIELD_LABELS = {
   lab: "Lab",
   shape: "Shape",
   color: "Color",
+  main_color: "Color",
   clarity: "Clarity",
   cut: "Cut",
   polish: "Polish Grade",
@@ -113,27 +135,32 @@ const FIELD_LABELS = {
   f_intensity: "Fluorescence",
   intensity: "Intensity",
   overtone: "Overtone",
-  mesurment: "Measurement",
+  measurements: "Measurements",
+  measurement: "Measurements",
+  mesurment: "Measurements",
   table_pc: "Table %",
   depth_pc: "Depth %",
   gridle: "Girdle",
   report_no: "Report No",
+  reportno: "Report No",
   bgm: "BGM",
   eyeclean: "Eye Clean",
   rap_price: "Rap Price",
-  cost: "Cost",
   pair: "Pair",
   category: "Category",
   skus: "SKUs",
+  items: "Line Items",
+  products: "Products",
 };
 
 const PRIORITY_FIELDS = [
-  "sku", "lab", "shape", "polish_carat", "polish_pcs", "color", "clarity", "cut", "polish",
-  "symmentry", "f_intensity", "price", "amount", "sell_price", "sell_amount", "rap_price",
-  "mesurment", "table_pc", "depth_pc", "report_no", "remark", "outward", "hold", "party",
-  "name", "username", "user_name", "other_party", "type", "date", "invoiceno",
-  "invoice", "reference", "description", "book", "cheque", "final_amount",
-  "location", "main_group", "sub_group", "email", "mobile", "address",
+  "sku", "mfg_code", "d_no", "p_carat", "r_carat", "polish_carat", "rought_carat",
+  "p_pcs", "r_pcs", "polish_pcs", "rought_pcs", "cost", "price", "amount",
+  "color", "clarity", "shape", "lab", "report_no", "measurements", "loc", "location",
+  "cut", "polish", "symmentry", "f_intensity", "sell_price", "sell_amount", "rap_price",
+  "table_pc", "depth_pc", "remark", "outward", "hold", "party", "name", "username",
+  "invoiceno", "invoice_no", "reference", "entry_no", "entryno", "terms", "due_date",
+  "total_pcs", "total_carat", "total_amount", "date", "inward_type", "items", "products",
 ];
 
 /** Keys that are API/meta — not user-entered form data */
@@ -211,14 +238,61 @@ export function formatFieldLabel(key) {
 export function formatFieldValue(value) {
   if (value == null || value === "") return "—";
   if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "number") return String(value);
+
   if (typeof value === "object") {
-    if (Array.isArray(value)) return value.join(", ");
-    try {
-      return JSON.stringify(value);
-    } catch {
-      return String(value);
+    if (Array.isArray(value)) {
+      if (value.length === 0) return "—";
+      return value
+        .map((item) => {
+          if (item == null || item === "") return "—";
+          if (typeof item === "object") {
+            const identifier =
+              item.sku ||
+              item.name ||
+              item.username ||
+              item.invoiceno ||
+              item.invoice ||
+              item.title ||
+              item.label ||
+              item.reference ||
+              item.id;
+            if (identifier) {
+              const extra = item.weight || item.rate || item.carat || item.price || item.qty || item.amount;
+              return extra != null ? `${identifier} (${extra})` : String(identifier);
+            }
+            const pairs = Object.entries(item)
+              .filter(([k, v]) => v != null && v !== "" && !NOISE_KEYS.has(k) && !SENSITIVE_KEYS.has(k))
+              .slice(0, 3)
+              .map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`);
+            return pairs.length ? pairs.join(", ") : JSON.stringify(item);
+          }
+          return String(item);
+        })
+        .join(", ");
     }
+
+    const identifier =
+      value.sku ||
+      value.name ||
+      value.username ||
+      value.invoiceno ||
+      value.invoice ||
+      value.title ||
+      value.label ||
+      value.reference;
+    if (identifier) {
+      const extra = value.weight || value.rate || value.carat || value.price || value.qty || value.amount;
+      return extra != null ? `${identifier} (${extra})` : String(identifier);
+    }
+
+    const pairs = Object.entries(value)
+      .filter(([k, v]) => v != null && v !== "" && !NOISE_KEYS.has(k) && !SENSITIVE_KEYS.has(k))
+      .slice(0, 3)
+      .map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`);
+    return pairs.length ? pairs.join(", ") : JSON.stringify(value);
   }
+
   return String(value);
 }
 
@@ -415,6 +489,39 @@ export function getUserDataFields(record) {
   }));
 }
 
+export function isBlank(val) {
+  return val === null || val === undefined || (typeof val === "string" && val.trim() === "");
+}
+
+export function areValuesEqual(a, b) {
+  if (isBlank(a) && isBlank(b)) return true;
+  if (isBlank(a) !== isBlank(b)) return false;
+  if (a === b) return true;
+
+  if (typeof a === "number" && typeof b === "string" && b.trim() !== "" && !Number.isNaN(Number(b))) {
+    if (Number(a) === Number(b)) return true;
+  }
+  if (typeof b === "number" && typeof a === "string" && a.trim() !== "" && !Number.isNaN(Number(a))) {
+    if (Number(a) === Number(b)) return true;
+  }
+
+  if (typeof a === "string" && typeof b === "string") {
+    if (a.trim() === b.trim()) return true;
+  }
+
+  const isBoolLike = (v) => v === true || v === false || v === 0 || v === 1 || v === "0" || v === "1" || v === "true" || v === "false";
+  if (isBoolLike(a) && isBoolLike(b) && (typeof a === "boolean" || typeof b === "boolean")) {
+    const toBool = (v) => v === true || v === 1 || v === "1" || v === "true";
+    return toBool(a) === toBool(b);
+  }
+
+  if (typeof a === "object" && typeof b === "object" && a !== null && b !== null) {
+    return JSON.stringify(a) === JSON.stringify(b);
+  }
+
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 export function getChangedFieldRows(before, after, changedFields = []) {
   const keys = new Set([
     ...Object.keys(before || {}),
@@ -426,7 +533,7 @@ export function getChangedFieldRows(before, after, changedFields = []) {
     if (NOISE_KEYS.has(key) || SENSITIVE_KEYS.has(key) || CONTAINER_KEYS.has(key)) return;
     const oldVal = before?.[key];
     const newVal = after?.[key];
-    if (JSON.stringify(oldVal) === JSON.stringify(newVal)) return;
+    if (areValuesEqual(oldVal, newVal)) return;
     rows.push({
       key,
       label: formatFieldLabel(key),
@@ -455,10 +562,10 @@ export function getFullBeforeAfterRows(before, after, changedFields = []) {
     if (NOISE_KEYS.has(key) || SENSITIVE_KEYS.has(key) || CONTAINER_KEYS.has(key)) return;
     const oldVal = before?.[key];
     const newVal = after?.[key];
-    if (oldVal == null && newVal == null) return;
+    if (isBlank(oldVal) && isBlank(newVal)) return;
     const changed =
       changedFields.includes(key) ||
-      JSON.stringify(oldVal) !== JSON.stringify(newVal);
+      !areValuesEqual(oldVal, newVal);
     rows.push({
       key,
       label: formatFieldLabel(key),
@@ -477,11 +584,17 @@ export function getFullBeforeAfterRows(before, after, changedFields = []) {
 
 /** One-line summary for timeline / table */
 export function buildEntrySummary(record) {
-  return buildActivityNarrative(record) || record?.description || null;
+  if (record?.description && typeof record.description === "string" && record.description.trim()) {
+    return record.description.trim();
+  }
+  return buildActivityNarrative(record) || null;
 }
 
 /** Plain-language story: who did what */
 export function buildActivityNarrative(record) {
+  if (record?.description && typeof record.description === "string" && record.description.trim()) {
+    return record.description.trim();
+  }
   const user = record?.userName || "User";
   const role = record?.userRole ? ` (${record.userRole})` : "";
   const { actionType, before, after } = extractBusinessData(record);

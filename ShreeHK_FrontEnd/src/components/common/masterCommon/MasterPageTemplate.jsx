@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import DynamicFormField from "../../../hooks/DynamicFormField";
+import DynamicFormField from "../../../components/common/ui/DynamicFormField";
 import { Form } from 'antd';
 import { BaseModal } from "../modals";
 import { MasterListTable } from '../table';

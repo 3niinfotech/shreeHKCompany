@@ -1,5 +1,5 @@
 const express = require("express");
-const md5 = require("md5");
+const { verifyAndMigratePassword } = require("../../services/passwordService.js");
 const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
@@ -235,7 +235,10 @@ const verifyAdminPassword = (userId, password) =>
       (err, rows) => {
         if (err) return reject(err);
         if (!rows?.length) return resolve(false);
-        resolve(md5(password) === rows[0].pass);
+        const valid = verifyAndMigratePassword(password, rows[0].pass, (newHash) => {
+          connection.query("UPDATE user SET pass = ? WHERE user_id = ?", [newHash, userId]);
+        });
+        resolve(valid);
       }
     );
   });

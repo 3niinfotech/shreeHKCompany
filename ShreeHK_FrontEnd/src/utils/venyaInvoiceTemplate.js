@@ -1,11 +1,6 @@
 /** Venya legacy invoice layout — sale/purchase use PHP-style template; memo uses approvalMemoTemplate.js */
 
-import {
-  APPROVAL_MEMO_STYLES,
-  buildApprovalMemoBody,
-  buildApprovalMemoPrintDocument,
-  isApprovalMemoDocument,
-} from "./approvalMemoTemplate.js";
+import { APPROVAL_MEMO_STYLES } from "./approvalMemoTemplate.js";
 import { INVOICE_A4_STYLES } from "./invoiceA4.js";
 import { buildCompanyLogoHtml, resolveCompanyLogoUrl } from "./companyLogo.js";
 
@@ -555,7 +550,7 @@ function buildMemoFooter(data) {
 
 export const VENYA_MAX_ROWS = 10;
 
-function buildSummaryRows(totalPcs, totalCarat, grandTotal, maxRows = VENYA_MAX_ROWS, variant = "invoice") {
+function buildSummaryRows(totalPcs, totalCarat, grandTotal, maxRows = 14, variant = "invoice") {
   const w = getColumnWidths(variant);
   const avgPrice = totalCarat > 0 ? grandTotal / totalCarat : 0;
   let rows = `<tr>
@@ -568,7 +563,7 @@ function buildSummaryRows(totalPcs, totalCarat, grandTotal, maxRows = VENYA_MAX_
     <td style="width:${w.amount};text-align:right;padding:4px;">${fmtMoney(grandTotal)}</td>
   </tr>`;
 
-  for (let i = 2; i <= 14; i++) {
+  for (let i = 2; i <= maxRows; i++) {
     rows += `<tr>
       <td style="width:${w.no};text-align:center;padding:4px;">${i}</td>
       <td style="width:${w.sku};text-align:left;padding:4px;"></td>

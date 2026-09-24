@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef, createElement } from 'react';
-import DynamicFormField from '../../../hooks/DynamicFormField';
+import DynamicFormField from '../../../components/common/ui/DynamicFormField';
 import { Edit2, Trash2, Plus, Search } from 'lucide-react';
 import FormModal from '../modals/FormModal';
 import { Pencil, CircleCheck } from 'lucide-react';
@@ -33,6 +33,7 @@ const AccountingMasterTemplate = ({
     addPagePath,
     onRefresh,
     refreshLoading = false,
+    extraActions = null,
 }) => {
     const theme = useThemeColors();
     const tableRef = useRef(null);
@@ -158,6 +159,7 @@ const AccountingMasterTemplate = ({
                                 allowClear
                                 style={{ width: 250 }}
                             />
+                            {extraActions}
                             {onRefresh && (
                                 <Button icon={<ReloadOutlined />} loading={refreshLoading || loading} onClick={onRefresh}>
                                     Refresh

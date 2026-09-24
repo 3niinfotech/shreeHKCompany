@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { Edit2, Trash2, Plus, Search, PackagePlus } from 'lucide-react';
 import { Table, Button, Input, Space, Card, Typography, Form, Tag, Checkbox } from 'antd';
-import DynamicFormField from "../../hooks/DynamicFormField";
+import DynamicFormField from "../../components/common/ui/DynamicFormField";
 import { BaseModal } from "../../components/common/modals";
 import PageHeroHeader from "../../components/common/PageHeroHeader";
 import { DatabaseOutlined } from "@ant-design/icons";

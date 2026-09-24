@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useDeleteApiRequest, useFetchApi, usePostApiRequest } from '../../../api/ApiFunction';
-import { ENDPOINTS } from '../../../constants/endpoints';
-import AccountingMasterTemplate from '../../../hooks/AccountingMasterTemplate';
+import { ENDPOINTS } from '../../../api/endpoints';
+import AccountingMasterTemplate from '../../../components/common/accounting/AccountingMasterTemplate';
 import dayjs from 'dayjs';
 import { ConfirmDeleteModal } from "../../../components/common/modals";
 

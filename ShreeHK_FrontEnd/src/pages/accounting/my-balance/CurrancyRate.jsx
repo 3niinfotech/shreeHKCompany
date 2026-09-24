@@ -3,8 +3,8 @@ import { Input, Space } from 'antd';
 import { SkeletonBlock } from '../../../components/common/skeleton';
 import { Coins, Plus, Save, Check, Pencil, Trash2, RefreshCcw } from 'lucide-react';
 import { useFetchApi, usePostApiRequest, useDeleteApiRequest } from '../../../api/ApiFunction';
-import { ENDPOINTS } from '../../../constants/endpoints';
-import { CurrencyFlag } from './currencyFlags';
+import { ENDPOINTS } from '../../../api/endpoints';
+import { CurrencyFlag } from "../../../utils/currencyFlags";
 import styles from '../../../assets/scss/pages/accountings/mybalance.module.scss';
 
 const CurrancyRate = () => {

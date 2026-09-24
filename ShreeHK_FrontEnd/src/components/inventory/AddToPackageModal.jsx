@@ -2,7 +2,7 @@ import React from "react";
 import { Modal, Input, Form, Button, Typography } from "antd";
 import { toast } from "sonner";
 import { usePostApiRequest } from "../../api/ApiFunction";
-import { ENDPOINTS } from "../../constants/endpoints";
+import { ENDPOINTS } from "../../api/endpoints";
 import { getActionTheme } from "./inventoryActionConfig";
 import styles from "../../assets/scss/components/inventoryBulkActionModal.module.scss";
 

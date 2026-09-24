@@ -1,5 +1,5 @@
-import { api } from "../axiosInstance";
-import { ENDPOINTS } from "../../constants/endpoints";
+import { api } from "../client/axiosInstance";
+import { ENDPOINTS } from "../../api/endpoints";
 
 /**
  * Hold or unhold products — port of PHP Puthold() → outwardController fn=hold

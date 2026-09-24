@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Card, Tabs, Input, Button, Table, Typography, InputNumber } from "antd";
 import { Search, Globe } from "lucide-react";
-import { api } from "../../api/axiosInstance";
-import { ENDPOINTS } from "../../constants/endpoints";
-import { toastApiSuccess, toastApiError } from "../../utils/apiToast";
+import { api } from "../../api/client/axiosInstance";
+import { ENDPOINTS } from "../../api/endpoints";
+import { toastApiSuccess, toastApiError } from "../../utils/toastNotify";
 import { SkuLink } from "../../hooks/useSkuModalAction";
 import ExportExcelButton from "../../components/common/ExportExcelButton";
 import { exportReportToExcel } from "../../utils/reportExcelExport";

@@ -8,14 +8,14 @@ import {
   SearchOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-import { toastApiSuccess, toastApiError } from "../../utils/apiToast";
-import { api } from "../../api/axiosInstance";
-import { ENDPOINTS } from "../../constants/endpoints";
+import { toastApiSuccess, toastApiError } from "../../utils/toastNotify";
+import { api } from "../../api/client/axiosInstance";
+import { ENDPOINTS } from "../../api/endpoints";
 import ExportExcelButton from "../../components/common/ExportExcelButton";
 import PageHeroHeader from "../../components/common/PageHeroHeader";
 import ActivityLogFlatTable from "../../components/admin/ActivityLogFlatTable";
 import LoginHistoryPanel from "../../components/admin/LoginHistoryPanel";
-import DeleteConfirmModal from "../../components/common/masterCommon/DeleteConfirmModal";
+import ActivityLogDeleteModal from "../../components/admin/ActivityLogDeleteModal";
 import useAuthUser from "../../hooks/useAuthUser";
 import { hasPagePermission } from "../../config/permissionRegistry";
 import styles from "../../assets/scss/pages/admin/activityHistory.module.scss";
@@ -68,6 +68,8 @@ const ActivityHistory = () => {
   const [tableRefreshKey, setTableRefreshKey] = useState(0);
   const [deleteAllOpen, setDeleteAllOpen] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
+  const [singleDelete, setSingleDelete] = useState({ open: false, record: null });
+  const [deletingSingle, setDeletingSingle] = useState(false);
   const [initialLoaded, setInitialLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState("activity");
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -182,12 +184,14 @@ const ActivityHistory = () => {
     };
   }, [activeFilters]);
 
-  const handleDeleteAllConfirm = async () => {
+  const handleDeleteAllConfirm = async (password) => {
     setDeletingAll(true);
     try {
       const filterParams = buildDeleteAllParams();
       const res = await api.delete(ENDPOINTS.admin.activityLogDeleteAll, {
-        params: filterParams,
+        params: { ...filterParams, password },
+        data: { password },
+        headers: { "x-admin-password": password },
       });
       toastApiSuccess(res.data);
       setDeleteAllOpen(false);
@@ -198,6 +202,26 @@ const ActivityHistory = () => {
       toastApiError(err);
     } finally {
       setDeletingAll(false);
+    }
+  };
+
+  const handleDeleteSingleConfirm = async (password) => {
+    if (!singleDelete.record?.id) return;
+    setDeletingSingle(true);
+    try {
+      const res = await api.delete(ENDPOINTS.admin.activityLogDelete, {
+        params: { deleteId: singleDelete.record.id, password },
+        data: { deleteId: singleDelete.record.id, password },
+        headers: { "x-admin-password": password },
+      });
+      toastApiSuccess(res.data);
+      setSingleDelete({ open: false, record: null });
+      setTotal((prev) => Math.max(0, prev - 1));
+      setTableRefreshKey((k) => k + 1);
+    } catch (err) {
+      toastApiError(err);
+    } finally {
+      setDeletingSingle(false);
     }
   };
 
@@ -403,6 +427,8 @@ const ActivityHistory = () => {
                   autoRefreshMs={autoRefresh ? 10000 : 0}
                   onSynced={setLastSyncedAt}
                   showDataColumns={showDataColumns}
+                  canDelete={canDelete}
+                  onDeleteRow={(record) => setSingleDelete({ open: true, record })}
                 />
               ),
             },
@@ -428,17 +454,32 @@ const ActivityHistory = () => {
         />
       </Card>
 
-      <DeleteConfirmModal
+      {/* Delete All Modal */}
+      <ActivityLogDeleteModal
         open={deleteAllOpen}
-        title="Delete All Activity Logs"
+        title="Delete Activity History Records"
         entityName={
           total
-            ? `All ${total} record(s) matching the current search / filters`
+            ? `All ${total} record(s) matching current filters`
             : "No records"
         }
         loading={deletingAll}
         onCancel={() => !deletingAll && setDeleteAllOpen(false)}
         onConfirm={handleDeleteAllConfirm}
+      />
+
+      {/* Single Row Delete Modal */}
+      <ActivityLogDeleteModal
+        open={singleDelete.open}
+        title="Delete Activity History Record"
+        entityName={
+          singleDelete.record
+            ? `Log #${singleDelete.record.id} — ${singleDelete.record.moduleName || "General"} (${singleDelete.record.recordReference || singleDelete.record.actionType || "Record"})`
+            : "Selected record"
+        }
+        loading={deletingSingle}
+        onCancel={() => !deletingSingle && setSingleDelete({ open: false, record: null })}
+        onConfirm={handleDeleteSingleConfirm}
       />
     </div>
   );

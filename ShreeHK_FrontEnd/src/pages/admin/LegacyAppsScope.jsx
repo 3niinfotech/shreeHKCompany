@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Card, Typography, Tag, Alert, Button, Space } from "antd";
 import { ReloadOutlined } from "@ant-design/icons";
-import { api } from "../../api/axiosInstance";
-import { ENDPOINTS } from "../../constants/endpoints";
+import { api } from "../../api/client/axiosInstance";
+import { ENDPOINTS } from "../../api/endpoints";
 import SkeletonAwareTable from "../../components/common/skeleton/SkeletonAwareTable";
 
 const { Title, Text, Paragraph } = Typography;

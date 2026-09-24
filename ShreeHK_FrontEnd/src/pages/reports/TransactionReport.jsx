@@ -6,7 +6,7 @@ import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify'
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
-import { ENDPOINTS } from '../../constants/endpoints';
+import { ENDPOINTS } from '../../api/endpoints';
 import useFormHandleChange from '../../hooks/useFormHandleChange';
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
 import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
@@ -67,7 +67,7 @@ const PACKET_COLUMNS = [
 const formatExcelDate = (value) => {
     if (!value) return '';
     const s = String(value).trim();
-    const m = s.match(/^(\d{1,2})[/\-](\d{1,2})[/\-](\d{2,4})$/);
+    const m = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
     if (m) {
         const dd = m[1].padStart(2, '0');
         const mm = m[2].padStart(2, '0');
@@ -143,7 +143,6 @@ const TransactionReport = () => {
         error: aiReportError,
         panelOpen: aiPanelOpen,
         setPanelOpen: setAiPanelOpen,
-        runSalesReport,
     } = useAiSalesReport();
 
     const handleSearch = () => {

@@ -3,7 +3,7 @@ import { Button, Card, Spin, Typography } from "antd";
 import { toastError } from "../../utils/toastNotify";
 import { RefreshCw, Sparkles } from "lucide-react";
 import { fetchStockAlert } from "../../api/services/aiService";
-import { pickApiMessage } from "../../utils/apiToast";
+import { pickApiMessage } from "../../utils/toastNotify";
 import styles from "../../assets/scss/components/ai/aiComponents.module.scss";
 
 const { Text } = Typography;

@@ -1,7 +1,7 @@
 // import React, { useEffect, useState } from 'react';
 // import { Form, Input, Button, Space } from 'antd';
 // import { usePostApiRequest } from '../../../api/ApiFunction';
-// import { ENDPOINTS } from '../../../constants/endpoints';
+// import { ENDPOINTS } from '../../../api/endpoints';
 // import { BaseModal } from '../../common/modals';
 // import { cssVar } from '../../../theme';
 
@@ -91,7 +91,7 @@
 import React, { useEffect, useState } from 'react';
 import { Form, Input, Button, Space } from 'antd';
 import { usePostApiRequest } from '../../../api/ApiFunction';
-import { ENDPOINTS } from '../../../constants/endpoints';
+import { ENDPOINTS } from '../../../api/endpoints';
 import { BaseModal } from '../../common/modals';
 import { cssVar } from '../../../theme';
 

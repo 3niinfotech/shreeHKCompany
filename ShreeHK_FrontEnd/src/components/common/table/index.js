@@ -1,1 +1,1 @@
-export { default as MasterListTable } from "./MasterListTable";
+export { default as MasterListTable, default as UniversalTable } from "./MasterListTable.jsx";

@@ -15,7 +15,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import { useFetchApi } from "../api/ApiFunction";
-import { ENDPOINTS } from "../constants/endpoints";
+import { ENDPOINTS } from "../api/endpoints";
 import useThemeColors from "../hooks/useThemeColors";
 import { SkeletonStatCard } from "../components/common/skeleton";
 import KpiCard from "../components/dashboard/KpiCard";

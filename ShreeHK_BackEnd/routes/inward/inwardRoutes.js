@@ -79,6 +79,20 @@ const getInwardTypeLabel = (type) => {
   return lower.charAt(0).toUpperCase() + lower.slice(1);
 };
 
+function advanceIncrementId(val, fallback = 1) {
+  const str = String(val ?? "").trim().replace(/-?NaN/gi, "");
+  if (!str) return String(fallback);
+  const parts = str.split("-");
+  if (parts.length >= 2) {
+    const last = parseInt(parts[parts.length - 1], 10);
+    const next = Number.isNaN(last) ? fallback : last + 1;
+    parts[parts.length - 1] = String(next);
+    return parts.join("-");
+  }
+  const parsed = parseInt(str, 10);
+  return String(Number.isNaN(parsed) ? fallback : parsed + 1);
+}
+
 inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
   const { products, ...body } = req.body;
   const ctx = buildUserContext(req);
@@ -87,7 +101,10 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
   const post = body;
 
   try {
-    const incre_id = await helper.getIncrementEntry("inward", companyId);
+    let incre_id = await helper.getIncrementEntry("inward", companyId);
+    if (incre_id && String(incre_id).includes("NaN")) {
+      incre_id = String(incre_id).replace(/-?NaN/gi, "") || "1";
+    }
     const reference = await helper.getIncrementEntry("reference", companyId);
 
     const invoicedate = moment(post.invoicedate, "DD-MM-YYYY").format("YYYY-MM-DD");
@@ -108,13 +125,12 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
       const insertResult = await q(`INSERT INTO dai_inward (${data[0]}) VALUES (${data[1]})`);
       const lid = insertResult.insertId;
 
-      // 2. Increment IDs
-      const temp = incre_id.split("-");
-      temp[1] = parseInt(temp[1], 10) + 1;
-      const setNewid = `${temp[0]}-${temp[1]}`;
+      // 2. Increment IDs safely
+      const setNewid = advanceIncrementId(incre_id, 1);
+      const nextRef = advanceIncrementId(reference, 1);
       await q(
         "UPDATE dai_incrementid SET inward = ?, reference = ? WHERE company = ?",
-        [setNewid, parseInt(reference, 10) + 1, companyId]
+        [setNewid, nextRef, companyId]
       );
 
       // 3. Import category entry if applicable
@@ -209,7 +225,26 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
         const pResult = await q(`INSERT INTO dai_product (${rData[0]}) VALUES (${rData[1]})`);
         const pid = pResult.insertId;
         iProducts.push(pid);
-        insertedItems.push({ id: pid, sku: r.sku });
+        insertedItems.push({
+          id: pid,
+          sku: r.sku,
+          mfg_code: r.mfg_code || r.mfg || null,
+          d_no: r.d_no || r.dno || null,
+          r_pcs: r.rought_pcs ?? r.r_pcs ?? null,
+          p_pcs: r.polish_pcs ?? r.p_pcs ?? null,
+          p_carat: Number(r.polish_carat) || 0,
+          r_carat: Number(r.rought_carat ?? r.r_carat) || 0,
+          cost: Number(r.cost) || 0,
+          price: Number(r.price) || 0,
+          amount: Number(r.amount) || 0,
+          color: r.color || r.main_color || null,
+          loc: r.loc || r.location || null,
+          lab: r.lab || null,
+          report_no: r.report_no || r.reportno || null,
+          shape: r.shape || null,
+          clarity: r.clarity || null,
+          measurements: r.measurements || r.measurement || null,
+        });
 
         attr.product_id = pid;
         const attrData = helper.insertString(attr);
@@ -310,7 +345,13 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
           moduleName: "Diamond Stock",
           recordId: item.id,
           recordReference: item.sku ? String(item.sku) : undefined,
-          newValue: { id: item.id, sku: item.sku, inward_id: result.lid },
+          newValue: {
+            ...item,
+            inward_id: result.lid,
+            inward_type: post.inward_type,
+            invoice_no: post.invoiceno,
+            entry_no: incre_id,
+          },
           companyId,
         }).catch(console.error);
       }
@@ -320,8 +361,23 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
       actionType: "STOCK_IN",
       moduleName: "Inward",
       recordId: result.lid,
-      recordReference: String(reference),
-      newValue: { inward_id: result.lid, products: result.iProducts, skus: result.skuArray },
+      recordReference: String(reference || incre_id),
+      newValue: {
+        inward_id: result.lid,
+        entry_no: incre_id,
+        reference: reference,
+        invoice_no: post.invoiceno,
+        inward_type: post.inward_type,
+        party: post.party,
+        date: post.invoicedate,
+        terms: post.terms,
+        due_date: post.duedate,
+        total_pcs: iPcs,
+        total_carat: iCarat,
+        total_amount: iTotal,
+        skus: result.skuArray,
+        items: result.insertedItems,
+      },
       companyId,
     }).catch(console.error);
 

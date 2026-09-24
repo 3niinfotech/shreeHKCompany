@@ -1,4 +1,4 @@
-import { ENDPOINTS } from "../../constants/endpoints";
+import { ENDPOINTS } from "../../api/endpoints";
 
 export const TRANSACTION_STOCK_KEYS = {
   gia: "TransactionGiaStock",

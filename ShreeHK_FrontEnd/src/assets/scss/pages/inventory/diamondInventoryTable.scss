@@ -436,10 +436,21 @@ $finance-empty: var(--color-chart-muted);
           @include inventory-row-tone($row-grey-bg, $row-grey-text, $row-grey-hover);
         }
 
-        .ant-table-tbody>tr.ant-table-row-selected>td {
+        .ant-table-tbody>tr.ant-table-row-selected>td,
+        .ant-table-tbody>tr.inventory-row-selected>td {
           background-color: $row-selected-bg !important;
           color: $row-selected-text !important;
           box-shadow: none !important;
+
+          a.inventory-sku-link,
+          a.sku-table-link {
+            color: var(--color-primary) !important;
+          }
+        }
+
+        .ant-table-tbody>tr.ant-table-row-selected:hover>td,
+        .ant-table-tbody>tr.inventory-row-selected:hover>td {
+          background-color: #fbcfe8 !important;
         }
 
         // Scroll — smooth; height driven by JS scroll.y (no fixed max-height override)

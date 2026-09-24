@@ -352,7 +352,8 @@ const CompanyPage = () => {
 
     const handleDownloadExcel = () => {
         const selectedRows = combinedData.filter((row) => selectedRowKeys.includes(row.id));
-        exportCompanyExcel(selectedRows);
+        const rowsToExport = selectedRows.length > 0 ? selectedRows : combinedData;
+        exportCompanyExcel(rowsToExport);
     };
 
     const handleRefresh = async () => {
@@ -426,7 +427,7 @@ const CompanyPage = () => {
                         </Button>
                         <ExportExcelButton
                             onClick={handleDownloadExcel}
-                            disabled={selectedRowKeys.length === 0}
+                            disabled={combinedData.length === 0}
                         />
                     </Space>
                 }

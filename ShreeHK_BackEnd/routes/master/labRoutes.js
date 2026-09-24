@@ -17,21 +17,26 @@ labRouter.get("/master/lab", authenticateToken, (req, res) => {
 
   const searchInput = req.query.searchInput;
 
-  let query = `SELECT * FROM dai_lab WHERE company = ${companyId}`;
-  const countQuery = `SELECT COUNT(*) as totalItems FROM dai_lab WHERE company = ${companyId}`;
+  let query = `SELECT * FROM dai_lab WHERE company = ?`;
+  let countQuery = `SELECT COUNT(*) as totalItems FROM dai_lab WHERE company = ?`;
+  const params = [companyId];
+  const countParams = [companyId];
 
-  connection.query(countQuery, (countError, countResult) => {
+  if (searchInput) {
+    query += ` AND lab LIKE ?`;
+    countQuery += ` AND lab LIKE ?`;
+    params.push(`%${searchInput}%`);
+    countParams.push(`%${searchInput}%`);
+  }
+
+  query += ` ORDER BY id DESC`;
+
+  connection.query(countQuery, countParams, (countError, countResult) => {
     if (countError) return res.status(500).json({ error: countError.message });
 
     const totalItems = countResult[0]?.totalItems || 0;
 
-    if (searchInput) {
-      query += ` AND lab LIKE ${connection.escape("%" + searchInput + "%")}`;
-    }
-
-    query += ` ORDER BY id DESC`;
-
-    connection.query(query, (error, data) => {
+    connection.query(query, params, (error, data) => {
       if (error) return res.status(500).json({ error: error.message });
 
       const response = {
@@ -57,13 +62,18 @@ labRouter.post("/lab/post", authenticateToken, async (req, res) => {
     await helper.runInTransaction(async (q) => {
       let oldRow = null;
       if (id != 0) {
-        const rows = await q("SELECT * FROM dai_lab WHERE id=?", [id]);
+        const rows = await q("SELECT * FROM dai_lab WHERE id=? AND company=?", [id, companyId]);
         oldRow = rows[0] || null;
+        if (!oldRow) {
+          const error = new Error("Lab record not found or access denied");
+          error.statusCode = 404;
+          throw error;
+        }
       }
 
       if (id == 0) {
         const result = await q("INSERT INTO dai_lab (lab, date, company) VALUES (?, ?, ?)", [labName, date, companyId]);
-        const newRows = await q("SELECT * FROM dai_lab WHERE id=?", [result.insertId]);
+        const newRows = await q("SELECT * FROM dai_lab WHERE id=? AND company=?", [result.insertId, companyId]);
         await logAuditInTx(q, {
           actionType: "CREATE",
           moduleName: "Lab",
@@ -74,7 +84,7 @@ labRouter.post("/lab/post", authenticateToken, async (req, res) => {
         });
       } else {
         await q("UPDATE dai_lab SET lab=?, date=? WHERE id=? AND company=?", [labName, date, id, companyId]);
-        const newRows = await q("SELECT * FROM dai_lab WHERE id=?", [id]);
+        const newRows = await q("SELECT * FROM dai_lab WHERE id=? AND company=?", [id, companyId]);
         await logAuditInTx(q, {
           actionType: "UPDATE",
           moduleName: "Lab",
@@ -89,34 +99,41 @@ labRouter.post("/lab/post", authenticateToken, async (req, res) => {
 
     res.status(201).json({ message: "Lab created successfully" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(err.statusCode || 500).json({ error: err.message });
   }
 });
 
 // Delete
 labRouter.delete("/lab/delete", authenticateToken, async (req, res) => {
   const id = parseInt(req.query.deleteId);
+  const companyId = buildUserContext(req).companyId;
   if (!id || isNaN(id)) {
     return res.status(400).json({ error: "Invalid or missing deleteId" });
   }
 
   try {
     await helper.runInTransaction(async (q) => {
-      const rows = await q("SELECT * FROM dai_lab WHERE id=?", [id]);
+      const rows = await q("SELECT * FROM dai_lab WHERE id=? AND company=?", [id, companyId]);
       const oldRow = rows[0] || null;
-      await q("DELETE FROM dai_lab WHERE id=?", [id]);
+      if (!oldRow) {
+        const error = new Error("Lab record not found or access denied");
+        error.statusCode = 404;
+        throw error;
+      }
+      await q("DELETE FROM dai_lab WHERE id=? AND company=?", [id, companyId]);
       await logAuditInTx(q, {
         actionType: "DELETE",
         moduleName: "Lab",
         recordId: id,
         recordReference: oldRow?.lab || String(id),
         oldValue: oldRow,
+        companyId,
       });
     });
 
-    res.status(201).json({ message: "Lab deleted successfully" });
+    res.status(200).json({ status: true, message: "Lab deleted successfully" });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 

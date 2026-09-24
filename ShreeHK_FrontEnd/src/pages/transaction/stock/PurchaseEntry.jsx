@@ -1,15 +1,6 @@
 import React from 'react';
-import InwardEntryForm from './InwardEntryForm';
+import TransactionStockEntry from './TransactionStockEntry';
 
-const PurchaseEntry = () => (
-  <InwardEntryForm
-    title="Inward - Purchase Transaction"
-    defaultInwardType="purchase"
-    showRPcs
-    initialLineCount={7}
-    visibleRowCount={7}
-    scrollableTable
-  />
-);
+const PurchaseEntry = () => <TransactionStockEntry type="PURCHASE" />;
 
 export default PurchaseEntry;
