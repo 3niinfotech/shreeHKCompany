@@ -100,6 +100,9 @@ const useFiltersFormFields = (enabledFields = [], fieldConfigs = {}) => {
                     options={fieldConfigs.partyOptions || []}
                     virtual
                     optionFilterProp="label"
+                    onDropdownVisibleChange={(open) => {
+                        if (open) fieldConfigs.onPartyDropdownVisibleChange?.(open);
+                    }}
                     filterOption={(input, option) =>
                         (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                     }

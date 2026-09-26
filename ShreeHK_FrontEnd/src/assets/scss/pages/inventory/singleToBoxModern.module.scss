@@ -172,6 +172,12 @@
     overflow-x: auto !important;
   }
 
+  :global(.ant-table-header table),
+  :global(.ant-table-body table) {
+    width: 100% !important;
+    min-width: 100% !important;
+  }
+
   :global(.ant-table-thead > tr > th) {
     background: linear-gradient(90deg, color-mix(in srgb, var(--color-primary) 10%, transparent), color-mix(in srgb, var(--color-primary) 4%, transparent)) !important;
     color: var(--color-navy) !important;

@@ -89,7 +89,13 @@ const OutWord = () => {
     const [isFetchingMore, setIsFetchingMore] = useState(false);
 
     const queryClient = useQueryClient();
-    const { data: companyData, isLoading: isCompanyLoading } = useFetchApi('GetCompany', ENDPOINTS.company.options);
+    const { data: companyData, isLoading: isCompanyLoading, refetch: refetchCompanyOptions } = useFetchApi(
+        'GetCompany',
+        ENDPOINTS.company.options,
+        {},
+        'GET',
+        { staleTime: 0, refetchOnMount: 'always' }
+    );
     const { mutate: updateTransaction } = usePostApiRequest(ENDPOINTS.outward.update, 'OutwardList', { showToast: true });
 
     const { mutate: deleteOutward, isPending: isDeleting } = useDeleteApiRequest(ENDPOINTS.outward.delete, 'OutwardList', { queryParam: 'deleteId' });
@@ -146,6 +152,9 @@ const OutWord = () => {
         ],
         partyOptions: partyOptions,
         isPartyLoading: isCompanyLoading,
+        onPartyDropdownVisibleChange: (open) => {
+            if (open) refetchCompanyOptions();
+        },
         showLabels: false,
     });
 

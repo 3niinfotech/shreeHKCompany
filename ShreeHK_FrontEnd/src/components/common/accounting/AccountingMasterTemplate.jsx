@@ -34,6 +34,8 @@ const AccountingMasterTemplate = ({
     onRefresh,
     refreshLoading = false,
     extraActions = null,
+    renderExtraRowActions = null,
+    actionColumnWidth = 110,
 }) => {
     const theme = useThemeColors();
     const tableRef = useRef(null);
@@ -90,11 +92,12 @@ const AccountingMasterTemplate = ({
         {
             title: 'Action',
             key: 'action',
-            width: 100,
+            width: actionColumnWidth || (renderExtraRowActions ? 120 : 100),
             fixed: 'right',
             align: 'center',
             render: (_, record) => (
-                <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', alignItems: 'center' }}>
+                    {renderExtraRowActions ? renderExtraRowActions(record) : null}
                     <Edit2 size={16} style={{ cursor: 'pointer', color: cssVar('color-text-link') }} onClick={() => handleEditClick(record)} />
                     <Trash2
                         size={16}
@@ -104,7 +107,7 @@ const AccountingMasterTemplate = ({
                 </div>
             ),
         },
-    ], [safeColumns, onDelete, title]);
+    ], [safeColumns, onDelete, title, renderExtraRowActions, actionColumnWidth]);
 
     const {
         columns: tableColumns,

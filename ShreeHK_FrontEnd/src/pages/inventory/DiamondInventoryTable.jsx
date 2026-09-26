@@ -68,8 +68,10 @@ const DOWNLOAD_MENU_ITEMS = [
   { key: "consignment", label: "Consignment Excel", icon: <DownloadOutlined /> },
 ];
 
-const mapInventoryProductRow = (item, index, offset = 1) => ({
-  id: String(item.id), no: (offset - 1) * 100 + index + 1, mfgCode: item.mfg_code,
+const mapInventoryProductRow = (item, index, offset = 1, baseIndex = 0) => ({
+  id: String(item.id),
+  no: baseIndex + index + 1,
+  mfgCode: item.mfg_code,
   groupType: item.group_type, sku: item.sku, lab: item.lab,
   outward: item.outward ?? "",
   hold: item.hold === 1 || item.hold === true || item.hold === "1",
@@ -247,11 +249,14 @@ const MemoizedInventoryRow = React.memo(function MemoizedInventoryRow(props) {
 });
 
 const InventoryTableFooter = React.memo(function InventoryTableFooter({ showTotalStats, selectedStats }) {
+  const loadedRows = showTotalStats.loadedRows ?? 0;
+  const totalRows = showTotalStats.totalRows ?? showTotalStats.totalPcs ?? 0;
+
   return (
     <div className="inventory-table-footer-totals">
       <div className="inventory-footer-group inventory-footer-group--total">
         <span className="inventory-footer-stat">
-          TOTAL Pcs : <b>{Number(showTotalStats.totalPcs || 0).toLocaleString()}</b>
+          TOTAL Rows : <b>{loadedRows.toLocaleString()} of {totalRows.toLocaleString()}</b>
         </span>
         <span className="inventory-footer-stat">
           Carat Total : <b>{showTotalStats.totalCts}</b>
@@ -279,7 +284,7 @@ const InventoryTableFooter = React.memo(function InventoryTableFooter({ showTota
   );
 });
 
-const EMPTY_TOTAL_STATS = { totalPcs: 0, totalCts: "0.00", askRate: "0.00", askAmt: "0.00" };
+const EMPTY_TOTAL_STATS = { loadedRows: 0, totalRows: 0, totalPcs: 0, totalCts: "0.00", askRate: "0.00", askAmt: "0.00" };
 
 const InventoryTableFooterConnected = React.memo(function InventoryTableFooterConnected() {
   const selection = useContext(SelectionContext);
@@ -545,21 +550,52 @@ const DiamondInventoryTable = () => {
     selectionStore.setVisibleIds(tableData.map((row) => row.id));
   }, [tableData, selectionStore]);
 
-  const showSuccessModal = (actionType, rows) => {
-    const first = rows[0] || {};
-    setSuccessModal({
-      open: true,
-      actionType,
-      count: rows.length,
-      stone: {
-        name: rows.length === 1 ? first.sku : undefined,
-        SKU: rows.length === 1 ? first.sku : `${rows.length} items`,
-        Carat: rows
-          .reduce((sum, r) => sum + (Number(r.polishCarat) || 0), 0)
-          .toFixed(2) + " ct",
-        Shape: rows.length === 1 ? first.shape : undefined,
-      },
-    });
+  const showSuccessModal = (actionType, rows = []) => {
+    const list = Array.isArray(rows) ? rows : (rows ? [rows] : []);
+    const count = list.length;
+    const first = list[0] || {};
+
+    if (count === 1) {
+      setSuccessModal({
+        open: true,
+        actionType,
+        count: 1,
+        stone: {
+          sku: first.sku || first.SKU || first.name || first.diamond_no || "",
+          name: first.sku || first.SKU || first.name || "",
+          carat: first.polishCarat ?? first.carat ?? first.polish_carat ?? first.weight ?? "",
+          shape: first.shape || first.Shape || "",
+          clarity: first.clarity || first.Clarity || first.mainClarity || first.in_house_clarity || "",
+        },
+      });
+    } else if (count > 1) {
+      const totalCarat = list.reduce(
+        (sum, r) => sum + (Number(r.polishCarat ?? r.carat ?? r.polish_carat ?? r.weight) || 0),
+        0
+      );
+      const uniqueShapes = [...new Set(list.map((r) => r.shape || r.Shape).filter(Boolean))];
+      const uniqueClarities = [...new Set(list.map((r) => r.clarity || r.Clarity || r.mainClarity || r.in_house_clarity).filter(Boolean))];
+
+      setSuccessModal({
+        open: true,
+        actionType,
+        count,
+        stone: {
+          sku: `${count} Items`,
+          name: `${count} Items`,
+          carat: totalCarat > 0 ? `${totalCarat.toFixed(2)} ct` : "",
+          shape: uniqueShapes.length === 1 ? uniqueShapes[0] : (uniqueShapes.length > 1 ? "MIX" : "-"),
+          clarity: uniqueClarities.length === 1 ? uniqueClarities[0] : (uniqueClarities.length > 1 ? "MIX" : "-"),
+        },
+      });
+    } else {
+      setSuccessModal({
+        open: true,
+        actionType,
+        count: 0,
+        stone: {},
+      });
+    }
   };
 
   useEffect(() => {
@@ -640,13 +676,21 @@ const DiamondInventoryTable = () => {
     },
   });
 
+  const [cachedTotalSummary, setCachedTotalSummary] = useState(null);
+
   const { data: productData, isLoading, isFetching: isInventoryFetching, refetch: refetchInventory } = useFetchApi(
     "GetProductData",
     ENDPOINTS.product.inventory,
     inventoryQueryParams,
     'GET',
-    { placeholderData: undefined, refetchOnMount: 'always' }
+    { placeholderData: (prev) => prev, refetchOnMount: 'always' }
   );
+
+  useEffect(() => {
+    if (productData?.TotalData?.TotalItems != null) {
+      setCachedTotalSummary(productData.TotalData);
+    }
+  }, [productData]);
 
   const { data: categoryData } = useFetchApi(
     "inventoryCategoryOptions",
@@ -698,6 +742,16 @@ const DiamondInventoryTable = () => {
     {
       name: "category", label: "Category", type: "select", span: 2, width: "45px",
       options: categoryOptions,
+    },
+    {
+      name: "rowStatus", label: "Status", type: "select", span: 2, width: "45px",
+      options: [
+        { label: "On Hold (Gray)", value: "hold" },
+        { label: "On Memo / Consign (Red)", value: "memo" },
+        { label: "Certified (Blue)", value: "certified" },
+        { label: "Sent to Lab (Green)", value: "lab" },
+        { label: "Available / On Hand", value: "available" },
+      ]
     },
     { name: "stoneTypeFw", label: "Stone Type", type: "radio", span: 2 },
   ], [categoryOptions]);
@@ -779,7 +833,10 @@ const DiamondInventoryTable = () => {
       throw new Error(result?.message || "");
     }
     toastApiSuccess(result);
-    showSuccessModal("memo", selectedRows);
+    const affectedRows = (payload?._submittedRows && payload._submittedRows.length > 0)
+      ? payload._submittedRows
+      : selectedRows;
+    showSuccessModal("memo", affectedRows);
     setSelectedRowKeys([]);
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.outMemo] });
@@ -796,7 +853,10 @@ const DiamondInventoryTable = () => {
       throw new Error(result?.message || "");
     }
     toastApiSuccess(result);
-    showSuccessModal("sale", selectedRows);
+    const affectedRows = (payload?._submittedRows && payload._submittedRows.length > 0)
+      ? payload._submittedRows
+      : selectedRows;
+    showSuccessModal("sale", affectedRows);
     setSelectedRowKeys([]);
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.sale] });
@@ -813,7 +873,10 @@ const DiamondInventoryTable = () => {
       throw new Error(result?.message || "");
     }
     toastApiSuccess(result);
-    showSuccessModal("consign", selectedRows);
+    const affectedRows = (payload?._submittedRows && payload._submittedRows.length > 0)
+      ? payload._submittedRows
+      : selectedRows;
+    showSuccessModal("consign", affectedRows);
     setSelectedRowKeys([]);
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.outMemo] });
@@ -830,7 +893,10 @@ const DiamondInventoryTable = () => {
       throw new Error(result?.message || "");
     }
     toastApiSuccess(result);
-    showSuccessModal("lab", selectedRows);
+    const affectedRows = (payload?._submittedRows && payload._submittedRows.length > 0)
+      ? payload._submittedRows
+      : selectedRows;
+    showSuccessModal("lab", affectedRows);
     setSelectedRowKeys([]);
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.gia] });
@@ -847,7 +913,10 @@ const DiamondInventoryTable = () => {
       throw new Error(result?.message || "");
     }
     toastApiSuccess(result);
-    showSuccessModal("export", selectedRows);
+    const affectedRows = (payload?._submittedRows && payload._submittedRows.length > 0)
+      ? payload._submittedRows
+      : selectedRows;
+    showSuccessModal("export", affectedRows);
     setSelectedRowKeys([]);
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.outMemo] });
@@ -943,13 +1012,41 @@ const DiamondInventoryTable = () => {
     return () => window.cancelAnimationFrame(rafId);
   }, [tableData.length, isLoading, isFetching]);
 
+  const loadingNextPageRef = useRef(false);
+  const tableDataLengthRef = useRef(tableData.length);
+  const isFetchingRef = useRef(false);
+  const totalAvailableRef = useRef(Infinity);
+
+  useEffect(() => {
+    tableDataLengthRef.current = tableData.length;
+  }, [tableData.length]);
+
+  useEffect(() => {
+    isFetchingRef.current = isInventoryFetching || isLoading;
+    if (!isInventoryFetching && !isLoading) {
+      loadingNextPageRef.current = false;
+    }
+  }, [isInventoryFetching, isLoading]);
+
+  useEffect(() => {
+    const td = productData?.TotalData || cachedTotalSummary;
+    if (td?.TotalItems != null || td?.totalProducts != null) {
+      totalAvailableRef.current = Number(td.TotalItems ?? td.totalProducts ?? Infinity);
+    }
+  }, [productData, cachedTotalSummary]);
+
   useEffect(() => {
     if (productData?.Data?.length > 0) {
-      const mapped = productData.Data.map((item, index) => mapInventoryProductRow(item, index, offset));
-      setTableData(prev => {
-        const existingIds = new Set(prev.map(d => d.id));
-        const newItems = mapped.filter(d => !existingIds.has(d.id));
-        return offset === 1 ? mapped : [...prev, ...newItems];
+      setTableData((prev) => {
+        if (offset === 1) {
+          return productData.Data.map((item, index) => mapInventoryProductRow(item, index, 1, 0));
+        }
+        const existingIds = new Set(prev.map((d) => d.id));
+        const newRawItems = productData.Data.filter((d) => !existingIds.has(String(d.id)));
+        const mapped = newRawItems.map((item, index) =>
+          mapInventoryProductRow(item, index, offset, prev.length)
+        );
+        return [...prev, ...mapped];
       });
     } else if (offset === 1 && !isInventoryFetching && !isLoading) {
       setTableData([]);
@@ -958,16 +1055,22 @@ const DiamondInventoryTable = () => {
   }, [productData, offset, isInventoryFetching, isLoading]);
 
   useEffect(() => {
-    const scrollContainer = tableRef.current?.querySelector('.ant-table-body') || tableRef.current;
+    const scrollContainer = tableRef.current?.querySelector(".ant-table-body") || tableRef.current;
     if (!scrollContainer) return;
     let ticking = false;
     const onScroll = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
           const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
-          if (scrollTop + clientHeight >= scrollHeight - 50 && !isFetching && tableData.length < (productData?.TotalData?.TotalItems || Infinity)) {
+          if (
+            scrollTop + clientHeight >= scrollHeight - 350 &&
+            !loadingNextPageRef.current &&
+            !isFetchingRef.current &&
+            tableDataLengthRef.current < totalAvailableRef.current
+          ) {
+            loadingNextPageRef.current = true;
             setIsFetching(true);
-            setOffset(prev => prev + 1);
+            setOffset((prev) => prev + 1);
           }
           ticking = false;
         });
@@ -976,7 +1079,7 @@ const DiamondInventoryTable = () => {
     };
     scrollContainer.addEventListener("scroll", onScroll, { passive: true });
     return () => scrollContainer.removeEventListener("scroll", onScroll);
-  }, [tableData, isFetching, productData]);
+  }, []);
 
   const handleRemarkSave = useCallback(async (productId, nextRemark) => {
     try {
@@ -1541,22 +1644,29 @@ const DiamondInventoryTable = () => {
 
   const showTotalStats = useMemo(() => {
     const computed = computeSelectedStockCalculationStats(filteredTableData);
-    const td = productData?.TotalData;
+    const td = productData?.TotalData || cachedTotalSummary;
+    const totalRowsCount = td?.TotalItems != null
+      ? Number(td.TotalItems)
+      : (cachedTotalSummary?.TotalItems != null ? Number(cachedTotalSummary.TotalItems) : filteredTableData.length);
+    const loadedRowsCount = filteredTableData.length;
+
     return {
+      loadedRows: loadedRowsCount,
+      totalRows: totalRowsCount,
       totalPcs: td?.TotalPcs != null
         ? Number(td.TotalPcs)
-        : (td?.TotalItems ?? computed.totalPcs),
+        : (cachedTotalSummary?.TotalPcs != null ? Number(cachedTotalSummary.TotalPcs) : (td?.TotalItems ?? computed.totalPcs)),
       totalCts:
         td?.TotalCarat != null
           ? Number(td.TotalCarat).toFixed(2)
-          : computed.totalCts,
+          : (cachedTotalSummary?.TotalCarat != null ? Number(cachedTotalSummary.TotalCarat).toFixed(2) : computed.totalCts),
       askRate: computed.askRate,
       askAmt:
         td?.TotalAmount != null
           ? Number(td.TotalAmount).toFixed(2)
-          : computed.askAmt,
+          : (cachedTotalSummary?.TotalAmount != null ? Number(cachedTotalSummary.TotalAmount).toFixed(2) : computed.askAmt),
     };
-  }, [filteredTableData, productData]);
+  }, [filteredTableData, productData, cachedTotalSummary]);
 
   const totalItemsDisplay =
     productData?.TotalData?.TotalItems?.toLocaleString() ??

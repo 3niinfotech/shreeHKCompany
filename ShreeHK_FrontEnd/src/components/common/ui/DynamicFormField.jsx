@@ -61,6 +61,8 @@ const DynamicForm = ({ fields, forceFullWidth, layout = 'grid' }) => {
                         </div>
                     </Upload>
                 );
+            case 'custom':
+                return typeof field.render === 'function' ? field.render() : field.render;
             case 'hidden':
                 return <Input type="hidden" />;
             default:
@@ -83,7 +85,16 @@ const DynamicForm = ({ fields, forceFullWidth, layout = 'grid' }) => {
                 const isCheckbox = field.type === 'checkbox';
                 const isUpload = field.type === 'upload';
                 const isHidden = field.type === 'hidden';
+                const isCustom = field.type === 'custom';
                 const itemKey = `${field.name ?? 'field'}-${field.label ?? ''}-${index}`;
+
+                if (isCustom && field.noFormItem) {
+                    return (
+                        <Col span={columnSpan} key={itemKey} style={isHidden ? { display: 'none' } : undefined}>
+                            {typeof field.render === 'function' ? field.render() : field.render}
+                        </Col>
+                    );
+                }
 
                 return (
                     <Col span={columnSpan} key={itemKey} style={isHidden ? { display: 'none' } : undefined}>

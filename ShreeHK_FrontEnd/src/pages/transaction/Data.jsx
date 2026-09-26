@@ -1,4 +1,3 @@
-// Initial state — field names match dai-product / dai-product_value columns
 export const initialFormData = {
   id: undefined,
   mfg_code: "",
@@ -14,13 +13,15 @@ export const initialFormData = {
   remark: "",
   main_group: "",
   sub_group: "",
+  clarity: "",
   in_house_clarity: "",
+  eyeclean: "",
+  bgm: "",
   argyle_color: "",
   mining: "",
   origin: "",
   report_no: "",
   shape: "",
-  clarity: "",
   size: "",
   f_intensity: "",
   cut: "",
@@ -62,7 +63,10 @@ export const stoneUploadfields = [
 export const stoneUploadfieldsBottom = [
   { name: "main_group", label: "Main", type: "text", span: 6 },
   { name: "sub_group", label: "Sub", type: "text", span: 6 },
+  { name: "clarity", label: "Clarity (Rap)", type: "text", span: 6 },
   { name: "in_house_clarity", label: "In House Clarity", type: "text", span: 6 },
+  { name: "eyeclean", label: "Eye Clean", type: "text", span: 6 },
+  { name: "bgm", label: "BGM", type: "text", span: 6 },
   { name: "argyle_color", label: "Argyle Color", type: "text", span: 6 },
   { name: "mining", label: "Mining", type: "text", span: 6 },
   { name: "origin", label: "Origin", type: "text", span: 6 },

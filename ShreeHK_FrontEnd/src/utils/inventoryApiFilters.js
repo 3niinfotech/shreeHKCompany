@@ -80,6 +80,9 @@ export function buildInventoryApiFilters({
   if (compactValues.outStock) {
     filters.outstock = OUT_STOCK_VALUE_MAP[compactValues.outStock] || compactValues.outStock;
   }
+  if (compactValues.rowStatus) {
+    filters.rowStatus = compactValues.rowStatus;
+  }
   if (compactValues.stoneTypeFw) {
     filters.diamond = compactValues.stoneTypeFw;
     filters.form_type = compactValues.stoneTypeFw === "F" ? "fancy" : "white";

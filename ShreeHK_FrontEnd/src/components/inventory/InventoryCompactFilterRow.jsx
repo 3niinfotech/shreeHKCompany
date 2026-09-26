@@ -73,6 +73,7 @@ const InventoryCompactFilterRow = ({
       {renderSelect("outStock", "Out Stock")}
       {renderSelect("type", "Group")}
       {renderSelect("category", "Category", true)}
+      {renderSelect("rowStatus", "Status")}
 
       {fieldByName("stoneTypeFw") ? (
         <Form.Item name="stoneTypeFw" className={styles.compactFilterItem}>

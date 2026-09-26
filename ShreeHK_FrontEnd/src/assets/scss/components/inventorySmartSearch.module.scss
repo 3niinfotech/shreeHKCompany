@@ -269,6 +269,7 @@
 
     &:global(.ant-input-affix-wrapper) {
       background: transparent !important;
+      background-color: transparent !important;
       border: none !important;
       box-shadow: none !important;
       padding: 0 !important;
@@ -277,6 +278,7 @@
     :global(.ant-input) {
       color: var(--color-text-inverse) !important;
       background: transparent !important;
+      background-color: transparent !important;
       font-size: 13px !important;
 
       &::placeholder {

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Space, Button, Tooltip } from 'antd';
-import { EyeOutlined } from '@ant-design/icons';
+import { Tooltip } from 'antd';
+import { Eye } from 'lucide-react';
 import { useDeleteApiRequest, useFetchApi, usePostApiRequest } from '../../../api/ApiFunction';
 import { ENDPOINTS } from '../../../api/endpoints';
 import AccountingMasterTemplate from '../../../components/common/accounting/AccountingMasterTemplate';
@@ -148,38 +148,7 @@ const AdvanceTableData = () => {
             dataIndex: 'party',
             key: 'party',
             width: 220,
-            render: (party, r) => {
-                const hasInvoice = Boolean(r.invoice_id || r.invoice);
-                const partyLabel = r.party_name || resolvePartyName(party);
-                return (
-                    <Space size={6} align="center">
-                        {hasInvoice && (
-                            <Tooltip title="View Assigned Invoice">
-                                <Button
-                                    type="text"
-                                    size="small"
-                                    icon={<EyeOutlined style={{ color: '#0284c7', fontSize: '15px' }} />}
-                                    style={{
-                                        padding: '0 4px',
-                                        height: '24px',
-                                        minWidth: '24px',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        backgroundColor: 'rgba(2, 132, 199, 0.08)',
-                                        borderRadius: '4px',
-                                    }}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setAssignedInvoiceModal({ open: true, record: r });
-                                    }}
-                                />
-                            </Tooltip>
-                        )}
-                        <span>{partyLabel}</span>
-                    </Space>
-                );
-            },
+            render: (party, r) => r.party_name || resolvePartyName(party),
         },
         { title: 'Amount', dataIndex: 'amount', key: 'amount', align: 'right', width: 110, render: (v) => v != null && v !== '' ? Number(v).toFixed(2) : '-' },
         { title: 'Used', dataIndex: 'use_amount', key: 'use_amount', align: 'right', width: 110, render: (v) => v != null && v !== '' ? Number(v).toFixed(2) : '-' },
@@ -221,6 +190,38 @@ const AdvanceTableData = () => {
                 onSave={handleSave}
                 onDelete={openDelete}
                 addPagePath="/accounting/advance"
+                renderExtraRowActions={(record) => {
+                    const hasInvoice = Boolean(record?.invoice_id || record?.invoice);
+                    if (!hasInvoice) {
+                        return (
+                            <Tooltip title="No invoice assigned">
+                                <Eye
+                                    size={16}
+                                    style={{
+                                        color: '#94a3b8',
+                                        opacity: 0.4,
+                                        cursor: 'not-allowed',
+                                    }}
+                                />
+                            </Tooltip>
+                        );
+                    }
+                    return (
+                        <Tooltip title="View Assigned Invoice">
+                            <Eye
+                                size={16}
+                                style={{
+                                    color: '#0284c7',
+                                    cursor: 'pointer',
+                                }}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAssignedInvoiceModal({ open: true, record });
+                                }}
+                            />
+                        </Tooltip>
+                    );
+                }}
                 extraActions={
                     <ExportExcelButton
                         onClick={handleExportExcel}

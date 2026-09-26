@@ -42,6 +42,8 @@ export const VALUE_FIELDS = [
   "overtone",
   "color",
   "package",
+  "eyeclean",
+  "bgm",
 ];
 
 const emptyStr = (v) => (v == null ? "" : v);
@@ -71,6 +73,8 @@ export const mapApiToForm = (data) => {
     report_no: data.report_no ?? "",
     shape: data.shape ?? "",
     clarity: data.clarity ?? "",
+    eyeclean: data.eyeclean ?? "",
+    bgm: data.bgm ?? "",
     size: data.size ?? "",
     f_intensity: data.f_intensity ?? "",
     cut: data.cut ?? "",
