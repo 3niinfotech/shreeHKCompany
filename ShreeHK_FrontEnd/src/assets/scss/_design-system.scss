@@ -68,6 +68,112 @@ h6,
 }
 
 // ---------------------------------------------------------------------------
+// Disabled Form Controls / Inputs — Global Styling
+// ---------------------------------------------------------------------------
+.ant-input[disabled],
+.ant-input.ant-input-disabled,
+.ant-input-affix-wrapper.ant-input-affix-wrapper-disabled,
+.ant-input-affix-wrapper-disabled,
+.ant-input-number.ant-input-number-disabled,
+.ant-input-number-disabled,
+.ant-input-number[disabled],
+.ant-select.ant-select-disabled .ant-select-selector,
+.ant-select-disabled .ant-select-selector,
+.ant-picker.ant-picker-disabled,
+.ant-picker-disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background: var(--color-bg-muted) !important;
+  background-color: var(--color-bg-muted) !important;
+  border-color: var(--color-border) !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+
+  // Preserve existing text color exactly as it is (do not alter text color)
+  color: var(--color-text-heading) !important;
+  -webkit-text-fill-color: var(--color-text-heading) !important;
+}
+
+// Inner elements inside disabled parent wrappers must be transparent
+.ant-input-number.ant-input-number-disabled,
+.ant-input-number-disabled,
+.ant-input-number[disabled] {
+  background: var(--color-bg-muted) !important;
+  background-color: var(--color-bg-muted) !important;
+  border-color: var(--color-border) !important;
+
+  .ant-input-number-input-wrap,
+  .ant-input-number-input,
+  input {
+    background: transparent !important;
+    background-color: transparent !important;
+    color: var(--color-text-heading) !important;
+    -webkit-text-fill-color: var(--color-text-heading) !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+  }
+
+  .ant-input-number-handler-wrap {
+    display: none !important;
+  }
+}
+
+.ant-input-affix-wrapper.ant-input-affix-wrapper-disabled,
+.ant-input-affix-wrapper-disabled {
+  background: var(--color-bg-muted) !important;
+  background-color: var(--color-bg-muted) !important;
+  border-color: var(--color-border) !important;
+
+  .ant-input,
+  input,
+  .ant-input-prefix,
+  .ant-input-suffix {
+    background: transparent !important;
+    background-color: transparent !important;
+    color: var(--color-text-heading) !important;
+    -webkit-text-fill-color: var(--color-text-heading) !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+  }
+}
+
+.ant-select.ant-select-disabled,
+.ant-select-disabled {
+  .ant-select-selector {
+    background: var(--color-bg-muted) !important;
+    background-color: var(--color-bg-muted) !important;
+    border-color: var(--color-border) !important;
+  }
+
+  .ant-select-selection-item,
+  .ant-select-selection-placeholder,
+  .ant-select-arrow {
+    color: var(--color-text-heading) !important;
+    -webkit-text-fill-color: var(--color-text-heading) !important;
+    cursor: not-allowed !important;
+  }
+}
+
+.ant-picker.ant-picker-disabled,
+.ant-picker-disabled {
+  background: var(--color-bg-muted) !important;
+  background-color: var(--color-bg-muted) !important;
+  border-color: var(--color-border) !important;
+
+  input[disabled],
+  .ant-picker-input > input,
+  .ant-picker-suffix {
+    background: transparent !important;
+    background-color: transparent !important;
+    color: var(--color-text-heading) !important;
+    -webkit-text-fill-color: var(--color-text-heading) !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Borders (global)
 // ---------------------------------------------------------------------------
 .ant-divider {
@@ -298,11 +404,12 @@ $btn-icon-size: 14px;
 // ---------------------------------------------------------------------------
 // Inputs & selects
 // ---------------------------------------------------------------------------
-.ant-input,
-.ant-input-affix-wrapper,
-.ant-input-number,
-.ant-select-selector,
-.ant-picker {
+input.ant-input:not(.ant-input-affix-wrapper input):not([disabled]):not(.ant-input-disabled),
+textarea.ant-input:not([disabled]):not(.ant-input-disabled),
+.ant-input-affix-wrapper:not(.ant-input-affix-wrapper-disabled),
+.ant-input-number:not(.ant-input-number-disabled):not([disabled]),
+.ant-select:not(.ant-select-disabled) .ant-select-selector,
+.ant-picker:not(.ant-picker-disabled) {
   border-radius: var(--radius-control) !important;
   border: 0.5px solid var(--color-border) !important;
   background: var(--color-card-bg) !important;
@@ -326,8 +433,9 @@ $btn-icon-size: 14px;
   border-color: var(--color-error) !important;
 }
 
-// Remove inner input border when nested inside a wrapper (prevents double border)
+// Remove inner input border & background when nested inside a wrapper (prevents double border & white boxes)
 .ant-input-affix-wrapper .ant-input,
+.ant-input-affix-wrapper input.ant-input,
 .ant-input-affix-wrapper .ant-input:focus,
 .ant-input-affix-wrapper .ant-input:hover,
 .ant-input-affix-wrapper .ant-input:focus-visible {
@@ -335,6 +443,7 @@ $btn-icon-size: 14px;
   box-shadow: none !important;
   outline: none !important;
   background: transparent !important;
+  background-color: transparent !important;
 }
 
 .ant-input-number .ant-input-number-input-wrap,
@@ -344,6 +453,8 @@ $btn-icon-size: 14px;
   border: none !important;
   box-shadow: none !important;
   outline: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
 }
 
 .ant-picker .ant-picker-input>input,
@@ -352,6 +463,8 @@ $btn-icon-size: 14px;
   border: none !important;
   box-shadow: none !important;
   outline: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
 }
 
 .ant-select .ant-select-selector input,
@@ -359,6 +472,8 @@ $btn-icon-size: 14px;
   border: none !important;
   box-shadow: none !important;
   outline: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
 }
 
 // ---------------------------------------------------------------------------

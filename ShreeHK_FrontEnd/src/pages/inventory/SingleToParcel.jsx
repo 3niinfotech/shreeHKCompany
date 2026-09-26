@@ -166,7 +166,7 @@ const SingleToParcel = () => {
           size="small"
           bordered
           className={styles.modernTable}
-          scroll={{ x: 1800, y: tableScrollY }}
+          scroll={{ x: "max-content", y: tableScrollY }}
           pagination={false}
         />
       </div>

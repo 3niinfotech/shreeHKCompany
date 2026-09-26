@@ -513,6 +513,7 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
         vat_percent: vatPct,
         vat_amount: payloadVatAmount,
         finalAmount: +(discountCalc.finalAmount + payloadVatAmount).toFixed(2),
+        _submittedRows: resolvedRows,
         products: resolvedRows.map((r) => ({
           id: r.id,
           sku: r.sku,

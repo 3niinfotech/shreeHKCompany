@@ -305,6 +305,44 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
       { name: 'other_party', label: 'Other Party', span: 6, type: 'select', options: companyOptions },
     ];
 
+    const excelUploadField = {
+      name: 'excel_upload',
+      type: 'custom',
+      noFormItem: true,
+      span: 8,
+      render: () => (
+        <div className={styles.excelUploadPanel} style={{ margin: '0 0 10px 0', height: 'calc(100% - 10px)', display: 'flex', alignItems: 'center' }}>
+          <div className={styles.excelUploadCompact} style={{ width: '100%' }}>
+            <div className={styles.excelUploadMeta}>
+              <FileSpreadsheet size={18} className={styles.excelUploadIcon} />
+              <div className={styles.excelUploadCopy}>
+                <span className={styles.excelUploadTitle}>Outward Excel Import</span>
+                <span className={styles.excelUploadHint}>Upload .xlsx to auto-load stones</span>
+              </div>
+            </div>
+            <div className={styles.excelUploadActions}>
+              {excelFileName ? (
+                <Tag color="success" className={styles.excelUploadTag} title={excelFileName}>
+                  {excelFileName}
+                </Tag>
+              ) : null}
+              <Upload
+                beforeUpload={() => false}
+                showUploadList={false}
+                accept=".xls,.xlsx"
+                onChange={handleExcelUpload}
+                disabled={excelLoading}
+              >
+                <Button size="small" icon={<UploadOutlined />} loading={excelLoading}>
+                  {excelFileName ? 'Replace' : 'Upload .xlsx'}
+                </Button>
+              </Upload>
+            </div>
+          </div>
+        </div>
+      ),
+    };
+
     if (config.showSaleFields) {
       base.push(
         { name: 'terms', label: 'Terms (Days)', span: 6, type: 'number' },
@@ -312,25 +350,17 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
         { name: 'lessPercent', label: 'Less %', span: 6, type: 'number' },
         { name: 'otherLessPercent', label: 'Other Less %', span: 6, type: 'number' },
         { name: 'extraCharge', label: 'Extra Charge', span: 6, type: 'number' },
-        { name: 'narration', label: 'Narration', span: 6, type: 'text' },
+        excelUploadField,
+        { name: 'narration', label: 'Narration', span: 10, type: 'text' },
       );
       return base;
     }
-    base.push({ name: 'narration', label: 'Narration', span: 24, type: 'textarea' });
+    base.push(
+      excelUploadField,
+      { name: 'narration', label: 'Narration', span: 16, type: 'textarea', rows: 2 },
+    );
     return base;
-
-    // if (config.showSaleFields) {
-    //   base.push(
-    //     { name: 'terms', label: 'Terms (Days)', span: 6, type: 'number' },
-    //     { name: 'duedate', label: 'Due Date', span: 6, type: 'date' },
-    //     { name: 'lessPercent', label: 'Less %', span: 6, type: 'number' },
-    //     { name: 'otherLessPercent', label: 'Other Less %', span: 6, type: 'number' },
-    //     { name: 'extraCharge', label: 'Extra Charge', span: 6, type: 'number' },
-    //   );
-    // }
-    // base.push({ name: 'narration', label: 'Narration', span: 24, type: 'textarea' });
-    // return base;
-  }, [config, companyOptions, isCompanyLoading]);
+  }, [config, companyOptions, isCompanyLoading, excelFileName, excelLoading, handleExcelUpload]);
 
   const lookupSku = useCallback(async (sku, rowKey) => {
     const trimmed = String(sku || '').trim();
@@ -570,35 +600,6 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
           </Button>
         )}
       />
-      <div className={`${styles.excelUploadPanel} ${styles.excelUploadPanelInForm}`} style={{ marginBottom: 12 }}>
-        <div className={styles.excelUploadCompact}>
-          <div className={styles.excelUploadMeta}>
-            <FileSpreadsheet size={18} className={styles.excelUploadIcon} />
-            <div className={styles.excelUploadCopy}>
-              <span className={styles.excelUploadTitle}>Outward Excel Import</span>
-              <span className={styles.excelUploadHint}>Upload .xlsx file with SKU, Price, Discount columns to auto-load stones</span>
-            </div>
-          </div>
-          <div className={styles.excelUploadActions}>
-            {excelFileName ? (
-              <Tag color="success" className={styles.excelUploadTag} title={excelFileName}>
-                {excelFileName}
-              </Tag>
-            ) : null}
-            <Upload
-              beforeUpload={() => false}
-              showUploadList={false}
-              accept=".xls,.xlsx"
-              onChange={handleExcelUpload}
-              disabled={excelLoading}
-            >
-              <Button size="small" icon={<UploadOutlined />} loading={excelLoading}>
-                {excelFileName ? 'Replace' : 'Upload Outward .xlsx'}
-              </Button>
-            </Upload>
-          </div>
-        </div>
-      </div>
       <Form form={form} layout="vertical" className={styles.formSection} onValuesChange={handleValuesChange}>
         <DynamicForm fields={headerFields} />
       </Form>

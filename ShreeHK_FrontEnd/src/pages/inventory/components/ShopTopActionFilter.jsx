@@ -207,16 +207,22 @@ export function StoneActionSuccessModal({
 
   const formatCarat = (val) => {
     if (val === undefined || val === null || val === "") return "";
+    if (typeof val === "string" && val.trim().toLowerCase().endsWith("ct")) return val.trim();
     const n = Number(val);
     if (!Number.isFinite(n) || n === 0) return typeof val === "string" ? val : "";
     return `${n.toFixed(2)} ct`;
   };
 
+  const rawSku = stone.sku || stone.SKU || stone.name || stone.diamond_no || (count > 1 ? `${count} items` : "-");
+  const rawCarat = stone.carat ?? stone.Carat ?? stone.polishCarat ?? stone.polish_carat ?? stone.weight ?? stone.Weight ?? "";
+  const rawShape = stone.shape || stone.Shape || "-";
+  const rawClarity = stone.clarity || stone.Clarity || stone.mainClarity || stone.in_house_clarity || "-";
+
   const certDetails = [
-    { label: "SKU", value: stone.sku || stone.name || stone.diamond_no || "-" },
-    { label: "CARAT", value: formatCarat(stone.carat ?? stone.polish_carat ?? stone.weight) || "-" },
-    { label: "SHAPE", value: String(stone.shape || "-").toUpperCase() },
-    { label: "CLARITY", value: String(stone.clarity || "-").toUpperCase() },
+    { label: "SKU", value: rawSku },
+    { label: "CARAT", value: formatCarat(rawCarat) || "-" },
+    { label: "SHAPE", value: String(rawShape).toUpperCase() },
+    { label: "CLARITY", value: String(rawClarity).toUpperCase() },
   ];
 
   return (
@@ -247,8 +253,8 @@ export function StoneActionSuccessModal({
             </>
           ) : (
             <>
-              {stone.sku || stone.name ? (
-                <strong>{stone.sku || stone.name}</strong>
+              {stone.sku || stone.SKU || stone.name ? (
+                <strong>{stone.sku || stone.SKU || stone.name}</strong>
               ) : (
                 "This stone"
               )}{" "}

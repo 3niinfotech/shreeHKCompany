@@ -505,6 +505,24 @@ productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
     }
   }
 
+  let rowStatusFilter = "";
+  if (post.rowStatus) {
+    const s = String(post.rowStatus).trim().toLowerCase();
+    if (s === "hold" || s === "on_hold" || s === "grey") {
+      rowStatusFilter = " and p.hold = 1 ";
+    } else if (s === "memo" || s === "consign" || s === "red") {
+      rowStatusFilter = " and (p.outward = 'memo' || p.outward = 'consign') ";
+    } else if (s === "certified" || s === "blue") {
+      rowStatusFilter = " and (p.lab != '' and p.lab IS NOT NULL) ";
+    } else if (s === "lab" || s === "green") {
+      rowStatusFilter = " and p.outward = 'lab' ";
+    } else if (s === "available" || s === "white" || s === "on_hand") {
+      rowStatusFilter = " and (p.outward = '' || p.outward IS NULL) and (p.hold = 0 || p.hold IS NULL || p.hold = '') ";
+    }
+  }
+
+  filter += rowStatusFilter;
+
   const queryConditions = `${inventoryBaseFrom}${outwardScope}${inventoryBoxParcel}${searchClause}`;
   let limitQuery = "LIMIT ? OFFSET ?";
 

@@ -162,7 +162,7 @@ const SingleToBox = () => {
           loading={tableLoading}
           size="small"
           bordered
-          scroll={{ x: 1800, y: tableScrollY }}
+          scroll={{ x: "max-content", y: tableScrollY }}
           pagination={false}
           className={styles.modernTable}
         />

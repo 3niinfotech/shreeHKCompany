@@ -235,12 +235,14 @@ import useEntityList from "../../../hooks/api/useEntityList";
 import { useEntityPostMutation, useEntityDeleteMutation } from "../../../hooks/api/useEntityMutation";
 import useModal from "../../../hooks/common/useModal";
 import AICustomerSuggestModal from "../../../components/ai/AICustomerSuggestModal";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Sparkles } from "lucide-react";
 
 const PAGE_LIMIT = 100;
 
 const CompanyPage = () => {
+    const queryClient = useQueryClient();
     const [form] = Form.useForm();
     const [offset, setOffset] = useState(0);
     const [combinedData, setCombinedData] = useState([]);
@@ -275,22 +277,6 @@ const CompanyPage = () => {
 
     const columns = [
         ...getCompanyColumns(0),
-        // {
-        //     title: "AI Suggest",
-        //     key: "aiSuggest",
-        //     width: 110,
-        //     align: "center",
-        //     render: (_, record) => (
-        //         <Button
-        //             type="link"
-        //             size="small"
-        //             icon={<Sparkles size={14} />}
-        //             onClick={() => setAiSuggestTarget(record)}
-        //         >
-        //             AI Suggest
-        //         </Button>
-        //     ),
-        // },
     ];
 
     const handleSearchChange = (value) => {
@@ -311,7 +297,12 @@ const CompanyPage = () => {
     };
 
     const handleDelete = () => {
-        deleteCompanyMutation(deleteTarget?.id, { onSuccess: () => closeDelete() });
+        deleteCompanyMutation(deleteTarget?.id, {
+            onSuccess: () => {
+                queryClient.invalidateQueries({ queryKey: ["GetCompany"] });
+                closeDelete();
+            }
+        });
     };
 
     const handleAddClick = () => {
@@ -332,6 +323,7 @@ const CompanyPage = () => {
             const payload = { id: editRecord?.id || 0, ...mapFormToApi(values) };
             saveCompanyMutation(payload, {
                 onSuccess: () => {
+                    queryClient.invalidateQueries({ queryKey: ["GetCompany"] });
                     setEditRecord(null);
                     setOffset(0);
                     setCombinedData([]);

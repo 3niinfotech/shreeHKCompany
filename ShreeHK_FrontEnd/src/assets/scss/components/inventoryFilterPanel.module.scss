@@ -868,10 +868,10 @@ $compact-accent-hover: var(--color-primary-dark);
 }
 
 .filterGroup {
-  background: $panel-bg;
-  border: 1px solid $group-border;
+  // background: $panel-bg;
+  // border: 1px solid $group-border;
+  // padding: 8px 10px 6px;
   border-radius: 6px;
-  padding: 8px 10px 6px;
   min-width: 0;
 }
 
@@ -963,6 +963,4 @@ $compact-accent-hover: var(--color-primary-dark);
 
 .stoneTypeItem {
   margin-bottom: 0 !important;
-
-  :global(.ant-checkbox-wrapper) {}
 }

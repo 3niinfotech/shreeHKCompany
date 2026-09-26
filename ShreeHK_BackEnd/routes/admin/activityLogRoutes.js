@@ -78,9 +78,9 @@ const verifyAdminPassword = async (req) => {
       userName: userRow.user_name,
       userRoleId: userRow.roll,
       companyId: req.companyId || req.user?.companyId || 1,
-    }).catch(() => {});
+    }).catch(() => { });
 
-    return { ok: false, status: 401, message: "Incorrect password. Authorization failed." };
+    return { ok: false, status: 400, message: "Incorrect password.Authorization failed." };
   }
 
   return { ok: true, user: userRow };
@@ -779,7 +779,7 @@ activityLogRouter.delete(
         userName: passCheck.user?.user_name,
         userRoleId: passCheck.user?.roll,
         companyId: req.companyId || req.user?.companyId || 1,
-      }).catch(() => {});
+      }).catch(() => { });
 
       res.status(200).json({
         status: true,
@@ -836,7 +836,7 @@ activityLogRouter.delete(
         userName: passCheck.user?.user_name,
         userRoleId: passCheck.user?.roll,
         companyId: req.companyId || req.user?.companyId || 1,
-      }).catch(() => {});
+      }).catch(() => { });
 
       res.status(200).json({
         status: true,
