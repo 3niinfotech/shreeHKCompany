@@ -45,6 +45,19 @@ import PageHeroHeader from '../components/common/PageHeroHeader';
 import DeleteConfirmModal from '../components/common/masterCommon/DeleteConfirmModal';
 import useAuthStore from '../store/Auth.Store';
 
+const SORT_OPTIONS = [
+    { label: 'Sort: Newest First', value: 'NEWEST' },
+    { label: 'Sort: Oldest First', value: 'OLDEST' },
+    { label: 'Sort: User (A to Z)', value: 'USER_ASC' },
+    { label: 'Sort: User (Z to A)', value: 'USER_DESC' },
+    { label: 'Sort: Due Date (Earliest)', value: 'DUE_ASC' },
+    { label: 'Sort: Due Date (Latest)', value: 'DUE_DESC' },
+    { label: 'Sort: Priority (High to Low)', value: 'PRIORITY_HIGH' },
+    { label: 'Sort: Priority (Low to High)', value: 'PRIORITY_LOW' },
+    { label: 'Sort: Title (A to Z)', value: 'TITLE_ASC' },
+    { label: 'Sort: Title (Z to A)', value: 'TITLE_DESC' },
+];
+
 export default function TaskManager() {
     const navigate = useNavigate();
     const user = useAuthStore((state) => state.user);
@@ -92,12 +105,29 @@ export default function TaskManager() {
         }));
     }, [usersRes]);
 
+    const allUserOptions = useMemo(() => {
+        if (Array.isArray(userOptions) && userOptions.length > 0) {
+            return userOptions;
+        }
+        const map = new Map();
+        tasks.forEach(t => {
+            const uid = t.assigned_to || t.user_id;
+            const uname = t.assigned_to_name?.trim();
+            if (uid && uname && !map.has(uid)) {
+                map.set(uid, { label: uname, value: uid });
+            }
+        });
+        return Array.from(map.values());
+    }, [userOptions, tasks]);
+
     // Local states
     const [searchText, setSearchText] = useState('');
     const [statusFilter, setStatusFilter] = useState('ALL'); // ALL, PENDING, COMPLETED
     const [priorityFilter, setPriorityFilter] = useState('ALL'); // ALL, High, Medium, Low
     const [dateFilter, setDateFilter] = useState('ALL'); // ALL, TODAY, OVERDUE, UPCOMING
+    const [userFilter, setUserFilter] = useState('ALL'); // ALL, or userId
     const [viewMode, setViewMode] = useState('BOARD'); // TABLE, BOARD
+    const [sortBy, setSortBy] = useState('NEWEST');
 
     // Modal states
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -148,10 +178,15 @@ export default function TaskManager() {
     // Filtered tasks
     const filteredTasks = useMemo(() => {
         const todayStr = dayjs().format('YYYY-MM-DD');
-        return tasks.filter(task => {
+        const list = tasks.filter(task => {
             // Search text
             if (searchText.trim() && !task.text.toLowerCase().includes(searchText.toLowerCase().trim())) {
                 return false;
+            }
+            // User filter
+            if (userFilter !== 'ALL') {
+                const taskAssignedId = Number(task.assigned_to || task.user_id || 0);
+                if (taskAssignedId !== Number(userFilter)) return false;
             }
             // Status
             if (statusFilter === 'PENDING' && task.completed) return false;
@@ -167,7 +202,54 @@ export default function TaskManager() {
 
             return true;
         });
-    }, [tasks, searchText, statusFilter, priorityFilter, dateFilter]);
+
+        const priorityRank = { high: 3, medium: 2, low: 1 };
+
+        return [...list].sort((a, b) => {
+            switch (sortBy) {
+                case 'NEWEST':
+                    return Number(b.id || 0) - Number(a.id || 0);
+                case 'OLDEST':
+                    return Number(a.id || 0) - Number(b.id || 0);
+                case 'USER_ASC': {
+                    const uA = (a.assigned_to_name || '').trim();
+                    const uB = (b.assigned_to_name || '').trim();
+                    return uA.localeCompare(uB);
+                }
+                case 'USER_DESC': {
+                    const uA = (a.assigned_to_name || '').trim();
+                    const uB = (b.assigned_to_name || '').trim();
+                    return uB.localeCompare(uA);
+                }
+                case 'DUE_ASC': {
+                    if (!a.target_date) return 1;
+                    if (!b.target_date) return -1;
+                    return a.target_date.localeCompare(b.target_date);
+                }
+                case 'DUE_DESC': {
+                    if (!a.target_date) return 1;
+                    if (!b.target_date) return -1;
+                    return b.target_date.localeCompare(a.target_date);
+                }
+                case 'PRIORITY_HIGH': {
+                    const pA = priorityRank[a.priority?.toLowerCase()] || 0;
+                    const pB = priorityRank[b.priority?.toLowerCase()] || 0;
+                    return pB - pA;
+                }
+                case 'PRIORITY_LOW': {
+                    const pA = priorityRank[a.priority?.toLowerCase()] || 0;
+                    const pB = priorityRank[b.priority?.toLowerCase()] || 0;
+                    return pA - pB;
+                }
+                case 'TITLE_ASC':
+                    return (a.text || '').localeCompare(b.text || '');
+                case 'TITLE_DESC':
+                    return (b.text || '').localeCompare(a.text || '');
+                default:
+                    return 0;
+            }
+        });
+    }, [tasks, searchText, userFilter, statusFilter, priorityFilter, dateFilter, sortBy]);
 
     // Form submission (Add / Edit)
     const handleFormSubmit = (values) => {
@@ -517,6 +599,27 @@ export default function TaskManager() {
                     icon={<NotebookPen size={22} />}
                     actions={(
                         <Space size="small" wrap>
+                            {isSuperAdmin && allUserOptions.length > 0 && (
+                                <Select
+                                    value={userFilter}
+                                    onChange={setUserFilter}
+                                    style={{ width: 170 }}
+                                    showSearch
+                                    optionFilterProp="label"
+                                    placeholder="Filter by User"
+                                    options={[
+                                        { label: 'All Users', value: 'ALL' },
+                                        ...allUserOptions,
+                                    ]}
+                                />
+                            )}
+                            <Select
+                                value={sortBy}
+                                onChange={setSortBy}
+                                style={{ width: 190 }}
+                                options={isSuperAdmin ? SORT_OPTIONS : SORT_OPTIONS.filter((o) => !o.value.startsWith('USER_'))}
+                                placeholder="Sort Tasks"
+                            />
                             <Button
                                 icon={<ReloadOutlined />}
                                 onClick={() => refreshTasks()}
@@ -558,7 +661,7 @@ export default function TaskManager() {
                 />
 
                 {/* KPI Cards Header */}
-                <Row gutter={[16, 16]} style={{ padding:'10px 0px' }}>
+                <Row gutter={[16, 16]} style={{ padding: '10px 0px' }}>
                     <Col xs={12} sm={6} lg={4}>
                         <Card bordered={false} style={{ borderRadius: 14, background: '#ffffff', boxShadow: '0 4px 14px rgba(15, 23, 42, 0.05)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -668,6 +771,20 @@ export default function TaskManager() {
                                     { label: 'Upcoming', value: 'UPCOMING' },
                                 ]}
                             />
+                            {isSuperAdmin && allUserOptions.length > 0 && (
+                                <Select
+                                    value={userFilter}
+                                    onChange={setUserFilter}
+                                    style={{ width: 150 }}
+                                    showSearch
+                                    optionFilterProp="label"
+                                    placeholder="All Users"
+                                    options={[
+                                        { label: 'All Users', value: 'ALL' },
+                                        ...allUserOptions,
+                                    ]}
+                                />
+                            )}
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -761,69 +878,69 @@ export default function TaskManager() {
                                         flexDirection: 'column'
                                     }}
                                 >
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, justifyContent: col.items.length > 0 ? 'flex-start' : 'center' }}>
-                                    {col.items.length > 0 ? (
-                                        col.items.map(task => (
-                                            <Card
-                                                key={task.id}
-                                                bordered={false}
-                                                size="small"
-                                                style={{ borderRadius: 10, background: '#ffffff', boxShadow: '0 2px 6px rgba(15, 23, 42, 0.04)' }}
-                                            >
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                                        <Space size={4}>
-                                                            {renderPriorityTag(task.priority)}
-                                                            {isSuperAdmin && task.assigned_to_name && (
-                                                                <Tag color="purple" style={{ borderRadius: 6, fontWeight: 500, margin: 0, fontSize: '0.72rem' }}>
-                                                                    {task.assigned_to_name}
-                                                                </Tag>
-                                                            )}
-                                                        </Space>
-                                                        <Checkbox
-                                                            checked={!!task.completed}
-                                                            onChange={() => handleToggleComplete(task)}
-                                                        />
-                                                    </div>
-                                                     <div style={{ fontWeight: 600, fontSize: '0.86rem', color: task.completed ? '#94a3b8' : '#0f172a', textDecoration: task.completed ? 'line-through' : 'none' }}>
-                                                         {task.text}
-                                                     </div>
-                                                     <div style={{ fontSize: '0.72rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                                         <Clock size={12} />
-                                                         <span>Assign: {(task.assigned_at || task.created_at) ? dayjs(task.assigned_at || task.created_at).format('DD MMM, hh:mm A') : '-'}</span>
-                                                     </div>
-                                                     {task.completed && (
-                                                         <div style={{ background: '#ecfdf5', borderRadius: 6, padding: '4px 8px', border: '1px solid #a7f3d0' }}>
-                                                             <div style={{ color: '#047857', fontWeight: 600, fontSize: '0.72rem' }}>
-                                                                 Done by: {task.completed_by_name?.trim() || task.assigned_to_name?.trim() || 'User'}
-                                                             </div>
-                                                             {task.completed_at && (
-                                                                 <div style={{ color: '#059669', fontSize: '0.7rem' }}>
-                                                                     Done: {dayjs(task.completed_at).format('DD MMM YYYY, hh:mm A')}
-                                                                 </div>
-                                                             )}
-                                                         </div>
-                                                     )}
-                                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4, borderTop: '1px solid #f1f5f9' }}>
-                                                        {renderTargetDateTag(task.target_date, task.completed)}
-                                                        {isSuperAdmin && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, justifyContent: col.items.length > 0 ? 'flex-start' : 'center' }}>
+                                        {col.items.length > 0 ? (
+                                            col.items.map(task => (
+                                                <Card
+                                                    key={task.id}
+                                                    bordered={false}
+                                                    size="small"
+                                                    style={{ borderRadius: 10, background: '#ffffff', boxShadow: '0 2px 6px rgba(15, 23, 42, 0.04)' }}
+                                                >
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                                             <Space size={4}>
-                                                                <Button type="text" size="small" icon={<Edit2 size={13} />} onClick={() => handleOpenEdit(task)} />
-                                                                <Button type="text" size="small" icon={<Trash2 size={13} style={{ color: '#ef4444' }} />} onClick={() => openDeleteTask(task)} />
+                                                                {renderPriorityTag(task.priority)}
+                                                                {isSuperAdmin && task.assigned_to_name && (
+                                                                    <Tag color="purple" style={{ borderRadius: 6, fontWeight: 500, margin: 0, fontSize: '0.72rem' }}>
+                                                                        Assign To : {task.assigned_to_name}
+                                                                    </Tag>
+                                                                )}
                                                             </Space>
+                                                            <Checkbox
+                                                                checked={!!task.completed}
+                                                                onChange={() => handleToggleComplete(task)}
+                                                            />
+                                                        </div>
+                                                        <div style={{ fontWeight: 600, fontSize: '0.86rem', color: task.completed ? '#94a3b8' : '#0f172a', textDecoration: task.completed ? 'line-through' : 'none' }}>
+                                                            {task.text}
+                                                        </div>
+                                                        <div style={{ fontSize: '0.72rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                            <Clock size={12} />
+                                                            <span>Assign: {(task.assigned_at || task.created_at) ? dayjs(task.assigned_at || task.created_at).format('DD MMM, hh:mm A') : '-'}</span>
+                                                        </div>
+                                                        {task.completed && (
+                                                            <div style={{ background: '#ecfdf5', borderRadius: 6, padding: '4px 8px', border: '1px solid #a7f3d0' }}>
+                                                                <div style={{ color: '#047857', fontWeight: 600, fontSize: '0.72rem' }}>
+                                                                    Done by: {task.completed_by_name?.trim() || task.assigned_to_name?.trim() || 'User'}
+                                                                </div>
+                                                                {task.completed_at && (
+                                                                    <div style={{ color: '#059669', fontSize: '0.7rem' }}>
+                                                                        Done: {dayjs(task.completed_at).format('DD MMM YYYY, hh:mm A')}
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         )}
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4, borderTop: '1px solid #f1f5f9' }}>
+                                                            {renderTargetDateTag(task.target_date, task.completed)}
+                                                            {isSuperAdmin && (
+                                                                <Space size={4}>
+                                                                    <Button type="text" size="small" icon={<Edit2 size={13} />} onClick={() => handleOpenEdit(task)} />
+                                                                    <Button type="text" size="small" icon={<Trash2 size={13} style={{ color: '#ef4444' }} />} onClick={() => openDeleteTask(task)} />
+                                                                </Space>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </Card>
-                                        ))
-                                    ) : (
-                                        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No tasks" style={{ margin: 0 }} />
-                                    )}
-                                </div>
-                            </Card>
-                        </Col>
-                    ))}
-                </Row>
+                                                </Card>
+                                            ))
+                                        ) : (
+                                            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No tasks" style={{ margin: 0 }} />
+                                        )}
+                                    </div>
+                                </Card>
+                            </Col>
+                        ))}
+                    </Row>
                 )}
             </div>
 

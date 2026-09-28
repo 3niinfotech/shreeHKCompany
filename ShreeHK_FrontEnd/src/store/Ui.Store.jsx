@@ -58,6 +58,13 @@ const useUIStore = create(
                     modal: { ...state.modal, loading: status },
                 })),
 
+            soundEnabled: true,
+            setSoundEnabled: (soundEnabled) => set({ soundEnabled }),
+            toggleSound: () => set((state) => ({ soundEnabled: !state.soundEnabled })),
+
+            quickScanShortcut: true,
+            setQuickScanShortcut: (quickScanShortcut) => set({ quickScanShortcut }),
+
             rapaportPanelOpen: false,
             rapaportPanelExpanded: false,
             rapaportInterval: "1D",
@@ -75,6 +82,8 @@ const useUIStore = create(
                 sidebarOpen: state.sidebarOpen,
                 isDarkMode: state.isDarkMode,
                 viewMode: state.viewMode,
+                soundEnabled: state.soundEnabled,
+                quickScanShortcut: state.quickScanShortcut,
                 rapaportPanelOpen: state.rapaportPanelOpen,
                 rapaportPanelExpanded: state.rapaportPanelExpanded,
                 rapaportInterval: state.rapaportInterval,

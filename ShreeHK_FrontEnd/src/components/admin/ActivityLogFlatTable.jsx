@@ -173,7 +173,7 @@ const ActivityLogFlatTable = ({
       title: "Action",
       dataIndex: "actionType",
       key: "actionType",
-      width: 100,
+      width: 150,
       align: "center",
       render: (type) => {
         const tone = getActionTone(type);

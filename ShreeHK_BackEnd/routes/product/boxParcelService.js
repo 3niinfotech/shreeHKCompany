@@ -300,10 +300,86 @@ async function assignCategory(productIds, categoryId) {
     throw err;
   }
   const placeholders = ids.map(() => "?").join(",");
+
+  // 1. Fetch category name
+  let categoryName = cat;
+  try {
+    const catRows = await helper.query(
+      "SELECT id, name FROM category WHERE id = ? LIMIT 1",
+      [cat],
+    );
+    if (catRows.length && catRows[0].name) {
+      categoryName = catRows[0].name;
+    }
+  } catch (e) {
+    console.warn("Category name lookup error:", e?.message);
+  }
+
+  // 2. Fetch full stone details before updating
+  let stoneRows = [];
+  try {
+    stoneRows = await helper.query(
+      `SELECT 
+        p.id, p.sku, p.lab, p.polish_pcs, p.polish_carat, p.price, p.amount, p.cost, p.location, p.loc, p.mfg_code, p.category,
+        pv.shape, pv.color, pv.clarity, pv.cut, pv.polish, pv.symmentry, pv.report_no, pv.mesurment
+      FROM dai_product p
+      LEFT JOIN dai_product_value pv ON p.id = pv.product_id
+      WHERE p.id IN (${placeholders})`,
+      ids,
+    );
+  } catch (e) {
+    console.warn("Stones lookup error:", e?.message);
+  }
+
+  // 3. Perform update
   await helper.query(
     `UPDATE dai_product SET category = ? WHERE id IN (${placeholders})`,
     [cat, ...ids],
   );
+
+  // 4. Record rich audit activity with SKU, Lab, Shape, Carat, Price, Location
+  const items = (stoneRows || []).map((s) => ({
+    id: s.id,
+    sku: s.sku || "",
+    lab: s.lab || "",
+    shape: s.shape || "",
+    polish_carat: s.polish_carat != null ? s.polish_carat : "",
+    p_carat: s.polish_carat != null ? s.polish_carat : "",
+    price: s.price != null ? s.price : "",
+    amount: s.amount != null ? s.amount : "",
+    cost: s.cost != null ? s.cost : "",
+    location: s.location || s.loc || "",
+    loc: s.location || s.loc || "",
+    mfg_code: s.mfg_code || "",
+    color: s.color || "",
+    clarity: s.clarity || "",
+    cut: s.cut || "",
+    polish: s.polish || "",
+    report_no: s.report_no || "",
+    category: categoryName,
+  }));
+
+  const skus = items.map((s) => s.sku).filter(Boolean);
+  const recordReference = skus.length ? skus.join(", ") : ids.join(", ");
+  const description = `Assigned Category "${categoryName}" to ${items.length} diamond${items.length > 1 ? "s" : ""} (${recordReference})`;
+
+  await logAudit({
+    actionType: "UPDATE",
+    moduleName: "Categorize",
+    recordReference,
+    description,
+    oldValue: {
+      category: stoneRows.map((s) => s.category).filter(Boolean).join(", ") || null,
+    },
+    newValue: {
+      category: categoryName,
+      categoryId: cat,
+      categoryName,
+      items,
+      productIds: ids,
+    },
+  }).catch(console.error);
+
   return { ok: true, message: "Category assigned successfully", count: ids.length };
 }
 
@@ -368,7 +444,89 @@ async function unpairProducts(rawIds) {
       );
     }
   }
-  return { status: true, message: `${ids.length} stone(s) unpaired` };
+  return { status: true, message: `Unpaired ${ids.length} stones` };
+}
+
+async function findPairCandidates(productId, options = {}) {
+  const stone = await getStoneById(Number(productId));
+  if (!stone) {
+    const err = new Error("Stone not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const caratTol = Number(options.caratTolerance) || 0.04;
+  const targetCarat = Number(stone.polish_carat) || 0;
+  const minCarat = Math.max(0, targetCarat - caratTol);
+  const maxCarat = targetCarat + caratTol;
+
+  const sql = `
+    SELECT 
+      p.id, p.sku, p.lab, p.polish_carat, p.price, p.amount, p.cost, p.location, p.loc, p.mfg_code,
+      pv.shape, pv.color, pv.clarity, pv.cut, pv.polish, pv.symmentry, pv.report_no, pv.mesurment, pv.table_pc, pv.depth_pc
+    FROM dai_product p
+    LEFT JOIN dai_product_value pv ON p.id = pv.product_id
+    WHERE p.company = ? AND p.visibility = 1 AND p.id <> ?
+      AND (p.hold = 0 OR p.hold IS NULL)
+      AND (p.outward IS NULL OR p.outward = '')
+      AND (p.pair IS NULL OR p.pair = '')
+      AND p.polish_carat BETWEEN ? AND ?
+      AND (pv.shape = ? OR ? = '')
+    ORDER BY ABS(p.polish_carat - ?) ASC
+    LIMIT 30
+  `;
+
+  const rows = await helper.query(sql, [
+    stone.company || 1,
+    stone.id,
+    minCarat,
+    maxCarat,
+    stone.shape || "",
+    stone.shape || "",
+    targetCarat,
+  ]);
+
+  const candidates = (rows || []).map((r) => {
+    let score = 50;
+    if (r.shape === stone.shape) score += 15;
+    if (r.color === stone.color) score += 15;
+    if (r.clarity === stone.clarity) score += 10;
+    if (r.cut === stone.cut) score += 4;
+    if (r.polish === stone.polish) score += 3;
+    if (r.symmentry === stone.symmentry) score += 3;
+    const diff = Math.abs((Number(r.polish_carat) || 0) - targetCarat);
+    if (diff <= 0.01) score += 5;
+    else if (diff <= 0.02) score += 3;
+
+    return {
+      ...r,
+      matchScore: Math.min(100, score),
+      caratDiff: Number(diff.toFixed(3)),
+    };
+  });
+
+  // Sort by highest match score first
+  candidates.sort((a, b) => b.matchScore - a.matchScore);
+
+  return {
+    status: true,
+    targetStone: {
+      id: stone.id,
+      sku: stone.sku,
+      shape: stone.shape,
+      polish_carat: stone.polish_carat,
+      color: stone.color,
+      clarity: stone.clarity,
+      cut: stone.cut,
+      polish: stone.polish,
+      symmentry: stone.symmentry,
+      price: stone.price,
+      amount: stone.amount,
+      lab: stone.lab,
+      location: stone.location || stone.loc,
+    },
+    candidates,
+  };
 }
 
 module.exports = {
@@ -379,4 +537,5 @@ module.exports = {
   getCategoryStats,
   assignPair,
   unpairProducts,
+  findPairCandidates,
 };

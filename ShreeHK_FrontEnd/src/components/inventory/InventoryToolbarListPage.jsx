@@ -1,6 +1,6 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Button } from "antd";
-import { ReloadOutlined } from "@ant-design/icons";
+import { ReloadOutlined, ScanOutlined } from "@ant-design/icons";
 import {
   BadgeDollarSign,
   Download,
@@ -14,6 +14,7 @@ import {
 import MasterTableTemplate from "../../pages/inventory/MasterTableTemplate";
 import InventoryPageToolbar from "./InventoryPageToolbar";
 import InventoryBulkActionModal from "./InventoryBulkActionModal";
+import BatchStockAuditModal from "./BatchStockAuditModal";
 import { SkuLink } from "../../hooks/useSkuModalAction";
 import useInventoryToolbarPage from "../../hooks/useInventoryToolbarPage";
 import { cssVar } from "../../theme";
@@ -73,6 +74,8 @@ const InventoryToolbarListPage = ({
   useFilterForm = true,
   onSelectedRowsChange,
 }) => {
+  const [auditModalOpen, setAuditModalOpen] = useState(false);
+
   const toolbar = useInventoryToolbarPage({
     queryKey,
     baseFilters,
@@ -115,12 +118,23 @@ const InventoryToolbarListPage = ({
               <Button icon={<ReloadOutlined />} onClick={() => toolbar.refresh?.()} loading={toolbar.isLoading || toolbar.isFetchingMore}>
                 Refresh
               </Button>
+              <Button
+                icon={<ScanOutlined />}
+                onClick={() => setAuditModalOpen(true)}
+                style={{ color: "var(--color-primary, #1e3a8a)" }}
+              >
+                Audit Scan
+              </Button>
               {extraToolbarActions}
             </>
           )}
         />
       </div>
       {footerExtras}
+      <BatchStockAuditModal
+        open={auditModalOpen}
+        onClose={() => setAuditModalOpen(false)}
+      />
       <InventoryBulkActionModal
         open={toolbar.hold.holdModal.open}
         actionKey={toolbar.hold.holdModal.actionKey}
