@@ -400,7 +400,8 @@ const CompanyPage = () => {
                 title="Company"
                 columns={columns}
                 dataSource={combinedData}
-                loading={isLoading}
+                loading={isLoading && offset === 0}
+                loadingMore={isFetching && offset > 0}
                 onAdd={handleAddClick}
                 onEdit={handleEditClick}
                 onDelete={openDelete}
@@ -414,7 +415,7 @@ const CompanyPage = () => {
                 }}
                 extraHeaderActions={
                     <Space wrap>
-                        <Button icon={<ReloadOutlined />} loading={isFetching} onClick={handleRefresh}>
+                        <Button icon={<ReloadOutlined />} loading={isFetching && offset === 0} onClick={handleRefresh}>
                             Refresh
                         </Button>
                         <ExportExcelButton

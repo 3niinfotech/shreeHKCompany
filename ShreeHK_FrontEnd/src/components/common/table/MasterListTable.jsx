@@ -1,5 +1,5 @@
 import { Edit2, Trash2, Plus, Search } from "lucide-react";
-import { Table, Button, Input, Space, Card, Typography } from "antd";
+import { Table, Button, Input, Space, Card, Typography, Spin } from "antd";
 import { useMemo, useRef } from "react";
 import { AppstoreOutlined } from "@ant-design/icons";
 import useThemeColors from "../../../hooks/useThemeColors";
@@ -27,6 +27,7 @@ const MasterListTable = ({
     onTableScroll,
     totalItems,
     loading,
+    loadingMore = false,
     hideCrudActions = false,
     onRow,
     rowClassName,
@@ -132,7 +133,7 @@ const MasterListTable = ({
                         pagination={false}
                         scroll={{ y: tableHeight, x: "max-content" }}
                         size="small"
-                        loading={tableLoading}
+                        loading={showSkeleton ? false : (loadingMore ? { spinning: true } : false)}
                         onScroll={showSkeleton ? undefined : onTableScroll}
                         onRow={showSkeleton ? undefined : onRow}
                         rowClassName={showSkeleton ? undefined : rowClassName}

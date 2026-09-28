@@ -11,6 +11,7 @@ const { refreshAuditContextFromReq } = require("../../middleware/auditContext.js
 const { isUserOnline } = require("../../services/userPresenceService.js");
 const { verifyPassword } = require("../../services/passwordService.js");
 const connection = require("../../connection.js");
+const helper = require("../../helper.js");
 
 const activityLogRouter = express.Router();
 
@@ -129,6 +130,149 @@ function parseJson(val) {
   } catch {
     return val;
   }
+}
+
+async function enrichActivityRows(rows) {
+  if (!Array.isArray(rows) || !rows.length) return rows;
+
+  const productIdsToFetch = new Set();
+  const categoryIdsToFetch = new Set();
+
+  for (const row of rows) {
+    const nv = row.newValue;
+    const reqPath = nv?.requestPath || nv?.record?.requestPath || "";
+    const isCategorize =
+      row.moduleName === "Categorize" ||
+      reqPath.includes("/product/categorize") ||
+      (typeof row.description === "string" && row.description.toLowerCase().includes("categorize"));
+    const rawIds = nv?.productIds || nv?.record?.productIds;
+
+    if (isCategorize && Array.isArray(rawIds) && rawIds.length > 0) {
+      if (!Array.isArray(nv?.items) && !Array.isArray(nv?.record?.items)) {
+        rawIds.forEach((id) => {
+          const num = Number(id);
+          if (num) productIdsToFetch.add(num);
+        });
+        const catId = nv?.categoryId || nv?.record?.categoryId || nv?.category;
+        if (catId && !isNaN(Number(catId))) {
+          categoryIdsToFetch.add(Number(catId));
+        }
+      }
+    }
+  }
+
+  if (!productIdsToFetch.size && !categoryIdsToFetch.size) {
+    return rows;
+  }
+
+  const stoneMap = new Map();
+  if (productIdsToFetch.size) {
+    try {
+      const ids = Array.from(productIdsToFetch);
+      const placeholders = ids.map(() => "?").join(",");
+      const stoneRows = await helper.query(
+        `SELECT 
+          p.id, p.sku, p.lab, p.polish_pcs, p.polish_carat, p.price, p.amount, p.cost, p.location, p.loc, p.mfg_code, p.category,
+          pv.shape, pv.color, pv.clarity, pv.cut, pv.polish, pv.symmentry, pv.report_no, pv.mesurment
+        FROM dai_product p
+        LEFT JOIN dai_product_value pv ON p.id = pv.product_id
+        WHERE p.id IN (${placeholders})`,
+        ids,
+      );
+      (stoneRows || []).forEach((s) => {
+        stoneMap.set(Number(s.id), s);
+      });
+    } catch (e) {
+      console.warn("Failed to enrich activity log stones:", e?.message);
+    }
+  }
+
+  const catMap = new Map();
+  if (categoryIdsToFetch.size) {
+    try {
+      const cids = Array.from(categoryIdsToFetch);
+      const placeholders = cids.map(() => "?").join(",");
+      const catRows = await helper.query(
+        `SELECT id, name FROM category WHERE id IN (${placeholders})`,
+        cids,
+      );
+      (catRows || []).forEach((c) => {
+        catMap.set(Number(c.id), c.name);
+      });
+    } catch (e) {
+      console.warn("Failed to enrich activity log categories:", e?.message);
+    }
+  }
+
+  return rows.map((row) => {
+    const nv = row.newValue;
+    const reqPath = nv?.requestPath || nv?.record?.requestPath || "";
+    const isCategorize =
+      row.moduleName === "Categorize" ||
+      reqPath.includes("/product/categorize") ||
+      (typeof row.description === "string" && row.description.toLowerCase().includes("categorize"));
+    const rawIds = nv?.productIds || nv?.record?.productIds;
+
+    if (
+      isCategorize &&
+      Array.isArray(rawIds) &&
+      rawIds.length > 0 &&
+      !Array.isArray(nv?.items) &&
+      !Array.isArray(nv?.record?.items)
+    ) {
+      const stones = rawIds.map((id) => stoneMap.get(Number(id))).filter(Boolean);
+      if (stones.length) {
+        const catId = nv?.categoryId || nv?.record?.categoryId || nv?.category;
+        const categoryName = catMap.get(Number(catId)) || catId || "";
+        const items = stones.map((s) => ({
+          id: s.id,
+          sku: s.sku || "",
+          lab: s.lab || "",
+          shape: s.shape || "",
+          polish_carat: s.polish_carat != null ? s.polish_carat : "",
+          p_carat: s.polish_carat != null ? s.polish_carat : "",
+          price: s.price != null ? s.price : "",
+          amount: s.amount != null ? s.amount : "",
+          cost: s.cost != null ? s.cost : "",
+          location: s.location || s.loc || "",
+          loc: s.location || s.loc || "",
+          mfg_code: s.mfg_code || "",
+          color: s.color || "",
+          clarity: s.clarity || "",
+          cut: s.cut || "",
+          polish: s.polish || "",
+          report_no: s.report_no || "",
+          category: categoryName,
+        }));
+
+        const skus = items.map((s) => s.sku).filter(Boolean);
+        const ref = skus.length ? skus.join(", ") : row.recordReference;
+
+        const updatedNewValue = {
+          ...(nv || {}),
+          categoryName: categoryName || nv?.categoryName,
+          category: categoryName || nv?.category,
+          items,
+        };
+        if (updatedNewValue.record && typeof updatedNewValue.record === "object") {
+          updatedNewValue.record = {
+            ...updatedNewValue.record,
+            categoryName: categoryName || updatedNewValue.record.categoryName,
+            category: categoryName || updatedNewValue.record.category,
+            items,
+          };
+        }
+
+        return {
+          ...row,
+          recordReference:
+            ref && !ref.startsWith("/") ? ref : (skus.length ? skus.join(", ") : row.recordReference),
+          newValue: updatedNewValue,
+        };
+      }
+    }
+    return row;
+  });
 }
 
 const NOISE_ACTION_TYPES = [
@@ -492,9 +636,11 @@ activityLogRouter.get(
         [...values, limit, offset],
       );
 
+      const mapped = await enrichActivityRows(rows.map(mapRow));
+
       res.json({
         TotalItems: total,
-        Data: rows.map(mapRow),
+        Data: mapped,
       });
     } catch (err) {
       console.error("activity-log list:", err);
@@ -691,10 +837,12 @@ activityLogRouter.get(
         values,
       );
 
+      const mapped = await enrichActivityRows(rows.map(mapRow));
+
       res.json({
         status: true,
         TotalItems: rows.length,
-        Data: rows.map(mapRow),
+        Data: mapped,
       });
     } catch (err) {
       console.error("activity-log group-detail:", err);
@@ -719,7 +867,7 @@ activityLogRouter.get(
         `SELECT * FROM dai_activity_log WHERE ${where} ORDER BY created_at DESC, id DESC LIMIT 5000`,
         values,
       );
-      const mapped = rows.map(mapRow);
+      const mapped = await enrichActivityRows(rows.map(mapRow));
 
       if (format === "pdf") {
         const buf = await buildPdfBuffer(mapped);
@@ -875,7 +1023,8 @@ activityLogRouter.get(
         return res.status(404).json({ status: false, message: "Not found." });
       }
 
-      res.json({ status: true, Data: mapRow(rows[0]) });
+      const mapped = await enrichActivityRows([mapRow(rows[0])]);
+      res.json({ status: true, Data: mapped[0] });
     } catch (err) {
       console.error("activity-log detail:", err);
       res.status(500).json({ status: false, message: err.message || "Failed to load detail." });

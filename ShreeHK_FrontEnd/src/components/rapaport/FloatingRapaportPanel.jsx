@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import dayjs from "dayjs";
 import {
   ArrowDown,
@@ -8,10 +8,13 @@ import {
   Minimize2,
   RefreshCw,
   X,
+  TrendingUp,
+  Calculator,
 } from "lucide-react";
 import useUIStore from "../../store/Ui.Store";
 import useRapaportLive from "../../hooks/useRapaportLive";
 import RapaportLiveChart from "./RapaportLiveChart";
+import RapCalculatorWidget from "./RapCalculatorWidget";
 import styles from "../../assets/scss/components/rapaport/rapaportPanel.module.scss";
 
 const INTERVALS = ["1H", "4H", "1D", "1W", "1M"];
@@ -31,6 +34,7 @@ const formatPct = (value) => {
 };
 
 const FloatingRapaportPanel = () => {
+  const [activeTab, setActiveTab] = useState("chart"); // "chart" | "calc"
   const panelOpen = useUIStore((s) => s.rapaportPanelOpen);
   const panelExpanded = useUIStore((s) => s.rapaportPanelExpanded);
   const interval = useUIStore((s) => s.rapaportInterval);
@@ -157,41 +161,110 @@ const FloatingRapaportPanel = () => {
                 </div>
               </div>
 
-              <div className={styles.chartSection}>
-                <div className={styles.intervalRow}>
-                  {INTERVALS.map((key) => (
-                    <button
-                      key={key}
-                      type="button"
-                      className={`${styles.intervalBtn} ${
-                        interval === key ? styles.intervalBtnActive : ""
-                      }`}
-                      onClick={() => setRapaportInterval(key)}
-                    >
-                      {key}
-                    </button>
-                  ))}
-                </div>
-
-                <RapaportLiveChart
-                  points={history?.points || []}
-                  changePct={changePct}
-                  height={panelExpanded ? 300 : 260}
-                  dailyHigh={live.dailyHigh}
-                  dailyLow={live.dailyLow}
-                />
+              {/* Tab Switcher: Live Trends vs Rap Calculator */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 6,
+                  padding: "4px",
+                  background: "var(--color-bg-muted, rgba(0,0,0,0.04))",
+                  borderRadius: "8px",
+                  margin: "12px 0 8px",
+                }}
+              >
+                <button
+                  type="button"
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    padding: "6px 10px",
+                    fontSize: "12px",
+                    fontWeight: activeTab === "chart" ? 600 : 500,
+                    borderRadius: "6px",
+                    border: "none",
+                    cursor: "pointer",
+                    background: activeTab === "chart" ? "var(--color-card-bg, #ffffff)" : "transparent",
+                    color: activeTab === "chart" ? "var(--color-primary, #1e3a8a)" : "var(--color-text-secondary, #64748b)",
+                    boxShadow: activeTab === "chart" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                    transition: "all 0.2s ease",
+                  }}
+                  onClick={() => setActiveTab("chart")}
+                >
+                  <TrendingUp size={14} />
+                  <span>Live Trends</span>
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    padding: "6px 10px",
+                    fontSize: "12px",
+                    fontWeight: activeTab === "calc" ? 600 : 500,
+                    borderRadius: "6px",
+                    border: "none",
+                    cursor: "pointer",
+                    background: activeTab === "calc" ? "var(--color-card-bg, #ffffff)" : "transparent",
+                    color: activeTab === "calc" ? "var(--color-primary, #1e3a8a)" : "var(--color-text-secondary, #64748b)",
+                    boxShadow: activeTab === "calc" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                    transition: "all 0.2s ease",
+                  }}
+                  onClick={() => setActiveTab("calc")}
+                >
+                  <Calculator size={14} />
+                  <span>Rap Calculator</span>
+                </button>
               </div>
 
-              <div className={styles.indicators}>
-                <div className={styles.indicator}>
-                  <ArrowUp size={12} color="#00b386" />
-                  <span>High {formatPrice(live.dailyHigh)}</span>
+              {activeTab === "calc" ? (
+                <div style={{ marginTop: 8 }}>
+                  <RapCalculatorWidget />
                 </div>
-                <div className={styles.indicator}>
-                  <ArrowDown size={12} color="#eb4d5c" />
-                  <span>Low {formatPrice(live.dailyLow)}</span>
-                </div>
-              </div>
+              ) : (
+                <>
+                  <div className={styles.chartSection}>
+                    <div className={styles.intervalRow}>
+                      {INTERVALS.map((key) => (
+                        <button
+                          key={key}
+                          type="button"
+                          className={`${styles.intervalBtn} ${
+                            interval === key ? styles.intervalBtnActive : ""
+                          }`}
+                          onClick={() => setRapaportInterval(key)}
+                        >
+                          {key}
+                        </button>
+                      ))}
+                    </div>
+
+                    <RapaportLiveChart
+                      points={history?.points || []}
+                      changePct={changePct}
+                      height={panelExpanded ? 300 : 260}
+                      dailyHigh={live.dailyHigh}
+                      dailyLow={live.dailyLow}
+                    />
+                  </div>
+
+                  <div className={styles.indicators}>
+                    <div className={styles.indicator}>
+                      <ArrowUp size={12} color="#00b386" />
+                      <span>High {formatPrice(live.dailyHigh)}</span>
+                    </div>
+                    <div className={styles.indicator}>
+                      <ArrowDown size={12} color="#eb4d5c" />
+                      <span>Low {formatPrice(live.dailyLow)}</span>
+                    </div>
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>

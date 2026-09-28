@@ -264,6 +264,100 @@ const InventoryStoneDetailModal = ({ open, onClose, stone }) => {
             <p className={styles.emptyHint}>No history records found.</p>
           )}
         </section>
+
+        {/* 1-Click WhatsApp Stone Card Share & Quick Actions */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 10,
+            padding: "12px 16px",
+            background: "color-mix(in srgb, var(--color-primary, #1e3a8a) 4%, transparent)",
+            borderRadius: 8,
+            border: "1px solid color-mix(in srgb, var(--color-primary, #1e3a8a) 15%, transparent)",
+            marginTop: 8,
+          }}
+        >
+          <span style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>
+            Quickly share this stone's certified specifications directly to clients.
+          </span>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              onClick={async () => {
+                const text = [
+                  `💎 SHREE HK DIAMONDS`,
+                  `SKU: ${toDisplay(stone.sku)}`,
+                  `Shape: ${toDisplay(stone.shape)}`,
+                  `Carat: ${toDisplay(stone.polishCarat || stone.polish_carat)} ct`,
+                  `Color: ${toDisplay(stone.color)}`,
+                  `Clarity: ${toDisplay(stone.clarity)}`,
+                  `Cut/Pol/Sym: ${toDisplay(stone.cut)}/${toDisplay(stone.polish)}/${toDisplay(stone.symmetry || stone.symmentry)}`,
+                  `Lab: ${toDisplay(stone.lab)} ${stone.certificate || stone.report_no ? `(#${stone.certificate || stone.report_no})` : ""}`,
+                  `Price: ${toCurrency(stone.price)}/ct | Total: ${toCurrency(stone.amount)}`,
+                ].join("\n");
+                try {
+                  await navigator.clipboard.writeText(text);
+                  const { toastSuccess } = await import("../../utils/toastNotify");
+                  toastSuccess("Diamond specifications copied to clipboard!");
+                } catch {
+                  // fallback
+                }
+              }}
+              style={{
+                padding: "6px 12px",
+                fontSize: 12,
+                fontWeight: 500,
+                borderRadius: 6,
+                border: "1px solid var(--color-border, #cbd5e1)",
+                background: "var(--color-card-bg, #ffffff)",
+                color: "var(--color-text-primary, #0f172a)",
+                cursor: "pointer",
+              }}
+            >
+              📋 Copy Specs
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const text = [
+                  `💎 *SHREE HK DIAMONDS* 💎`,
+                  `━━━━━━━━━━━━━━━━━━━━`,
+                  `📌 *SKU:* ${toDisplay(stone.sku)}`,
+                  `🔹 *Shape:* ${toDisplay(stone.shape)}`,
+                  `⚖️ *Carat:* ${toDisplay(stone.polishCarat || stone.polish_carat)} ct`,
+                  `🎨 *Color:* ${toDisplay(stone.color)}`,
+                  `🔍 *Clarity:* ${toDisplay(stone.clarity)}`,
+                  `✂️ *Cut / Pol / Sym:* ${toDisplay(stone.cut)} / ${toDisplay(stone.polish)} / ${toDisplay(stone.symmetry || stone.symmentry)}`,
+                  `🏷️ *Lab:* ${toDisplay(stone.lab)} ${stone.certificate || stone.report_no ? `(#${stone.certificate || stone.report_no})` : ""}`,
+                  `📍 *Location:* ${toDisplay(stone.location || stone.loc)}`,
+                  `💰 *Price:* ${toCurrency(stone.price)} / ct`,
+                  `💵 *Amount:* ${toCurrency(stone.amount)}`,
+                  `━━━━━━━━━━━━━━━━━━━━`,
+                  `_Inquiry from ShreeHK ERP_`,
+                ].join("\n");
+                window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, "_blank");
+              }}
+              style={{
+                padding: "6px 14px",
+                fontSize: 12,
+                fontWeight: 600,
+                borderRadius: 6,
+                border: "none",
+                background: "#25D366",
+                color: "#ffffff",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              💬 Share on WhatsApp
+            </button>
+          </div>
+        </div>
       </div>
     </Modal>
   );

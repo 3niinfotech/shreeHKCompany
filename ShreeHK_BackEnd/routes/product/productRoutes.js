@@ -1052,6 +1052,21 @@ productRouter.post("/product/pair/assign", authenticateToken, async (req, res) =
   }
 });
 
+productRouter.get("/product/pair/suggest", authenticateToken, async (req, res) => {
+  try {
+    const productId = req.query.productId;
+    const caratTolerance = req.query.caratTolerance;
+    if (!productId) {
+      return res.status(400).json({ status: false, message: "productId is required" });
+    }
+    const result = await boxParcelService.findPairCandidates(productId, { caratTolerance });
+    return res.status(200).json(result);
+  } catch (error) {
+    const code = error.statusCode || 500;
+    return res.status(code).json({ status: false, message: error.message || "Server error" });
+  }
+});
+
 productRouter.post("/product/pair/unpair", authenticateToken, async (req, res) => {
   try {
     const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];

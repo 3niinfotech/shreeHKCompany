@@ -91,19 +91,19 @@ const getQuickNotes = async (userId, companyId, isSuperAdmin = false) => {
       SELECT ${SELECT_FIELDS}
       FROM dai_quick_notes q
       ${JOINS}
-      WHERE q.company_id = ?
+      WHERE (q.company_id = ? OR ? = 0 OR ? IS NULL)
       ORDER BY q.completed ASC, q.target_date ASC, q.id DESC
     `;
-    params = [companyId];
+    params = [companyId, companyId, companyId];
   } else {
     sql = `
       SELECT ${SELECT_FIELDS}
       FROM dai_quick_notes q
       ${JOINS}
-      WHERE q.company_id = ? AND (q.assigned_to = ? OR (q.assigned_to IS NULL AND q.user_id = ?))
+      WHERE (q.assigned_to = ? OR (q.assigned_to IS NULL AND q.user_id = ?))
       ORDER BY q.completed ASC, q.target_date ASC, q.id DESC
     `;
-    params = [companyId, userId, userId];
+    params = [userId, userId];
   }
   const rows = await helper.query(sql, params);
   return rows || [];
@@ -115,13 +115,12 @@ const getTodayReminders = async (userId, companyId) => {
     SELECT ${SELECT_FIELDS}
     FROM dai_quick_notes q
     ${JOINS}
-    WHERE q.company_id = ? 
-      AND (q.assigned_to = ? OR (q.assigned_to IS NULL AND q.user_id = ?))
+    WHERE (q.assigned_to = ? OR (q.assigned_to IS NULL AND q.user_id = ?))
       AND q.completed = 0
       AND q.target_date <= CURDATE()
     ORDER BY q.target_date ASC, q.priority DESC, q.id DESC
   `;
-  const rows = await helper.query(sql, [companyId, userId, userId]);
+  const rows = await helper.query(sql, [userId, userId]);
   return rows || [];
 };
 
@@ -195,11 +194,11 @@ const updateQuickNote = async (userId, companyId, noteId, { text, target_date, p
 
   if (updates.length === 0) return null;
 
-  params.push(noteId, companyId);
+  params.push(noteId);
   let sql = `
     UPDATE dai_quick_notes
     SET ${updates.join(", ")}
-    WHERE id = ? AND company_id = ?
+    WHERE id = ?
   `;
 
   if (!isSuperAdmin) {
@@ -226,9 +225,9 @@ const deleteQuickNote = async (userId, companyId, noteId, isSuperAdmin = false) 
   }
   const sql = `
     DELETE FROM dai_quick_notes
-    WHERE id = ? AND company_id = ?
+    WHERE id = ?
   `;
-  const result = await helper.query(sql, [noteId, companyId]);
+  const result = await helper.query(sql, [noteId]);
   return result.affectedRows > 0;
 };
 

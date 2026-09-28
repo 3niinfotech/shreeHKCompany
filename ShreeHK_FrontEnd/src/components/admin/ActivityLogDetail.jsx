@@ -329,22 +329,25 @@ const ActivityLogDetail = ({ record, compact = false }) => {
                 <tr>
                   <th>#</th>
                   <th>SKU</th>
+                  <th>LAB</th>
+                  <th>SHAPE</th>
+                  <th>CARAT</th>
+                  <th>PRICE</th>
+                  <th>LOCATION</th>
+                  {lineItems.some((x) => x.category) ? <th>CATEGORY</th> : null}
+                  <th>AMOUNT</th>
+                  <th>COLOR</th>
+                  <th>CLARITY</th>
+                  <th>CUT</th>
+                  <th>POLISH</th>
+                  <th>REPORT NO</th>
                   <th>MFG CODE</th>
                   <th>D. NO</th>
                   <th>R.PCS</th>
                   <th>P.PCS</th>
-                  <th>P.CARAT</th>
                   <th>R.CARAT</th>
                   <th>COST</th>
-                  <th>PRICE</th>
-                  <th>AMOUNT</th>
-                  <th>COLOR</th>
-                  <th>CLARITY</th>
-                  <th>SHAPE</th>
-                  <th>LAB</th>
-                  <th>REPORT NO</th>
                   <th>MEASUREMENTS</th>
-                  <th>LOC</th>
                 </tr>
               </thead>
               <tbody>
@@ -352,22 +355,25 @@ const ActivityLogDetail = ({ record, compact = false }) => {
                   <tr key={item.id || item.sku || idx}>
                     <td>{idx + 1}</td>
                     <td><strong>{item.sku || "—"}</strong></td>
+                    <td>{item.lab || "—"}</td>
+                    <td>{item.shape || "—"}</td>
+                    <td><strong>{item.p_carat ?? item.polish_carat ?? "—"}</strong></td>
+                    <td>{item.price != null && item.price !== "" ? item.price : "—"}</td>
+                    <td>{item.loc || item.location || "—"}</td>
+                    {lineItems.some((x) => x.category) ? <td>{item.category || "—"}</td> : null}
+                    <td><strong>{item.amount != null && item.amount !== "" ? item.amount : "—"}</strong></td>
+                    <td>{item.color || item.main_color || "—"}</td>
+                    <td>{item.clarity || "—"}</td>
+                    <td>{item.cut || "—"}</td>
+                    <td>{item.polish || "—"}</td>
+                    <td>{item.report_no || item.reportno || "—"}</td>
                     <td>{item.mfg_code || item.mfg || "—"}</td>
                     <td>{item.d_no || item.dno || "—"}</td>
                     <td>{item.r_pcs ?? item.rought_pcs ?? "—"}</td>
                     <td>{item.p_pcs ?? item.polish_pcs ?? "—"}</td>
-                    <td><strong>{item.p_carat ?? item.polish_carat ?? "—"}</strong></td>
                     <td>{item.r_carat ?? item.rought_carat ?? "—"}</td>
                     <td>{item.cost != null && item.cost !== "" ? item.cost : "—"}</td>
-                    <td>{item.price != null && item.price !== "" ? item.price : "—"}</td>
-                    <td><strong>{item.amount != null && item.amount !== "" ? item.amount : "—"}</strong></td>
-                    <td>{item.color || item.main_color || "—"}</td>
-                    <td>{item.clarity || "—"}</td>
-                    <td>{item.shape || "—"}</td>
-                    <td>{item.lab || "—"}</td>
-                    <td>{item.report_no || item.reportno || "—"}</td>
                     <td>{item.measurements || item.measurement || "—"}</td>
-                    <td>{item.loc || item.location || "—"}</td>
                   </tr>
                 ))}
               </tbody>
