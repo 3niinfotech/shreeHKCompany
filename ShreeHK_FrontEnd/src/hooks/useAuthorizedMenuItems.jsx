@@ -36,31 +36,39 @@ export default function useAuthorizedMenuItems(onItemClick) {
       routes
         .filter((item) => item.name && !item.hideFromNav)
         .map((item, index) => {
-          const hasChildren = item.children && item.children.length > 0;
+          const childItems = Array.isArray(item.children) && item.children.length
+            ? buildMenuItems(item.children, index)
+            : [];
+          const hasChildren = childItems.length > 0;
+          // Menu-only parents use *-menu paths; never navigate those.
+          const isMenuOnlyParent =
+            hasChildren || (typeof item.path === "string" && item.path.endsWith("-menu"));
 
           const itemKey =
             item.path && item.path !== "/"
               ? item.path
               : `parent-${item.name}-${parentIndex}-${index}`;
 
-          return {
+          const menuItem = {
             key: itemKey,
             label: item.name,
-            icon: item.icon ? renderIcon(item.icon) : null,
-            children: hasChildren
-              ? buildMenuItems(item.children, index)
-              : null,
+            icon: item.icon ? renderIcon(item.icon) : undefined,
             onMouseEnter: () => prefetchRouteTree(item),
-            onMouseDown: hasChildren
-              ? null
-              : (event) => {
-                  if (event.button !== 0 || !item.path) return;
-                  prefetchRoute(item.path);
-                  goToPath(item.path);
-                  onItemClick?.();
-                },
-            onClick: hasChildren ? null : () => onItemClick?.(),
           };
+
+          if (hasChildren) {
+            menuItem.children = childItems;
+            return menuItem;
+          }
+
+          menuItem.onMouseDown = (event) => {
+            if (event.button !== 0 || !item.path || isMenuOnlyParent) return;
+            prefetchRoute(item.path);
+            goToPath(item.path);
+            onItemClick?.();
+          };
+          menuItem.onClick = () => onItemClick?.();
+          return menuItem;
         }),
     [goToPath, onItemClick]
   );

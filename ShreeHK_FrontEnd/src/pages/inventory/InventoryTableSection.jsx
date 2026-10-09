@@ -3,7 +3,7 @@ import { Table } from "antd";
 
 const getRowKey = (record) => String(record.id);
 const TABLE_LOCALE = { emptyText: "No data found" };
-const TABLE_HEADER_FOOTER_RESERVE = 48;
+const TABLE_HEADER_FOOTER_RESERVE = 39;
 const TABLE_BODY_MIN_HEIGHT = 160;
 
 const InventoryTableSection = React.memo(function InventoryTableSection({

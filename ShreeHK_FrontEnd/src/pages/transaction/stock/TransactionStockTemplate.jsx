@@ -20,10 +20,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useFetchApi, useDeleteApiRequest, usePostApiRequest } from '../../../api/ApiFunction';
 import { api } from '../../../api/client/axiosInstance';
-import { ENDPOINTS } from '../../../api/endpoints';
+import { ENDPOINTS, QUERY_KEYS } from '../../../api/endpoints';
 import { ConfirmDeleteModal, BaseModal } from '../../../components/common/modals';
 import DynamicForm from '../../../components/common/ui/DynamicFormField';
 import GiaReturnModal from '../../../components/transaction/stock/GiaReturnModal';
+import MemoConvertModal from '../../../components/transaction/stock/MemoConvertModal';
 import TransactionInvoicePreviewModal from '../../../components/transaction/invoice/TransactionInvoicePreviewModal';
 import AdvancedFilterPanel, { FilterField, filterPanelStyles } from '../../../components/common/filters/AdvancedFilterPanel';
 import PageHeroHeader from '../../../components/common/PageHeroHeader';
@@ -112,6 +113,13 @@ const TransactionStockTemplate = ({
   const [deleteModal, setDeleteModal] = useState({ open: false, record: null });
   const [invoiceModal, setInvoiceModal] = useState({ open: false, record: null });
   const [giaReturnModal, setGiaReturnModal] = useState({ open: false, record: null, productIds: [] });
+  const [memoConvertModal, setMemoConvertModal] = useState({
+    open: false,
+    mode: 'sale',
+    record: null,
+    productIds: [],
+  });
+  const [memoConvertLoading, setMemoConvertLoading] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editId, setEditId] = useState(null);
   const [editingRecord, setEditingRecord] = useState(null);
@@ -182,8 +190,26 @@ const TransactionStockTemplate = ({
 
     const normalizedProducts = productList.map((p) => ({
       ...p,
-      sell_price: p.sell_price ?? p.purchase_price ?? p.price,
-      sell_amount: p.sell_amount ?? p.purchase_amount ?? p.amount,
+      // Venya sgrid: sell_price/amount == 0 → fall back to price/amount
+      sell_price: Number(p.sell_price) === 0 || p.sell_price == null
+        ? (p.purchase_price ?? p.price)
+        : p.sell_price,
+      sell_amount: Number(p.sell_amount) === 0 || p.sell_amount == null
+        ? (p.purchase_amount ?? p.amount)
+        : p.sell_amount,
+      location: p.location ?? p.loc ?? "",
+      group_type: p.group_type ?? p.groupType ?? "",
+      cost: p.cost ?? "",
+      remark: p.remark ?? "",
+      lab: p.lab ?? "",
+      mfg_code: p.mfg_code ?? "",
+      diamond_no: p.diamond_no ?? p.d_no ?? "",
+      report_no: p.report_no ?? "",
+      shape: p.shape ?? "",
+      clarity: p.clarity ?? "",
+      intensity: p.intensity ?? "",
+      overtone: p.overtone ?? "",
+      color: p.color ?? p.main_color ?? "",
     }));
 
     editForm.setFieldsValue({
@@ -199,6 +225,21 @@ const TransactionStockTemplate = ({
       citi: details.citi === 1 || details.citi === true,
       dbs: details.dbs === 1 || details.dbs === true,
       sc: details.sc === 1 || details.sc === true,
+      boc_sksm: details.boc_sksm === 1 || details.boc_sksm === true,
+      citi_sksm: details.citi_sksm === 1 || details.citi_sksm === true,
+      shipping_name: details.shipping_name != null && details.shipping_name !== ''
+        ? String(details.shipping_name)
+        : undefined,
+      origin_of: details.origin_of != null && details.origin_of !== ''
+        ? String(details.origin_of)
+        : undefined,
+      manufacture_origin: details.manufacture_origin != null && details.manufacture_origin !== ''
+        ? String(details.manufacture_origin)
+        : undefined,
+      shipping_charge: details.shipping_charge ?? '',
+      cif: details.cif ?? '',
+      vat_percent: details.vat_percent != null ? String(details.vat_percent) : '0',
+      vat_amount: details.vat_amount ?? '',
     });
 
     setFetchedProducts(normalizedProducts);
@@ -264,20 +305,97 @@ const TransactionStockTemplate = ({
     return Array.isArray(d) ? d.map((item) => ({ label: item.name, value: String(item.id) })) : [];
   }, [companyData]);
 
-  const editMainFields = useMemo(() => [
-    { name: 'entryno', label: 'Entry', type: 'text', required: true, span: 6, disabled: true },
-    { name: 'type', label: 'Type', type: 'text', required: true, span: 6, disabled: true },
-    { name: 'place', label: 'Place', type: 'text', span: 6 },
-    { name: 'date', label: 'Date', type: 'date', required: true, span: 6 },
-    { name: 'reference', label: 'Reference', type: 'text', span: 6 },
-    { name: 'invoiceno', label: 'Invoice No', type: 'text', required: true, span: 6, disabled: true },
-    { name: 'invoicedate', label: 'Invoice Date', type: 'date', span: 6 },
-    { name: 'terms', label: 'Terms', type: 'text', span: 6 },
-    { name: 'duedate', label: 'Due Date', type: 'date', span: 6 },
-    { name: 'party', label: 'Party Name', type: 'select', options: partyOptions, required: true, span: 6 },
-    { name: 'other_party', label: 'Other Party', type: 'select', options: partyOptions, span: 6 },
-    { name: 'paid_amount', label: 'Paid Amount', type: 'number', span: 6 },
-  ], [partyOptions]);
+  // Venya sale edit (sform.php): sale / export / consign share this modal layout
+  const isVenyaSaleEdit =
+    stockType === 'sale' ||
+    ['sale', 'export', 'consign'].includes(String(editingRecord?.type || '').toLowerCase());
+
+  const { data: shippingMasterData } = useFetchApi(
+    [QUERY_KEYS.shipping, 'sale-edit'],
+    ENDPOINTS.shipping.list,
+    { limit: 500 },
+    'GET',
+    { enabled: isEditModalOpen && isVenyaSaleEdit }
+  );
+  const { data: originMasterData } = useFetchApi(
+    [QUERY_KEYS.origins, 'sale-edit'],
+    ENDPOINTS.origin.list,
+    { limit: 500 },
+    'GET',
+    { enabled: isEditModalOpen && isVenyaSaleEdit }
+  );
+
+  const shippingOptions = useMemo(() => {
+    const d = shippingMasterData?.Data || shippingMasterData?.data || shippingMasterData;
+    const list = Array.isArray(d) ? d : [];
+    return list.map((item) => ({
+      label: item.name || item.shipping_name || String(item.id),
+      value: String(item.id),
+    }));
+  }, [shippingMasterData]);
+
+  const originOptions = useMemo(() => {
+    const d = originMasterData?.Data || originMasterData?.data || originMasterData;
+    const list = Array.isArray(d) ? d : [];
+    return list.map((item) => ({
+      label: item.name || item.origin_name || String(item.id),
+      value: String(item.id),
+    }));
+  }, [originMasterData]);
+
+  const editMainFields = useMemo(() => {
+    if (isVenyaSaleEdit) {
+      // Match Venya sform.php header (no Type field — type is hidden)
+      return [
+        { name: 'entryno', label: 'Entry', type: 'text', required: true, span: 6, disabled: true },
+        { name: 'place', label: 'Sale @', type: 'text', span: 6 },
+        { name: 'date', label: 'Date', type: 'date', required: true, span: 6 },
+        { name: 'reference', label: 'Reference', type: 'text', span: 6 },
+        { name: 'invoiceno', label: 'Invoice No.', type: 'text', required: true, span: 6, disabled: true },
+        { name: 'invoicedate', label: 'Invoice Date', type: 'date', span: 6 },
+        { name: 'terms', label: 'Terms', type: 'text', span: 6 },
+        { name: 'duedate', label: 'Due Date', type: 'date', span: 6 },
+        { name: 'party', label: 'Party Name', type: 'select', options: partyOptions, required: true, span: 12 },
+        { name: 'paid_amount', label: 'Paid Amount', type: 'number', span: 6 },
+        { name: 'due_amount', label: 'Due Amount', type: 'number', span: 6 },
+        { name: 'other_party', label: 'Other Party', type: 'select', options: partyOptions, span: 12 },
+      ];
+    }
+    return [
+      { name: 'entryno', label: 'Entry', type: 'text', required: true, span: 6, disabled: true },
+      { name: 'type', label: 'Type', type: 'text', required: true, span: 6, disabled: true },
+      { name: 'place', label: 'Place', type: 'text', span: 6 },
+      { name: 'date', label: 'Date', type: 'date', required: true, span: 6 },
+      { name: 'reference', label: 'Reference', type: 'text', span: 6 },
+      { name: 'invoiceno', label: 'Invoice No', type: 'text', required: true, span: 6, disabled: true },
+      { name: 'invoicedate', label: 'Invoice Date', type: 'date', span: 6 },
+      { name: 'terms', label: 'Terms', type: 'text', span: 6 },
+      { name: 'duedate', label: 'Due Date', type: 'date', span: 6 },
+      { name: 'party', label: 'Party Name', type: 'select', options: partyOptions, required: true, span: 6 },
+      { name: 'other_party', label: 'Other Party', type: 'select', options: partyOptions, span: 6 },
+      { name: 'paid_amount', label: 'Paid Amount', type: 'number', span: 6 },
+    ];
+  }, [partyOptions, isVenyaSaleEdit]);
+
+  const watchInvoiceDate = Form.useWatch('invoicedate', editForm);
+  const watchTerms = Form.useWatch('terms', editForm);
+  const watchShippingCharge = Form.useWatch('shipping_charge', editForm);
+  const watchVatPercent = Form.useWatch('vat_percent', editForm);
+
+  useEffect(() => {
+    if (!isEditModalOpen || !isVenyaSaleEdit || !watchInvoiceDate) return;
+    const base = dayjs(watchInvoiceDate);
+    if (!base.isValid()) return;
+    const termsRaw = String(watchTerms ?? '').trim();
+    if (termsRaw === '') {
+      editForm.setFieldsValue({ duedate: base });
+      return;
+    }
+    const days = parseInt(termsRaw, 10);
+    if (!Number.isNaN(days)) {
+      editForm.setFieldsValue({ duedate: base.add(days, 'day') });
+    }
+  }, [watchInvoiceDate, watchTerms, isEditModalOpen, isVenyaSaleEdit, editForm]);
 
   const invoiceFromUrl = (searchParams.get('invoice') || '').trim();
   const typeFromUrl = (searchParams.get('type') || '').trim();
@@ -470,10 +588,194 @@ const TransactionStockTemplate = ({
   const handleProductFieldChange = (index, field, value) => {
     setFetchedProducts((prev) => {
       const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
+      const row = { ...updated[index], [field]: value };
+      // Venya sale.php calAmount: Amount = Price × P.Carat
+      if (field === "sell_price" || field === "polish_carat") {
+        const price = Number(field === "sell_price" ? value : row.sell_price ?? row.price) || 0;
+        const carat = Number(field === "polish_carat" ? value : row.polish_carat) || 0;
+        row.sell_amount = (price * carat).toFixed(2);
+      }
+      updated[index] = row;
       return updated;
     });
   };
+
+  // Outward edit modals only (Sale / Out Memo / GIA) — not inward or stone-update
+  const allowAddProductInEdit =
+    actions.allowAddProductInEdit ??
+    !String(actions.editGetEndpoint || "").includes("inward");
+
+  const handleAddProductRow = () => {
+    setFetchedProducts((prev) => [
+      ...prev,
+      {
+        _tempId: `new-${Date.now()}-${prev.length}`,
+        mfg_code: "",
+        diamond_no: "",
+        sku: "",
+        polish_pcs: "",
+        polish_carat: "",
+        cost: "",
+        sell_price: "",
+        sell_amount: "",
+        location: "",
+        remark: "",
+        lab: "",
+        group_type: "",
+        report_no: "",
+        shape: "",
+        clarity: "",
+        intensity: "",
+        overtone: "",
+        color: "",
+      },
+    ]);
+  };
+
+  const handleRemoveProductRow = (index) => {
+    setFetchedProducts((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const editProductTotals = useMemo(() => {
+    let pcs = 0;
+    let carat = 0;
+    let amount = 0;
+    fetchedProducts.forEach((p) => {
+      pcs += Number(p.polish_pcs) || 0;
+      carat += Number(p.polish_carat) || 0;
+      amount += Number(p.sell_amount ?? p.amount) || 0;
+    });
+    // Venya sale edit: Price total = Amount / Carats
+    return {
+      pcs,
+      carat,
+      amount,
+      price: carat > 0 ? amount / carat : 0,
+    };
+  }, [fetchedProducts]);
+
+  // Venya sale edit (sgrid.php): SKU, P.Pcs, P.Carat, Cost, Price, Amount, LOC, Remark, Lab
+  const isVenyaSaleEditGrid = isVenyaSaleEdit;
+
+  useEffect(() => {
+    if (!isEditModalOpen || !isVenyaSaleEdit) return;
+    const vatPercent = Number(watchVatPercent) || 0;
+    const base = editProductTotals.amount + (Number(watchShippingCharge) || 0);
+    if (vatPercent > 0 && base > 0) {
+      editForm.setFieldsValue({ vat_amount: (base * vatPercent / 100).toFixed(2) });
+    } else {
+      editForm.setFieldsValue({ vat_amount: '' });
+    }
+  }, [
+    watchVatPercent,
+    watchShippingCharge,
+    editProductTotals.amount,
+    isEditModalOpen,
+    isVenyaSaleEdit,
+    editForm,
+  ]);
+
+  const editProductColumns = useMemo(() => {
+    const textCol = (title, field, width, opts = {}) => ({
+      title,
+      dataIndex: field,
+      key: field,
+      width,
+      fixed: opts.fixed,
+      render: (val, _record, idx) => (
+        <Input
+          type={opts.type || "text"}
+          value={val ?? ""}
+          placeholder={opts.placeholder || ""}
+          className={styles.stockEditCellInput}
+          onChange={(e) => handleProductFieldChange(idx, field, e.target.value)}
+        />
+      ),
+    });
+
+    const cols = [
+      {
+        title: "No",
+        key: "no",
+        width: 50,
+        fixed: "left",
+        align: "center",
+        render: (_v, _r, idx) => idx + 1,
+      },
+      ...(isVenyaSaleEditGrid
+        ? [
+            textCol("SKU", "sku", 120, { fixed: "left", placeholder: "SKU" }),
+            textCol("P.Pcs", "polish_pcs", 80, { type: "number", placeholder: "0" }),
+            textCol("P.Carat", "polish_carat", 90, { type: "number", placeholder: "0.00" }),
+            textCol("Cost", "cost", 90, { type: "number", placeholder: "0.00" }),
+            textCol("Price", "sell_price", 90, { type: "number", placeholder: "0.00" }),
+            textCol("Amount", "sell_amount", 100, { type: "number", placeholder: "0.00" }),
+            textCol("LOC", "location", 90, { placeholder: "LOC" }),
+            textCol("Remark", "remark", 120, { placeholder: "Remark" }),
+            textCol("Lab", "lab", 80, { placeholder: "Lab" }),
+          ]
+        : [
+            textCol("Mfg. code", "mfg_code", 100, { fixed: "left", placeholder: "Mfg" }),
+            textCol("D. No.", "diamond_no", 90, { fixed: "left", placeholder: "D.No" }),
+            textCol("SKU", "sku", 120, { fixed: "left", placeholder: "SKU" }),
+            textCol("Pcs", "polish_pcs", 80, { type: "number", placeholder: "0" }),
+            textCol("Carat", "polish_carat", 90, { type: "number", placeholder: "0.00" }),
+            textCol("Cost", "cost", 90, { type: "number", placeholder: "0.00" }),
+            textCol("Price", "sell_price", 90, { type: "number", placeholder: "0.00" }),
+            textCol("Amount", "sell_amount", 100, { type: "number", placeholder: "0.00" }),
+            textCol("LOC", "location", 90, { placeholder: "LOC" }),
+            textCol("Remark", "remark", 120, { placeholder: "Remark" }),
+            textCol("Lab", "lab", 80, { placeholder: "Lab" }),
+            textCol("Group Type", "group_type", 100, { placeholder: "Group" }),
+            textCol("Report No.", "report_no", 110, { placeholder: "Report" }),
+            textCol("Shape", "shape", 90, { placeholder: "Shape" }),
+            textCol("Clarity", "clarity", 90, { placeholder: "Clarity" }),
+            textCol("Intensity", "intensity", 90, { placeholder: "Intensity" }),
+            textCol("Overtone", "overtone", 90, { placeholder: "Overtone" }),
+            textCol("Color", "color", 80, { placeholder: "Color" }),
+          ]),
+    ];
+
+    if (allowAddProductInEdit) {
+      cols.push({
+        title: "",
+        key: "action",
+        width: 48,
+        fixed: "right",
+        align: "center",
+        render: (_val, _record, idx) => (
+          <Button
+            type="text"
+            danger
+            size="small"
+            icon={<DeleteOutlined />}
+            onClick={() => handleRemoveProductRow(idx)}
+            aria-label="Remove row"
+          />
+        ),
+      });
+    }
+    return cols;
+  }, [allowAddProductInEdit, isVenyaSaleEditGrid]);
+
+  const editProductSkeletonColumns = useMemo(
+    () =>
+      editProductColumns.map((col) => ({
+        ...col,
+        render: () => (
+          <span
+            style={{
+              display: "inline-block",
+              width: "70%",
+              height: 12,
+              borderRadius: 6,
+              background: "var(--color-bg-muted)",
+            }}
+          />
+        ),
+      })),
+    [editProductColumns]
+  );
 
   const handleSaveEdit = async () => {
     try {
@@ -489,9 +791,13 @@ const TransactionStockTemplate = ({
         citi: values.citi ? 1 : 0,
         dbs: values.dbs ? 1 : 0,
         sc: values.sc ? 1 : 0,
+        boc_sksm: values.boc_sksm ? 1 : 0,
+        citi_sksm: values.citi_sksm ? 1 : 0,
         date: values.date?.format?.('YYYY-MM-DD') ?? values.date,
         invoicedate: values.invoicedate?.format?.('YYYY-MM-DD') ?? values.invoicedate,
         duedate: values.duedate?.format?.('YYYY-MM-DD') ?? values.duedate,
+        shipping_charge: values.shipping_charge ?? 0,
+        vat_percent: values.vat_percent ?? 0,
         products: fetchedProducts,
       };
 
@@ -517,15 +823,45 @@ const TransactionStockTemplate = ({
       setGiaReturnModal({ open: true, record, productIds: products });
       return;
     }
-    postAction(actions.returnEndpoint, { id: record.id, outid: record.id, products }).then((ok) => {
-      if (ok) setSelectedProducts((prev) => ({ ...prev, [record.id]: [] }));
-    });
+    setMemoConvertModal({ open: true, mode: 'return', record, productIds: products });
   };
 
   const handleMemoToSale = (record) => {
     const products = getSelected(record.id);
     if (!products.length) return;
-    postAction(actions.memoToSaleEndpoint, { memo_id: record.id, id: record.id, products, type: 'sale', party: record.party });
+    setMemoConvertModal({ open: true, mode: 'sale', record, productIds: products });
+  };
+
+  const closeMemoConvertModal = () => {
+    setMemoConvertModal({ open: false, mode: 'sale', record: null, productIds: [] });
+    setMemoConvertLoading(false);
+  };
+
+  const handleMemoConvertConfirm = async (payload) => {
+    const endpoint =
+      memoConvertModal.mode === 'sale' ? actions.memoToSaleEndpoint : actions.returnEndpoint;
+    if (!endpoint) return;
+    setMemoConvertLoading(true);
+    try {
+      const body =
+        memoConvertModal.mode === 'sale'
+          ? payload
+          : {
+              id: payload.id,
+              outid: payload.id,
+              products: payload.products,
+              record: payload.record,
+            };
+      const ok = await postAction(endpoint, body);
+      if (ok) {
+        setSelectedProducts((prev) => ({ ...prev, [payload.id]: [] }));
+        closeMemoConvertModal();
+      } else {
+        setMemoConvertLoading(false);
+      }
+    } catch (e) {
+      setMemoConvertLoading(false);
+    }
   };
 
   const handleMemoToPurchase = (record) => {
@@ -1147,6 +1483,17 @@ const TransactionStockTemplate = ({
         />
       )}
 
+      <MemoConvertModal
+        open={memoConvertModal.open}
+        mode={memoConvertModal.mode}
+        record={memoConvertModal.record}
+        productIds={memoConvertModal.productIds}
+        products={memoConvertModal.record?.products || []}
+        loading={memoConvertLoading || actionLoading}
+        onClose={closeMemoConvertModal}
+        onConfirm={handleMemoConvertConfirm}
+      />
+
       <TransactionInvoicePreviewModal
         open={invoiceModal.open}
         onClose={closeInvoice}
@@ -1195,72 +1542,184 @@ const TransactionStockTemplate = ({
                 ) : (
                   <>
                     <DynamicForm fields={editMainFields} />
-                    <Row gutter={[16, 0]} className={styles.stockEditPayRow}>
-                      <Col span={6}>
-                        <Form.Item name="due_amount" label="Due Amount">
-                          <InputNumber min={0} placeholder="0.00" style={{ width: '100%', height: 40 }} />
+                    {isVenyaSaleEdit ? (
+                      <Row gutter={[16, 0]} className={styles.stockEditPayRow}>
+                        <Col span={24}>
+                          <Form.Item
+                            label={<span className={styles.stockEditBankLabel}>Bank</span>}
+                            colon={false}
+                          >
+                            <div className={`${styles.stockEditBankSlot} ${styles.stockEditBankSlotWide}`}>
+                              <Form.Item name="boc" valuePropName="checked" noStyle>
+                                <Checkbox>BOC</Checkbox>
+                              </Form.Item>
+                              <Form.Item name="citi" valuePropName="checked" noStyle>
+                                <Checkbox>Citi</Checkbox>
+                              </Form.Item>
+                              <Form.Item name="dbs" valuePropName="checked" noStyle>
+                                <Checkbox>DBS</Checkbox>
+                              </Form.Item>
+                              <Form.Item name="sc" valuePropName="checked" noStyle>
+                                <Checkbox>SC</Checkbox>
+                              </Form.Item>
+                              <Form.Item name="boc_sksm" valuePropName="checked" noStyle>
+                                <Checkbox>BOC-SKSM</Checkbox>
+                              </Form.Item>
+                              <Form.Item name="citi_sksm" valuePropName="checked" noStyle>
+                                <Checkbox>DBS-SKSM</Checkbox>
+                              </Form.Item>
+                            </div>
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    ) : (
+                      <Row gutter={[16, 0]} className={styles.stockEditPayRow}>
+                        <Col span={8}>
+                          <Form.Item name="due_amount" label="Due Amount">
+                            <InputNumber min={0} placeholder="0.00" style={{ width: '100%', height: 40 }} />
+                          </Form.Item>
+                        </Col>
+                        <Col span={16}>
+                          <Form.Item
+                            label={<span className={styles.stockEditBankLabel}>Bank</span>}
+                            colon={false}
+                          >
+                            <div className={styles.stockEditBankSlot}>
+                              <Form.Item name="boc" valuePropName="checked" noStyle>
+                                <Checkbox>BOC</Checkbox>
+                              </Form.Item>
+                              <Form.Item name="citi" valuePropName="checked" noStyle>
+                                <Checkbox>CITI</Checkbox>
+                              </Form.Item>
+                              <Form.Item name="dbs" valuePropName="checked" noStyle>
+                                <Checkbox>DBS</Checkbox>
+                              </Form.Item>
+                              <Form.Item name="sc" valuePropName="checked" noStyle>
+                                <Checkbox>SC</Checkbox>
+                              </Form.Item>
+                            </div>
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    )}
+                  </>
+                )}
+                <div className={styles.stockEditProductsHead}>
+                  <span>{isVenyaSaleEdit ? `Total Record : ${fetchedProducts.length}` : 'Products'}</span>
+                  {allowAddProductInEdit && !isEditLoading ? (
+                    <Button
+                      type="primary"
+                      size="small"
+                      icon={<PlusOutlined />}
+                      className={styles.stockEditAddProductBtn}
+                      onClick={handleAddProductRow}
+                    >
+                      Add New Data
+                    </Button>
+                  ) : null}
+                </div>
+                <div className={styles.stockEditProductWrap}>
+                  <Table
+                    className={styles.stockEditProductTable}
+                    loading={false}
+                    columns={isEditLoading ? editProductSkeletonColumns : editProductColumns}
+                    dataSource={isEditLoading ? Array.from({ length: 3 }, (_, i) => ({ id: `sk-p-${i}` })) : fetchedProducts}
+                    rowKey={(r) => r.id ?? r._tempId}
+                    pagination={false}
+                    size="small"
+                    scroll={{ x: isVenyaSaleEditGrid ? 980 : 1900, y: 220 }}
+                    locale={
+                      allowAddProductInEdit
+                        ? { emptyText: 'No products — click Add New Data' }
+                        : undefined
+                    }
+                  />
+                  {!isEditLoading && fetchedProducts.length > 0 ? (
+                    <div className={styles.stockEditTotalsBar}>
+                      <div className={styles.stockEditTotalsMetrics}>
+                        <span>Pcs : <b>{editProductTotals.pcs}</b></span>
+                        <span>Carats : <b>{editProductTotals.carat.toFixed(3)}</b></span>
+                        <span>Price : <b>{editProductTotals.price.toFixed(2)}</b></span>
+                        <span>Amount : <b>{editProductTotals.amount.toFixed(2)}</b></span>
+                      </div>
+                      {!isVenyaSaleEdit ? (
+                        <Form.Item name="narretion" label="Narration" className={styles.stockEditTotalsNarration}>
+                          <Input placeholder="Narration..." />
+                        </Form.Item>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+                {isVenyaSaleEdit && !isEditLoading ? (
+                  <>
+                    <Row gutter={[12, 8]} className={styles.stockEditExportRow}>
+                      <Col xs={24} sm={12} md={6}>
+                        <Form.Item name="shipping_name" label="Shipping">
+                          <Select
+                            allowClear
+                            placeholder="Select Shipping"
+                            options={shippingOptions}
+                            style={{ width: '100%' }}
+                          />
                         </Form.Item>
                       </Col>
-                      <Col span={12}>
-                        <Form.Item name="narretion" label="Narration">
-                          <Input.TextArea rows={1} placeholder="Enter Narration..." />
+                      <Col xs={24} sm={12} md={6}>
+                        <Form.Item name="origin_of" label="Origin of">
+                          <Select
+                            allowClear
+                            placeholder="Select Origin"
+                            options={originOptions}
+                            style={{ width: '100%' }}
+                          />
                         </Form.Item>
                       </Col>
-                      <Col span={6}>
-                        <Form.Item
-                          label={<span className={styles.stockEditBankLabel}>Due Amount</span>}
-                          colon={false}
-                        >
-                          <div className={styles.stockEditBankSlot}>
-                            <Form.Item name="boc" valuePropName="checked" noStyle>
-                              <Checkbox>BOC</Checkbox>
-                            </Form.Item>
-                            <Form.Item name="citi" valuePropName="checked" noStyle>
-                              <Checkbox>CITI</Checkbox>
-                            </Form.Item>
-                            <Form.Item name="dbs" valuePropName="checked" noStyle>
-                              <Checkbox>DBS</Checkbox>
-                            </Form.Item>
-                            <Form.Item name="sc" valuePropName="checked" noStyle>
-                              <Checkbox>SC</Checkbox>
-                            </Form.Item>
-                          </div>
+                      <Col xs={24} sm={12} md={6}>
+                        <Form.Item name="manufacture_origin" label="Manf.Origin">
+                          <Select
+                            allowClear
+                            placeholder="Select Manf Origin"
+                            options={originOptions}
+                            style={{ width: '100%' }}
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={12} md={6}>
+                        <Form.Item name="shipping_charge" label="Charge">
+                          <InputNumber min={0} placeholder="0.00" style={{ width: '100%' }} />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={12} md={6}>
+                        <Form.Item name="cif" label="C.I.F">
+                          <Input placeholder="C.I.F" />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={12} md={6}>
+                        <Form.Item name="vat_percent" label="VAT">
+                          <Select
+                            options={[
+                              { value: '0', label: 'No VAT' },
+                              { value: '7', label: 'VAT 7%' },
+                            ]}
+                            style={{ width: '100%' }}
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col xs={24} sm={12} md={6}>
+                        <Form.Item name="vat_amount" label="VAT Amount">
+                          <Input placeholder="0.00" disabled />
                         </Form.Item>
                       </Col>
                     </Row>
+                    <Form.Item name="narretion" label="Narration" className={styles.stockEditSaleNarration}>
+                      <Input.TextArea rows={3} placeholder="Narretion" />
+                    </Form.Item>
                   </>
-                )}
-                <div className={styles.stockEditProductsHead}>Products</div>
-                <Table
-                  className={styles.stockEditProductTable}
-                  loading={false}
-                  columns={isEditLoading ? [
-                    { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 120 },
-                    { title: 'Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', width: 80 },
-                    { title: 'Carat', dataIndex: 'polish_carat', key: 'polish_carat', width: 80 },
-                    { title: 'Price', dataIndex: 'sell_price', key: 'sell_price', width: 80 },
-                    { title: 'Amount', dataIndex: 'sell_amount', key: 'sell_amount', width: 80 },
-                  ].map((col) => ({
-                    ...col,
-                    render: () => <span style={{ display: 'inline-block', width: '70%', height: 12, borderRadius: 6, background: 'var(--color-bg-muted)' }} />,
-                  })) : [
-                    { title: 'SKU', dataIndex: 'sku', key: 'sku', render: (val, _record, idx) => <Input value={val} onChange={(e) => handleProductFieldChange(idx, 'sku', e.target.value)} /> },
-                    { title: 'Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', render: (val, _record, idx) => <Input type="number" value={val} onChange={(e) => handleProductFieldChange(idx, 'polish_pcs', e.target.value)} /> },
-                    { title: 'Carat', dataIndex: 'polish_carat', key: 'polish_carat', render: (val, _record, idx) => <Input type="number" value={val} onChange={(e) => handleProductFieldChange(idx, 'polish_carat', e.target.value)} /> },
-                    { title: 'Price', dataIndex: 'sell_price', key: 'sell_price', render: (val, _record, idx) => <Input type="number" value={val} onChange={(e) => handleProductFieldChange(idx, 'sell_price', e.target.value)} /> },
-                    { title: 'Amount', dataIndex: 'sell_amount', key: 'sell_amount', render: (val, _record, idx) => <Input type="number" value={val} onChange={(e) => handleProductFieldChange(idx, 'sell_amount', e.target.value)} /> },
-                  ]}
-                  dataSource={isEditLoading ? Array.from({ length: 3 }, (_, i) => ({ id: `sk-p-${i}` })) : fetchedProducts}
-                  rowKey="id"
-                  pagination={false}
-                  size="small"
-                  scroll={{ x: 600, y: 220 }}
-                />
+                ) : null}
               </Form>
             </>
           )}
-          saveBtnText="Update"
-          width={1200}
+          saveBtnText={isVenyaSaleEdit ? 'Update Data' : 'Update'}
+          width={isVenyaSaleEdit ? 1360 : 1280}
         />
       )}
     </div>

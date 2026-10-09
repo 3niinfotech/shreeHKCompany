@@ -652,6 +652,20 @@
   }
 }
 
+.stockEditNarration {
+  outline: none !important;
+  box-shadow: none !important;
+
+  &:hover,
+  &:focus,
+  &:focus-visible,
+  &:focus-within {
+    outline: none !important;
+    box-shadow: none !important;
+    border-color: var(--color-border, #d9d9d9) !important;
+  }
+}
+
 .stockEditPayRow {
   :global(.ant-form-item) {
     margin-bottom: 12px !important;
@@ -681,6 +695,222 @@
   visibility: hidden;
 }
 
+.memoConvertBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.memoConvertTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.memoConvertTitleText {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-heading, #1e293b);
+  line-height: 1.2;
+}
+
+.memoConvertBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 6px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-sizing: border-box;
+  line-height: 1;
+}
+
+.memoConvertHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border, #e8eaed);
+  border-radius: 8px;
+  background: #fafbfc;
+}
+
+.memoConvertHeaderRow {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 12px 14px;
+  align-items: end;
+  width: 100%;
+}
+
+.memoConvertField {
+  grid-column: span 2;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+
+  :global(.ant-input),
+  :global(.ant-input-number),
+  :global(.ant-picker),
+  :global(.ant-select-selector) {
+    width: 100% !important;
+    min-height: 36px !important;
+    height: 36px !important;
+  }
+
+  :global(.ant-select) {
+    width: 100% !important;
+  }
+
+  :global(.ant-input-number-input),
+  :global(.ant-picker-input > input),
+  :global(.ant-select-selection-item),
+  :global(.ant-select-selection-placeholder) {
+    font-size: 13px !important;
+  }
+}
+
+.memoConvertFieldWide {
+  grid-column: span 4;
+}
+
+.memoConvertFieldMd {
+  grid-column: span 3;
+}
+
+.memoConvertLbl {
+  display: block;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.memoConvertNarration {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  > label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+  }
+
+  :global(textarea.ant-input) {
+    min-height: 64px !important;
+    font-size: 13px !important;
+  }
+}
+
+.memoConvertExtras {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border, #e8eaed);
+  border-radius: 8px;
+  background: #fafbfc;
+}
+
+.memoConvertExtrasRow,
+.memoConvertPayRow {
+  display: grid;
+  grid-template-columns: 1.4fr 1.4fr 0.7fr;
+  gap: 14px 16px;
+  align-items: end;
+  width: 100%;
+}
+
+.memoConvertPayRow {
+  grid-template-columns: auto 1.2fr 1fr 1fr 1fr;
+  padding-top: 4px;
+  border-top: 1px dashed var(--color-border, #e2e8f0);
+}
+
+.memoConvertExtraGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.memoConvertExtraGroupSm {
+  max-width: 180px;
+}
+
+.memoConvertExtraInputs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+
+  :global(.ant-input-number) {
+    width: 100% !important;
+    min-height: 36px !important;
+    height: 36px !important;
+  }
+
+  :global(.ant-input-number-input) {
+    font-size: 13px !important;
+  }
+}
+
+.memoConvertExtraGroupSm .memoConvertExtraInputs {
+  grid-template-columns: 1fr;
+}
+
+.memoConvertPayCheck {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 6px;
+  white-space: nowrap;
+
+  :global(.ant-checkbox-wrapper) {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+  }
+}
+
+.memoConvertPayRow .memoConvertExtraGroup {
+  :global(.ant-input),
+  :global(.ant-input-number),
+  :global(.ant-picker),
+  :global(.ant-select-selector) {
+    width: 100% !important;
+    min-height: 36px !important;
+    height: 36px !important;
+  }
+
+  :global(.ant-select) {
+    width: 100% !important;
+  }
+
+  :global(.ant-input-number-input),
+  :global(.ant-picker-input > input),
+  :global(.ant-select-selection-item),
+  :global(.ant-select-selection-placeholder),
+  :global(.ant-input) {
+    font-size: 13px !important;
+  }
+}
+
+/* Title badge sits next to modal title text */
+.memoConvertModal {
+  :global(.ant-modal-title) {
+    line-height: 1.2;
+  }
+}
+
 .stockEditBankSlot {
   display: flex;
   flex-wrap: nowrap;
@@ -705,19 +935,148 @@
   }
 }
 
+/* Venya sale edit: 6 bank flags in one row */
+.stockEditBankSlotWide {
+  flex-wrap: wrap;
+  height: auto;
+  min-height: 40px;
+  max-height: none;
+  gap: 8px 16px;
+  justify-content: flex-start;
+  padding: 8px 11px;
+}
+
+.stockEditExportRow {
+  margin-top: 12px;
+
+  :global(.ant-form-item) {
+    margin-bottom: 8px !important;
+  }
+}
+
+.stockEditSaleNarration {
+  margin-top: 8px;
+  margin-bottom: 0 !important;
+
+  :global(textarea.ant-input) {
+    height: auto !important;
+    min-height: 88px !important;
+    max-height: none !important;
+    line-height: 1.4 !important;
+    padding: 8px 11px !important;
+    resize: vertical !important;
+  }
+}
+
 .stockEditProductsHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin: 4px 0 10px;
   padding-bottom: 6px;
-  // border-bottom: 1px solid var(--color-border, #e8eaed);
   font-size: 13px;
   font-weight: 700;
   color: var(--color-text-heading);
 }
 
+.stockEditAddProductBtn {
+  height: 28px !important;
+  padding: 0 12px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+}
+
+.stockEditProductWrap {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--color-border, #e8eaed);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.stockEditTotalsBar {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  padding: 10px 14px;
+  background: #f3faf4;
+  border-top: 1px solid var(--color-border, #e8eaed);
+}
+
+.stockEditTotalsMetrics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 28px;
+  font-size: 13px;
+  color: #1b7a3a;
+
+  b {
+    color: #0f5132;
+    font-weight: 700;
+  }
+}
+
+.stockEditTotalsNarration {
+  flex: 1 1 280px;
+  margin-bottom: 0 !important;
+  max-width: 420px;
+
+  :global(.ant-form-item-row) {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    gap: 8px;
+  }
+
+  :global(.ant-form-item-label) {
+    padding: 0 !important;
+    width: auto !important;
+
+    > label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #334155;
+      height: auto !important;
+    }
+  }
+
+  :global(.ant-form-item-control) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  > label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #334155;
+    margin-right: 8px;
+    white-space: nowrap;
+  }
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .stockEditProductTable {
+  width: 100%;
+
+  :global(.ant-table) {
+    width: 100% !important;
+  }
+
   :global(.ant-table-container) {
-    border: 1px solid var(--color-border, #e8eaed);
-    border-radius: 6px;
+    border: none;
+    border-radius: 0;
     overflow: hidden;
   }
 
@@ -725,38 +1084,54 @@
     overflow: hidden !important;
   }
 
+  // ~4 product rows visible by default (header separate; ~48px per row)
   :global(.ant-table-body) {
-    height: 220px !important;
-    max-height: 220px !important;
+    height: 192px !important;
+    max-height: 192px !important;
+    min-height: 192px !important;
     overflow-y: auto !important;
   }
 
   :global(.ant-table-thead > tr > th) {
-    padding: 4px 14px !important;
+    padding: 8px 12px !important;
     font-size: 12px !important;
     font-weight: 700 !important;
-    background: var(--color-bg-muted) !important;
+    background: #ece8f8 !important;
+    color: var(--color-text-heading) !important;
+    border-bottom: 1px solid var(--color-border, #e8eaed) !important;
   }
 
   :global(.ant-table-tbody > tr > td) {
-    padding: 0 14px !important;
-    line-height: 1 !important;
+    padding: 6px 10px !important;
+    vertical-align: middle !important;
+    background: #fff !important;
+    border-bottom: 1px solid var(--color-border, #f0f0f0) !important;
   }
 
-  :global(.ant-input) {
-    height: 32px !important;
-    padding: 0 11px !important;
-    font-size: 13px !important;
-    border: none !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    background: transparent !important;
+  :global(.ant-table-tbody > tr:hover > td) {
+    background: #faf9ff !important;
+  }
+}
 
-    &:hover,
-    &:focus,
-    &:focus-within {
-      border: none !important;
-      box-shadow: none !important;
-    }
+.stockEditCellInput {
+  width: 100% !important;
+  height: 34px !important;
+  padding: 4px 10px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #111 !important;
+  border: 1px solid #d9d9d9 !important;
+  border-radius: 6px !important;
+  background: #fff !important;
+  box-shadow: none !important;
+
+  &:hover {
+    border-color: #b7b0d6 !important;
+  }
+
+  &:focus,
+  &:focus-within {
+    border-color: var(--color-primary, #4f46e5) !important;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary, #4f46e5) 18%, transparent) !important;
   }
 }

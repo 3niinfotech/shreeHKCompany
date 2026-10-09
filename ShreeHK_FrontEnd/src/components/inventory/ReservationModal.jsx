@@ -123,7 +123,7 @@ const ReservationModal = ({ open, selectedIds = [], partyHint = "", onClose, onS
             </Col>
             <Col span={12}>
               <Form.Item className={styles.formItem} name="holdUntil" label="Hold until">
-                <DatePicker style={{ width: "100%" }} />
+                <DatePicker style={{ width: "100%" }} format="DD-MM-YYYY" />
               </Form.Item>
             </Col>
             <Col span={12}>

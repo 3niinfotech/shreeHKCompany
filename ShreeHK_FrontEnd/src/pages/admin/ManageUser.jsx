@@ -8,6 +8,7 @@ import { useFetchApi, usePostApiRequest, useDeleteApiRequest } from '../../api/A
 const MasterTemplate = lazy(() => import('../../components/common/masterCommon/MasterPageTemplate'));
 const ConfirmDeleteModal = lazy(() => import("../../components/common/modals/ConfirmDeleteModal"));
 import { ENDPOINTS } from '../../api/endpoints';
+import { bgRefetchInterval } from '../../api/pauseBackgroundApi';
 import { resolveUploadUrl } from '../../utils/uploadBaseUrl';
 
 const formatDate = (value) => (value && dayjs(value).isValid() ? dayjs(value).format('DD-MM-YYYY') : '-');
@@ -28,7 +29,7 @@ const ManageUser = () => {
         ENDPOINTS.admin.users,
         {},
         'GET',
-        { refetchInterval: 30000 },
+        { refetchInterval: bgRefetchInterval(30000) },
     );
 
     const { data: rolesData } = useFetchApi('getRolesList', ENDPOINTS.role.list);

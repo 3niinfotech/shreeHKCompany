@@ -21,6 +21,7 @@ const InMemoStock = () => (
       showPrint: true,
       showDelete: true,
       showEdit: true,
+      allowAddProductInEdit: false,
       returnEndpoint: ENDPOINTS.transactionStock.inward.return,
       memoToPurchaseEndpoint: ENDPOINTS.transactionStock.inward.memoToPurchase,
       editGetEndpoint: ENDPOINTS.inward.getById,

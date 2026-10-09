@@ -46,8 +46,8 @@ const PAGE_ENTRIES = [
   { key: "transaction.purchase_stock", label: "Purchase", path: "/transaction/purchase", moduleKey: "transaction", apiPrefixes: ["/transaction/purchase-stock", "/transaction/inward-stock", "/transaction/print"], legacyKeys: ["purchase"] },
 
   // Accounting
-  { key: "accounting.expanse", label: "Expanse", path: "/accounting/expanse", moduleKey: "accounting", apiPrefixes: ["/expanse/"], legacyKeys: ["expanse", "account"] },
-  { key: "accounting.expanse_list", label: "Expanse List", path: "/accounting/expanse/table-data", moduleKey: "accounting", apiPrefixes: ["/expanse/"], legacyKeys: ["expanse", "account"] },
+  { key: "accounting.expanse", label: "Expense Entry", path: "/accounting/expanse", moduleKey: "accounting", apiPrefixes: ["/expanse/"], legacyKeys: ["expanse", "account"] },
+  { key: "accounting.expanse_list", label: "Expense List", path: "/accounting/expanse/table-data", moduleKey: "accounting", apiPrefixes: ["/expanse/"], legacyKeys: ["expanse", "account"] },
   { key: "accounting.advance", label: "Advance Payment", path: "/accounting/advance", moduleKey: "accounting", apiPrefixes: ["/advance/"], legacyKeys: ["account"] },
   { key: "accounting.advance_list", label: "Advance List", path: "/accounting/advance/table-data", moduleKey: "accounting", apiPrefixes: ["/advance/"], legacyKeys: ["account"] },
   { key: "accounting.my_balance", label: "My Balance", path: "/accounting/my-balance", moduleKey: "accounting", apiPrefixes: ["/balance/", "/my-balance"], legacyKeys: ["my_balance", "account"] },

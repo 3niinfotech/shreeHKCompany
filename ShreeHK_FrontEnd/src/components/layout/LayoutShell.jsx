@@ -13,6 +13,7 @@ import useCopyableTableIdentifiers from "../../hooks/useCopyableTableIdentifiers
 import TaskReminderModal from "../dashboard/TaskReminderModal";
 import { SkuModalProvider } from "../../hooks/useSkuModalAction";
 import { prefetchMasterQueries } from "../../api/prefetchMasterQueries";
+import { PAUSE_BACKGROUND_API } from "../../api/pauseBackgroundApi";
 import { getAuthorizedRouteMeta } from "../../routes/Routes";
 import { prefetchAuthorizedRoutesIdle } from "../../routes/routePrefetch";
 
@@ -44,17 +45,20 @@ const LayoutShell = () => {
   }, [isAuthenticated, contextReady, setShowContextPicker]);
 
   useEffect(() => {
+    if (PAUSE_BACKGROUND_API) return;
     if (isAuthenticated && contextReady) {
       prefetchMasterQueries(queryClient);
     }
   }, [isAuthenticated, contextReady, queryClient]);
 
   useEffect(() => {
+    if (PAUSE_BACKGROUND_API) return undefined;
     if (!contextReady) return undefined;
     return prefetchAuthorizedRoutesIdle(authorizedRoutes);
   }, [contextReady, authorizedRoutes]);
 
   useEffect(() => {
+    if (PAUSE_BACKGROUND_API) return undefined;
     if (!contextReady) return undefined;
     const prefetchChat = () => import("../ai/FloatingAIChat");
     if (typeof window.requestIdleCallback === "function") {

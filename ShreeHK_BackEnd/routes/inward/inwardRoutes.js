@@ -334,7 +334,7 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
       const trackData = helper.insertString(track);
       await q(`INSERT INTO user_track (${trackData[0]}) VALUES (${trackData[1]})`);
 
-      return { lid, iProducts, skuArray, insertedItems };
+      return { lid, iProducts, skuArray, insertedItems, iTotal, iCarat, iPcs };
     });
 
     // Per-product CREATE audit log for each created diamond stock item (executed post-commit)
@@ -372,9 +372,9 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
         date: post.invoicedate,
         terms: post.terms,
         due_date: post.duedate,
-        total_pcs: iPcs,
-        total_carat: iCarat,
-        total_amount: iTotal,
+        total_pcs: result.iPcs || 0,
+        total_carat: result.iCarat || 0,
+        total_amount: result.iTotal || 0,
         skus: result.skuArray,
         items: result.insertedItems,
       },

@@ -705,7 +705,7 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
             <Input placeholder="#Ref" style={{ width: 110 }} />
           </Form.Item>
           <Form.Item label="Date" name="date" rules={[{ required: true, message: "Date required" }]}>
-            <DatePicker format="YYYY-MM-DD" style={{ width: 130 }} />
+            <DatePicker format="DD-MM-YYYY" style={{ width: 130 }} />
           </Form.Item>
           {isSaleLike && (
             <>
@@ -713,7 +713,7 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
                 <InputNumber placeholder="Days" min={0} style={{ width: 80 }} />
               </Form.Item>
               <Form.Item label="Due Date" name="duedate">
-                <DatePicker format="YYYY-MM-DD" style={{ width: 130 }} />
+                <DatePicker format="DD-MM-YYYY" style={{ width: 130 }} />
               </Form.Item>
             </>
           )}
@@ -862,7 +862,7 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
             </div>
             <div className="memo-sell-group">
               <span className="memo-sell-label-top">Date</span>
-              <DatePicker format="YYYY-MM-DD" style={{ width: 130 }} />
+              <DatePicker format="DD-MM-YYYY" style={{ width: 130 }} />
             </div>
             <div className="memo-sell-group">
               <span className="memo-sell-label-top">Amount</span>

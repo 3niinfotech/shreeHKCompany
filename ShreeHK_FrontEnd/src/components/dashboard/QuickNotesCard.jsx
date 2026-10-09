@@ -14,6 +14,7 @@ import dayjs from "dayjs";
 import useAuthStore from "../../store/Auth.Store";
 import { useFetchApi, usePostApiRequest, usePutApiRequest, useDeleteApiRequest } from "../../api/ApiFunction";
 import { ENDPOINTS } from "../../api/endpoints";
+import { bgRefetchInterval } from "../../api/pauseBackgroundApi";
 import { SkeletonBlock } from "../common/skeleton";
 
 const NotesTableSkeleton = ({ isSuperAdmin }) => (
@@ -56,7 +57,7 @@ const QuickNotesCard = () => {
     {
       staleTime: 0,
       refetchOnMount: "always",
-      refetchInterval: 10000,
+      refetchInterval: bgRefetchInterval(10000),
       refetchIntervalInBackground: true,
       placeholderData: undefined,
     }

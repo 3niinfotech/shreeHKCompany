@@ -10,7 +10,7 @@ async function getExpensePayments(companyId) {
     return {
       status: 200,
       data: {
-        message: "Expanse Payment Data Successfully Fetch",
+        message: "Expense payment data fetched successfully",
         Data: [],
       },
     };
@@ -20,7 +20,7 @@ async function getExpensePayments(companyId) {
   return {
     status: 200,
     data: {
-      message: "Expanse Payment Data Successfully Fetch",
+      message: "Expense payment data fetched successfully",
       Data: rows || [],
     },
   };
@@ -53,7 +53,7 @@ async function saveExpensePayment(payload, companyId, auditContext = {}) {
     if (!existingRow) {
       return {
         status: 404,
-        data: { error: "Expanse record not found or access denied" },
+        data: { error: "Expense record not found or access denied" },
       };
     }
     oldValue = existingRow;
@@ -89,29 +89,29 @@ async function saveExpensePayment(payload, companyId, auditContext = {}) {
 
   logAudit({
     actionType: isUpdate ? "UPDATE" : "CREATE",
-    moduleName: "Expanse",
+    moduleName: "Expense",
     recordId: savedId,
     recordReference: String(description || amount || party || savedId || ""),
-    oldValue: oldValue ? { record: oldValue, pageContext: { path: "/accounting/expanse", label: "Expanse" } } : null,
+    oldValue: oldValue ? { record: oldValue, pageContext: { path: "/accounting/expanse", label: "Expense" } } : null,
     newValue: {
       record: newValue,
       requestPath: "/expanse-payment",
       requestMethod: "POST",
       pageContext: {
         path: auditContext.pagePath || "/accounting/expanse",
-        label: auditContext.pageLabel || "Expanse",
+        label: auditContext.pageLabel || "Expense",
       },
     },
     companyId,
     description: isUpdate
-      ? `Expanse updated — ${description || amount || savedId}`
-      : `Expanse created — ${description || amount || party}`,
+      ? `Expense updated — ${description || amount || savedId}`
+      : `Expense created — ${description || amount || party}`,
   }).catch(() => {});
 
   return {
     status: isUpdate ? 200 : 201,
     data: {
-      message: isUpdate ? "Expanse payment updated successfully!" : "Expanse payment created successfully!",
+      message: isUpdate ? "Expense payment updated successfully!" : "Expense payment created successfully!",
       Data: {
         id: savedId,
         party,
@@ -138,7 +138,7 @@ async function deleteExpensePayment(id, companyId, auditContext = {}) {
   if (!oldRow) {
     return {
       status: 404,
-      data: { error: "Expanse record not found" },
+      data: { error: "Expense record not found" },
     };
   }
 
@@ -146,16 +146,16 @@ async function deleteExpensePayment(id, companyId, auditContext = {}) {
 
   await logAudit({
     actionType: "DELETE",
-    moduleName: "Expanse",
+    moduleName: "Expense",
     recordId: id,
     recordReference: String(oldRow?.description || oldRow?.amount || id),
-    oldValue: { record: oldRow, pageContext: { path: "/accounting/expanse", label: "Expanse" } },
+    oldValue: { record: oldRow, pageContext: { path: "/accounting/expanse", label: "Expense" } },
     newValue: {
       requestPath: "/expanse-delete",
       requestMethod: "DELETE",
       pageContext: {
         path: auditContext.pagePath || "/accounting/expanse",
-        label: auditContext.pageLabel || "Expanse",
+        label: auditContext.pageLabel || "Expense",
       },
     },
     companyId,
@@ -163,7 +163,7 @@ async function deleteExpensePayment(id, companyId, auditContext = {}) {
 
   return {
     status: 201,
-    data: { message: "Expanse deleted successfully" },
+    data: { message: "Expense deleted successfully" },
   };
 }
 

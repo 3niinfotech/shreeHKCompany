@@ -3,6 +3,7 @@ import { Dropdown, Empty } from "antd";
 import { SkeletonDropdownPanel } from "../common/skeleton";
 import { Bell, CheckCheck, IndianRupee, LogIn, Package, Sparkles } from "lucide-react";
 import { api } from "../../api/client/axiosInstance";
+import { PAUSE_BACKGROUND_API } from "../../api/pauseBackgroundApi";
 import { playNotificationSound } from "../../utils/soundNotify";
 import styles from "../../assets/scss/components/notificationDropdown.module.scss";
 
@@ -290,12 +291,16 @@ const NotificationDropdown = ({ buttonClassName, badgeClassName }) => {
   }, [notifyBrowser]);
 
   useEffect(() => {
+    if (PAUSE_BACKGROUND_API) return undefined;
+
     fetchNotifications();
     const timer = setInterval(() => fetchNotifications(), POLLING_MS);
     return () => clearInterval(timer);
   }, [fetchNotifications]);
 
   useEffect(() => {
+    if (PAUSE_BACKGROUND_API) return undefined;
+
     const { token, companyId } = getAuthContext();
     if (!token || typeof EventSource === "undefined") return undefined;
 

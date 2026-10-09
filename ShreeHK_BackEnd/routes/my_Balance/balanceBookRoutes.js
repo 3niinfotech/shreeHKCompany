@@ -141,11 +141,14 @@
 const express = require('express');
 const connection = require('../../connection.js');
 const { authenticateToken } = require('../../authMiddleware');
-const { fetchRowById, fetchRowByField, auditCrud } = require('../../services/auditMutationHelper.js');
+const { fetchRowById, auditCrud } = require('../../services/auditMutationHelper.js');
 const { buildUserContext } = require('../../tenantHelper.js');
 const MyBalanceBook = express.Router();
 
 MyBalanceBook.use(express.json());
+
+// Balance Book uses `dai_book` (book, currency, balance, company).
+// Response maps to UI fields: bank ← book, cash ← balance.
 
 // 1. GET API
 MyBalanceBook.get("/balance/get", authenticateToken, (req, res) => {
@@ -157,7 +160,16 @@ MyBalanceBook.get("/balance/get", authenticateToken, (req, res) => {
         });
     }
 
-    const query = `SELECT id, cash, bank, currency, credit FROM dai_balance WHERE company = ?`;
+    const query = `
+        SELECT id,
+               book AS bank,
+               currency,
+               balance AS cash,
+               0 AS credit
+        FROM dai_book
+        WHERE company = ?
+        ORDER BY book ASC, currency ASC, id ASC
+    `;
     connection.query(query, [companyId], (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         res.status(200).json({
@@ -167,30 +179,37 @@ MyBalanceBook.get("/balance/get", authenticateToken, (req, res) => {
     });
 });
 
-// 2. POST API — id > 0 = update, id = 0 = insert (check currency first)
+// 2. POST API — id > 0 = update, id = 0 = insert (match book + currency)
 MyBalanceBook.post("/my-balance-book", authenticateToken, async (req, res) => {
     const companyId = buildUserContext(req).companyId || 1;
     const entry = Array.isArray(req.body) ? req.body[0] : req.body;
-    const { id, cash, bank, currency, credit } = entry;
+    const { id, cash, bank, currency, book, balance } = entry;
 
     const safeId = Number(id) || 0;
-    const safeCash = Number(cash) || 0;
-    const safeBank = String(bank || '');
-    const safeCurrency = String(currency || '').trim();
-    const safeCredit = Number(credit) || 0;
+    const safeBalance = Number(balance ?? cash) || 0;
+    const safeBook = String(book || bank || "").trim();
+    const safeCurrency = String(currency || "").trim();
 
+    if (!safeBook) {
+        return res.status(400).json({ message: "Book name is required" });
+    }
     if (!safeCurrency) {
         return res.status(400).json({ message: "Currency is required" });
     }
 
-    const newValue = { cash: safeCash, bank: safeBank, currency: safeCurrency, credit: safeCredit, company: companyId };
+    const newValue = {
+        book: safeBook,
+        currency: safeCurrency,
+        balance: safeBalance,
+        company: companyId,
+    };
 
     const logSave = async (actionType, recordId, oldValue) => {
         await auditCrud({
             actionType,
             moduleName: "My Balance",
             recordId,
-            recordReference: safeCurrency,
+            recordReference: `${safeBook} ${safeCurrency}`,
             oldValue,
             newValue: { ...newValue, id: recordId },
         });
@@ -198,11 +217,11 @@ MyBalanceBook.post("/my-balance-book", authenticateToken, async (req, res) => {
 
     try {
         if (safeId > 0) {
-            const oldRow = await fetchRowById("dai_balance", safeId);
+            const oldRow = await fetchRowById("dai_book", safeId);
             await new Promise((resolve, reject) => {
                 connection.query(
-                    `UPDATE dai_balance SET cash = ?, bank = ?, credit = ?, currency = ?, company = ? WHERE id = ?`,
-                    [safeCash, safeBank, safeCredit, safeCurrency, companyId, safeId],
+                    `UPDATE dai_book SET book = ?, currency = ?, balance = ?, company = ? WHERE id = ? AND company = ?`,
+                    [safeBook, safeCurrency, safeBalance, companyId, safeId, companyId],
                     (err) => (err ? reject(err) : resolve()),
                 );
             });
@@ -211,15 +230,19 @@ MyBalanceBook.post("/my-balance-book", authenticateToken, async (req, res) => {
         }
 
         const existingRows = await new Promise((resolve) => {
-            connection.query("SELECT * FROM dai_balance WHERE currency = ? AND company = ? LIMIT 1", [safeCurrency, companyId], (err, r) => resolve(r));
+            connection.query(
+                "SELECT * FROM dai_book WHERE book = ? AND currency = ? AND company = ? LIMIT 1",
+                [safeBook, safeCurrency, companyId],
+                (err, r) => resolve(r),
+            );
         });
         const existing = existingRows?.[0] || null;
 
         if (existing) {
             await new Promise((resolve, reject) => {
                 connection.query(
-                    `UPDATE dai_balance SET cash = ?, bank = ?, credit = ? WHERE id = ? AND company = ?`,
-                    [safeCash, safeBank, safeCredit, existing.id, companyId],
+                    `UPDATE dai_book SET balance = ? WHERE id = ? AND company = ?`,
+                    [safeBalance, existing.id, companyId],
                     (err) => (err ? reject(err) : resolve()),
                 );
             });
@@ -229,8 +252,8 @@ MyBalanceBook.post("/my-balance-book", authenticateToken, async (req, res) => {
 
         const insertResult = await new Promise((resolve, reject) => {
             connection.query(
-                `INSERT INTO dai_balance (cash, bank, currency, credit, company) VALUES (?, ?, ?, ?, ?)`,
-                [safeCash, safeBank, safeCurrency, safeCredit, companyId],
+                `INSERT INTO dai_book (book, currency, balance, company) VALUES (?, ?, ?, ?)`,
+                [safeBook, safeCurrency, safeBalance, companyId],
                 (err, result) => (err ? reject(err) : resolve(result)),
             );
         });
@@ -255,7 +278,11 @@ MyBalanceBook.delete("/my-balance-delete", authenticateToken, async (req, res) =
 
     try {
         const rows = await new Promise((resolve, reject) => {
-            connection.query(`SELECT * FROM dai_balance WHERE id = ? AND company = ? LIMIT 1`, [id, companyId], (err, r) => (err ? reject(err) : resolve(r)));
+            connection.query(
+                `SELECT * FROM dai_book WHERE id = ? AND company = ? LIMIT 1`,
+                [id, companyId],
+                (err, r) => (err ? reject(err) : resolve(r)),
+            );
         });
         const oldRow = rows && rows.length > 0 ? rows[0] : null;
         if (!oldRow) {
@@ -263,7 +290,7 @@ MyBalanceBook.delete("/my-balance-delete", authenticateToken, async (req, res) =
         }
 
         await new Promise((resolve, reject) => {
-            connection.query(`DELETE FROM dai_balance WHERE id = ? AND company = ?`, [id, companyId], (error) => {
+            connection.query(`DELETE FROM dai_book WHERE id = ? AND company = ?`, [id, companyId], (error) => {
                 if (error) reject(error);
                 else resolve();
             });
@@ -272,7 +299,7 @@ MyBalanceBook.delete("/my-balance-delete", authenticateToken, async (req, res) =
             actionType: "DELETE",
             moduleName: "My Balance",
             recordId: id,
-            recordReference: oldRow?.currency || String(id),
+            recordReference: oldRow?.book || oldRow?.currency || String(id),
             oldValue: oldRow,
         });
         res.status(200).json({ message: "Deleted successfully" });

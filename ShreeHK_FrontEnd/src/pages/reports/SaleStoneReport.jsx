@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { Table, Card, Form, Select, Input, DatePicker, Button } from 'antd';
+import { Card, Form, Select, Input, DatePicker, Button, Pagination } from 'antd';
 import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
 import dayjs from 'dayjs';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
@@ -44,12 +44,14 @@ const SaleStoneReport = () => {
     const [form] = Form.useForm();
     const [tableData, setTableData] = useState([]);
     const [exporting, setExporting] = useState(false);
-    const { data: companyData } = useFetchApi('GetCompany', ENDPOINTS.company.options);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(50);
+    const { data: companyData } = useFetchApi('GetCompanyAllParties', ENDPOINTS.company.options, { all: '1' });
     const { mutate: fetchReport, isPending: tableLoading } = usePostApiRequest(ENDPOINTS.report.saleStock, 'saleStoneReport', { showToast: false });
 
     const companyOptions = useMemo(() => {
         const list = companyData?.Data || [];
-        return [{ value: '', label: 'All Company' }, ...list.map((c) => ({ value: String(c.id), label: c.name }))];
+        return [{ value: '', label: 'All Party' }, ...list.map((c) => ({ value: String(c.id), label: c.name }))];
     }, [companyData]);
 
     const party = Form.useWatch('party', form);
@@ -66,9 +68,13 @@ const SaleStoneReport = () => {
             invoice: (v.invoiceNo || '').trim(),
             cfrom: v.fromDate ? dayjs(v.fromDate).format('YYYY-MM-DD') : '',
             cto: v.toDate ? dayjs(v.toDate).format('YYYY-MM-DD') : '',
+            allCompanies: true,
             limit: 200,
         }, {
-            onSuccess: (res) => setTableData((res?.Data || []).map((r, i) => ({ ...r, key: i, no: i + 1 }))),
+            onSuccess: (res) => {
+                setTableData((res?.Data || []).map((r, i) => ({ ...r, key: i, no: i + 1 })));
+                setPage(1);
+            },
         });
     };
 
@@ -77,9 +83,14 @@ const SaleStoneReport = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    const pagedData = useMemo(() => {
+        const start = (page - 1) * pageSize;
+        return tableData.slice(start, start + pageSize);
+    }, [tableData, page, pageSize]);
+
     const columns = [
         { title: 'No', dataIndex: 'no', width: 60, align: 'center' },
-        { title: 'SKU', dataIndex: 'sku', width: 100, render: (text, record) => <SkuLink sku={text} record={record} /> },
+        { title: 'SKU', dataIndex: 'sku', width: 200, render: (text, record) => <SkuLink sku={text} record={record} /> },
         { title: 'Lab', dataIndex: 'lab', width: 80 },
         { title: 'Report No', dataIndex: 'report_no', width: 110 },
         { title: 'Pcs', dataIndex: 'polish_pcs', width: 70, align: 'center' },
@@ -89,7 +100,7 @@ const SaleStoneReport = () => {
         { title: 'Shape', dataIndex: 'shape', width: 90 },
         { title: 'Color', dataIndex: 'color', width: 80 },
         { title: 'Clarity', dataIndex: 'clarity', width: 90 },
-        { title: 'Party', dataIndex: 'party', width: 140 },
+        { title: 'Party', dataIndex: 'party', width: 240 },
         { title: 'Date', dataIndex: 'out_date', width: 100, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
         { title: 'Invoice', dataIndex: 'invoiceno', width: 110 },
         { title: 'Terms', dataIndex: 'terms', width: 70 },
@@ -100,10 +111,12 @@ const SaleStoneReport = () => {
     const handleClear = () => {
         form.resetFields();
         setTableData([]);
+        setPage(1);
     };
 
     const tableRef = useRef(null);
-    const tableHeight = useTableBodyScrollHeight(tableRef, [tableData.length, tableLoading]);
+    // Pagination is outside table container (flex sibling) — do not reserve again
+    const tableHeight = useTableBodyScrollHeight(tableRef, [pagedData.length, tableLoading, tableData.length]);
 
     const handleExport = async () => {
         if (!tableData.length) {
@@ -181,7 +194,7 @@ const SaleStoneReport = () => {
                                 <Select
                                     allowClear
                                     showSearch
-                                    placeholder="Party"
+                                    placeholder="All Party"
                                     options={companyOptions}
                                     optionFilterProp="label"
                                     className={styles.fieldParty}
@@ -197,27 +210,55 @@ const SaleStoneReport = () => {
                                 />
                             </Form.Item>
                             <Form.Item name="fromDate" className={styles.filterItem}>
-                                <DatePicker placeholder="From Date" className={styles.fieldDate} />
+                                <DatePicker placeholder="From Date" className={styles.fieldDate} format="DD-MM-YYYY" />
                             </Form.Item>
                             <Form.Item name="toDate" className={styles.filterItem}>
-                                <DatePicker placeholder="To Date" className={styles.fieldDate} />
+                                <DatePicker placeholder="To Date" className={styles.fieldDate} format="DD-MM-YYYY" />
                             </Form.Item>
                         </div>
                     </Form>
                 </div>
             </AdvancedFilterPanel>
 
-            <Card className={styles.tableCard}>
-                <div ref={tableRef} className="erp-table-container">
+            <Card
+                className={styles.tableCard}
+                styles={{
+                    body: {
+                        padding: 0,
+                        flex: 1,
+                        minHeight: 0,
+                        display: "flex",
+                        flexDirection: "column",
+                        overflow: "hidden",
+                    },
+                }}
+            >
+                <div ref={tableRef} className={`erp-table-container ${styles.saleStockTable}`}>
                     <SkeletonAwareTable
                         columns={columns}
-                        dataSource={tableData}
+                        dataSource={pagedData}
                         loading={tableLoading}
-                        pagination={{ pageSize: 50 }}
-                        bordered size="small"
+                        className={styles.saleStockAntTable}
+                        pagination={false}
+                        bordered
+                        size="small"
                         scroll={{
                             x: "max-content",
-                            y: tableHeight
+                            y: tableHeight,
+                        }}
+                    />
+                </div>
+                <div className={styles.paginationCenterRow}>
+                    <Pagination
+                        current={page}
+                        pageSize={pageSize}
+                        total={tableData.length}
+                        showSizeChanger
+                        pageSizeOptions={["20", "50", "100", "200"]}
+                        showTotal={(total, range) => `${range[0]}-${range[1]} of ${total}`}
+                        onChange={(p, size) => {
+                            setPage(p);
+                            setPageSize(size);
                         }}
                     />
                 </div>

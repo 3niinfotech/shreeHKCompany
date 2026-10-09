@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Table, Card, Typography, Space, Button, Tag, Checkbox, Badge, Form, Input, Row, Col, Spin } from 'antd';
-import { EditOutlined, PrinterOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
+import { EditOutlined, PrinterOutlined, DeleteOutlined, ReloadOutlined, PlusOutlined } from '@ant-design/icons';
 import { Pencil, CircleCheck } from 'lucide-react';
 import dayjs from 'dayjs';
 import { useSearchParams } from 'react-router-dom';
@@ -242,7 +242,6 @@ const OutWord = () => {
 
     const editMainFields = [
         { name: 'entryno', label: 'Entry', type: 'text', required: true, span: 6 },
-        { name: 'type', label: '@ Sale', type: 'text', required: true, span: 6 },
         { name: 'date', label: 'Date', type: 'date', required: true, span: 6 },
         { name: 'reference', label: 'Reference', type: 'text', required: true, span: 6 },
         { name: 'invoiceno', label: 'Invoice No', type: 'text', required: true, span: 6 },
@@ -263,6 +262,61 @@ const OutWord = () => {
         });
     };
 
+    const editProductTotals = useMemo(() => {
+        let pcs = 0;
+        let carat = 0;
+        let amount = 0;
+        let priceSum = 0;
+        let priceCount = 0;
+        fetchedProducts.forEach((p) => {
+            pcs += Number(p.polish_pcs) || 0;
+            carat += Number(p.polish_carat) || 0;
+            amount += Number(p.sell_amount ?? p.amount) || 0;
+            const price = Number(p.sell_price ?? p.price);
+            if (!Number.isNaN(price) && price !== 0) {
+                priceSum += price;
+                priceCount += 1;
+            }
+        });
+        return {
+            pcs,
+            carat,
+            amount,
+            price: priceCount ? priceSum / priceCount : (carat > 0 ? amount / carat : 0),
+        };
+    }, [fetchedProducts]);
+
+    const handleAddProductRow = () => {
+        setFetchedProducts((prev) => [
+            ...prev,
+            {
+                _tempId: `new-${Date.now()}-${prev.length}`,
+                mfg_code: "",
+                diamond_no: "",
+                sku: "",
+                polish_pcs: "",
+                polish_carat: "",
+                cost: "",
+                sell_price: "",
+                sell_amount: "",
+                location: "",
+                remark: "",
+                lab: "",
+                group_type: "",
+                report_no: "",
+                shape: "",
+                clarity: "",
+                intensity: "",
+                overtone: "",
+                color: "",
+            },
+        ]);
+    };
+
+    const handleRemoveProductRow = (index) => {
+        setFetchedProducts((prev) => prev.filter((_, i) => i !== index));
+    };
+
     const handleEditClick = (record) => {
         setEditingRecord(record);
         setEditId(record.id);
@@ -280,6 +334,7 @@ const OutWord = () => {
             const payload = {
                 id: editingRecord.id,
                 ...values,
+                type: values.type || editingRecord?.type,
                 boc: values.boc ? 1 : 0,
                 citi: values.citi ? 1 : 0,
                 dbs: values.dbs ? 1 : 0,
@@ -290,6 +345,7 @@ const OutWord = () => {
                 products: fetchedProducts,
                 update: {
                     ...values,
+                    type: values.type || editingRecord?.type,
                     date: formattedDate,
                     invoicedate: formattedInvoiceDate,
                     duedate: formattedDueDate,
@@ -539,14 +595,9 @@ const OutWord = () => {
                         <Form form={editForm} layout="vertical" className={`edit-modal-form-readable ${styles.stockEditForm}`}>
                             <DynamicForm fields={editMainFields} />
                             <Row gutter={[16, 0]} className={styles.stockEditPayRow}>
-                                <Col span={18}>
-                                    <Form.Item name="narretion" label="Narration">
-                                        <Input.TextArea rows={1} placeholder="Enter Narration..." />
-                                    </Form.Item>
-                                </Col>
-                                <Col span={6}>
+                                <Col span={24}>
                                     <Form.Item
-                                        label={<span className={styles.stockEditBankLabel}>Due Amount</span>}
+                                        label={<span className={styles.stockEditBankLabel}>Bank</span>}
                                         colon={false}
                                     >
                                         <div className={styles.stockEditBankSlot}>
@@ -566,27 +617,86 @@ const OutWord = () => {
                                     </Form.Item>
                                 </Col>
                             </Row>
-                            <div className={styles.stockEditProductsHead}>Products</div>
-                            <Table
-                                className={styles.stockEditProductTable}
-                                loading={isProductLoading}
-                                columns={[
-                                    { title: 'SKU', dataIndex: 'sku', key: 'sku', render: (val, record, idx) => <Input value={val} onChange={e => handleProductFieldChange(idx, 'sku', e.target.value)} /> },
-                                    { title: 'Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', render: (val, record, idx) => <Input type="number" value={val} onChange={e => handleProductFieldChange(idx, 'polish_pcs', e.target.value)} /> },
-                                    { title: 'Carat', dataIndex: 'polish_carat', key: 'polish_carat', render: (val, record, idx) => <Input type="number" value={val} onChange={e => handleProductFieldChange(idx, 'polish_carat', e.target.value)} /> },
-                                    { title: 'Price', dataIndex: 'sell_price', key: 'sell_price', render: (val, record, idx) => <Input type="number" value={val} onChange={e => handleProductFieldChange(idx, 'sell_price', e.target.value)} /> },
-                                ]}
-                                dataSource={fetchedProducts}
-                                rowKey="id"
-                                pagination={false}
-                                size="small"
-                                scroll={{ x: 600, y: 220 }}
-                            />
+                            <div className={styles.stockEditProductsHead}>
+                                <span>Products</span>
+                                <Button
+                                    type="primary"
+                                    size="small"
+                                    icon={<PlusOutlined />}
+                                    className={styles.stockEditAddProductBtn}
+                                    onClick={handleAddProductRow}
+                                >
+                                    Add New Data
+                                </Button>
+                            </div>
+                            <div className={styles.stockEditProductWrap}>
+                                <Table
+                                    className={styles.stockEditProductTable}
+                                    loading={isProductLoading}
+                                    columns={[
+                                        { title: 'No', key: 'no', width: 50, fixed: 'left', align: 'center', render: (_v, _r, idx) => idx + 1 },
+                                        { title: 'Mfg. code', dataIndex: 'mfg_code', key: 'mfg_code', width: 100, fixed: 'left', render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'mfg_code', e.target.value)} /> },
+                                        { title: 'D. No.', dataIndex: 'diamond_no', key: 'diamond_no', width: 90, fixed: 'left', render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'diamond_no', e.target.value)} /> },
+                                        { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 120, fixed: 'left', render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'sku', e.target.value)} /> },
+                                        { title: 'Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', width: 80, render: (val, _r, idx) => <Input type="number" value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'polish_pcs', e.target.value)} /> },
+                                        { title: 'Carat', dataIndex: 'polish_carat', key: 'polish_carat', width: 90, render: (val, _r, idx) => <Input type="number" value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'polish_carat', e.target.value)} /> },
+                                        { title: 'Cost', dataIndex: 'cost', key: 'cost', width: 90, render: (val, _r, idx) => <Input type="number" value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'cost', e.target.value)} /> },
+                                        { title: 'Price', dataIndex: 'sell_price', key: 'sell_price', width: 90, render: (val, _r, idx) => <Input type="number" value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'sell_price', e.target.value)} /> },
+                                        { title: 'Amount', dataIndex: 'sell_amount', key: 'sell_amount', width: 100, render: (val, _r, idx) => <Input type="number" value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'sell_amount', e.target.value)} /> },
+                                        { title: 'LOC', dataIndex: 'location', key: 'location', width: 90, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'location', e.target.value)} /> },
+                                        { title: 'Remark', dataIndex: 'remark', key: 'remark', width: 120, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'remark', e.target.value)} /> },
+                                        { title: 'Lab', dataIndex: 'lab', key: 'lab', width: 80, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'lab', e.target.value)} /> },
+                                        { title: 'Group Type', dataIndex: 'group_type', key: 'group_type', width: 100, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'group_type', e.target.value)} /> },
+                                        { title: 'Report No.', dataIndex: 'report_no', key: 'report_no', width: 110, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'report_no', e.target.value)} /> },
+                                        { title: 'Shape', dataIndex: 'shape', key: 'shape', width: 90, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'shape', e.target.value)} /> },
+                                        { title: 'Clarity', dataIndex: 'clarity', key: 'clarity', width: 90, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'clarity', e.target.value)} /> },
+                                        { title: 'Intensity', dataIndex: 'intensity', key: 'intensity', width: 90, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'intensity', e.target.value)} /> },
+                                        { title: 'Overtone', dataIndex: 'overtone', key: 'overtone', width: 90, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'overtone', e.target.value)} /> },
+                                        { title: 'Color', dataIndex: 'color', key: 'color', width: 80, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'color', e.target.value)} /> },
+                                        {
+                                            title: '',
+                                            key: 'action',
+                                            width: 48,
+                                            fixed: 'right',
+                                            align: 'center',
+                                            render: (_val, _record, idx) => (
+                                                <Button
+                                                    type="text"
+                                                    danger
+                                                    size="small"
+                                                    icon={<DeleteOutlined />}
+                                                    onClick={() => handleRemoveProductRow(idx)}
+                                                    aria-label="Remove row"
+                                                />
+                                            ),
+                                        },
+                                    ]}
+                                    dataSource={fetchedProducts}
+                                    rowKey={(r) => r.id ?? r._tempId}
+                                    pagination={false}
+                                    size="small"
+                                    scroll={{ x: 1900, y: 192 }}
+                                    locale={{ emptyText: 'No products — click Add New Data' }}
+                                />
+                                {fetchedProducts.length > 0 ? (
+                                    <div className={styles.stockEditTotalsBar}>
+                                        <div className={styles.stockEditTotalsMetrics}>
+                                            <span>Pcs : <b>{editProductTotals.pcs}</b></span>
+                                            <span>Carats : <b>{editProductTotals.carat.toFixed(3)}</b></span>
+                                            <span>Price : <b>{editProductTotals.price.toFixed(2)}</b></span>
+                                            <span>Amount : <b>{editProductTotals.amount.toFixed(2)}</b></span>
+                                        </div>
+                                        <Form.Item name="narretion" label="Narration" className={styles.stockEditTotalsNarration}>
+                                            <Input placeholder="Narration..." />
+                                        </Form.Item>
+                                    </div>
+                                ) : null}
+                            </div>
                         </Form>
                     </>
                 )}
                 saveBtnText="Update"
-                width={1200}
+                width={1280}
             />
 
             <ConfirmDeleteModal

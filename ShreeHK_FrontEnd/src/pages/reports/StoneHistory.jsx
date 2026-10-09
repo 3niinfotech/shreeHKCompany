@@ -426,15 +426,18 @@ const StoneHistory = () => {
     const handleSearch = async () => {
         const skuValue = (searchForm.getFieldValue('searchSku') || '').trim();
         if (!skuValue) return;
+        const companyId = (searchParams.get('companyId') || '').trim();
         setLoading(true);
         try {
-            const res = await api.get(ENDPOINTS.report.stoneDetail, { params: { sku: skuValue } });
+            const params = { sku: skuValue };
+            if (companyId) params.companyId = companyId;
+            const res = await api.get(ENDPOINTS.report.stoneDetail, { params });
             const applied = await applyDetailResponse(res);
             if (!applied) {
-                toastApiError({ response: { data: res.data } });
+                toastApiError({ response: { data: res.data } }, { id: `stone-history-err-${skuValue}` });
             }
         } catch (err) {
-            toastApiError(err);
+            toastApiError(err, { id: `stone-history-err-${skuValue}` });
         } finally {
             setLoading(false);
         }
@@ -474,20 +477,30 @@ const StoneHistory = () => {
     useEffect(() => {
         const skuFromUrl = (searchParams.get('sku') || '').trim();
         if (!skuFromUrl) return;
+        const companyId = (searchParams.get('companyId') || '').trim();
         searchForm.setFieldsValue({ searchSku: skuFromUrl });
+        let cancelled = false;
         const run = async () => {
             setLoading(true);
             try {
-                const res = await api.get(ENDPOINTS.report.stoneDetail, { params: { sku: skuFromUrl } });
+                const params = { sku: skuFromUrl };
+                if (companyId) params.companyId = companyId;
+                const res = await api.get(ENDPOINTS.report.stoneDetail, { params });
+                if (cancelled) return;
                 await applyDetailResponse(res);
             } catch (err) {
-                toastApiError(err);
+                // Deduplicate StrictMode double-mount toasts
+                if (!cancelled) toastApiError(err, { id: `stone-history-err-${skuFromUrl}` });
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         };
         run();
-    }, [searchParams, searchForm, form]);
+        return () => {
+            cancelled = true;
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when URL sku/company changes
+    }, [searchParams]);
 
     const handleLoadOld = async () => {
         const skuValue = (searchForm.getFieldValue('searchSku') || '').trim();

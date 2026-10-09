@@ -1,51 +1,43 @@
 const express = require("express");
-const connection = require("../../connection.js");
 const helper = require("../../helper.js");
 const { authenticateToken } = require("../../authMiddleware.js");
 const { logAuditInTx } = require("../../services/auditIntegration.js");
 const { buildUserContext } = require("../../tenantHelper.js");
+const { ensureCompanyColumn } = require("../../schemaHelper.js");
+const { fetchMasterList } = require("./masterListHelper.js");
 const labRouter = express.Router();
 
 labRouter.use(express.json());
 
 // Get
-labRouter.get("/master/lab", authenticateToken, (req, res) => {
-  const companyId = buildUserContext(req).companyId;
-  if (!companyId || companyId <= 0) {
-    return res.json({ TotalItems: 0, Data: [] });
-  }
+labRouter.get("/master/lab", authenticateToken, async (req, res) => {
+  const companyId = buildUserContext(req).companyId || 1;
 
   const searchInput = req.query.searchInput;
 
-  let query = `SELECT * FROM dai_lab WHERE company = ?`;
-  let countQuery = `SELECT COUNT(*) as totalItems FROM dai_lab WHERE company = ?`;
-  const params = [companyId];
-  const countParams = [companyId];
-
-  if (searchInput) {
-    query += ` AND lab LIKE ?`;
-    countQuery += ` AND lab LIKE ?`;
-    params.push(`%${searchInput}%`);
-    countParams.push(`%${searchInput}%`);
-  }
-
-  query += ` ORDER BY id DESC`;
-
-  connection.query(countQuery, countParams, (countError, countResult) => {
-    if (countError) return res.status(500).json({ error: countError.message });
-
-    const totalItems = countResult[0]?.totalItems || 0;
-
-    connection.query(query, params, (error, data) => {
-      if (error) return res.status(500).json({ error: error.message });
-
-      const response = {
-        TotalItems: totalItems,
-        Data: data,
-      };
-      res.json(response);
+  try {
+    const response = await fetchMasterList({
+      tableName: "dai_lab",
+      companyId,
+      buildQueries: (cid) => {
+        let dataSql = `SELECT * FROM dai_lab WHERE company = ?`;
+        let countSql = `SELECT COUNT(*) as totalItems FROM dai_lab WHERE company = ?`;
+        const dataParams = [cid];
+        const countParams = [cid];
+        if (searchInput) {
+          dataSql += ` AND lab LIKE ?`;
+          countSql += ` AND lab LIKE ?`;
+          dataParams.push(`%${searchInput}%`);
+          countParams.push(`%${searchInput}%`);
+        }
+        dataSql += ` ORDER BY id DESC`;
+        return { dataSql, countSql, dataParams, countParams };
+      },
     });
-  });
+    res.json(response);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Post

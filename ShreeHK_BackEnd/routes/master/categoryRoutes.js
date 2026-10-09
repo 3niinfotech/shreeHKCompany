@@ -1,61 +1,55 @@
 const express = require("express");
-const connection = require("../../connection.js");
 const helper = require("../../helper.js");
 const { authenticateToken } = require("../../authMiddleware.js");
 const { logAuditInTx } = require("../../services/auditIntegration.js");
 const { buildUserContext } = require("../../tenantHelper.js");
+const { ensureCompanyColumn } = require("../../schemaHelper.js");
+const { fetchMasterList } = require("./masterListHelper.js");
 const categoryRouter = express.Router();
 
 categoryRouter.use(express.json());
 
 // Get
-categoryRouter.get("/master/category", authenticateToken, (req, res) => {
-  const companyId = buildUserContext(req).companyId;
-  if (!companyId || companyId <= 0) {
-    return res.json({ TotalItems: 0, Data: [] });
-  }
+categoryRouter.get("/master/category", authenticateToken, async (req, res) => {
+  const companyId = buildUserContext(req).companyId || 1;
 
   const id = parseInt(req?.query?.id) || 0;
   const searchInput = req.query.searchInput;
 
-  // Join parent so Parent column can show name even when search filters out the parent row
-  let query = `
-    SELECT c.*, p.name AS parent_name
-    FROM category c
-    LEFT JOIN category p ON c.parent = p.id AND c.parent <> 0 AND p.company = ${companyId}
-    WHERE c.company = ${companyId}
-  `;
+  try {
+    const response = await fetchMasterList({
+      tableName: "category",
+      companyId,
+      buildQueries: (cid) => {
+        let dataSql = `
+          SELECT c.*, p.name AS parent_name
+          FROM category c
+          LEFT JOIN category p ON c.parent = p.id AND c.parent <> 0 AND p.company = ?
+          WHERE c.company = ?
+        `;
+        let countSql = `SELECT COUNT(*) as totalItems FROM category WHERE company = ?`;
+        const dataParams = [cid, cid];
+        const countParams = [cid];
 
-  const countQuery = `SELECT COUNT(*) as totalItems FROM category WHERE company = ${companyId}`;
+        if (id === 0) {
+          if (searchInput) {
+            const like = `%${searchInput}%`;
+            dataSql += ` AND (c.name LIKE ? OR p.name LIKE ?)`;
+            dataParams.push(like, like);
+          }
+          dataSql += ` ORDER BY c.id DESC`;
+        } else {
+          dataSql += ` AND c.id = ?`;
+          dataParams.push(id);
+        }
 
-  connection.query(countQuery, (countError, countResult) => {
-    if (countError) return res.status(500).json({ error: countError.message });
-
-    const totalItems = countResult[0]?.totalItems || 0;
-
-    if (id == 0) {
-      if (searchInput) {
-        const escaped = connection.escape("%" + searchInput + "%");
-        // Search category name OR parent category name (not numeric parent id)
-        query += ` AND (c.name LIKE ${escaped} OR p.name LIKE ${escaped})`;
-      }
-
-      query += ` ORDER BY c.id DESC`;
-    } else {
-      query += ` AND c.id=${parseInt(id)}`;
-    }
-
-    connection.query(query, (error, data) => {
-      if (error) return res.status(500).json({ error: error.message });
-
-      const response = {
-        TotalItems: totalItems,
-        Data: data,
-      };
-
-      res.json(response);
+        return { dataSql, countSql, dataParams, countParams };
+      },
     });
-  });
+    res.json(response);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Post
@@ -64,6 +58,7 @@ categoryRouter.post("/category/save", authenticateToken, async (req, res) => {
   const { id, name, parent } = req.body;
 
   try {
+    await ensureCompanyColumn("category", companyId);
     await helper.runInTransaction(async (q) => {
       let oldRow = null;
       if (id != 0) {

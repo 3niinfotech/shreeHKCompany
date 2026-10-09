@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useMemo, useCallback, useContext, S
 import { useLocation, useNavigate } from "react-router-dom";
 import { SelectionContext } from "./SelectionContext";
 import { SkuLink } from "../../hooks/useSkuModalAction";
-import { Button, Dropdown, Tag, Form, Input } from "antd";
+import { Button, ConfigProvider, Dropdown, Tag, Form, Input, Select, Space } from "antd";
 import { toastSuccess, toastWarning, toastInfo } from "../../utils/toastNotify";
 import { DownOutlined, DownloadOutlined, ReloadOutlined } from "@ant-design/icons";
 import InventorySmartSearch from "../../components/inventory/InventorySmartSearch";
@@ -10,6 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useFetchApi } from "../../api/ApiFunction";
 import { ENDPOINTS } from "../../api/endpoints";
 import { api } from "../../api/client/axiosInstance";
+import { PAUSE_BACKGROUND_API } from "../../api/pauseBackgroundApi";
 import { sendToOutward } from "../../api/services/outwardService";
 import { TRANSACTION_STOCK_KEYS } from "../../api/services/transactionStockService";
 import { toastApiSuccess, toastApiError } from "../../utils/toastNotify";
@@ -17,8 +18,8 @@ import InventoryFilterPanel from "../../components/inventory/InventoryFilterPane
 import InventoryFilterGroups from "../../components/inventory/InventoryFilterGroups";
 import InventoryCompactFilterRow from "../../components/inventory/InventoryCompactFilterRow";
 import InventoryActionPanel from "../../components/inventory/InventoryActionPanel";
-import InventoryQuickLinks from "../../components/inventory/InventoryQuickLinks";
 import InventorySummaryToolbar from "../../components/inventory/InventorySummaryToolbar";
+import InventoryPrimaryActions from "../../components/inventory/InventoryPrimaryActions";
 import InventoryFilterPresets from "../../components/inventory/InventoryFilterPresets";
 import useInventoryHoldActions from "../../hooks/useInventoryHoldActions";
 import useInventoryChangePriceActions from "../../hooks/useInventoryChangePriceActions";
@@ -43,6 +44,7 @@ import {
   useSelectedRowKeys,
 } from "./useInventorySelection";
 import { measureInventoryTableHeight } from "../../utils/measureInventoryTableHeight";
+import { openLegacyPdf } from "../../utils/legacyPrint";
 import "../../assets/scss/pages/inventory/onHand_module.scss";
 import "../../assets/scss/pages/inventory/diamondInventoryTable.scss";
 
@@ -51,6 +53,21 @@ const AIResultPanel = lazy(() => import("../../components/ai/AIResultPanel"));
 const InventoryBulkActionModal = lazy(() => import("../../components/inventory/InventoryBulkActionModal"));
 
 const EMPTY_ARRAY = [];
+
+/** Default GIA compact filter — shown selected and applied on first load / reset */
+const DEFAULT_COMPACT_FILTERS = { inStock: "ALL STOCK" };
+
+const INVENTORY_LIMIT_OPTIONS = [
+  { label: "100", value: 100 },
+  { label: "200", value: 200 },
+  { label: "500", value: 500 },
+  { label: "1000", value: 1000 },
+  { label: "All", value: "all" },
+];
+const INVENTORY_ALL_LIMIT = 50000;
+const DEFAULT_APPLIED_FILTERS = buildInventoryApiFilters({
+  compactValues: DEFAULT_COMPACT_FILTERS,
+});
 
 const DOWNLOAD_EXCEL_PRESETS = {
   export: { fileName: "Stock_List", sheetName: "Stock List", mode: "export" },
@@ -467,26 +484,6 @@ const InventoryHeaderActions = React.memo(function InventoryHeaderActions({
   );
 });
 
-const InventoryQuickLinksWrapper = React.memo(function InventoryQuickLinksWrapper({
-  selectedRows,
-  selectedCount,
-  onCompare,
-  onRefreshRapnet,
-  onWebsiteSync,
-  syncLoading,
-}) {
-  return (
-    <InventoryQuickLinks
-      selectedSku={selectedRows[0]?.sku}
-      selectedCount={selectedCount}
-      onCompare={onCompare}
-      onRefreshRapnet={onRefreshRapnet}
-      onWebsiteSync={onWebsiteSync}
-      syncLoading={syncLoading}
-    />
-  );
-});
-
 const DiamondInventoryTable = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -499,14 +496,14 @@ const DiamondInventoryTable = () => {
     clearSelection,
   } = useInventorySelection();
   const [offset, setOffset] = useState(1);
+  const [pageLimit, setPageLimit] = useState(100);
   const [searchText, setSearchText] = useState("");
-  const [appliedFilters, setAppliedFilters] = useState({});
+  const [appliedFilters, setAppliedFilters] = useState(DEFAULT_APPLIED_FILTERS);
   const [tableData, setTableData] = useState([]);
   const [isFetching, setIsFetching] = useState(false);
   const [tableHeight, setTableHeight] = useState(600);
   const [, setStoneDetailModal] = useState({ open: false, data: null });
   const [bulkActionModal, setBulkActionModal] = useState({ open: false, actionKey: null });
-  const [syncLoading, setSyncLoading] = useState(false);
   const pageModalsRef = useRef(null);
   const [filterForm] = Form.useForm();
   const [advancedFilterForm] = Form.useForm();
@@ -616,10 +613,10 @@ const DiamondInventoryTable = () => {
   );
   const summaryTotals = summaryRes?.Data?.totals;
 
-  const limit = 100;
+  const limit = pageLimit === "all" ? INVENTORY_ALL_LIMIT : Number(pageLimit) || 100;
   const inventoryQueryParams = useMemo(
-    () => ({ limit, offset, ...appliedFilters }),
-    [limit, offset, appliedFilters],
+    () => ({ limit, offset: 1, ...appliedFilters }),
+    [limit, appliedFilters],
   );
 
   const queryClient = useQueryClient();
@@ -927,36 +924,6 @@ const DiamondInventoryTable = () => {
     await refetchInventory();
   };
 
-  const handleRefreshRapnetFlags = async () => {
-    setSyncLoading(true);
-    try {
-      const res = await api.post(ENDPOINTS.integration.refreshRapnetStock);
-      if (res.data?.status === false) toastApiError({ response: { data: res.data } });
-      else toastApiSuccess(res.data);
-      queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
-    } catch (err) {
-      toastApiError(err);
-    } finally {
-      setSyncLoading(false);
-    }
-  };
-
-  const handleWebsiteSync = async () => {
-    setSyncLoading(true);
-    try {
-      const res = await api.post(ENDPOINTS.integration.websiteSync, {
-        limit: Math.min(selectedRowKeys.length || 50, 200),
-      });
-      if (res.data?.status === false) toastApiError({ response: { data: res.data } });
-      else toastApiSuccess(res.data);
-      queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
-    } catch (err) {
-      toastApiError(err);
-    } finally {
-      setSyncLoading(false);
-    }
-  };
-
   const pageRef = useRef(null);
   const tableRef = useRef(null);
   const tableHeightRef = useRef(tableHeight);
@@ -1037,49 +1004,13 @@ const DiamondInventoryTable = () => {
 
   useEffect(() => {
     if (productData?.Data?.length > 0) {
-      setTableData((prev) => {
-        if (offset === 1) {
-          return productData.Data.map((item, index) => mapInventoryProductRow(item, index, 1, 0));
-        }
-        const existingIds = new Set(prev.map((d) => d.id));
-        const newRawItems = productData.Data.filter((d) => !existingIds.has(String(d.id)));
-        const mapped = newRawItems.map((item, index) =>
-          mapInventoryProductRow(item, index, offset, prev.length)
-        );
-        return [...prev, ...mapped];
-      });
-    } else if (offset === 1 && !isInventoryFetching && !isLoading) {
+      setTableData(productData.Data.map((item, index) => mapInventoryProductRow(item, index, 1, 0)));
+    } else if (!isInventoryFetching && !isLoading) {
       setTableData([]);
     }
     setIsFetching(false);
-  }, [productData, offset, isInventoryFetching, isLoading]);
-
-  useEffect(() => {
-    const scrollContainer = tableRef.current?.querySelector(".ant-table-body") || tableRef.current;
-    if (!scrollContainer) return;
-    let ticking = false;
-    const onScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
-          if (
-            scrollTop + clientHeight >= scrollHeight - 350 &&
-            !loadingNextPageRef.current &&
-            !isFetchingRef.current &&
-            tableDataLengthRef.current < totalAvailableRef.current
-          ) {
-            loadingNextPageRef.current = true;
-            setIsFetching(true);
-            setOffset((prev) => prev + 1);
-          }
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-    scrollContainer.addEventListener("scroll", onScroll, { passive: true });
-    return () => scrollContainer.removeEventListener("scroll", onScroll);
-  }, []);
+    loadingNextPageRef.current = false;
+  }, [productData, isInventoryFetching, isLoading]);
 
   const handleRemarkSave = useCallback(async (productId, nextRemark) => {
     try {
@@ -1433,6 +1364,23 @@ const DiamondInventoryTable = () => {
       pageModalsRef.current?.openPackage();
       return;
     }
+    if (key === "printLabel" || mapped === "printLabel") {
+      if (selectedRowKeys.length === 0) {
+        toastWarning("Please select at least one diamond");
+        return;
+      }
+      const selectedSet = new Set(selectedRowKeys.map(String));
+      const skus = tableData
+        .filter((row) => selectedSet.has(String(row.id)))
+        .map((row) => row.sku)
+        .filter(Boolean);
+      if (!skus.length) {
+        toastWarning("Selected rows have no SKU");
+        return;
+      }
+      openLegacyPdf("print/stone-label.php", { sku: skus.join(",") });
+      return;
+    }
     if (mapped === "export") {
       if (selectedRowKeys.length === 0) {
         toastWarning("Please select at least one diamond");
@@ -1602,20 +1550,17 @@ const DiamondInventoryTable = () => {
   const refreshInventory = async (options = {}) => {
     if (options.reset) {
       filterForm.resetFields();
+      filterForm.setFieldsValue(DEFAULT_COMPACT_FILTERS);
       advancedFilterForm.resetFields();
       setSearchText("");
       setCaratFrom("");
       setCaratTo("");
       setIsFetching(false);
-      setAppliedFilters({});
+      setAppliedFilters(DEFAULT_APPLIED_FILTERS);
       setSelectedRowKeys([]);
     }
     setOffset(1);
-    if (offset === 1) {
-      await refetchInventory();
-    } else {
-      queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
-    }
+    await refetchInventory();
     queryClient.invalidateQueries({ queryKey: ["myInventorySummary"] });
   };
 
@@ -1711,23 +1656,43 @@ const DiamondInventoryTable = () => {
   );
 
   const advancedFiltersContent = useMemo(() => (
-    <Form form={advancedFilterForm} layout="vertical" component={false}>
-      <InventoryFilterPresets
-        pageKey="my-inventory"
-        compactForm={filterForm}
-        advancedForm={advancedFilterForm}
-        onApply={applyInventoryFilters}
-      />
-      <InventoryFilterGroups
-        groups={INVENTORY_FILTER_GROUPS}
-        allFields={filterFields}
-      />
-    </Form>
+    <ConfigProvider
+      theme={{
+        token: {
+          colorBorder: "#000000",
+          colorTextPlaceholder: "#000000",
+          colorTextQuaternary: "#000000",
+        },
+        components: {
+          Select: {
+            colorBorder: "#000000",
+            hoverBorderColor: "#000000",
+            activeBorderColor: "#000000",
+            colorTextPlaceholder: "#000000",
+          },
+          Input: {
+            colorBorder: "#000000",
+            hoverBorderColor: "#000000",
+            activeBorderColor: "#000000",
+            colorTextPlaceholder: "#000000",
+          },
+        },
+      }}
+    >
+      <Form form={advancedFilterForm} layout="vertical" component={false}>
+        <InventoryFilterPresets
+          pageKey="my-inventory"
+          compactForm={filterForm}
+          advancedForm={advancedFilterForm}
+          onApply={applyInventoryFilters}
+        />
+        <InventoryFilterGroups
+          groups={INVENTORY_FILTER_GROUPS}
+          allFields={filterFields}
+        />
+      </Form>
+    </ConfigProvider>
   ), [advancedFilterForm, filterForm, applyInventoryFilters, filterFields]);
-
-  const handleOpenCompareModal = useCallback(() => {
-    pageModalsRef.current?.openCompare();
-  }, []);
 
   const latestHandlersRef = useRef({});
   useEffect(() => {
@@ -1763,6 +1728,7 @@ const DiamondInventoryTable = () => {
     <InventoryCompactFilterRow
       form={filterForm}
       fields={compactFilterFields}
+      initialValues={DEFAULT_COMPACT_FILTERS}
       caratFrom={caratFrom}
       caratTo={caratTo}
       onCaratFromChange={setCaratFrom}
@@ -1814,14 +1780,21 @@ const DiamondInventoryTable = () => {
               advancedFilters={advancedFiltersContent}
             />
             <InventorySummaryToolbar totals={summaryTotals}>
-              <InventoryQuickLinksWrapper
-                selectedRows={selectedRows}
-                selectedCount={selectedRowKeys.length}
-                onCompare={handleOpenCompareModal}
-                onRefreshRapnet={handleRefreshRapnetFlags}
-                onWebsiteSync={handleWebsiteSync}
-                syncLoading={syncLoading}
-              />
+              <Space size={8} wrap>
+                <span style={{ fontSize: 12, color: "rgba(0,0,0,0.65)" }}>Limit</span>
+                <Select
+                  size="small"
+                  value={pageLimit}
+                  options={INVENTORY_LIMIT_OPTIONS}
+                  style={{ width: 90 }}
+                  onChange={(value) => {
+                    setPageLimit(value);
+                    setOffset(1);
+                    setTableData([]);
+                  }}
+                />
+                <InventoryPrimaryActions onAction={stablePanelAction} />
+              </Space>
             </InventorySummaryToolbar>
             <Suspense fallback={null}>
               <AIResultPanel

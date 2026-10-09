@@ -93,9 +93,9 @@ async function getAdvanceReportTransactionsFromDb(filters = {}, companyId) {
  * @param {number} companyId
  */
 async function getDistinctBooksFromDb(companyId) {
-  const sql = `SELECT DISTINCT TRIM(bank) AS name 
-               FROM dai_balance 
-               WHERE (company = ? OR company IS NULL) AND bank IS NOT NULL AND TRIM(bank) <> ''
+  const sql = `SELECT DISTINCT TRIM(book) AS name
+               FROM dai_book
+               WHERE (company = ? OR company IS NULL) AND book IS NOT NULL AND TRIM(book) <> ''
                ORDER BY name`;
   return queryAsync(sql, [companyId]);
 }

@@ -88,7 +88,7 @@ const CurrancyRate = () => {
     };
 
     return (
-        <div className={styles.card}>
+        <div className={`${styles.card} ${styles.cardScroll}`}>
             <div className={styles.cardHeader}>
                 <div className={styles.cardHeaderLeft}>
                     <div className={styles.cardIcon}>

@@ -249,7 +249,7 @@ const AdvanceTableData = () => {
 
             <ConfirmDeleteModal
                 open={deleteModal.open}
-                title="Delete Expense Record"
+                title="Delete Advance Record"
                 entityName={`Date: ${deleteModal.record?.date?.split('T')[0]}, Amount: ${deleteModal.record?.amount}`}
                 loading={isDeleting}
                 onCancel={closeDelete}

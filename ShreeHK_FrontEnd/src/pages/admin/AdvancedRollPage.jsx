@@ -400,10 +400,10 @@ const AdvancedRollPage = () => {
                               <span className={`${styles.roleAvatar} ${isSuper ? styles.roleAvatarSuper : ''}`}>
                                 {isSuper ? <CrownOutlined /> : <ClusterOutlined />}
                               </span>
-                              {isSelected && <CheckCircleOutlined className={styles.selectedMark} />}
                             </div>
                             <div className={styles.roleName} title={role.name}>{role.name}</div>
                             <Tag className={styles.permTag}>{permCount} permissions</Tag>
+                            {isSelected ? <CheckCircleOutlined className={styles.selectedMark} /> : <span className={styles.selectedMark} aria-hidden />}
                           </button>
                         );
                       })

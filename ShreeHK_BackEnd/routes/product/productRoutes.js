@@ -530,19 +530,28 @@ productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
 
   const countQuery = `SELECT COUNT(id) as totalProducts, SUM(p.polish_pcs) as totalPcs, SUM(p.polish_carat) as totalCarat, SUM(p.amount) as totalAmount ${queryConditions} ${filter}`;
 
-  connection.query(countQuery, queryParams, (countError, countResult) => {
-    if (countError) {
-      return res
-        .status(500)
-        .json({ error: "Error occured while fetching data" });
-    }
-
-    if (!countResult || countResult.length === 0) {
-      return res.status(500).json({ error: "Count query returned no results" });
-    }
-
-    connection.query(query, [...queryParams, limit, paginationOffset], async (error, data) => {
-      if (error) return res.status(500).json({ error: error.message });
+  // perf: run count + page queries in parallel (same SQL, same response assembly)
+  Promise.all([
+    new Promise((resolve, reject) => {
+      connection.query(countQuery, queryParams, (err, rows) => {
+        if (err) {
+          const countErr = new Error("Error occured while fetching data");
+          countErr.isCountError = true;
+          return reject(countErr);
+        }
+        resolve(rows);
+      });
+    }),
+    new Promise((resolve, reject) => {
+      connection.query(query, [...queryParams, limit, paginationOffset], (err, rows) =>
+        err ? reject(err) : resolve(rows)
+      );
+    }),
+  ])
+    .then(async ([countResult, data]) => {
+      if (!countResult || countResult.length === 0) {
+        return res.status(500).json({ error: "Count query returned no results" });
+      }
 
       let rows = data;
       try {
@@ -561,8 +570,13 @@ productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
         Data: rows,
       };
       res.json(response);
+    })
+    .catch((err) => {
+      if (err?.isCountError) {
+        return res.status(500).json({ error: "Error occured while fetching data" });
+      }
+      return res.status(500).json({ error: err?.message });
     });
-  });
 });
 
 productRouter.get("/product/detail", authenticateToken, (req, res) => {

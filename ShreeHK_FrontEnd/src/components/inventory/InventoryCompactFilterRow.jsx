@@ -10,6 +10,7 @@ import styles from "../../assets/scss/components/inventoryFilterPanel.module.scs
 const InventoryCompactFilterRow = ({
   form,
   fields = [],
+  initialValues,
   caratFrom,
   caratTo,
   onCaratFromChange,
@@ -38,7 +39,13 @@ const InventoryCompactFilterRow = ({
   };
 
   return (
-    <Form form={form} layout="inline" component={false} className={styles.compactFilterForm}>
+    <Form
+      form={form}
+      layout="inline"
+      component={false}
+      className={styles.compactFilterForm}
+      initialValues={initialValues}
+    >
       <div className={styles.caratGroup}>
         <Input
           className={styles.caratInput}

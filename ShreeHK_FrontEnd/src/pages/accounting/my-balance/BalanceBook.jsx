@@ -87,7 +87,7 @@ const BalanceBook = () => {
     };
 
     const showDeleteModal = (record) => {
-        setDeleteModal({ open: true, id: record.id, _key: record._key, name: `Bank: ${record.bank || 'New Entry'}` });
+        setDeleteModal({ open: true, id: record.id, _key: record._key, name: `Book: ${record.bank || 'New Entry'}` });
     };
 
     const closeDelete = () => {
@@ -106,7 +106,7 @@ const BalanceBook = () => {
 
     return (
         <>
-            <div className={styles.card}>
+            <div className={`${styles.card} ${styles.cardScroll}`}>
                 <div className={styles.cardHeader}>
                     <div className={styles.cardHeaderLeft}>
                         <div className={styles.cardIcon}>
@@ -162,7 +162,7 @@ const BalanceBook = () => {
                                                     <Input
                                                         size="small"
                                                         value={row.bank}
-                                                        placeholder="Bank name"
+                                                        placeholder="Book name"
                                                         onChange={(e) => updateRow(getRowKey(row), 'bank', e.target.value)}
                                                     />
                                                 </td>

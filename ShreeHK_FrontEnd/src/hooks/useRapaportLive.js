@@ -5,6 +5,7 @@ import {
   fetchRapnetHistory,
   postRapnetSnapshot,
 } from "../api/services/rapnetService";
+import { bgRefetchInterval } from "../api/pauseBackgroundApi";
 import useUIStore from "../store/Ui.Store";
 
 const LIVE_POLL_MS = 60_000;
@@ -24,7 +25,7 @@ export default function useRapaportLive() {
       const res = await fetchRapnetLive();
       return res?.Data ?? res;
     },
-    refetchInterval: LIVE_POLL_MS,
+    refetchInterval: bgRefetchInterval(LIVE_POLL_MS),
     staleTime: 30_000,
   });
 
@@ -34,7 +35,7 @@ export default function useRapaportLive() {
       const res = await fetchRapnetHistory(interval);
       return res?.Data ?? res;
     },
-    refetchInterval: LIVE_POLL_MS,
+    refetchInterval: bgRefetchInterval(LIVE_POLL_MS),
     staleTime: 30_000,
   });
 

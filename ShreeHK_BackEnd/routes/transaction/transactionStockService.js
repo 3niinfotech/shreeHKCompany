@@ -608,6 +608,7 @@ async function returnOutwardMemo(post, userContext = {}) {
   const mdata = await getOutwardData(post.id, companyId);
   if (!mdata) return { ok: false, message: "Outward record not found or access denied" };
   const products = (post.products || []).map(String);
+  const recordMap = post.record || {};
   let returnProduct = (mdata.return_products || "").split(",").filter(Boolean);
   const mp = [];
 
@@ -626,14 +627,37 @@ async function returnOutwardMemo(post, userContext = {}) {
       };
     }
 
+    const rec = recordMap[pid] || recordMap[String(pid)] || {};
+    const retPcs = rec.polish_pcs != null && rec.polish_pcs !== ""
+      ? Number(rec.polish_pcs)
+      : Number(pdata.polish_pcs) || 0;
+    const retCarat = rec.polish_carat != null && rec.polish_carat !== ""
+      ? Number(rec.polish_carat)
+      : Number(pdata.polish_carat) || 0;
+    const stockPcs = Number(pdata.polish_pcs) || 0;
+    const stockCarat = Number(pdata.polish_carat) || 0;
+
+    if (retCarat <= 0) {
+      return { ok: false, message: `Enter carat for SKU ${pdata.sku || pid}` };
+    }
+    if (retCarat > stockCarat) {
+      return { ok: false, message: `Carat exceed stock for SKU ${pdata.sku || pid}` };
+    }
+    if (pdata.group_type === "box" && retPcs > stockPcs) {
+      return { ok: false, message: `Pcs exceed stock for SKU ${pdata.sku || pid}` };
+    }
+
+    const isPartial = retCarat < stockCarat - 0.0001;
+
     if (pdata.outward_parent) {
       const edata = await getProductDetail(pdata.outward_parent);
       if (edata) {
+        const addPcs = pdata.group_type === "box" || edata.group_type === "box" ? retPcs : 0;
         const parentPcs =
           edata.group_type === "box"
-            ? parseFloat(edata.polish_pcs) + parseFloat(pdata.polish_pcs)
+            ? parseFloat(edata.polish_pcs) + addPcs
             : parseFloat(edata.polish_pcs);
-        const parentCarat = parseFloat(edata.polish_carat) + parseFloat(pdata.polish_carat);
+        const parentCarat = parseFloat(edata.polish_carat) + retCarat;
         const parentPrice = Number(edata.price) || 0;
         const parentAmount = Number((parentCarat * parentPrice).toFixed(2));
         await query("UPDATE dai_product SET polish_pcs=?, polish_carat=?, amount=? WHERE id = ?", [
@@ -649,8 +673,8 @@ async function returnOutwardMemo(post, userContext = {}) {
           narretion: mdata.narretion,
           date: moment().format("YYYY-MM-DD HH:mm:ss"),
           description: `Stone Memo return with reference no is ${mdata.reference}`,
-          pcs: pdata.polish_pcs,
-          carat: pdata.polish_carat,
+          pcs: retPcs,
+          carat: retCarat,
           amount: pdata.sell_amount || pdata.amount,
           price: pdata.sell_price || pdata.price,
           sku: edata.sku,
@@ -662,9 +686,27 @@ async function returnOutwardMemo(post, userContext = {}) {
           balance_carat: parentCarat,
         });
       }
-      await query("UPDATE dai_product SET outward='', visibility=0, outward_parent=0 WHERE id = ?", [pid]);
+
+      if (isPartial) {
+        const leftPcs = Math.max(0, stockPcs - retPcs);
+        const leftCarat = Math.max(0, stockCarat - retCarat);
+        const leftPrice = Number(pdata.sell_price || pdata.price) || 0;
+        await query(
+          "UPDATE dai_product SET polish_pcs=?, polish_carat=?, sell_amount=?, amount=? WHERE id = ?",
+          [leftPcs, leftCarat, Number((leftCarat * leftPrice).toFixed(2)), Number((leftCarat * (Number(pdata.price) || leftPrice)).toFixed(2)), pid]
+        );
+        mp.push(pid);
+      } else {
+        await query("UPDATE dai_product SET outward='', visibility=0, outward_parent=0 WHERE id = ?", [pid]);
+        returnProduct.push(pid);
+      }
+    } else if (isPartial) {
+      return {
+        ok: false,
+        message: `Partial return for SKU ${pdata.sku || pid} is only supported for box/parcel splits. Return full carat or split first.`,
+      };
     } else {
-      await query("UPDATE dai_product SET outward='', site_upload=0, rapnet_upload=0 WHERE outward='memo' AND id = ?", [pid]);
+      await query("UPDATE dai_product SET outward='', site_upload=0, rapnet_upload=0 WHERE outward IN ('memo','consign') AND id = ?", [pid]);
       await addHistoryAudited({
         product_id: pid,
         action: "memo_return",
@@ -672,8 +714,8 @@ async function returnOutwardMemo(post, userContext = {}) {
         narretion: mdata.narretion,
         date: moment().format("YYYY-MM-DD HH:mm:ss"),
         description: `Stone Memo return with reference no is ${mdata.reference}`,
-        pcs: pdata.polish_pcs,
-        carat: pdata.polish_carat,
+        pcs: retPcs,
+        carat: retCarat,
         amount: pdata.sell_amount || pdata.amount,
         price: pdata.sell_price || pdata.price,
         sku: pdata.sku,
@@ -684,8 +726,8 @@ async function returnOutwardMemo(post, userContext = {}) {
         balance_pcs: pdata.polish_pcs,
         balance_carat: pdata.polish_carat,
       });
+      returnProduct.push(pid);
     }
-    returnProduct.push(pid);
   }
 
   // Recalculate remaining final amount on outward memo header
@@ -787,21 +829,50 @@ async function outwardMemoToSale(post, userContext = {}) {
       await q(`INSERT INTO dai_history (${hData[0]}) VALUES (${hData[1]})`);
     }
 
-    const salePost = {
+    const shippingCharge = Number(post.shipping_charge) || 0;
+    let finalAmount = Number(post.final_amount);
+    if (!Number.isFinite(finalAmount) || finalAmount <= 0) {
+      finalAmount = amount + shippingCharge;
+    }
+    const paidAmount = post.on_payment ? Number(post.paid_amount) || 0 : 0;
+    const dueAmount =
+      post.due_amount != null && post.due_amount !== ""
+        ? Number(post.due_amount)
+        : Math.max(0, finalAmount - paidAmount);
+
+    const salePostRaw = {
       company: companyId,
       user: userId,
       entryno: incre_id,
-      invoiceno: invoice,
+      invoiceno: post.invoiceno || invoice,
       type,
       status: type === "export" ? "on_export" : "on_sale",
       party: post.party || mdata.party,
-      reference: mdata.reference,
-      date: moment().format("YYYY-MM-DD"),
-      invoicedate: moment().format("YYYY-MM-DD"),
+      reference: post.reference != null ? post.reference : mdata.reference,
+      date: post.date || moment().format("YYYY-MM-DD"),
+      invoicedate: post.invoicedate || post.date || moment().format("YYYY-MM-DD"),
+      terms: post.terms != null ? post.terms : mdata.terms || "",
+      duedate: post.duedate || null,
       products: outProducts.join(","),
-      final_amount: amount,
-      due_amount: amount,
+      narretion: post.narretion || "",
+      shipping_name: post.shipping_name || "",
+      origin_of: post.origin_of || "",
+      shipping_charge: shippingCharge,
+      less_percent: Number(post.less_percent) || 0,
+      less_amount: Number(post.less_amount) || 0,
+      other_less_percent: Number(post.other_less_percent) || 0,
+      other_less_amount: Number(post.other_less_amount) || 0,
+      charge: Number(post.charge) || 0,
+      paid_amount: paidAmount,
+      final_amount: finalAmount,
+      due_amount: dueAmount,
     };
+    // Only insert columns present on dai_outward (memo row = SELECT *)
+    const knownCols = new Set(Object.keys(mdata || {}));
+    const salePost = {};
+    for (const [k, v] of Object.entries(salePostRaw)) {
+      if (knownCols.has(k)) salePost[k] = v;
+    }
     const data = insertString(salePost);
     const result = await q(`INSERT INTO dai_outward (${data[0]}) VALUES (${data[1]})`);
     const newOutwardId = result.insertId;

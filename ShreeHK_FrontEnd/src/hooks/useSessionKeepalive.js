@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { api } from "../api/client/axiosInstance";
 import { ENDPOINTS } from "../api/endpoints";
+import { PAUSE_BACKGROUND_API } from "../api/pauseBackgroundApi";
 import useAuthStore from "../store/Auth.Store";
 
 const KEEPALIVE_MS = 30 * 1000;
@@ -30,6 +31,7 @@ const useSessionKeepalive = () => {
   contextRef.current = { navigate, logout, companyId, yearId, warnedRef };
 
   useEffect(() => {
+    if (PAUSE_BACKGROUND_API) return undefined;
     if (!isAuthenticated || !token) return undefined;
 
     const poll = async () => {

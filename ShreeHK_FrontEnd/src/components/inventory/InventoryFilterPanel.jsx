@@ -153,7 +153,9 @@ const InventoryFilterPanel = ({
           onMouseEnter={clearLeaveTimer}
           onMouseLeave={handleAdvancedHoverLeave}
         >
-          <div className={styles.advancedInner}>{advancedFilters}</div>
+          <div className={`${styles.advancedInner} inventory-advanced-filters`}>
+            {advancedFilters}
+          </div>
         </div>
       ) : null}
     </div>

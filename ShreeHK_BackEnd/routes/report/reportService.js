@@ -245,8 +245,11 @@ async function getGroupReport(post, companyId, userId) {
       sql = `SELECT * FROM dai_outward WHERE company = ?${userFilter}${statusSql}${typeSql}${partyFilter.sql}${dateCol.sql}${productsClause} ORDER BY date DESC, id DESC`;
     }
 
-    const outwardRows = await queryAsync(sql, values);
-    const partyMap = await getPartyMap();
+    // perf: outward rows and party map are independent reads
+    const [outwardRows, partyMap] = await Promise.all([
+      queryAsync(sql, values),
+      getPartyMap(),
+    ]);
 
     // Batch fetch products and return records to eliminate N+1 loop queries
     const allProductIds = [];
@@ -324,8 +327,11 @@ async function getGroupReport(post, companyId, userId) {
   } else if (report === "purchase" || report === "import") {
     const sql = `SELECT * FROM dai_inward WHERE deleted = 0 AND company = ?${userFilter}
       AND inward_type IN ('purchase','import')${partyFilter.sql}${dateCol.sql} ORDER BY date DESC, id DESC`;
-    const inwardRows = await queryAsync(sql, [companyId, ...partyFilter.values, ...dateCol.values]);
-    const partyMap = await getPartyMap();
+    // perf: inward rows and party map are independent reads
+    const [inwardRows, partyMap] = await Promise.all([
+      queryAsync(sql, [companyId, ...partyFilter.values, ...dateCol.values]),
+      getPartyMap(),
+    ]);
 
     const inwardIds = inwardRows.map((r) => r.id).filter(Boolean);
     const inwardProductsByInwardId = {};
@@ -401,11 +407,16 @@ function formatGroupRow(row, report, no) {
 
 async function getStoneSaleReport(post, companyId) {
   const limit = parseInt(post.limit, 10) || 100;
-  const partyList = await getPartyMap();
+  const allCompanies = companyId == null || companyId === "" || Number(companyId) <= 0;
 
   let partySql = "";
-  const values = [companyId];
-  if (post.party) {
+  const values = [];
+  let companySql = "";
+  if (!allCompanies) {
+    companySql = " AND company = ?";
+    values.push(companyId);
+  }
+  if (post.party && post.party !== "0" && post.party !== "") {
     partySql = " AND party = ?";
     values.push(post.party);
   }
@@ -439,13 +450,17 @@ async function getStoneSaleReport(post, companyId) {
     values.push(post.invoice || post.invoiceNo);
   }
 
-  const outwardSql = `SELECT * FROM dai_outward WHERE products <> '' AND company = ?
+  const outwardSql = `SELECT * FROM dai_outward WHERE products <> ''${companySql}
     AND status NOT IN ('sale_close','close_sale','close_export')
     AND type IN ('sale','export')${partySql}${dateSql}${invoiceSql}
     ORDER BY date DESC, id DESC LIMIT ?`;
   values.push(limit);
 
-  const outwardRows = await queryAsync(outwardSql, values);
+  // perf: party map and outward rows are independent
+  const [partyList, outwardRows] = await Promise.all([
+    getPartyMap(),
+    queryAsync(outwardSql, values),
+  ]);
   const productIds = [];
   outwardRows.forEach((row) => {
     (row.products || "").split(",").forEach((id) => {
@@ -493,6 +508,9 @@ async function getStoneSaleReport(post, companyId) {
         terms: row.terms,
         due_date: row.duedate ? moment(row.duedate).format("DD-MM-YYYY") : "",
         paid_amount: row.paid_amount,
+        company: row.company,
+        outward: row.type || "sale",
+        status: String(row.type || "sale").toUpperCase(),
       });
     });
   });
@@ -502,11 +520,16 @@ async function getStoneSaleReport(post, companyId) {
 
 async function getStonePurchaseReport(post, companyId) {
   const limit = parseInt(post.limit, 10) || 100;
-  const partyList = await getPartyMap();
+  const allCompanies = companyId == null || companyId === "" || Number(companyId) <= 0;
 
   let partySql = "";
-  const values = [companyId];
-  if (post.party) {
+  const values = [];
+  let companySql = "";
+  if (!allCompanies) {
+    companySql = " AND company = ?";
+    values.push(companyId);
+  }
+  if (post.party && post.party !== "0" && post.party !== "") {
     partySql = " AND party = ?";
     values.push(post.party);
   }
@@ -532,12 +555,16 @@ async function getStonePurchaseReport(post, companyId) {
   }
 
   const inwardSql = `SELECT * FROM dai_inward
-    WHERE (deleted = 0 OR deleted IS NULL) AND company = ?
+    WHERE (deleted = 0 OR deleted IS NULL)${companySql}
     AND inward_type IN ('purchase','import')${partySql}${dateSql}${invoiceSql}
     ORDER BY date DESC, id DESC LIMIT ?`;
   values.push(limit);
 
-  const inwardRows = await queryAsync(inwardSql, values);
+  // perf: party map and inward rows are independent
+  const [partyList, inwardRows] = await Promise.all([
+    getPartyMap(),
+    queryAsync(inwardSql, values),
+  ]);
   if (!inwardRows.length) return [];
 
   const inwardIds = inwardRows.map((r) => r.id);
@@ -585,6 +612,9 @@ async function getStonePurchaseReport(post, companyId) {
         terms: row.terms,
         due_date: row.duedate && row.duedate !== "0000-00-00" ? moment(row.duedate).format("DD-MM-YYYY") : "",
         paid_amount: row.paid_amount,
+        company: row.company,
+        outward: row.inward_type || "purchase",
+        status: String(row.inward_type || "purchase").toUpperCase(),
       });
     });
   });
@@ -657,10 +687,21 @@ async function resolveStoneDetail(sku, companyId) {
   if (!detail) {
     detail = await productHelper.getDetail(trimmed, "p.sku");
   }
-  if (!detail || !detail.id) return null;
-  if (companyId && detail.company != null && String(detail.company) !== String(companyId)) {
-    return null;
+  // Case-insensitive global fallback (sale-stock allCompanies → History)
+  if (!detail || !detail.id) {
+    const rows = await queryAsync(
+      `SELECT p.*, v.report_no, v.shape, v.clarity, v.size, v.f_intensity, v.cut, v.polish, v.symmentry, v.table_pc, v.depth_pc, v.mesurment, v.gridle, v.intensity, v.overtone, v.color, v.package, v.bgm, v.eyeclean
+       FROM dai_product p
+       LEFT JOIN dai_product_value v ON p.id = v.product_id
+       WHERE UPPER(TRIM(p.sku)) = UPPER(?)
+       LIMIT 1`,
+      [trimmed]
+    );
+    detail = rows?.[0] || null;
   }
+  if (!detail || !detail.id) return null;
+  // Do not reject company mismatch: sale-stock / reports may show stones from other
+  // companies the user can already list via allCompanies.
   return detail;
 }
 
@@ -674,12 +715,14 @@ async function getStoneDetail(sku, companyId, userId) {
     historySql += " AND user <> 16";
   }
   historySql += " ORDER BY id";
-  const history = await queryAsync(historySql, historyValues);
-
-  const transfer = await getBoxHistoryByProductId(detail.id);
-
-  const partyMap = await getPartyMap();
-  const activityLogs = await getActivityLogForStone(sku, detail.id, companyId);
+  // perf: history, box transfer, party map, and activity logs are independent
+  const activityCompanyId = detail.company != null ? detail.company : companyId;
+  const [history, transfer, partyMap, activityLogs] = await Promise.all([
+    queryAsync(historySql, historyValues),
+    getBoxHistoryByProductId(detail.id),
+    getPartyMap(),
+    getActivityLogForStone(sku, detail.id, activityCompanyId),
+  ]);
   const mappedHistory = mapStoneHistoryRows(history, partyMap);
   const enrichedHistory = enrichHistoryDates(mappedHistory, activityLogs);
 
@@ -747,12 +790,14 @@ async function getStoneInfoByParty(sku, companyId, userId) {
   const base = await getStoneDetail(sku, companyId, userId);
   if (!base) return null;
 
-  const partyIds = await queryAsync(
-    "SELECT DISTINCT party FROM dai_history WHERE product_id = ? AND party IS NOT NULL AND party <> ''",
-    [base.detail.id]
-  );
-
-  const partyMap = await getPartyMap();
+  // perf: distinct parties and party map are independent reads
+  const [partyIds, partyMap] = await Promise.all([
+    queryAsync(
+      "SELECT DISTINCT party FROM dai_history WHERE product_id = ? AND party IS NOT NULL AND party <> ''",
+      [base.detail.id]
+    ),
+    getPartyMap(),
+  ]);
   const memoActions = ["memo", "memo_return", "memo_close", "consign", "consign_return", "consign_close"];
   const saleActions = ["sale", "sale_return", "sale_close", "export", "export_close"];
 
@@ -776,14 +821,17 @@ async function getStoneInfoByParty(sku, companyId, userId) {
 }
 
 async function getFilterOptions(companyId) {
-  const mainGroups = await queryAsync(
-    "SELECT DISTINCT main_group AS value FROM dai_product WHERE company = ? AND main_group <> ''",
-    [companyId]
-  );
-  const subGroups = await queryAsync(
-    "SELECT DISTINCT sub_group AS value FROM dai_product WHERE company = ? AND sub_group <> ''",
-    [companyId]
-  );
+  // perf: main/sub group DISTINCT queries are independent
+  const [mainGroups, subGroups] = await Promise.all([
+    queryAsync(
+      "SELECT DISTINCT main_group AS value FROM dai_product WHERE company = ? AND main_group <> ''",
+      [companyId]
+    ),
+    queryAsync(
+      "SELECT DISTINCT sub_group AS value FROM dai_product WHERE company = ? AND sub_group <> ''",
+      [companyId]
+    ),
+  ]);
   return {
     mainGroups: mainGroups.map((r) => ({ value: r.value, label: r.value })),
     subGroups: subGroups.map((r) => ({ value: r.value, label: r.value })),
@@ -832,8 +880,26 @@ function formatOutwardDate(value) {
 
 function resolveTransactionReport(post) {
   if (post.report) return post.report;
-  if (post.saleStatus === "close") return "close_sale";
-  if (post.saleStatus === "open") return "sale";
+  const status = String(post.saleStatus || "").trim();
+  if (status === "close") return "close_sale";
+  if (status === "open") return "sale";
+  // "report" is UI placeholder — treat as open sale
+  if (status === "report") return "sale";
+  if (
+    [
+      "memo",
+      "lab",
+      "sale",
+      "purchase",
+      "import",
+      "export",
+      "close_memo",
+      "close_sale",
+      "consign",
+    ].includes(status)
+  ) {
+    return status;
+  }
   return "";
 }
 
@@ -859,7 +925,6 @@ async function getOutwardTransactionRows(post, companyId, userId) {
   const limit = parseInt(post.limit, 10) || 500;
   const userFilter = hideUser16(userId) ? " AND user <> 16" : "";
   const giaSql = buildGiaFilter(post);
-  const partyMap = await getPartyMap();
 
   let typeSql = " AND type = ?";
   const typeValues = [report];
@@ -888,7 +953,11 @@ async function getOutwardTransactionRows(post, companyId, userId) {
     ...invoiceFilter.values,
     limit,
   ];
-  const outwardRows = await queryAsync(outwardSql, outwardValues);
+  // perf: party map and outward rows are independent
+  const [partyMap, outwardRows] = await Promise.all([
+    getPartyMap(),
+    queryAsync(outwardSql, outwardValues),
+  ]);
 
   if (type === "packet") {
     return getTransactionPacketRows(outwardRows, report, partyMap, giaSql);
@@ -1149,18 +1218,21 @@ async function getPurchaseTransactionRows(post, companyId, userId) {
   const limit = parseInt(post.limit, 10) || 500;
   const userFilter = hideUser16(userId) ? " AND user <> 16" : "";
   const giaSql = buildGiaFilter(post);
-  const partyMap = await getPartyMap();
 
   const inwardSql = `SELECT * FROM dai_inward
     WHERE (deleted = 0 OR deleted IS NULL) AND company = ?${userFilter}
     AND inward_type IN ('purchase','import')${partyFilter.sql}${dateFilter.sql}${invoiceFilter.sql}
     ORDER BY date DESC, id DESC LIMIT ?`;
-  const inwardRows = await queryAsync(inwardSql, [
-    companyId,
-    ...partyFilter.values,
-    ...dateFilter.values,
-    ...invoiceFilter.values,
-    limit,
+  // perf: party map and inward rows are independent
+  const [partyMap, inwardRows] = await Promise.all([
+    getPartyMap(),
+    queryAsync(inwardSql, [
+      companyId,
+      ...partyFilter.values,
+      ...dateFilter.values,
+      ...invoiceFilter.values,
+      limit,
+    ]),
   ]);
 
   if (!inwardRows.length) return [];

@@ -68,7 +68,7 @@ const MyAccount = () => {
         },
         {
             key: 'fiscal-year',
-            title: 'Fiscal Year',
+            title: 'Financial Year',
             subtitle: 'Financial year setup',
             path: '/admin/fiscal-year',
             icon: <CalendarOutlined />,

@@ -6,6 +6,7 @@ import { NotebookPen, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api/client/axiosInstance";
 import { ENDPOINTS } from "../../api/endpoints";
+import { PAUSE_BACKGROUND_API } from "../../api/pauseBackgroundApi";
 import { playNotificationSound } from "../../utils/soundNotify";
 import styles from "../../assets/scss/components/notificationDropdown.module.scss";
 
@@ -189,6 +190,8 @@ const TaskHeaderButton = ({ buttonClassName, badgeClassName }) => {
   }, [syncQuickNotesCache]);
 
   useEffect(() => {
+    if (PAUSE_BACKGROUND_API) return undefined;
+
     fetchTasks();
     const interval = setInterval(fetchTasks, POLLING_MS);
 

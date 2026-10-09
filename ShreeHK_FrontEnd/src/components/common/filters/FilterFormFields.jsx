@@ -116,7 +116,7 @@ const useFiltersFormFields = (enabledFields = [], fieldConfigs = {}) => {
                 className="filter-item"
                 label={fieldLabel('date')}
             >
-                <RangePicker className="width-date" placeholder={['Start date', 'End date']} />
+                <RangePicker className="width-date" placeholder={['Start date', 'End date']} format="DD-MM-YYYY" />
             </Form.Item>
         ),
     };

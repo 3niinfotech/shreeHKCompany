@@ -59,6 +59,45 @@ $finance-empty: var(--color-chart-muted);
     flex-shrink: 0;
     margin: 0 0 10px;
     overflow: visible;
+
+    // Advanced filters: Saved views + Shape/Clarity/... dropdowns
+    [class*="advancedInner"],
+    [class*="filterGroupBody"],
+    [class*="filterPresetsRow"] {
+      --ant-color-text-placeholder: #000000;
+      --ant-color-text-quaternary: #000000;
+      --ant-input-placeholder-color: #000000;
+
+      .ant-select .ant-select-selector,
+      .ant-select-outlined .ant-select-selector,
+      .ant-input {
+        background: #fff !important;
+        border: 1px solid #000 !important;
+        border-radius: 4px !important;
+        color: #000 !important;
+        box-shadow: none !important;
+      }
+
+      .ant-select:hover .ant-select-selector,
+      .ant-select-focused .ant-select-selector,
+      .ant-select-open .ant-select-selector,
+      .ant-input:hover,
+      .ant-input:focus {
+        border-color: #000 !important;
+        box-shadow: none !important;
+      }
+
+      .ant-select-selection-placeholder,
+      .ant-select-selection-placeholder *,
+      .ant-select-selection-item,
+      .ant-select-arrow,
+      .ant-input::placeholder,
+      input::placeholder {
+        color: #000 !important;
+        -webkit-text-fill-color: #000 !important;
+        opacity: 1 !important;
+      }
+    }
   }
 
   .erp-table-container {
