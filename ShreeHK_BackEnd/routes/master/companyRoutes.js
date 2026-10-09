@@ -199,9 +199,24 @@ companyRouter.delete("/company/delete", authenticateToken, async (req, res) => {
 // Get Option
 companyRouter.get("/company/getOption", authenticateToken, (req, res) => {
   const companyId = buildUserContext(req).companyId;
-  const query = `SELECT id, name, address, country, pincode, email, contact_number, fax, contact_person FROM dai_party WHERE company = ? ORDER BY name`;
+  const allCompanies =
+    req.query.all === "1" ||
+    req.query.allCompanies === "1" ||
+    req.query.allCompanies === "true" ||
+    req.query.scope === "all";
 
-  connection.query(query, [companyId], (error, data) => {
+  // Reports (sale-stock etc.) need every party across all companies
+  const query = allCompanies
+    ? `SELECT id, name, address, country, pincode, email, contact_number, fax, contact_person, company
+       FROM dai_party
+       ORDER BY name`
+    : `SELECT id, name, address, country, pincode, email, contact_number, fax, contact_person
+       FROM dai_party
+       WHERE company = ?
+       ORDER BY name`;
+  const params = allCompanies ? [] : [companyId];
+
+  connection.query(query, params, (error, data) => {
     if (error) return res.status(500).json({ error: error.message });
 
     const response = {

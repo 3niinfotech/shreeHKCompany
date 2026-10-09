@@ -53,10 +53,11 @@ const FILTER_CONFIG = {
     ],
     stockChecksDefault: ["All"],
     fwOptions: [
+        { label: "All", value: "" },
         { label: "F", value: "F" },
         { label: "W", value: "W" },
     ],
-    fwDefault: "F",
+    fwDefault: "",
 };
 
 const LABEL_BUTTON = {

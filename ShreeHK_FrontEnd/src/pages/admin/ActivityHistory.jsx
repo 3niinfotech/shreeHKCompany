@@ -72,7 +72,7 @@ const ActivityHistory = () => {
   const [deletingSingle, setDeletingSingle] = useState(false);
   const [initialLoaded, setInitialLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState("activity");
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [autoRefresh, setAutoRefresh] = useState(false);
   const [showDataColumns, setShowDataColumns] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
   const [summary, setSummary] = useState(EMPTY_SUMMARY);
@@ -275,7 +275,7 @@ const ActivityHistory = () => {
                 />
               </Form.Item>
               <Form.Item name="dateRange" className={`${styles.heroField} ${styles.heroFieldWide}`}>
-                <RangePicker style={{ width: "100%" }} placeholder={["From", "To"]} />
+                <RangePicker style={{ width: "100%" }} placeholder={["From", "To"]} format="DD-MM-YYYY" />
               </Form.Item>
             </Form>
 

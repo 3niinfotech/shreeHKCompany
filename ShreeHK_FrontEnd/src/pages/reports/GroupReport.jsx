@@ -232,10 +232,10 @@ const GroupReport = () => {
                                 />
                             </Form.Item>
                             <Form.Item name="fromDate" className={styles.filterItem}>
-                                <DatePicker placeholder="From Date" className={styles.fieldDate} />
+                                <DatePicker placeholder="From Date" className={styles.fieldDate} format="DD-MM-YYYY" />
                             </Form.Item>
                             <Form.Item name="toDate" className={styles.filterItem}>
-                                <DatePicker placeholder="To Date" className={styles.fieldDate} />
+                                <DatePicker placeholder="To Date" className={styles.fieldDate} format="DD-MM-YYYY" />
                             </Form.Item>
                         </div>
                     </Form>

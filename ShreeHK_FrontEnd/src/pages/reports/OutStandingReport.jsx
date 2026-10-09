@@ -1,20 +1,17 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Table, Button, Card, Form, Tag } from 'antd';
+import { Button, Card, Form, Tag } from 'antd';
 import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
 import dayjs from 'dayjs';
 import { cssVar } from '../../theme';
-import debounce from 'lodash/debounce';
 import { useLocation } from 'react-router-dom';
-import { BarChartOutlined, ReloadOutlined } from '@ant-design/icons';
+import { ReloadOutlined } from '@ant-design/icons';
 import { ENDPOINTS } from '../../api/endpoints';
-import { Search, Sparkles } from 'lucide-react';
 import AIResultPanel from '../../components/ai/AIResultPanel';
 import useAiSalesReport from '../../components/ai/useAiSalesReport';
 import useFiltersFormFields from '../../components/common/filters/FilterFormFields';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
 import OutstandingCalculationModal from './OutstandingcalculationModal';
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
-import PageHeroHeader from '../../components/common/PageHeroHeader';
 import ExportExcelButton from '../../components/common/ExportExcelButton';
 import { exportReportToExcel } from '../../utils/reportExcelExport';
 import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
@@ -79,22 +76,6 @@ const OutStandingReport = () => {
                 }
             }
         });
-    };
-
-    const debouncedSearchRef = useRef(null);
-    if (!debouncedSearchRef.current) {
-        debouncedSearchRef.current = debounce((values) => handleSearch(values, true), 600);
-    }
-    const debouncedSearch = debouncedSearchRef.current;
-    useEffect(() => () => debouncedSearch.cancel(), [debouncedSearch]);
-
-    const onFilterChange = (changed, all) => {
-        if ('invoiceNo' in changed) {
-            const invoiceVal = all.invoiceNo || '';
-            if (invoiceVal.length > 2 || invoiceVal.length === 0) debouncedSearch(all);
-        } else {
-            handleSearch(all, true);
-        }
     };
 
     const columns = [
@@ -208,17 +189,15 @@ const OutStandingReport = () => {
         }
     };
 
+    // Prefill filters from navigation state only — do not auto-fetch.
     useEffect(() => {
         const incomingRange = location.state?.dateRange;
         if (incomingRange && incomingRange.length === 2) {
-            const rangeValue = [dayjs(incomingRange[0]), dayjs(incomingRange[1])];
-            form.setFieldsValue({ dateRange: rangeValue });
-            handleSearch({ ...form.getFieldsValue(), dateRange: rangeValue }, true);
-            // state clear kar do taaki refresh/back par dobara na lage
+            form.setFieldsValue({
+                dateRange: [dayjs(incomingRange[0]), dayjs(incomingRange[1])],
+            });
             window.history.replaceState({}, document.title);
-            return;
         }
-        handleSearch(form.getFieldsValue(), true);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -253,7 +232,7 @@ const OutStandingReport = () => {
                 )}
             >
                 <div className={filterPanelStyles.filterInlineRow}>
-                    <Form form={form} onValuesChange={onFilterChange}>
+                    <Form form={form}>
                         {renderFilters()}
                     </Form>
                 </div>

@@ -4,23 +4,32 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    gap: 14px;
+    gap: 10px;
 
     .tableCard {
-        flex: 1;
+        flex: 1 1 auto;
         min-height: 0;
+        height: 100%;
         display: flex;
         flex-direction: column;
         overflow: hidden;
 
         :global(.ant-card-body) {
-            flex: 1;
+            flex: 1 1 auto;
             min-height: 0;
+            height: 100%;
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            padding: 0 !important;
         }
     }
+}
+
+.saleStockTable {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    height: 100% !important;
 }
 
 .headerRow {
@@ -55,6 +64,23 @@
 .tableCard {
     border: none;
     box-shadow: none;
+}
+
+.paginationCenterRow {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 10px 12px 12px;
+    flex-shrink: 0;
+
+    :global(.ant-pagination) {
+        display: flex !important;
+        justify-content: flex-end !important;
+        align-items: center !important;
+        flex-wrap: wrap;
+        margin: 0 !important;
+    }
 }
 
 .customTable {

@@ -409,7 +409,7 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
                       style={{ "--card-index": Math.min(index, 6) }}
                       className={`${styles.yearCard} ${isActive ? styles.yearCardActive : ""} ${isSelecting ? styles.yearCardSelecting : ""}`}
                       onClick={() => selectContext(item)}
-                      aria-label={`Select fiscal year ${item.yearLabel}`}
+                      aria-label={`Select financial year ${item.yearLabel}`}
                     >
                       <span className={styles.yearTop}>
                         <span className={styles.yearIcon}>

@@ -1268,9 +1268,31 @@ async function updateOutward(rawPost) {
         citi: post.citi ? 1 : 0,
         dbs: post.dbs ? 1 : 0,
         sc: post.sc ? 1 : 0,
+        boc_sksm: post.boc_sksm ? 1 : 0,
+        citi_sksm: post.citi_sksm ? 1 : 0,
+        shipping_name: post.shipping_name != null ? String(post.shipping_name) : (existing.shipping_name || ""),
+        origin_of: post.origin_of != null ? String(post.origin_of) : (existing.origin_of || ""),
+        shipping_charge: post.shipping_charge != null ? toNum(post.shipping_charge) : toNum(existing.shipping_charge),
+        cif: post.cif != null ? String(post.cif) : (existing.cif || ""),
       };
 
-      const headerValues = helper.updateString(headerUpdate);
+      // Optional Venya columns — only if present on this DB
+      const outwardCols = await getOutwardTableColumns(q);
+      if (outwardCols.includes("manufacture_origin")) {
+        headerUpdate.manufacture_origin =
+          post.manufacture_origin != null
+            ? String(post.manufacture_origin)
+            : (existing.manufacture_origin || "");
+      }
+      if (outwardCols.includes("vat_percent")) {
+        headerUpdate.vat_percent = post.vat_percent != null ? toNum(post.vat_percent) : toNum(existing.vat_percent);
+      }
+      if (outwardCols.includes("vat_amount")) {
+        headerUpdate.vat_amount = post.vat_amount != null ? toNum(post.vat_amount) : toNum(existing.vat_amount);
+      }
+
+      const safeHeader = filterRowToExistingColumns(headerUpdate, outwardCols);
+      const headerValues = helper.updateString(safeHeader);
       await q(`UPDATE dai_outward SET ${headerValues} WHERE id = ?`, [id]);
 
       await q(

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Button, Layout, Modal, Tooltip } from "antd";
 import TopbarSearch from "../sub_component/TopBarSearch";
 import ProfileDropdown from "../sub_component/ProfileDropdown";
-import NotificationDropdown from "../sub_component/NotificationDropdown";
+// import NotificationDropdown from "../sub_component/NotificationDropdown";
 import TaskHeaderButton from "../sub_component/TaskHeaderButton";
 import NavBar from "./NavBar";
 import SkuActionModal from "../../hooks/useSkuModalAction";
@@ -11,6 +11,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Gem, Menu, Wifi, WifiOff, RefreshCw, CheckCircle2, Database, FileCheck, Send, ShoppingCart, ShoppingBag, Package, FlaskConical } from "lucide-react";
 import useAuthStore from "../../store/Auth.Store";
 import logo from "../../assets/loader/softWare_Header_white.svg";
+import { PAUSE_BACKGROUND_API } from "../../api/pauseBackgroundApi";
 import { prefetchRoute } from "../../routes/routePrefetch";
 
 const { Header: AntHeader } = Layout;
@@ -184,6 +185,8 @@ const Header = ({
   };
 
   useEffect(() => {
+    if (PAUSE_BACKGROUND_API) return undefined;
+
     const markOnline = () => {
       setIsBrowserOnline(true);
       checkServerHealth();
@@ -432,6 +435,7 @@ const Header = ({
             </Tooltip>
           </div>
           {/* <ConnectionStatusPill isOnline={isOnline} /> */}
+          {/* Notifications hidden for now
           <Tooltip title="Notifications">
             <span>
               <NotificationDropdown
@@ -440,6 +444,7 @@ const Header = ({
               />
             </span>
           </Tooltip>
+          */}
           <Tooltip title="Profile">
             <span>
               <ProfileDropdown />

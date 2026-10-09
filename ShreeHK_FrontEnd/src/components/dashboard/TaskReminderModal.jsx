@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { api } from '../../api/client/axiosInstance';
 import { ENDPOINTS } from '../../api/endpoints';
+import { PAUSE_BACKGROUND_API } from '../../api/pauseBackgroundApi';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import useAuthStore from '../../store/Auth.Store';
@@ -20,6 +21,8 @@ export default function TaskReminderModal() {
     const isSuperAdmin = user?.roll === 1 || Number(user?.roll) === 1;
 
     useEffect(() => {
+        if (PAUSE_BACKGROUND_API) return undefined;
+
         const todayStr = dayjs().format('YYYY-MM-DD');
         const sessionKey = `reminder_shown_${todayStr}`;
 

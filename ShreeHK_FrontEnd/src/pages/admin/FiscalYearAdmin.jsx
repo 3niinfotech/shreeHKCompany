@@ -110,17 +110,12 @@ const FiscalYearAdmin = () => {
       render: (val) => formatDate(val),
     },
     {
-      title: "Database",
-      dataIndex: "dbName",
-      key: "dbName",
-      ellipsis: true,
-      render: (val) => val || "—",
-    },
-    {
       title: "Action",
       key: "action",
       width: 100,
       fixed: "right",
+      align: "center",
+      className: styles.actionCol,
       render: (_, record) => (
         <Space size={4}>
           <Button
@@ -128,11 +123,11 @@ const FiscalYearAdmin = () => {
             size="small"
             icon={<EditOutlined />}
             onClick={() => openEdit(record)}
-            aria-label="Edit fiscal year"
+            aria-label="Edit financial year"
             className={styles.actionEdit}
           />
           <Popconfirm
-            title="Delete this fiscal year?"
+            title="Delete this financial year?"
             onConfirm={() => deleteYear(record.id, { onSuccess: () => refetch() })}
             okText="Delete"
             cancelText="Cancel"
@@ -143,7 +138,7 @@ const FiscalYearAdmin = () => {
               danger
               icon={<DeleteOutlined />}
               loading={isDeleting}
-              aria-label="Delete fiscal year"
+              aria-label="Delete financial year"
             />
           </Popconfirm>
         </Space>
@@ -155,7 +150,7 @@ const FiscalYearAdmin = () => {
     <div className={styles.fiscalPage}>
       <PageHeroHeader
         breadcrumb="ADMINISTRATION"
-        title="Fiscal Year Management"
+        title="Financial Year Management"
         icon={<CalendarOutlined />}
         actions={(
           <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>
@@ -177,7 +172,7 @@ const FiscalYearAdmin = () => {
             title={(
               <Space>
                 <PlusOutlined />
-                Create Fiscal Year
+                Create Financial Year
               </Space>
             )}
             className={styles.formCard}
@@ -187,16 +182,16 @@ const FiscalYearAdmin = () => {
                 <Input prefix={<CalendarOutlined />} placeholder="2025-26" />
               </Form.Item>
               <Form.Item name="fromDate" label="From Date">
-                <DatePicker className={styles.fullWidth} />
+                <DatePicker className={styles.fullWidth} format="DD-MM-YYYY" />
               </Form.Item>
               <Form.Item name="toDate" label="To Date">
-                <DatePicker className={styles.fullWidth} />
+                <DatePicker className={styles.fullWidth} format="DD-MM-YYYY" />
               </Form.Item>
               <Form.Item name="dbName" label="Database Name (optional)">
                 <Input prefix={<DatabaseOutlined />} placeholder="shreehkweb_snj2026" />
               </Form.Item>
               <Button type="primary" htmlType="submit" loading={isCreating} className={styles.createBtn} block>
-                Create Fiscal Year
+                Create Financial Year
               </Button>
             </Form>
           </Card>
@@ -207,7 +202,7 @@ const FiscalYearAdmin = () => {
             title={(
               <Space className={styles.tableTitle}>
                 <TableOutlined />
-                Saved Fiscal Years
+                Saved Financial Years
                 <span className={styles.countBadge}>{rows.length}</span>
               </Space>
             )}
@@ -219,17 +214,17 @@ const FiscalYearAdmin = () => {
               dataSource={rows}
               loading={isLoading}
               pagination={{ pageSize: 8, size: "small", showSizeChanger: false }}
-              locale={{ emptyText: "No fiscal years created yet." }}
+              locale={{ emptyText: "No financial years created yet." }}
               className={styles.fiscalTable}
               size="middle"
-              scroll={{ x: 640 }}
+              scroll={{ x: "max-content" }}
             />
           </Card>
         </Col>
       </Row>
 
       <Modal
-        title="Edit Fiscal Year"
+        title="Edit Financial Year"
         open={editOpen}
         rootClassName={styles.editModalRoot}
         onCancel={() => {
@@ -257,10 +252,10 @@ const FiscalYearAdmin = () => {
             <Input prefix={<CalendarOutlined />} />
           </Form.Item>
           <Form.Item name="fromDate" label="From Date">
-            <DatePicker className={styles.fullWidth} />
+            <DatePicker className={styles.fullWidth} format="DD-MM-YYYY" />
           </Form.Item>
           <Form.Item name="toDate" label="To Date">
-            <DatePicker className={styles.fullWidth} />
+            <DatePicker className={styles.fullWidth} format="DD-MM-YYYY" />
           </Form.Item>
           <Form.Item name="dbName" label="Database Name (optional)">
             <Input prefix={<DatabaseOutlined />} />

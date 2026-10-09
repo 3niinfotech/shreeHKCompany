@@ -37,6 +37,7 @@ const PurchaseStock = () => (
       showPrint: true,
       showDelete: true,
       showEdit: true,
+      allowAddProductInEdit: false,
       showToPurchase: true,
       showToImport: true,
       toggleEndpoint: ENDPOINTS.transactionStock.purchase.toggleType,

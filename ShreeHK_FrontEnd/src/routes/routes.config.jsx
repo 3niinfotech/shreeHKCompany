@@ -254,18 +254,42 @@ export const allProtectedRoutes = [
     path: "/accounting",
     icon: "Book",
     children: [
-      { path: "/accounting/expanse", name: "Expanse", element: <Expanse />, permissionKey: "accounting.expanse" },
-      { path: "/accounting/expanse/table-data", name: "Expanse List", element: <ExpanseTableData />, permissionKey: "accounting.expanse_list" },
-      { path: "/accounting/advance", name: "AdvancePayment", element: <AdvancePayment />, permissionKey: "accounting.advance" },
-      { path: "/accounting/advance/table-data", name: "Advance List", element: <AdvanceTableData />, permissionKey: "accounting.advance_list" },
+      {
+        name: "Expense",
+        path: "/accounting/expense-menu",
+        children: [
+          { path: "/accounting/expanse", name: "Expense Entry", element: <Expanse />, permissionKey: "accounting.expanse" },
+          { path: "/accounting/expanse/table-data", name: "Expense List", element: <ExpanseTableData />, permissionKey: "accounting.expanse_list" },
+        ],
+      },
+      {
+        name: "Advance",
+        path: "/accounting/advance-menu",
+        children: [
+          { path: "/accounting/advance", name: "Advance Payment", element: <AdvancePayment />, permissionKey: "accounting.advance" },
+          { path: "/accounting/advance/table-data", name: "Advance List", element: <AdvanceTableData />, permissionKey: "accounting.advance_list" },
+        ],
+      },
       { path: "/accounting/my-balance", name: "My Balance", element: <MyBalance />, permissionKey: "accounting.my_balance" },
       { path: "/accounting/account-transaction", name: "Transactions", element: <Transaction />, permissionKey: "accounting.transactions" },
       { path: "/accounting/advance-transaction", name: "Adv Transaction", element: <AdvanceTransaction />, permissionKey: "accounting.advance_transaction" },
-      { path: "/accounting/party-wise-transaction", name: "Party Wise Transaction", element: <PartyWiseTransaction />, permissionKey: "accounting.party_wise" },
-      { path: "/accounting/party", name: "Accounting Party", element: <AccParty />, permissionKey: "accounting.party" },
-      { path: "/accounting/party-report", name: "Party Report", element: <AccPartyReport />, permissionKey: "accounting.party_report" },
-      { path: "/accounting/group", name: "Group", element: <AccGroup />, permissionKey: "accounting.group" },
-      { path: "/accounting/subgroup", name: "Sub Group", element: <AccSubgroup />, permissionKey: "accounting.subgroup" },
+      {
+        name: "Party",
+        path: "/accounting/party-menu",
+        children: [
+          { path: "/accounting/party", name: "Accounting Party", element: <AccParty />, permissionKey: "accounting.party" },
+          { path: "/accounting/party-wise-transaction", name: "Party Wise Transaction", element: <PartyWiseTransaction />, permissionKey: "accounting.party_wise" },
+          { path: "/accounting/party-report", name: "Party Report", element: <AccPartyReport />, permissionKey: "accounting.party_report" },
+        ],
+      },
+      {
+        name: "Grouping",
+        path: "/accounting/grouping-menu",
+        children: [
+          { path: "/accounting/group", name: "Group", element: <AccGroup />, permissionKey: "accounting.group" },
+          { path: "/accounting/subgroup", name: "Sub Group", element: <AccSubgroup />, permissionKey: "accounting.subgroup" },
+        ],
+      },
     ]
   },
   {
@@ -297,7 +321,7 @@ export const allProtectedRoutes = [
       { path: "/admin/tenant-company", name: "Company", element: <TenantCompanyList />, requiredRole: ROLE_ACCESS.SUPER_ADMIN, permissionKey: "admin.tenant_company" },
       { path: "/admin/manage-user", name: "Manage User", element: <ManageUser />, requiredRole: ROLE_ACCESS.SUPER_ADMIN, permissionKey: "admin.manage_user" },
       { path: "/admin/roll", name: "Roll", element: <AdvancedRollPage />, requiredRole: ROLE_ACCESS.SUPER_ADMIN, permissionKey: "admin.role" },
-      { path: "/admin/fiscal-year", name: "Fiscal Year", element: <FiscalYearAdmin />, requiredRole: ROLE_ACCESS.SUPER_ADMIN, permissionKey: "admin.fiscal_year" },
+      { path: "/admin/fiscal-year", name: "Financial Year", element: <FiscalYearAdmin />, requiredRole: ROLE_ACCESS.SUPER_ADMIN, permissionKey: "admin.fiscal_year" },
       { path: "/admin/activity-history", name: "Activity History", element: <ActivityHistory />, permissionKeys: ["admin.activity_history", "admin.auditor"] },
       { path: "/admin/legacy-apps", name: "Legacy Apps", element: <LegacyAppsScope />, requiredRole: ROLE_ACCESS.SUPER_ADMIN, permissionKey: "admin.legacy_apps" },
     ]

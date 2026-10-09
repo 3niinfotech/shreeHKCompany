@@ -12,6 +12,7 @@ const ensureCompanyColumns = async () => {
   ensurePromise = (async () => {
     const tablesToMigrate = [
       { table: "dai_balance", col: "company", def: "INT NOT NULL DEFAULT 1" },
+      { table: "dai_book", col: "company", def: "INT NOT NULL DEFAULT 1" },
       { table: "dai_currencyrate", col: "company", def: "INT NOT NULL DEFAULT 1" },
       { table: "dai_shipping", col: "company", def: "INT NOT NULL DEFAULT 1" },
       { table: "dai_origin", col: "company", def: "INT NOT NULL DEFAULT 1" },

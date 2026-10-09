@@ -193,6 +193,34 @@
   gap: 16px;
 }
 
+.installmentFull {
+  grid-column: 1 / -1;
+}
+
+.txnTable {
+  margin-top: 4px;
+
+  :global(.ant-table) {
+    background: transparent;
+  }
+
+  :global(.ant-table-thead > tr > th) {
+    background: color-mix(in srgb, var(--color-primary) 8%, #fff) !important;
+    color: var(--color-text-heading);
+    font-weight: 700;
+    font-size: 12px;
+  }
+
+  :global(.ant-table-tbody > tr > td),
+  :global(.ant-table-summary > tr > td) {
+    font-size: 12px;
+  }
+
+  :global(.ant-table-summary) {
+    background: var(--color-bg-muted, #f8fafc);
+  }
+}
+
 .inputLabel {
   display: block;
   margin-bottom: 6px;
@@ -203,7 +231,9 @@
 
 .sectionCard :global(.ant-input-number),
 .sectionCard :global(.ant-picker),
-.sectionCard :global(.ant-input-affix-wrapper) {
+.sectionCard :global(.ant-input-affix-wrapper),
+.sectionCard :global(.ant-select),
+.sectionCard :global(.ant-input) {
   width: 100%;
   border-color: var(--color-border);
   border-radius: 8px;
@@ -215,6 +245,12 @@
     color: var(--color-text-heading);
     font-weight: 500;
   }
+}
+
+.sectionCard :global(.ant-select .ant-select-selector) {
+  width: 100%;
+  border-radius: 8px !important;
+  border-color: var(--color-border) !important;
 }
 
 .actionRow {

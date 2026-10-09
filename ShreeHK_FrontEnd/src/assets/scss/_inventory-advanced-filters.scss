@@ -1,0 +1,48 @@
+// Must load AFTER design-system — beats global 0.5px light borders (!important).
+.inventory-advanced-filters {
+  --ant-color-text-placeholder: #000000;
+  --ant-color-text-quaternary: #000000;
+  --ant-input-placeholder-color: #000000;
+  --ant-color-border: #000000;
+
+  .ant-select:not(.ant-select-disabled) .ant-select-selector,
+  .ant-select-outlined:not(.ant-select-disabled) .ant-select-selector,
+  input.ant-input:not(.ant-input-affix-wrapper input):not([disabled]):not(.ant-input-disabled),
+  .ant-input:not([disabled]):not(.ant-input-disabled),
+  .ant-input-affix-wrapper:not(.ant-input-affix-wrapper-disabled) {
+    border: 1px solid #000000 !important;
+    border-color: #000000 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    border-radius: 4px !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+  }
+
+  .ant-select:hover:not(.ant-select-disabled) .ant-select-selector,
+  .ant-select-focused:not(.ant-select-disabled) .ant-select-selector,
+  .ant-select-open:not(.ant-select-disabled) .ant-select-selector,
+  .ant-input:hover:not([disabled]):not(.ant-input-disabled),
+  .ant-input:focus:not([disabled]):not(.ant-input-disabled),
+  .ant-input-focused:not([disabled]):not(.ant-input-disabled) {
+    border-color: #000000 !important;
+    box-shadow: none !important;
+  }
+
+  .ant-select-selection-placeholder,
+  .ant-select-selection-placeholder *,
+  .ant-select .ant-select-selection-placeholder,
+  .ant-select-outlined .ant-select-selection-placeholder,
+  .ant-select-selection-item,
+  .ant-select-arrow,
+  .ant-select-clear,
+  .ant-input::placeholder,
+  .ant-input-affix-wrapper .ant-input::placeholder,
+  input.ant-input::placeholder,
+  input::placeholder {
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+    opacity: 1 !important;
+    font-weight: 500;
+  }
+}

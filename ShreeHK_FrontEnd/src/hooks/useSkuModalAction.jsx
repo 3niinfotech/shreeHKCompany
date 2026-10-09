@@ -33,6 +33,8 @@ export const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
   const [loading, setLoading] = useState(false);
 
   const sku = skuData?.sku;
+  const companyId =
+    skuData?.company ?? skuData?.company_id ?? skuData?.companyId;
 
   useEffect(() => {
     if (!visible || !sku) {
@@ -44,8 +46,13 @@ export const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
     let isMounted = true;
     setLoading(true);
 
+    const params = { sku };
+    if (companyId != null && companyId !== "" && Number(companyId) > 0) {
+      params.companyId = companyId;
+    }
+
     api
-      .get(ENDPOINTS.report.stoneDetail, { params: { sku } })
+      .get(ENDPOINTS.report.stoneDetail, { params })
       .then((res) => {
         if (isMounted && res?.data) {
           setApiData(res.data);
@@ -63,7 +70,7 @@ export const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
     return () => {
       isMounted = false;
     };
-  }, [visible, sku]);
+  }, [visible, sku, companyId]);
 
   if (!skuData) return null;
 
@@ -163,7 +170,12 @@ export const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
     }
     if (item.key === "history") {
       onClose();
-      navigate(buildStoneHistoryUrl(skuData.sku));
+      navigate(
+        buildStoneHistoryUrl(
+          skuData.sku,
+          skuData.company ?? skuData.company_id ?? skuData.companyId
+        )
+      );
       return;
     }
     if (item.key === "transfer") {

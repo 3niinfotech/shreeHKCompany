@@ -40,6 +40,7 @@ import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import { useFetchApi, usePostApiRequest, usePutApiRequest, useDeleteApiRequest } from '../api/ApiFunction';
 import { ENDPOINTS } from '../api/endpoints';
+import { bgRefetchInterval } from '../api/pauseBackgroundApi';
 import '../assets/scss/pages/dashboard.scss';
 import PageHeroHeader from '../components/common/PageHeroHeader';
 import DeleteConfirmModal from '../components/common/masterCommon/DeleteConfirmModal';
@@ -72,7 +73,7 @@ export default function TaskManager() {
             staleTime: 0,
             gcTime: 0,
             refetchOnMount: 'always',
-            refetchInterval: 10000,
+            refetchInterval: bgRefetchInterval(10000),
             refetchIntervalInBackground: true,
             placeholderData: undefined,
         }
@@ -1002,7 +1003,7 @@ export default function TaskManager() {
                         <Row gutter={16}>
                             <Col span={12}>
                                 <Form.Item name="target_date" label="Target Date">
-                                    <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+                                    <DatePicker style={{ width: '100%' }} format="DD-MM-YYYY" />
                                 </Form.Item>
                             </Col>
                             <Col span={12}>

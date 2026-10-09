@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Space, Select, Input, Button, Popconfirm } from "antd";
+import { Select, Input, Button, Popconfirm } from "antd";
 import { SaveOutlined, DeleteOutlined } from "@ant-design/icons";
 import useAuthStore from "../../store/Auth.Store";
 import {
@@ -7,6 +7,7 @@ import {
   saveFilterPreset,
   deleteFilterPreset,
 } from "../../utils/inventoryFilterPresets";
+import styles from "../../assets/scss/components/inventoryFilterPanel.module.scss";
 
 /**
  * Save / load advanced filter presets (localStorage per user + page).
@@ -47,11 +48,11 @@ const InventoryFilterPresets = ({ pageKey, compactForm, advancedForm, onApply })
   };
 
   return (
-    <Space wrap size={8} style={{ marginBottom: 8 }}>
+    <div className={styles.filterPresetsRow}>
       <Select
         allowClear
         placeholder="Saved views"
-        style={{ minWidth: 160 }}
+        className={styles.filterPresetSelect}
         value={selectedId}
         options={presets.map((p) => ({ label: p.name, value: p.id }))}
         onChange={(id) => (id ? handleApply(id) : setSelectedId(null))}
@@ -60,17 +61,26 @@ const InventoryFilterPresets = ({ pageKey, compactForm, advancedForm, onApply })
         placeholder="View name"
         value={presetName}
         onChange={(e) => setPresetName(e.target.value)}
-        style={{ width: 140 }}
+        className={styles.filterPresetInput}
+        onPressEnter={() => {
+          if (presetName.trim()) handleSave();
+        }}
       />
-      <Button size="small" icon={<SaveOutlined />} onClick={handleSave} disabled={!presetName.trim()}>
+      <Button
+        type="primary"
+        icon={<SaveOutlined />}
+        onClick={handleSave}
+        disabled={!presetName.trim()}
+        className={styles.filterPresetSaveBtn}
+      >
         Save View
       </Button>
       {selectedId ? (
         <Popconfirm title="Delete this saved view?" onConfirm={() => handleDelete(selectedId)}>
-          <Button size="small" danger icon={<DeleteOutlined />} />
+          <Button size="middle" danger icon={<DeleteOutlined />} />
         </Popconfirm>
       ) : null}
-    </Space>
+    </div>
   );
 };
 

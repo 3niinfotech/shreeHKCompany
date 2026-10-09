@@ -1,6 +1,6 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import {
-    Table, Button, Card, Typography, Checkbox, Form, Select, Input, DatePicker,
+    Button, Card, Typography, Checkbox, Form, Select, Input, DatePicker,
 } from 'antd';
 import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons';
@@ -20,11 +20,11 @@ import AIResultPanel from '../../components/ai/AIResultPanel';
 
 const { Text } = Typography;
 const SALE_STATUS_OPTIONS = [
-    { value: 'report', label: 'Report' },
+    { value: 'sale', label: 'Sale' },
     { value: 'memo', label: 'Memo' },
     { value: 'lab', label: 'Lab' },
-    { value: 'sale', label: 'Sale' },
     { value: 'purchase', label: 'Purchase' },
+    { value: 'export', label: 'Export' },
     { value: 'open', label: 'Open Sale' },
     { value: 'close', label: 'Close Sale' },
 ];
@@ -147,12 +147,16 @@ const TransactionReport = () => {
 
     const handleSearch = () => {
         const v = form.getFieldsValue();
-        const company = v.company && v.company !== 'all' ? v.company : '0';
+        // Form uses "location" select (company list); keep company as fallback.
+        const selectedParty = v.location || v.company;
+        const company = selectedParty && selectedParty !== 'all' ? selectedParty : '0';
         const type = v.type === 'sku' ? 'packet' : 'party';
+        const saleStatus = v.saleStatus || 'sale';
 
         fetchTransaction({
             type,
-            saleStatus: v.saleStatus || 'report',
+            saleStatus,
+            report: saleStatus === 'close' ? 'close_sale' : saleStatus === 'open' || saleStatus === 'report' ? 'sale' : saleStatus,
             party: company,
             company,
             invoice: (v.invoiceNo || '').trim(),
@@ -160,19 +164,15 @@ const TransactionReport = () => {
             cto: v.toDate ? dayjs(v.toDate).format('YYYY-MM-DD') : '',
             gia: v.gia || false,
             nonGia: v.nonGia || false,
-            limit: 500,
+            limit: 10000,
         }, {
             onSuccess: (res) => {
                 setViewType(type);
-                setTableData((res?.Data || []).map((row, i) => ({ ...row, key: row.key ?? i + 1 })));
+                const rows = res?.Data || res?.data || [];
+                setTableData((Array.isArray(rows) ? rows : []).map((row, i) => ({ ...row, key: row.key ?? i + 1 })));
             },
         });
     };
-
-    useEffect(() => {
-        handleSearch();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
 
     const isPacket = viewType === 'packet';
     const columns = isPacket ? PACKET_COLUMNS : PARTY_COLUMNS;
@@ -201,8 +201,32 @@ const TransactionReport = () => {
         }
     };
 
+    const totals = useMemo(() => {
+        let totalPcs = 0;
+        let totalCarat = 0;
+        let totalAmount = 0;
+        tableData.forEach((row) => {
+            if (isPacket) {
+                totalPcs += Number(row.polish_pcs) || 0;
+                totalCarat += Number(row.polish_carat) || 0;
+                totalAmount += Number(row.sell_amount ?? row.purchase_amount) || 0;
+            } else {
+                totalPcs += Number(row.pcs) || 0;
+                totalCarat += Number(row.carat) || 0;
+                totalAmount += Number(row.amount) || 0;
+            }
+        });
+        return {
+            count: tableData.length,
+            totalPcs,
+            totalCarat,
+            totalAmount,
+        };
+    }, [tableData, isPacket]);
+
     const tableRef = useRef(null);
-    const tableHeight = useTableBodyScrollHeight(tableRef, [tableData.length, tableLoading]);
+    // Totals bar is a sibling below the table (not Table.Summary) so it cannot be clipped
+    const tableHeight = useTableBodyScrollHeight(tableRef, [tableData.length, tableLoading, totals.count]);
 
     return (
         <div className={styles.pageContainer}>
@@ -258,12 +282,11 @@ const TransactionReport = () => {
                 <div className={`${filterPanelStyles.filterInlineRow} ${styles.transactionFilterForm}`}>
                     <Form
                         form={form}
-                        initialValues={{ saleStatus: 'report', type: 'company', company: 'all', location: 'all', gia: false, nonGia: false }}
+                        initialValues={{ saleStatus: 'sale', type: 'company', company: 'all', location: 'all', gia: false, nonGia: false }}
                     >
                         <div className={styles.filterFieldsFlex}>
                             <Form.Item name="saleStatus" className={styles.filterItem}>
                                 <Select
-                                    allowClear
                                     placeholder="Sale Status"
                                     options={SALE_STATUS_OPTIONS}
                                     className={styles.fieldMd}
@@ -295,7 +318,7 @@ const TransactionReport = () => {
                                 <Select
                                     allowClear
                                     showSearch
-                                    placeholder="Location"
+                                    placeholder="All Companies"
                                     options={companyOptions}
                                     loading={isCompanyLoading}
                                     optionFilterProp="label"
@@ -323,11 +346,11 @@ const TransactionReport = () => {
                             </Form.Item>
 
                             <Form.Item name="fromDate" className={styles.filterItem}>
-                                <DatePicker placeholder="From Date" className={styles.fieldDate} />
+                                <DatePicker placeholder="From Date" className={styles.fieldDate} format="DD-MM-YYYY" />
                             </Form.Item>
 
                             <Form.Item name="toDate" className={styles.filterItem}>
-                                <DatePicker placeholder="To Date" className={styles.fieldDate} />
+                                <DatePicker placeholder="To Date" className={styles.fieldDate} format="DD-MM-YYYY" />
                             </Form.Item>
                         </div>
                     </Form>
@@ -349,67 +372,31 @@ const TransactionReport = () => {
                         columns={columns}
                         dataSource={tableData}
                         loading={tableLoading}
-                        pagination={{ pageSize: 50 }}
+                        pagination={false}
                         bordered
                         size="small"
                         className={styles.customTable}
                         scroll={{ x: "max-content", y: tableHeight }}
-                        summary={(pageData) => {
-                            let totalPcs = 0;
-                            let totalCarat = 0;
-                            let totalAmount = 0;
-                            pageData.forEach((row) => {
-                                if (isPacket) {
-                                    totalPcs += Number(row.polish_pcs) || 0;
-                                    totalCarat += Number(row.polish_carat) || 0;
-                                    totalAmount += Number(row.sell_amount ?? row.purchase_amount) || 0;
-                                } else {
-                                    totalPcs += Number(row.pcs) || 0;
-                                    totalAmount += Number(row.amount) || 0;
-                                }
-                            });
-                            if (isPacket) {
-                                return (
-                                    <Table.Summary fixed>
-                                        <Table.Summary.Row className={styles.summaryRow}>
-                                            <Table.Summary.Cell index={0} colSpan={5}>
-                                                <Text strong>Total</Text>
-                                            </Table.Summary.Cell>
-                                            <Table.Summary.Cell index={1} align="right">
-                                                <Text strong>{totalPcs}</Text>
-                                            </Table.Summary.Cell>
-                                            <Table.Summary.Cell index={2} align="right">
-                                                <Text strong>{totalCarat.toFixed(2)}</Text>
-                                            </Table.Summary.Cell>
-                                            <Table.Summary.Cell index={3} />
-                                            <Table.Summary.Cell index={4} align="right">
-                                                <Text strong>{totalAmount.toFixed(2)}</Text>
-                                            </Table.Summary.Cell>
-                                            <Table.Summary.Cell index={5} colSpan={5} />
-                                        </Table.Summary.Row>
-                                    </Table.Summary>
-                                );
-                            }
-                            return (
-                                <Table.Summary fixed>
-                                    <Table.Summary.Row className={styles.summaryRow}>
-                                        <Table.Summary.Cell index={0} colSpan={4}>
-                                            <Text strong>Total</Text>
-                                        </Table.Summary.Cell>
-                                        <Table.Summary.Cell index={1} align="center">
-                                            <Text strong>{totalPcs}</Text>
-                                        </Table.Summary.Cell>
-                                        <Table.Summary.Cell index={2} colSpan={3} />
-                                        <Table.Summary.Cell index={3} align="right">
-                                            <Text strong>{totalAmount.toFixed(2)}</Text>
-                                        </Table.Summary.Cell>
-                                        <Table.Summary.Cell index={4} colSpan={2} />
-                                    </Table.Summary.Row>
-                                </Table.Summary>
-                            );
-                        }}
                     />
                 </div>
+                {totals.count > 0 ? (
+                    <div className={styles.totalsBar} role="status">
+                        <Text strong className={styles.totalsLabel}>
+                            Total ({totals.count})
+                        </Text>
+                        <div className={styles.totalsMetrics}>
+                            <span>
+                                Pcs: <Text strong>{totals.totalPcs}</Text>
+                            </span>
+                            <span>
+                                Carat: <Text strong>{totals.totalCarat.toFixed(3)}</Text>
+                            </span>
+                            <span>
+                                Amount: <Text strong>{totals.totalAmount.toFixed(2)}</Text>
+                            </span>
+                        </div>
+                    </div>
+                ) : null}
             </Card>
         </div>
     );

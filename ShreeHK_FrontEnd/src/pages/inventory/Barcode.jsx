@@ -27,11 +27,11 @@ import {
   RefreshCcw,
   Unlock,
 } from "lucide-react";
-import AIResultPanel from "../../components/ai/AIResultPanel";
-import { fetchBarcodeLookup } from "../../api/services/aiService";
+import { playScanSuccessSound, playErrorSound } from "../../utils/audioBeep";
 import styles from "../../assets/scss/components/ai/aiComponents.module.scss";
 import { cssVar } from "../../theme";
 import "../../assets/scss/pages/inventory/onHand_module.scss";
+import AIResultPanel from "../../components/ai/AIResultPanel";
 
 const FILTER_FIELDS = ["stockChecks", "fwRadio"];
 
@@ -47,10 +47,11 @@ const FILTER_CONFIG = {
   ],
   stockChecksDefault: ["All"],
   fwOptions: [
+    { label: "All", value: "" },
     { label: "F", value: "F" },
     { label: "W", value: "W" },
   ],
-  fwDefault: "F",
+  fwDefault: "",
 };
 
 const LABEL_BUTTON = {
@@ -239,27 +240,14 @@ const Barcode = () => {
     setBarcodeResult("");
     setBarcodePanelOpen(true);
     try {
-      const res = await fetchBarcodeLookup({ barcodeData: value });
-      if (res?.success) {
-        const matchText = res.matches?.length
-          ? `\n\nDB matches: ${JSON.stringify(res.matches, null, 2)}`
-          : "";
-        setBarcodeResult(`${res.data}${matchText}`);
-        const sku = res.matches?.[0]?.sku || value;
-        setSearchText(sku);
-        if (scannerMode) {
-          toastSuccess(`Scanned: ${sku}`);
-        }
-      } else {
-        const msg = res?.message || "AI unavailable, try again";
-        setBarcodeError(msg);
-        toastError(msg);
+      setSearchText(value);
+      playScanSuccessSound();
+      if (scannerMode) {
+        toastSuccess(`Scanned: ${value}`);
       }
     } catch {
-      const msg = "AI unavailable, try again";
-      setBarcodeError(msg);
-      toastError(msg);
-      setSearchText(value);
+      playErrorSound();
+      toastError("Error scanning barcode");
     } finally {
       setBarcodeLoading(false);
       if (scannerMode) setBarcodeInput("");

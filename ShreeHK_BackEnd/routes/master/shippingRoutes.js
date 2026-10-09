@@ -1,57 +1,49 @@
 const express = require("express");
-const connection = require("../../connection.js");
 const helper = require("../../helper.js");
 const { authenticateToken } = require("../../authMiddleware.js");
 const { logAuditInTx } = require("../../services/auditIntegration.js");
 const { buildUserContext } = require("../../tenantHelper.js");
+const { ensureCompanyColumn } = require("../../schemaHelper.js");
+const { fetchMasterList } = require("./masterListHelper.js");
 const shippingRouter = express.Router();
 
 shippingRouter.use(express.json());
 
 // Get
-shippingRouter.get("/master/shipping", authenticateToken, (req, res) => {
-  const companyId = buildUserContext(req).companyId;
-  if (!companyId || companyId <= 0) {
-    return res.json({ TotalItems: 0, Data: [] });
-  }
+shippingRouter.get("/master/shipping", authenticateToken, async (req, res) => {
+  const companyId = buildUserContext(req).companyId || 1;
 
   const id = parseInt(req?.query?.id) || 0;
   const searchInput = req.query.searchInput;
 
-  let query = `SELECT * FROM dai_shipping WHERE company = ?`;
-  let countQuery = `SELECT COUNT(*) as totalItems FROM dai_shipping WHERE company = ?`;
-  const params = [companyId];
-  const countParams = [companyId];
-
-  if (id === 0) {
-    if (searchInput) {
-      query += ` AND name LIKE ?`;
-      countQuery += ` AND name LIKE ?`;
-      params.push(`%${searchInput}%`);
-      countParams.push(`%${searchInput}%`);
-    }
-    query += ` ORDER BY id DESC`;
-  } else {
-    query += ` AND id = ?`;
-    params.push(id);
-  }
-
-  connection.query(countQuery, countParams, (countError, countResult) => {
-    if (countError) return res.status(500).json({ error: countError.message });
-
-    const totalItems = countResult[0]?.totalItems || 0;
-
-    connection.query(query, params, (error, data) => {
-      if (error) return res.status(500).json({ error: error.message });
-
-      const response = {
-        TotalItems: totalItems,
-        Data: data,
-      };
-
-      res.json(response);
+  try {
+    const response = await fetchMasterList({
+      tableName: "dai_shipping",
+      companyId,
+      buildQueries: (cid) => {
+        let dataSql = `SELECT * FROM dai_shipping WHERE company = ?`;
+        let countSql = `SELECT COUNT(*) as totalItems FROM dai_shipping WHERE company = ?`;
+        const dataParams = [cid];
+        const countParams = [cid];
+        if (id === 0) {
+          if (searchInput) {
+            dataSql += ` AND name LIKE ?`;
+            countSql += ` AND name LIKE ?`;
+            dataParams.push(`%${searchInput}%`);
+            countParams.push(`%${searchInput}%`);
+          }
+          dataSql += ` ORDER BY id DESC`;
+        } else {
+          dataSql += ` AND id = ?`;
+          dataParams.push(id);
+        }
+        return { dataSql, countSql, dataParams, countParams };
+      },
     });
-  });
+    res.json(response);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Post

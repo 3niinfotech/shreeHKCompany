@@ -47,9 +47,6 @@ const AdvancedFilterPanel = ({
                     <Title level={5} className={styles.filterTitle}>{title}</Title>
                     {subtitle ? <Text type="secondary" className={styles.filterSub}>{subtitle}</Text> : null}
                 </div>
-                {activeCount > 0 ? (
-                    <span className={styles.activeBadge}>{activeCount} active</span>
-                ) : null}
             </div>
 
             {children ? (

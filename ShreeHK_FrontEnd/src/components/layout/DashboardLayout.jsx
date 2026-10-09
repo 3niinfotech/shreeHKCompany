@@ -62,7 +62,8 @@ const DashboardLayout = () => {
       if (key.startsWith("user-mgmt-")) {
         path = key.replace("user-mgmt-", "");
       }
-      if (!path.startsWith("/")) return;
+      // Submenu folder keys (e.g. /accounting/grouping-menu) are not real pages
+      if (!path.startsWith("/") || path.endsWith("-menu")) return;
       prefetchRoute(path);
       const meta = resolveTabFromPath(path, userWithPerms);
       openTab({ key: meta.key, label: meta.label, path: meta.path });

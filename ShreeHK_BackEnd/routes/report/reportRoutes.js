@@ -1,7 +1,19 @@
 const express = require("express");
 const connection = require("../../connection.js");
 const { authenticateToken } = require("../../authMiddleware.js");
-const { buildUserContext } = require("../../tenantHelper.js");
+const { buildUserContext, userCanAccessCompany } = require("../../tenantHelper.js");
+
+async function resolveReportCompanyId(req) {
+  const sessionCompanyId = buildUserContext(req).companyId;
+  const requested = Number(req.query?.companyId);
+  if (requested > 0) {
+    const roll = req.user?.roll;
+    if (roll != null && (await userCanAccessCompany(roll, requested))) {
+      return requested;
+    }
+  }
+  return sessionCompanyId;
+}
 const helper = require("../../helper.js");
 const reportService = require("./reportService.js");
 const reportRouter = express.Router();
@@ -46,13 +58,18 @@ reportRouter.post("/report/transaction", authenticateToken, async (req, res) => 
 reportRouter.post("/report/sale-stock", authenticateToken, async (req, res) => {
   try {
     const companyId = buildUserContext(req).companyId;
-    if (!companyId || companyId <= 0) return res.json({ status: true, Data: [], TotalItems: 0 });
     const type = req.body?.type || "sale";
+    const allCompanies =
+      req.body?.allCompanies === true ||
+      req.body?.allCompanies === "1" ||
+      req.body?.allCompanies === 1 ||
+      !companyId;
+    const scopeCompanyId = allCompanies ? null : companyId;
     let Data = [];
     if (type === "sale") {
-      Data = await reportService.getStoneSaleReport(req.body, companyId);
+      Data = await reportService.getStoneSaleReport(req.body, scopeCompanyId);
     } else if (type === "purchase") {
-      Data = await reportService.getStonePurchaseReport(req.body, companyId);
+      Data = await reportService.getStonePurchaseReport(req.body, scopeCompanyId);
     }
     return res.json({ status: true, Data, TotalItems: Data.length });
   } catch (error) {
@@ -64,8 +81,8 @@ reportRouter.get("/report/stone-detail", authenticateToken, async (req, res) => 
   try {
     const sku = req.query.sku;
     if (!sku) return res.status(400).json({ status: false, message: "sku is required" });
-    const companyId = buildUserContext(req).companyId;
-    if (!companyId || companyId <= 0) return res.status(404).json({ status: false, message: "Product not found" });
+    const companyId = await resolveReportCompanyId(req);
+    // companyId optional for lookup — resolveStoneDetail falls back by SKU for allCompanies reports
     const userId = Number(req.user?.user_id) || 1;
     const result = await reportService.getStoneDetail(sku, companyId, userId);
     if (!result) return res.status(404).json({ status: false, message: "Product not found" });
@@ -79,8 +96,7 @@ reportRouter.get("/report/stone-detail/old", authenticateToken, async (req, res)
   try {
     const sku = req.query.sku;
     if (!sku) return res.status(400).json({ status: false, message: "sku is required" });
-    const companyId = buildUserContext(req).companyId;
-    if (!companyId || companyId <= 0) return res.status(404).json({ status: false, message: "Product not found" });
+    const companyId = await resolveReportCompanyId(req);
     const userId = Number(req.user?.user_id) || 1;
     const result = await reportService.getStoneOldHistory(sku, companyId, userId, req.dbName);
     if (!result) return res.status(404).json({ status: false, message: "Product not found" });
@@ -94,8 +110,7 @@ reportRouter.get("/report/stone-info", authenticateToken, async (req, res) => {
   try {
     const sku = req.query.sku;
     if (!sku) return res.status(400).json({ status: false, message: "sku is required" });
-    const companyId = buildUserContext(req).companyId;
-    if (!companyId || companyId <= 0) return res.status(404).json({ status: false, message: "Product not found" });
+    const companyId = await resolveReportCompanyId(req);
     const userId = Number(req.user?.user_id) || 1;
     const result = await reportService.getStoneInfoByParty(sku, companyId, userId);
     if (!result) return res.status(404).json({ status: false, message: "Product not found" });
@@ -269,7 +284,8 @@ reportRouter.post("/report/outstandingRecords", authenticateToken, async (req, r
     let query = "";
     let idQuery = "";
 
-    if (type === "sale") {
+    const normalizedType = String(type || "").toLowerCase();
+    if (normalizedType === "sale" || normalizedType === "export") {
       idQuery = "AND sale_id = ?";
       query = `SELECT o.id, o.entryno, o.type, o.invoiceno, p.name, o.reference, 
                       DATE_FORMAT(o.invoicedate, '%d-%m-%Y') AS invoicedate, 
@@ -282,7 +298,7 @@ reportRouter.post("/report/outstandingRecords", authenticateToken, async (req, r
                FROM dai_outward o
                LEFT JOIN dai_party p ON o.party = p.id AND p.company = ?
                WHERE o.id = ? AND o.company = ?`;
-    } else if (type === "purchase") {
+    } else if (normalizedType === "purchase" || normalizedType === "import") {
       idQuery = "AND purchase_id = ?";
       query = `SELECT o.id, o.entryno, o.inward_type as type, o.invoiceno, p.name, o.reference, 
                       DATE_FORMAT(o.invoicedate, '%d-%m-%Y') AS invoicedate, 
@@ -296,7 +312,7 @@ reportRouter.post("/report/outstandingRecords", authenticateToken, async (req, r
                LEFT JOIN dai_party p ON o.party = p.id AND p.company = ?
                WHERE o.id = ? AND o.company = ?`;
     } else {
-      return res.status(400).json({ error: "Invalid type. Allowed values: sale, purchase" });
+      return res.status(400).json({ error: "Invalid type. Allowed values: sale, purchase, export, import" });
     }
 
     connection.query(query, [companyId, id, companyId], (error, data) => {
@@ -308,9 +324,21 @@ reportRouter.post("/report/outstandingRecords", authenticateToken, async (req, r
         return res.status(404).json({ status: false, message: "No records found" });
       }
 
-      let pquery = `SELECT * FROM acc_transaction WHERE (deleted = 0 OR deleted IS NULL) AND company = ? ${idQuery} ORDER BY date`;
+      let pquery = `
+        SELECT t.id, t.party, t.other_party, t.date, t.type, t.book, t.cheque, t.amount, t.description,
+               t.under_subgroup, t.sale_id, t.purchase_id,
+               DATE_FORMAT(t.date, '%d-%m-%Y') AS display_date,
+               p.name AS party_name,
+               p2.name AS other_party_name,
+               sg.name AS account_name
+        FROM acc_transaction t
+        LEFT JOIN dai_party p ON (t.party = CAST(p.id AS CHAR) OR t.party = p.name) AND p.company = ?
+        LEFT JOIN dai_party p2 ON (t.other_party = CAST(p2.id AS CHAR) OR t.other_party = p2.name) AND p2.company = ?
+        LEFT JOIN acc_subgroup sg ON t.under_subgroup = sg.id AND (sg.company = ? OR sg.company IS NULL)
+        WHERE (t.deleted = 0 OR t.deleted IS NULL) AND t.company = ? ${idQuery}
+        ORDER BY t.date ASC, t.id ASC`;
 
-      connection.query(pquery, [companyId, id], (error, pdata) => {
+      connection.query(pquery, [companyId, companyId, companyId, companyId, id], (error, pdata) => {
         if (error) {
           return res.status(500).json({ status: false, message: "Error fetching transaction data", error });
         }
@@ -383,7 +411,17 @@ reportRouter.post("/report/outstanding/installment", authenticateToken, async (r
   const companyId = buildUserContext(req).companyId;
   if (!companyId || companyId <= 0) return res.status(400).json({ status: false, message: "Valid entry and amount are required" });
 
-  const { id, type, date, book = "", cheque = "", description = "" } = req.body || {};
+  const {
+    id,
+    type,
+    date,
+    book = "",
+    cheque = "",
+    description = "",
+    other_party = "",
+    otherParty = "",
+  } = req.body || {};
+  const otherPartyValue = other_party || otherParty || "";
   const amount = Number(req.body?.amount) || 0;
   const target = getOutstandingTable(type);
   if (!id || !target || amount <= 0) return res.status(400).json({ status: false, message: "Valid entry and amount are required" });
@@ -397,9 +435,20 @@ reportRouter.post("/report/outstanding/installment", authenticateToken, async (r
       if (amount > dueAmount) throw new Error("Payment cannot exceed due amount");
 
       await q(
-        `INSERT INTO acc_transaction (party, date, type, book, cheque, amount, description, ${target.linkColumn}, company)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [row.party, date || new Date().toISOString().slice(0, 10), target.paymentType, book, cheque, amount, description, id, companyId],
+        `INSERT INTO acc_transaction (party, other_party, date, type, book, cheque, amount, description, ${target.linkColumn}, company)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          row.party,
+          otherPartyValue,
+          date || new Date().toISOString().slice(0, 10),
+          target.paymentType,
+          book,
+          cheque,
+          amount,
+          description,
+          id,
+          companyId,
+        ],
       );
       const paidAmount = (Number(row.paid_amount) || 0) + amount;
       const remainingDue = (Number(row.final_amount) || 0) - paidAmount;

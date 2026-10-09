@@ -1,4 +1,3 @@
-import React from "react";
 import { getUnifiedTableRows } from "../../utils/activityLogFormatters";
 import styles from "../../assets/scss/pages/admin/activityHistory.module.scss";
 
@@ -15,7 +14,6 @@ const ActivityUnifiedDataCell = ({ record, column = "before" }) => {
   if (mode === "empty") {
     return <span className={styles.inlineDataEmpty}>—</span>;
   }
-
   if (!rows.length) {
     return <span className={styles.inlineDataEmpty}>—</span>;
   }
