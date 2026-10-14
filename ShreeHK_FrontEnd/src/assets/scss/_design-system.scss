@@ -415,22 +415,45 @@ textarea.ant-input:not([disabled]):not(.ant-input-disabled),
   background: var(--color-card-bg) !important;
 }
 
-.ant-input:focus,
-.ant-input-affix-wrapper-focused,
-.ant-input-number-focused,
-.ant-select-focused .ant-select-selector,
-.ant-picker-focused {
-  border-color: var(--color-input-focus-border) !important;
-  box-shadow: 0 0 0 3px var(--color-input-focus-ring) !important;
+// Focus = theme border color only (no shadow). Must beat base `border: ... !important`.
+input.ant-input:not(.ant-input-affix-wrapper input):not([disabled]):not(.ant-input-disabled):focus,
+input.ant-input:not(.ant-input-affix-wrapper input):not([disabled]):not(.ant-input-disabled).ant-input-focused,
+textarea.ant-input:not([disabled]):not(.ant-input-disabled):focus,
+textarea.ant-input:not([disabled]):not(.ant-input-disabled).ant-input-focused,
+.ant-input-affix-wrapper-focused:not(.ant-input-affix-wrapper-disabled),
+.ant-input-number-focused:not(.ant-input-number-disabled):not([disabled]),
+.ant-select-focused:not(.ant-select-disabled) .ant-select-selector,
+.ant-select-open:not(.ant-select-disabled) .ant-select-selector,
+.ant-picker-focused:not(.ant-picker-disabled) {
+  border: 0.5px solid var(--color-input-focus-border, var(--color-primary)) !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
-// Validation error — red border on all field types
+// Validation error — red border (Form.Item + status="error" outside Form.Item).
+// Must match/beat the base `border: 0.5px solid var(--color-border) !important` above.
+input.ant-input.ant-input-status-error:not(.ant-input-affix-wrapper input):not([disabled]):not(.ant-input-disabled),
+textarea.ant-input.ant-input-status-error:not([disabled]):not(.ant-input-disabled),
+.ant-input-affix-wrapper-status-error:not(.ant-input-affix-wrapper-disabled),
+.ant-input-number-status-error:not(.ant-input-number-disabled):not([disabled]),
 .ant-form-item-has-error .ant-input,
 .ant-form-item-has-error .ant-input-affix-wrapper,
 .ant-form-item-has-error .ant-input-number,
 .ant-form-item-has-error .ant-select:not(.ant-select-disabled) .ant-select-selector,
 .ant-form-item-has-error .ant-picker {
-  border-color: var(--color-error) !important;
+  border: 0.5px solid var(--color-error) !important;
+  box-shadow: none !important;
+}
+
+input.ant-input.ant-input-status-error:not(.ant-input-affix-wrapper input):not([disabled]):not(.ant-input-disabled):focus,
+input.ant-input.ant-input-status-error:not(.ant-input-affix-wrapper input):not([disabled]):not(.ant-input-disabled).ant-input-focused,
+textarea.ant-input.ant-input-status-error:not([disabled]):not(.ant-input-disabled):focus,
+textarea.ant-input.ant-input-status-error:not([disabled]):not(.ant-input-disabled).ant-input-focused,
+.ant-input-affix-wrapper-status-error.ant-input-affix-wrapper-focused:not(.ant-input-affix-wrapper-disabled),
+.ant-input-number-status-error.ant-input-number-focused:not(.ant-input-number-disabled):not([disabled]) {
+  border: 0.5px solid var(--color-error) !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 // Remove inner input border & background when nested inside a wrapper (prevents double border & white boxes)

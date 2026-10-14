@@ -24,6 +24,7 @@ const LayoutShell = () => {
   const showContextPicker = useAuthStore((state) => state.showContextPicker);
   const setShowContextPicker = useAuthStore((state) => state.setShowContextPicker);
   const companyId = useAuthStore((state) => state.companyId);
+  const branchId = useAuthStore((state) => state.branchId);
   const yearId = useAuthStore((state) => state.yearId);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const userWithPerms = useAuthUser();
@@ -31,7 +32,10 @@ const LayoutShell = () => {
   useActivityTracker();
   useCopyableTableIdentifiers();
 
-  const contextReady = companyId != null && yearId != null;
+  // Company optional: Branch + Year is enough (create company after login)
+  const contextReady =
+    yearId != null &&
+    (Number(companyId) > 0 || Number(branchId) > 0 || companyId === 0);
   const queryClient = useQueryClient();
   const { routes: authorizedRoutes } = useMemo(
     () => getAuthorizedRouteMeta(userWithPerms),

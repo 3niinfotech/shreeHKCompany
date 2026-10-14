@@ -10,7 +10,7 @@ export const PAGE_ENTRIES = [
   { key: "core.settings", label: "Settings", path: "/settings", moduleKey: "core", alwaysAllow: true },
   { key: "core.forbidden", label: "Forbidden", path: "/forbidden", moduleKey: "core", alwaysAllow: true },
 
-  { key: "master.company", label: "Company", path: "/master/company-details", moduleKey: "master" },
+  { key: "master.company", label: "Party", path: "/master/company-details", moduleKey: "master" },
   { key: "master.shipping", label: "Shipping", path: "/master/shipping-details", moduleKey: "master" },
   { key: "master.origin", label: "Origin", path: "/master/origin", moduleKey: "master" },
   { key: "master.lab", label: "Lab", path: "/master/lab", moduleKey: "master" },
@@ -61,6 +61,7 @@ export const PAGE_ENTRIES = [
   { key: "reports.sale_stock", label: "Sale Stock Report", path: "/report/sale-stock", moduleKey: "reports" },
   { key: "reports.stone_info", label: "Party Stone Info", path: "/report/stone-info", moduleKey: "reports" },
 
+  { key: "admin.branch", label: "Branch", path: "/admin/branch", moduleKey: "admin" },
   { key: "admin.tenant_company", label: "Company (Tenant)", path: "/admin/tenant-company", moduleKey: "admin" },
   { key: "admin.manage_user", label: "Manage User", path: "/admin/manage-user", moduleKey: "admin" },
   { key: "admin.role", label: "Roll & Permissions", path: "/admin/roll", moduleKey: "admin" },
@@ -87,7 +88,7 @@ export const ALL_PAGE_KEYS = PAGE_ENTRIES.map((p) => p.key);
 const LEGACY_MODULE_MAP = {
   all: null,
   user: ["admin.manage_user"],
-  company: ["master.company", "admin.tenant_company"],
+  company: ["master.company", "admin.tenant_company", "admin.branch"],
   role: ["admin.role"],
   attribute: PAGE_ENTRIES.filter((p) => p.moduleKey === "master").map((p) => p.key),
   inventory: PAGE_ENTRIES.filter((p) => p.moduleKey === "inventory").map((p) => p.key),
@@ -107,7 +108,7 @@ const LEGACY_MODULE_MAP = {
   expanse: ["accounting.expanse", "accounting.expanse_list"],
   outstanding: ["reports.outstanding"],
   my_balance: ["accounting.my_balance"],
-  account_party: ["accounting.party_wise"],
+  account_party: ["accounting.party_wise", "accounting.party", "accounting.party_report"],
   account_report: PAGE_ENTRIES.filter((p) => p.moduleKey === "reports").map((p) => p.key),
   stock_report: ["inventory.on_hand_stock", "reports.group_report"],
   report_transaction: ["reports.transaction"],
@@ -162,7 +163,7 @@ const toCheckboxField = (page) => ({
   name: page.key,
   label: page.label,
   type: "checkbox",
-  span: 6,
+  span: 4,
 });
 
 const masterExceptCompany = PAGE_ENTRIES.filter(
@@ -175,10 +176,10 @@ export const PERMISSION_FORM_GROUPS = [
     group: "Core & Access",
     showMasterToggle: true,
     items: [
-      { name: "all", label: "All Permissions", type: "checkbox", required: false, span: 6 },
-      { name: "core.dashboard", label: "Dashboard", type: "checkbox", span: 6 },
-      { name: "core.task_manager", label: "Task Manager", type: "checkbox", span: 6 },
-      { name: "master.company", label: "Company Profile", type: "checkbox", span: 6 },
+      { name: "all", label: "All Permissions", type: "checkbox", required: false, span: 4 },
+      { name: "core.dashboard", label: "Dashboard", type: "checkbox", span: 4 },
+      { name: "core.task_manager", label: "Task Manager", type: "checkbox", span: 4 },
+      { name: "master.company", label: "Party", type: "checkbox", span: 4 },
       ...masterExceptCompany.map(toCheckboxField),
     ],
   },
@@ -215,13 +216,13 @@ export const buildPermissionFormGroupsFromModules = (modules) => {
     showMasterToggle: idx === 0,
     items: [
       ...(idx === 0
-        ? [{ name: "all", label: "All Permissions", type: "checkbox", required: false, span: 6 }]
+        ? [{ name: "all", label: "All Permissions", type: "checkbox", required: false, span: 4 }]
         : []),
       ...(mod.children || []).map((p) => ({
         name: p.key,
         label: p.label,
         type: "checkbox",
-        span: 6,
+        span: 4,
       })),
     ],
   }));

@@ -180,10 +180,18 @@ export const ENDPOINTS = {
     },
     portal: {
         companyYears: "/portal/company-years",
+        branchCompanies: "/portal/branch-companies",
         years: "/portal/years",
         addYear: "/portal/year",
         updateYear: "/portal/year",
         deleteYear: "/portal/year",
+    },
+    branch: {
+        list: "/admin/branch",
+        detail: (id) => `/admin/branch/${id}`,
+        save: "/admin/branch/save",
+        delete: "/admin/branch/delete",
+        options: "/admin/branch/options",
     },
     tenantCompany: {
         list: "/admin/tenant-company",

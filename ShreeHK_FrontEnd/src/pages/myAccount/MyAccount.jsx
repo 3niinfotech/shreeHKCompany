@@ -40,6 +40,15 @@ const MyAccount = () => {
 
     const adminShortcuts = [
         {
+            key: 'branch',
+            title: 'Branch',
+            subtitle: 'HK / Dubai / Surat branches',
+            path: '/admin/branch',
+            icon: <BankOutlined />,
+            iconColor: 'var(--color-primary)',
+            iconBg: 'var(--color-primary-light)',
+        },
+        {
             key: 'company',
             title: 'Company',
             subtitle: 'Tenant & company details',
@@ -274,7 +283,7 @@ const MyAccount = () => {
     ];
 
     return (
-        <div style={{ padding: '24px', background: cssVar('color-bg-page'), minHeight: '90vh' }}>
+        <div className="page-shell" style={{ background: cssVar('color-bg-page'), gap: 10 }}>
             <Row gutter={[24, 24]}>
 
                 {/* ── Left: Profile Card ── */}

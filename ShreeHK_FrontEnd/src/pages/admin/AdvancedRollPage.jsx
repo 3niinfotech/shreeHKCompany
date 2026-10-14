@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Layout, Form, Card, Button, Input, Space,
   Typography, Switch, Modal,
@@ -52,6 +52,16 @@ const AdvancedRollPage = () => {
   const [masterToggle, setMasterToggle] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [companyIds, setCompanyIds] = useState([]);
+  const searchInputRef = useRef(null);
+
+  // Form wraps page — prevent first Input from auto-taking focus on load
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      const el = searchInputRef.current?.input || searchInputRef.current;
+      if (el && document.activeElement === el) el.blur();
+    }, 0);
+    return () => window.clearTimeout(t);
+  }, []);
 
   const { data: rolesData, isLoading: isRolesLoading } = useFetchApi('getRoleList', ENDPOINTS.role.list);
   const { data: companyOptionsData } = useFetchApi('tenantCompanyOptions', ENDPOINTS.tenantCompany.options);
@@ -326,16 +336,6 @@ const AdvancedRollPage = () => {
                 {selectedRoleId ? companyIds.length : '—'}
               </strong>
             </div>
-            <div className={styles.searchWrap}>
-              <Input
-                allowClear
-                prefix={<SearchOutlined />}
-                placeholder="Search permissions by module name..."
-                className={styles.searchInput}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
           </section>
 
           <Row gutter={[16, 16]} className={styles.mainRow} align="stretch">
@@ -465,13 +465,26 @@ const AdvancedRollPage = () => {
                   <Card className={styles.permissionsCard}>
                     <div className={styles.contextInfoBox}>
                       <ClusterOutlined className={styles.infoIcon} />
-                      <div>
+                      <div className={styles.contextInfoText}>
                         <Text strong className={styles.infoTitle}>
                           Configure access for <Tag color="processing">{selectedRole?.name}</Tag>
                         </Text>
                         <Text type="secondary" className={styles.infoSubtitle}>
                           Checked permissions grant access. Unchecked permissions deny access for this role.
                         </Text>
+                      </div>
+                      <div className={styles.searchWrap}>
+                        <Input
+                          ref={searchInputRef}
+                          allowClear
+                          size="small"
+                          autoFocus={false}
+                          prefix={<SearchOutlined />}
+                          placeholder="Search permissions..."
+                          className={styles.searchInput}
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                       </div>
                     </div>
 

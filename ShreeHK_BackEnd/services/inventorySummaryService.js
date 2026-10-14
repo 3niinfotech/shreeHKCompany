@@ -1,4 +1,5 @@
 const helper = require("../helper.js");
+const { getBranchCompanyIds } = require("../tenantHelper.js");
 
 const DONUT_COLORS = ["#10b981", "#8b5cf6", "#3b82f6", "#f59e0b", "#ef4444", "#1e40af", "#e5566e", "#26b99a"];
 
@@ -12,6 +13,28 @@ const resolveCompanyId = (source) => {
   }
   const n = Number(source);
   return n > 0 ? n : 0;
+};
+
+const resolveBranchCompanyIds = async (source) => {
+  const sessionId = resolveCompanyId(source);
+  if (!sessionId) return [];
+  const ids = await getBranchCompanyIds(sessionId);
+  return ids.length ? ids : [sessionId];
+};
+
+const companyInClause = (companyIds) => {
+  // Accept number, single id string, or array (dashboard sometimes passes one companyId)
+  const raw = Array.isArray(companyIds)
+    ? companyIds
+    : companyIds != null && companyIds !== ""
+      ? [companyIds]
+      : [];
+  const ids = raw.map(Number).filter((id) => Number.isFinite(id) && id > 0);
+  const list = ids.length ? ids : [0];
+  return {
+    sql: `p.company IN (${list.map(() => "?").join(",")})`,
+    params: list,
+  };
 };
 
 const toAgg = (row = {}) => ({
@@ -68,7 +91,8 @@ async function mapDuePaymentRows(rows) {
 /**
  * Aggregate pcs/carat/amount/count for dai_product rows.
  */
-async function aggregateProducts(companyId, extraWhere = "") {
+async function aggregateProducts(companyIds, extraWhere = "") {
+  const { sql: companySql, params } = companyInClause(companyIds);
   const sql = `
     SELECT
       COALESCE(SUM(p.polish_pcs), 0) AS pcs,
@@ -76,19 +100,28 @@ async function aggregateProducts(companyId, extraWhere = "") {
       COALESCE(SUM(p.amount), 0) AS amount,
       COUNT(p.id) AS count
     FROM dai_product p
-    WHERE p.company = ?
+    WHERE ${companySql}
     ${extraWhere}
   `;
-  const rows = await helper.query(sql, [companyId]);
+  const rows = await helper.query(sql, params);
   return toAgg(rows[0]);
 }
 
 const ON_HAND_BASE = `
   AND p.visibility = 1
-  AND p.polish_carat <> 0
+  AND (COALESCE(p.polish_carat,0) <> 0 OR COALESCE(p.onhand_carat,0) <> 0)
+  AND COALESCE(p.memo_carat,0) <= 0
   AND (p.outward = '' OR p.outward IS NULL)
   AND (p.box_id = '' OR p.box_id IS NULL)
   AND (p.parcel_id = '' OR p.parcel_id IS NULL)
+`;
+
+// Full memo (outward) + partial memo (memo_carat > 0) — polish_carat may be 0 when fully on memo
+const MEMO_BASE = `
+  AND p.visibility = 1
+  AND (p.box_id = '' OR p.box_id IS NULL)
+  AND (p.parcel_id = '' OR p.parcel_id IS NULL)
+  AND (p.outward = 'memo' OR p.outward = 'consign' OR COALESCE(p.memo_carat,0) > 0)
 `;
 
 const GIA_LAB = ` AND p.lab = 'GIA' `;
@@ -117,27 +150,9 @@ async function getWidgetCounts(companyId) {
     aggregateProducts(companyId, `${ON_HAND_BASE} ${GIA_LAB}`),
     aggregateProducts(companyId, `${ON_HAND_BASE} ${NON_GIA_LAB}`),
     aggregateProducts(companyId, ` AND (p.lab = '' OR p.lab IS NULL) AND p.outward = 'lab' `),
-    aggregateProducts(
-      companyId,
-      ` AND p.visibility = 1 AND p.polish_carat <> 0
-        AND (p.box_id = '' OR p.box_id IS NULL)
-        AND (p.parcel_id = '' OR p.parcel_id IS NULL)
-        AND (p.outward = 'memo' OR p.outward = 'consign') `
-    ),
-    aggregateProducts(
-      companyId,
-      ` AND p.visibility = 1 AND p.polish_carat <> 0
-        AND (p.box_id = '' OR p.box_id IS NULL)
-        AND (p.parcel_id = '' OR p.parcel_id IS NULL)
-        AND (p.outward = 'memo' OR p.outward = 'consign') ${GIA_LAB}`
-    ),
-    aggregateProducts(
-      companyId,
-      ` AND p.visibility = 1 AND p.polish_carat <> 0
-        AND (p.box_id = '' OR p.box_id IS NULL)
-        AND (p.parcel_id = '' OR p.parcel_id IS NULL)
-        AND (p.outward = 'memo' OR p.outward = 'consign') ${NON_GIA_LAB}`
-    ),
+    aggregateProducts(companyId, MEMO_BASE),
+    aggregateProducts(companyId, `${MEMO_BASE} ${GIA_LAB}`),
+    aggregateProducts(companyId, `${MEMO_BASE} ${NON_GIA_LAB}`),
     aggregateProducts(companyId, ` AND (p.outward = 'sale' OR p.outward = 'export') `),
     aggregateProducts(companyId, ` AND (p.outward = 'sale' OR p.outward = 'export') ${GIA_LAB}`),
     aggregateProducts(companyId, ` AND (p.outward = 'sale' OR p.outward = 'export') ${NON_GIA_LAB}`),
@@ -184,16 +199,17 @@ async function getWidgetCounts(companyId) {
  * used here: it holds the inward cost, and sold rows include retired
  * (visibility = 0) and box/parcel container duplicates.
  */
-async function getSaleExportSummary(companyId) {
+async function getSaleExportSummary(companyIds) {
+  const { sql: companySql, params } = companyInClause(companyIds);
   const sql = `
     SELECT
       COUNT(o.id) AS count,
       COALESCE(SUM(o.final_amount), 0) AS amount
     FROM dai_outward o
-    WHERE o.company = ?
+    WHERE ${companySql.replace(/p\.company/g, "o.company")}
       AND (o.type = 'sale' OR o.type = 'export')
   `;
-  const rows = await helper.query(sql, [companyId]);
+  const rows = await helper.query(sql, params);
   const row = rows[0] || {};
   return {
     pcs: 0,
@@ -203,16 +219,17 @@ async function getSaleExportSummary(companyId) {
   };
 }
 
-async function getPurchaseSummary(companyId) {
+async function getPurchaseSummary(companyIds) {
+  const { sql: companySql, params } = companyInClause(companyIds);
   const sql = `
     SELECT
       COUNT(i.id) AS count,
       COALESCE(SUM(i.final_amount), 0) AS amount
     FROM dai_inward i
-    WHERE i.company = ?
+    WHERE ${companySql.replace(/p\.company/g, "i.company")}
       AND i.inward_type = 'purchase'
   `;
-  const rows = await helper.query(sql, [companyId]);
+  const rows = await helper.query(sql, params);
   const row = rows[0] || {};
   return {
     pcs: 0,
@@ -236,11 +253,12 @@ function toDonutGroups(rows, totalFallback = 0) {
   }));
 }
 
-async function getOnHandBreakdowns(companyId) {
+async function getOnHandBreakdowns(companyIds) {
+  const { sql: companySql, params: companyParams } = companyInClause(companyIds);
   const baseJoin = `
     FROM dai_product p
     JOIN dai_product_value pv ON p.id = pv.product_id
-    WHERE p.company = ?
+    WHERE ${companySql}
       AND p.visibility = 1
       AND p.polish_carat <> 0
       AND (p.outward = '' OR p.outward IS NULL)
@@ -251,15 +269,15 @@ async function getOnHandBreakdowns(companyId) {
   const [shapeRows, colorRows, clarityRows, typeRows, totalRow] = await Promise.all([
     helper.query(
       `SELECT pv.shape AS k, COUNT(*) AS n ${baseJoin} GROUP BY pv.shape ORDER BY n DESC LIMIT 8`,
-      [companyId]
+      companyParams
     ),
     helper.query(
       `SELECT pv.color AS k, COUNT(*) AS n ${baseJoin} GROUP BY pv.color ORDER BY n DESC LIMIT 8`,
-      [companyId]
+      companyParams
     ),
     helper.query(
       `SELECT pv.clarity AS k, COUNT(*) AS n ${baseJoin} GROUP BY pv.clarity ORDER BY n DESC LIMIT 8`,
-      [companyId]
+      companyParams
     ),
     helper.query(
       `SELECT
@@ -274,9 +292,9 @@ async function getOnHandBreakdowns(companyId) {
       ${baseJoin}
       GROUP BY k
       ORDER BY n DESC`,
-      [companyId]
+      companyParams
     ),
-    helper.query(`SELECT COUNT(p.id) AS total ${baseJoin}`, [companyId]),
+    helper.query(`SELECT COUNT(p.id) AS total ${baseJoin}`, companyParams),
   ]);
 
   const total = Number(totalRow[0]?.total) || 0;
@@ -287,14 +305,15 @@ async function getOnHandBreakdowns(companyId) {
     byColor: toDonutGroups(colorRows, total),
     byClarity: toDonutGroups(clarityRows, total),
     byType: toDonutGroups(typeRows, total),
-    totals: await aggregateProducts(companyId, ON_HAND_BASE),
+    totals: await aggregateProducts(companyIds, ON_HAND_BASE),
   };
 }
 
-async function getDueSalePayments(companyId, userId, isAdmin) {
+async function getDueSalePayments(companyIds, userId, isAdmin) {
   const end = new Date();
   end.setDate(end.getDate() + 7);
   const ndate = end.toISOString().slice(0, 10);
+  const { sql: companySql, params: companyParams } = companyInClause(companyIds);
 
   let sql = `
     SELECT o.id, o.entryno, o.party, o.final_amount, o.paid_amount, o.due_amount, o.products, p.name AS party_name
@@ -306,9 +325,9 @@ async function getDueSalePayments(companyId, userId, isAdmin) {
       AND (o.type = 'sale' OR o.type = 'export')
       AND (o.status = 'on_sale' OR o.status = 'on_export')
       AND o.products <> ''
-      AND o.company = ?
+      AND ${companySql.replace(/p\.company/g, "o.company")}
   `;
-  const params = [ndate, companyId];
+  const params = [ndate, ...companyParams];
 
   if (!isAdmin && userId) {
     sql += " AND o.user = ?";
@@ -321,10 +340,11 @@ async function getDueSalePayments(companyId, userId, isAdmin) {
   return mapDuePaymentRows(rows);
 }
 
-async function getDuePurchasePayments(companyId, userId, isAdmin) {
+async function getDuePurchasePayments(companyIds, userId, isAdmin) {
   const end = new Date();
   end.setDate(end.getDate() + 7);
   const ndate = end.toISOString().slice(0, 10);
+  const { sql: companySql, params: companyParams } = companyInClause(companyIds);
 
   let sql = `
     SELECT i.id, i.entryno, i.party, i.final_amount, i.paid_amount, i.due_amount, i.products, p.name AS party_name
@@ -335,9 +355,9 @@ async function getDuePurchasePayments(companyId, userId, isAdmin) {
       AND i.due_amount <> 0
       AND (LOWER(i.inward_type) = 'purchase')
       AND (i.deleted = 0 OR i.deleted IS NULL)
-      AND i.company = ?
+      AND ${companySql.replace(/p\.company/g, "i.company")}
   `;
-  const params = [ndate, companyId];
+  const params = [ndate, ...companyParams];
 
   if (!isAdmin && userId) {
     sql += " AND i.user = ?";
@@ -350,14 +370,17 @@ async function getDuePurchasePayments(companyId, userId, isAdmin) {
   return mapDuePaymentRows(rows);
 }
 
-async function getRecentTransactions(companyId, limit = 5) {
+async function getRecentTransactions(companyIds, limit = 5) {
+  const { sql: companySql, params: companyParams } = companyInClause(companyIds);
+  const oCompany = companySql.replace(/p\.company/g, "o.company");
+  const iCompany = companySql.replace(/p\.company/g, "i.company");
   const sql = `
     (
       SELECT 'Sale Invoice' AS type, o.invoiceno AS ref, p.name AS party,
              o.date AS txn_date, o.final_amount AS amount, o.status AS status, o.type AS txn_type
       FROM dai_outward o
       LEFT JOIN dai_party p ON o.party = p.id
-      WHERE o.company = ? AND (o.type = 'sale' OR o.type = 'export')
+      WHERE ${oCompany} AND (o.type = 'sale' OR o.type = 'export')
     )
     UNION ALL
     (
@@ -365,13 +388,13 @@ async function getRecentTransactions(companyId, limit = 5) {
              i.date AS txn_date, i.final_amount AS amount, i.inward_type AS status, i.inward_type AS txn_type
       FROM dai_inward i
       LEFT JOIN dai_party p ON i.party = p.id
-      WHERE i.company = ? AND i.inward_type = 'purchase'
+      WHERE ${iCompany} AND i.inward_type = 'purchase'
         AND (i.deleted = 0 OR i.deleted IS NULL)
     )
     ORDER BY txn_date DESC
     LIMIT ?
   `;
-  const rows = await helper.query(sql, [companyId, companyId, limit]);
+  const rows = await helper.query(sql, [...companyParams, ...companyParams, limit]);
   return (rows || []).map((row) => ({
     type: row.type || "Transaction",
     ref: row.ref || "-",
@@ -382,18 +405,19 @@ async function getRecentTransactions(companyId, limit = 5) {
   }));
 }
 
-async function getTopParties(companyId, limit = 5) {
+async function getTopParties(companyIds, limit = 5) {
+  const { sql: companySql, params: companyParams } = companyInClause(companyIds);
   const sql = `
     SELECT p.name, COALESCE(SUM(o.final_amount), 0) AS amount
     FROM dai_outward o
     LEFT JOIN dai_party p ON o.party = p.id
-    WHERE o.company = ?
+    WHERE ${companySql.replace(/p\.company/g, "o.company")}
       AND (o.type = 'sale' OR o.type = 'export')
     GROUP BY o.party, p.name
     ORDER BY amount DESC
     LIMIT ?
   `;
-  const rows = await helper.query(sql, [companyId, limit]);
+  const rows = await helper.query(sql, [...companyParams, limit]);
   return (rows || []).map((r) => ({
     name: r.name || "Unknown",
     amount: Number(r.amount) || 0,
@@ -401,18 +425,18 @@ async function getTopParties(companyId, limit = 5) {
 }
 
 async function getDashboardSummary(req) {
-  const companyId = resolveCompanyId(req);
+  const companyIds = await resolveBranchCompanyIds(req);
   const userId = req.user?.user_id;
   const isAdmin = Number(req.user?.roll) === 1;
 
   const [widgets, breakdowns, duePayments, purchaseDuePayments, recentTransactions, topParties] =
     await Promise.all([
-      getWidgetCounts(companyId),
-      getOnHandBreakdowns(companyId),
-      getDueSalePayments(companyId, userId, isAdmin),
-      getDuePurchasePayments(companyId, userId, isAdmin),
-      getRecentTransactions(companyId, 5),
-      getTopParties(companyId, 5),
+      getWidgetCounts(companyIds),
+      getOnHandBreakdowns(companyIds),
+      getDueSalePayments(companyIds, userId, isAdmin),
+      getDuePurchasePayments(companyIds, userId, isAdmin),
+      getRecentTransactions(companyIds, 5),
+      getTopParties(companyIds, 5),
     ]);
 
   const memoPercent =
@@ -432,10 +456,15 @@ async function getDashboardSummary(req) {
 }
 
 async function getInventorySummary(req) {
-  const companyId = resolveCompanyId(req);
+  let companyIds = await resolveBranchCompanyIds(req);
+  const requestedFilter =
+    Number(req.query?.filterCompanyId || req.query?.companyFilter) || 0;
+  if (requestedFilter && companyIds.map(Number).includes(requestedFilter)) {
+    companyIds = [requestedFilter];
+  }
   const [widgets, breakdowns] = await Promise.all([
-    getWidgetCounts(companyId),
-    getOnHandBreakdowns(companyId),
+    getWidgetCounts(companyIds),
+    getOnHandBreakdowns(companyIds),
   ]);
 
   return {

@@ -31,13 +31,13 @@ const TransferHistory = () => {
     const activeCount = [skuSearch, fromDate, toDate].filter(Boolean).length;
 
     const columns = [
-        { title: 'No', dataIndex: 'no', key: 'no', width: 60, align: 'center' },
-        { title: 'Sku', dataIndex: 'sku', key: 'sku', className: styles.skuColumn, render: (text, record) => <SkuLink sku={text} record={record} /> },
-        { title: 'Date', dataIndex: 'date', key: 'date', render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
-        { title: 'To Company', dataIndex: 'toCompany', key: 'toCompany' },
-        { title: 'Discription', dataIndex: 'discription', key: 'discription' },
+        { title: 'No', dataIndex: 'no', key: 'no', width: 30, align: 'center' },
+        { title: 'Sku', dataIndex: 'sku', key: 'sku', width: 50, className: styles.skuColumn, ellipsis: true, render: (text, record) => <SkuLink sku={text} record={record} /> },
+        { title: 'Date', dataIndex: 'date', key: 'date', width: 60, align: 'center', render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
+        { title: 'To Company', dataIndex: 'toCompany', key: 'toCompany', width: 140, ellipsis: true },
+        { title: 'Discription', dataIndex: 'discription', key: 'discription', width: 180, ellipsis: true },
         {
-            title: 'User By', dataIndex: 'userBy', key: 'userBy',
+            title: 'User By', dataIndex: 'userBy', key: 'userBy', width: 120, ellipsis: true,
             render: (text) => <Text strong style={{ color: cssVar('color-text-link') }}>{text}</Text>
         },
     ];
@@ -166,8 +166,17 @@ const TransferHistory = () => {
             </AdvancedFilterPanel>
 
             <Card className={styles.tableCard}>
-                <div ref={tableRef} className="erp-table-container">
-                    <SkeletonAwareTable columns={columns} dataSource={data} loading={loading} pagination={{ pageSize: 50 }} size="small" bordered scroll={{ x: "max-content", y: tableHeight }} />
+                <div ref={tableRef} className={`erp-table-container ${styles.transferTableWrap}`}>
+                    <SkeletonAwareTable
+                        columns={columns}
+                        dataSource={data}
+                        loading={loading}
+                        pagination={false}
+                        size="small"
+                        bordered
+                        tableLayout="fixed"
+                        scroll={{ y: tableHeight }}
+                    />
                 </div>
             </Card>
         </div>

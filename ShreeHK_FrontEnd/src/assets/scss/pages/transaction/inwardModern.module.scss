@@ -4,8 +4,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px 14px 12px;
+  gap: 10px;
   background: var(--color-page-bg);
   box-sizing: border-box;
   overflow: hidden;
@@ -215,6 +214,27 @@
     font-size: 12px !important;
   }
 
+  /* Required empty fields: solid red border only — no outline / shadow */
+  :global(.ant-input-status-error),
+  :global(.ant-input-number-status-error),
+  :global(.ant-input-affix-wrapper-status-error) {
+    border: 0.5px solid var(--color-error, #dc3d43) !important;
+    box-shadow: none !important;
+    outline: none !important;
+  }
+
+  :global(.ant-input-status-error:hover),
+  :global(.ant-input-status-error:focus),
+  :global(.ant-input-number-status-error:hover),
+  :global(.ant-input-number-status-error.ant-input-number-focused),
+  :global(.ant-input-affix-wrapper-status-error:hover),
+  :global(.ant-input-affix-wrapper-status-error:focus),
+  :global(.ant-input-affix-wrapper-status-error-focused) {
+    border: 0.5px solid var(--color-error, #dc3d43) !important;
+    box-shadow: none !important;
+    outline: none !important;
+  }
+
   :global(.ant-table-footer) {
     background: transparent;
     padding: 6px 12px 8px;
@@ -235,43 +255,95 @@
   }
 }
 
-.tableSectionScrollable {
-  :global(.ant-table-wrapper) {
-    flex: 0 1 auto;
+.tableBodyWrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+
+  :global(.ant-table-wrapper),
+  :global(.ant-spin-nested-loading),
+  :global(.ant-spin-container) {
+    flex: 1;
     min-height: 0;
+    height: 100%;
     width: 100%;
-    max-height: calc(48px + (var(--inward-visible-rows, 4) * 54px));
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
   }
 
-  :global(.ant-spin-nested-loading),
-  :global(.ant-spin-container) {
-    height: auto;
-    width: 100%;
+  :global(.ant-table) {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   :global(.ant-table-container) {
-    overflow-x: auto !important;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden !important;
   }
 
+  :global(.ant-table-header) {
+    flex-shrink: 0;
+  }
+
+  /* Ant scroll.y is max-height only — force height so scrollbar sits at bottom */
   :global(.ant-table-body) {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: var(--table-scroll-y) !important;
+    max-height: var(--table-scroll-y) !important;
     overflow: auto !important;
   }
 
+  :global(.ant-table-body > table) {
+    height: auto !important;
+  }
+
   :global(.ant-table-sticky-scroll) {
-    flex-shrink: 0;
+    display: none !important;
+  }
+}
+
+.tableSectionScrollable {
+  :global(.ant-table-wrapper) {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    max-height: none;
+    overflow: hidden;
   }
 
   .footerStats {
     margin-top: auto;
+    flex-shrink: 0;
+  }
+
+  .tableCardHead {
+    flex-shrink: 0;
   }
 }
 
 .tableAddRow {
   flex-shrink: 0;
-  padding: 6px 12px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 8px 14px;
   border-top: 1px solid var(--color-border);
   background: var(--color-card-bg, #fff);
+
+  :global(.ant-btn) {
+    width: auto;
+    min-width: 180px;
+  }
 }
 
 .tableCardHead {
@@ -282,6 +354,23 @@
   border-bottom: 1px solid var(--color-border);
   background: linear-gradient(90deg, color-mix(in srgb, var(--color-primary) 6%, transparent), transparent);
   flex-shrink: 0;
+}
+
+.tableCardHeadText {
+  min-width: 0;
+  flex: 1;
+}
+
+.tableCardHeadActions {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+
+  :global(.ant-btn) {
+    width: auto;
+    min-width: 180px;
+  }
 }
 
 .excelUploadPanel {
@@ -298,12 +387,38 @@
   width: 24%;
 }
 
+.excelUploadFieldAlign {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+.excelUploadFieldLabel {
+  display: block;
+  height: 22px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.excelUploadPanelInline {
+  margin: 0;
+  width: 100%;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
 .excelUploadCompact {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 6px;
+  flex-wrap: nowrap;
+  width: 100%;
 }
 
 .excelUploadMeta {
@@ -333,7 +448,7 @@
 
 .excelUploadHint {
   display: block;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.3;
   color: var(--color-text-secondary, #5f7383);
   white-space: nowrap;
@@ -354,6 +469,24 @@
   line-height: 18px !important;
   padding-inline: 6px !important;
   border-radius: 999px;
+}
+
+.excelTableSpin {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+
+  :global(.ant-spin-container) {
+    width: 100%;
+    height: 100%;
+  }
+
+  :global(.ant-spin-text) {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-heading, #1f2937);
+  }
 }
 
 .footerStats {
@@ -416,6 +549,13 @@
   .footerStatsActions {
     margin-left: auto;
   }
+}
+
+/* Solid red border only — no outline / shadow glow */
+.requiredFieldError {
+  border: 0.5px solid var(--color-error, #dc3d43) !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 .addLineBtn,

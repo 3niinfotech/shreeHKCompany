@@ -15,7 +15,7 @@ import {
   ImportOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { toastApiSuccess, toastApiError } from '../../../utils/toastNotify';
+import { toastApiSuccess, toastApiError, toastWarning } from '../../../utils/toastNotify';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useFetchApi, useDeleteApiRequest, usePostApiRequest } from '../../../api/ApiFunction';
@@ -25,6 +25,7 @@ import { ConfirmDeleteModal, BaseModal } from '../../../components/common/modals
 import DynamicForm from '../../../components/common/ui/DynamicFormField';
 import GiaReturnModal from '../../../components/transaction/stock/GiaReturnModal';
 import MemoConvertModal from '../../../components/transaction/stock/MemoConvertModal';
+import ConvertToExportModal from '../../../components/transaction/stock/ConvertToExportModal';
 import TransactionInvoicePreviewModal from '../../../components/transaction/invoice/TransactionInvoicePreviewModal';
 import AdvancedFilterPanel, { FilterField, filterPanelStyles } from '../../../components/common/filters/AdvancedFilterPanel';
 import PageHeroHeader from '../../../components/common/PageHeroHeader';
@@ -120,6 +121,12 @@ const TransactionStockTemplate = ({
     productIds: [],
   });
   const [memoConvertLoading, setMemoConvertLoading] = useState(false);
+  const [toExportModal, setToExportModal] = useState({
+    open: false,
+    record: null,
+    convertType: 'export',
+  });
+  const [toExportLoading, setToExportLoading] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editId, setEditId] = useState(null);
   const [editingRecord, setEditingRecord] = useState(null);
@@ -344,36 +351,65 @@ const TransactionStockTemplate = ({
   }, [originMasterData]);
 
   const editMainFields = useMemo(() => {
+    // 5 fields per row (account for Row gutter)
+    const c5 = '1 1 calc(20% - 13px)';
     if (isVenyaSaleEdit) {
       // Match Venya sform.php header (no Type field — type is hidden)
       return [
-        { name: 'entryno', label: 'Entry', type: 'text', required: true, span: 6, disabled: true },
-        { name: 'place', label: 'Sale @', type: 'text', span: 6 },
-        { name: 'date', label: 'Date', type: 'date', required: true, span: 6 },
-        { name: 'reference', label: 'Reference', type: 'text', span: 6 },
-        { name: 'invoiceno', label: 'Invoice No.', type: 'text', required: true, span: 6, disabled: true },
-        { name: 'invoicedate', label: 'Invoice Date', type: 'date', span: 6 },
-        { name: 'terms', label: 'Terms', type: 'text', span: 6 },
-        { name: 'duedate', label: 'Due Date', type: 'date', span: 6 },
-        { name: 'party', label: 'Party Name', type: 'select', options: partyOptions, required: true, span: 12 },
-        { name: 'paid_amount', label: 'Paid Amount', type: 'number', span: 6 },
-        { name: 'due_amount', label: 'Due Amount', type: 'number', span: 6 },
-        { name: 'other_party', label: 'Other Party', type: 'select', options: partyOptions, span: 12 },
+        { name: 'entryno', label: 'Entry', type: 'text', required: true, flex: c5, disabled: true },
+        { name: 'place', label: 'Sale @', type: 'text', flex: c5 },
+        { name: 'date', label: 'Date', type: 'date', required: true, flex: c5 },
+        { name: 'reference', label: 'Reference', type: 'text', flex: c5 },
+        { name: 'invoiceno', label: 'Invoice No.', type: 'text', required: true, flex: c5, disabled: true },
+        { name: 'invoicedate', label: 'Invoice Date', type: 'date', flex: c5 },
+        { name: 'terms', label: 'Terms', type: 'text', flex: c5 },
+        { name: 'duedate', label: 'Due Date', type: 'date', flex: c5 },
+        { name: 'paid_amount', label: 'Paid Amount', type: 'number', flex: c5 },
+        { name: 'due_amount', label: 'Due Amount', type: 'number', flex: c5 },
+        { name: 'party', label: 'Party Name', type: 'select', options: partyOptions, required: true, flex: c5 },
+        { name: 'other_party', label: 'Other Party', type: 'select', options: partyOptions, flex: c5 },
       ];
     }
     return [
-      { name: 'entryno', label: 'Entry', type: 'text', required: true, span: 6, disabled: true },
-      { name: 'type', label: 'Type', type: 'text', required: true, span: 6, disabled: true },
-      { name: 'place', label: 'Place', type: 'text', span: 6 },
-      { name: 'date', label: 'Date', type: 'date', required: true, span: 6 },
-      { name: 'reference', label: 'Reference', type: 'text', span: 6 },
-      { name: 'invoiceno', label: 'Invoice No', type: 'text', required: true, span: 6, disabled: true },
-      { name: 'invoicedate', label: 'Invoice Date', type: 'date', span: 6 },
-      { name: 'terms', label: 'Terms', type: 'text', span: 6 },
-      { name: 'duedate', label: 'Due Date', type: 'date', span: 6 },
-      { name: 'party', label: 'Party Name', type: 'select', options: partyOptions, required: true, span: 6 },
-      { name: 'other_party', label: 'Other Party', type: 'select', options: partyOptions, span: 6 },
-      { name: 'paid_amount', label: 'Paid Amount', type: 'number', span: 6 },
+      { name: 'entryno', label: 'Entry', type: 'text', required: true, flex: c5, disabled: true },
+      { name: 'type', label: 'Type', type: 'text', required: true, flex: c5, disabled: true },
+      { name: 'place', label: 'Place', type: 'text', flex: c5 },
+      { name: 'date', label: 'Date', type: 'date', required: true, flex: c5 },
+      { name: 'reference', label: 'Reference', type: 'text', flex: c5 },
+      { name: 'invoiceno', label: 'Invoice No', type: 'text', required: true, flex: c5, disabled: true },
+      { name: 'invoicedate', label: 'Invoice Date', type: 'date', flex: c5 },
+      { name: 'terms', label: 'Terms', type: 'text', flex: c5 },
+      { name: 'duedate', label: 'Due Date', type: 'date', flex: c5 },
+      { name: 'paid_amount', label: 'Paid Amount', type: 'number', flex: c5 },
+      { name: 'party', label: 'Party Name', type: 'select', options: partyOptions, required: true, flex: c5 },
+      { name: 'other_party', label: 'Other Party', type: 'select', options: partyOptions, flex: c5 },
+      { name: 'due_amount', label: 'Due Amount', type: 'number', flex: c5 },
+      {
+        type: 'custom',
+        noFormItem: true,
+        flex: '1 1 calc(40% - 13px)',
+        render: () => (
+          <Form.Item
+            label={<span className={styles.stockEditBankLabel}>Bank</span>}
+            colon={false}
+          >
+            <div className={styles.stockEditBankSlot}>
+              <Form.Item name="boc" valuePropName="checked" noStyle>
+                <Checkbox>BOC</Checkbox>
+              </Form.Item>
+              <Form.Item name="citi" valuePropName="checked" noStyle>
+                <Checkbox>CITI</Checkbox>
+              </Form.Item>
+              <Form.Item name="dbs" valuePropName="checked" noStyle>
+                <Checkbox>DBS</Checkbox>
+              </Form.Item>
+              <Form.Item name="sc" valuePropName="checked" noStyle>
+                <Checkbox>SC</Checkbox>
+              </Form.Item>
+            </div>
+          </Form.Item>
+        ),
+      },
     ];
   }, [partyOptions, isVenyaSaleEdit]);
 
@@ -816,9 +852,21 @@ const TransactionStockTemplate = ({
     }
   };
 
+  const resolveReturnProductIds = (record) => {
+    const selected = getSelected(record.id);
+    if (selected.length) return selected;
+    // Unique ids — JOIN duplicates must not sell/return the same stone multiple times
+    return [...new Set(
+      (record.products || []).map((p) => p.id).filter((id) => id != null).map(String),
+    )];
+  };
+
   const handleReturn = (record) => {
-    const products = getSelected(record.id);
-    if (!products.length) return;
+    const products = resolveReturnProductIds(record);
+    if (!products.length) {
+      toastWarning('No stones available to return');
+      return;
+    }
     if (actions.giaReturn) {
       setGiaReturnModal({ open: true, record, productIds: products });
       return;
@@ -827,8 +875,11 @@ const TransactionStockTemplate = ({
   };
 
   const handleMemoToSale = (record) => {
-    const products = getSelected(record.id);
-    if (!products.length) return;
+    const products = resolveReturnProductIds(record);
+    if (!products.length) {
+      toastWarning('No stones available to convert to sale');
+      return;
+    }
     setMemoConvertModal({ open: true, mode: 'sale', record, productIds: products });
   };
 
@@ -839,19 +890,24 @@ const TransactionStockTemplate = ({
 
   const handleMemoConvertConfirm = async (payload) => {
     const endpoint =
-      memoConvertModal.mode === 'sale' ? actions.memoToSaleEndpoint : actions.returnEndpoint;
+      memoConvertModal.mode === 'sale'
+        ? actions.memoToSaleEndpoint
+        : memoConvertModal.mode === 'purchase'
+          ? actions.memoToPurchaseEndpoint
+          : actions.returnEndpoint;
     if (!endpoint) return;
     setMemoConvertLoading(true);
     try {
       const body =
-        memoConvertModal.mode === 'sale'
-          ? payload
-          : {
+        memoConvertModal.mode === 'return'
+          ? {
               id: payload.id,
               outid: payload.id,
               products: payload.products,
               record: payload.record,
-            };
+              narretion: payload.narretion,
+            }
+          : payload;
       const ok = await postAction(endpoint, body);
       if (ok) {
         setSelectedProducts((prev) => ({ ...prev, [payload.id]: [] }));
@@ -865,9 +921,12 @@ const TransactionStockTemplate = ({
   };
 
   const handleMemoToPurchase = (record) => {
-    const products = getSelected(record.id);
-    if (!products.length) return;
-    postAction(actions.memoToPurchaseEndpoint, { memo_id: record.id, id: record.id, products, party: record.party });
+    const products = resolveReturnProductIds(record);
+    if (!products.length) {
+      toastWarning('No stones available to purchase');
+      return;
+    }
+    setMemoConvertModal({ open: true, mode: 'purchase', record, productIds: products });
   };
 
   const handleToggle = (record, inwardType) => {
@@ -875,7 +934,28 @@ const TransactionStockTemplate = ({
   };
 
   const handleToExport = (record, type) => {
+    if (type === 'export' || type === 'consign') {
+      setToExportModal({ open: true, record, convertType: type });
+      return;
+    }
     postAction(actions.toExportEndpoint, { id: record.id, type });
+  };
+
+  const closeToExportModal = () => {
+    setToExportModal({ open: false, record: null, convertType: 'export' });
+    setToExportLoading(false);
+  };
+
+  const handleToExportConfirm = async (payload) => {
+    if (!actions.toExportEndpoint) return;
+    setToExportLoading(true);
+    try {
+      const ok = await postAction(actions.toExportEndpoint, payload);
+      if (ok) closeToExportModal();
+      else setToExportLoading(false);
+    } catch (e) {
+      setToExportLoading(false);
+    }
   };
 
   const handleDelete = () => {
@@ -930,6 +1010,32 @@ const TransactionStockTemplate = ({
     },
     ...productColumns,
   ], [productColumns, selectedProducts]);
+
+  const toggleMainRowExpand = useCallback((record) => {
+    const key = record?.id;
+    if (key == null) return;
+    setExpandedRowKeys((prev) =>
+      (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]),
+    );
+  }, []);
+
+  const getMainRowProps = useCallback(
+    (record) => ({
+      onClick: (event) => {
+        const target = event.target;
+        if (
+          target.closest(
+            'a, button, .ant-btn, .anticon, .actionIcons, .actionBtn, .ant-table-row-expand-icon-cell, .ant-table-row-expand-icon, input, textarea, select, .ant-checkbox-wrapper, .ant-select, .ant-dropdown, .ant-picker, [data-no-row-expand]',
+          )
+        ) {
+          return;
+        }
+        toggleMainRowExpand(record);
+      },
+      style: { cursor: 'pointer' },
+    }),
+    [toggleMainRowExpand],
+  );
 
   const renderExpandedRow = (group) => {
     const products = (group.products || []).filter((product) => skuMatchesProduct(product, skuSearch));
@@ -1005,7 +1111,10 @@ const TransactionStockTemplate = ({
       dataIndex: 'entryno',
       key: 'entryno',
       width: 110,
-      render: (val) => <Text strong>#{val}</Text>,
+      render: (val, record) => {
+        const entry = String(val ?? record?.id ?? '').trim();
+        return <Text strong>{entry ? `#${entry}` : '—'}</Text>;
+      },
     },
     {
       title: 'Type',
@@ -1112,15 +1221,20 @@ const TransactionStockTemplate = ({
         render: (_, record) => {
           const selectedCount = getSelected(record.id).length;
           const displayType = record.type || record.inward_type;
+          const groupProductCount = (record.products || []).length;
           const needsSelectionDisabled = !selectedCount || actionLoading;
+          const returnDisabled = actionLoading || groupProductCount === 0;
 
           return (
             <div className={styles.actionButtons}>
               {actions.showReturn && (
                 <button
                   type="button"
-                  className={`${styles.actionBtn} ${styles.actionReturn} ${needsSelectionDisabled ? styles.actionDisabled : ''}`}
-                  onClick={() => { if (!needsSelectionDisabled) handleReturn(record); }}
+                  className={`${styles.actionBtn} ${styles.actionReturn} ${returnDisabled ? styles.actionDisabled : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!returnDisabled) handleReturn(record);
+                  }}
                 >
                   <RollbackOutlined />
                   Return
@@ -1129,8 +1243,11 @@ const TransactionStockTemplate = ({
               {actions.showMemoToSale && (
                 <button
                   type="button"
-                  className={`${styles.actionBtn} ${styles.actionSale} ${needsSelectionDisabled ? styles.actionDisabled : ''}`}
-                  onClick={() => { if (!needsSelectionDisabled) handleMemoToSale(record); }}
+                  className={`${styles.actionBtn} ${styles.actionSale} ${returnDisabled ? styles.actionDisabled : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!returnDisabled) handleMemoToSale(record);
+                  }}
                 >
                   <DollarOutlined />
                   Sale
@@ -1139,8 +1256,11 @@ const TransactionStockTemplate = ({
               {actions.showMemoToPurchase && (
                 <button
                   type="button"
-                  className={`${styles.actionBtn} ${styles.actionPurchase} ${needsSelectionDisabled ? styles.actionDisabled : ''}`}
-                  onClick={() => { if (!needsSelectionDisabled) handleMemoToPurchase(record); }}
+                  className={`${styles.actionBtn} ${styles.actionPurchase} ${returnDisabled ? styles.actionDisabled : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!returnDisabled) handleMemoToPurchase(record);
+                  }}
                 >
                   <ShoppingCartOutlined />
                   Purchase
@@ -1150,7 +1270,10 @@ const TransactionStockTemplate = ({
                 <button
                   type="button"
                   className={`${styles.actionBtn} ${styles.actionConsign} ${actionLoading ? styles.actionDisabled : ''}`}
-                  onClick={() => { if (!actionLoading) handleToExport(record, 'consign'); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!actionLoading) handleToExport(record, 'consign');
+                  }}
                 >
                   <SwapOutlined />
                   To Consign
@@ -1160,7 +1283,10 @@ const TransactionStockTemplate = ({
                 <button
                   type="button"
                   className={`${styles.actionBtn} ${styles.actionExport} ${actionLoading ? styles.actionDisabled : ''}`}
-                  onClick={() => { if (!actionLoading) handleToExport(record, 'export'); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!actionLoading) handleToExport(record, 'export');
+                  }}
                 >
                   <ExportOutlined />
                   To Export
@@ -1404,6 +1530,7 @@ const TransactionStockTemplate = ({
                 />
               ),
             }}
+            onRow={showSkeleton ? undefined : getMainRowProps}
             expandable={showSkeleton ? undefined : {
               expandedRowRender: renderExpandedRow,
               expandedRowClassName: () => styles.expandedRow,
@@ -1486,12 +1613,24 @@ const TransactionStockTemplate = ({
       <MemoConvertModal
         open={memoConvertModal.open}
         mode={memoConvertModal.mode}
+        returnVariant={
+          actions.returnEndpoint?.includes('/inward-stock/return') ? 'purchase' : 'memo'
+        }
         record={memoConvertModal.record}
         productIds={memoConvertModal.productIds}
         products={memoConvertModal.record?.products || []}
         loading={memoConvertLoading || actionLoading}
         onClose={closeMemoConvertModal}
         onConfirm={handleMemoConvertConfirm}
+      />
+
+      <ConvertToExportModal
+        open={toExportModal.open}
+        record={toExportModal.record}
+        convertType={toExportModal.convertType || 'export'}
+        loading={toExportLoading || actionLoading}
+        onClose={closeToExportModal}
+        onConfirm={handleToExportConfirm}
       />
 
       <TransactionInvoicePreviewModal
@@ -1572,36 +1711,7 @@ const TransactionStockTemplate = ({
                           </Form.Item>
                         </Col>
                       </Row>
-                    ) : (
-                      <Row gutter={[16, 0]} className={styles.stockEditPayRow}>
-                        <Col span={8}>
-                          <Form.Item name="due_amount" label="Due Amount">
-                            <InputNumber min={0} placeholder="0.00" style={{ width: '100%', height: 40 }} />
-                          </Form.Item>
-                        </Col>
-                        <Col span={16}>
-                          <Form.Item
-                            label={<span className={styles.stockEditBankLabel}>Bank</span>}
-                            colon={false}
-                          >
-                            <div className={styles.stockEditBankSlot}>
-                              <Form.Item name="boc" valuePropName="checked" noStyle>
-                                <Checkbox>BOC</Checkbox>
-                              </Form.Item>
-                              <Form.Item name="citi" valuePropName="checked" noStyle>
-                                <Checkbox>CITI</Checkbox>
-                              </Form.Item>
-                              <Form.Item name="dbs" valuePropName="checked" noStyle>
-                                <Checkbox>DBS</Checkbox>
-                              </Form.Item>
-                              <Form.Item name="sc" valuePropName="checked" noStyle>
-                                <Checkbox>SC</Checkbox>
-                              </Form.Item>
-                            </div>
-                          </Form.Item>
-                        </Col>
-                      </Row>
-                    )}
+                    ) : null}
                   </>
                 )}
                 <div className={styles.stockEditProductsHead}>
@@ -1627,7 +1737,7 @@ const TransactionStockTemplate = ({
                     rowKey={(r) => r.id ?? r._tempId}
                     pagination={false}
                     size="small"
-                    scroll={{ x: isVenyaSaleEditGrid ? 980 : 1900, y: 220 }}
+                    scroll={{ x: isVenyaSaleEditGrid ? 980 : 1900, y: 180 }}
                     locale={
                       allowAddProductInEdit
                         ? { emptyText: 'No products — click Add New Data' }
@@ -1635,7 +1745,7 @@ const TransactionStockTemplate = ({
                     }
                   />
                   {!isEditLoading && fetchedProducts.length > 0 ? (
-                    <div className={styles.stockEditTotalsBar}>
+                    <div className={`${styles.stockEditTotalsBar} ${styles.stockEditTotalsBarCompact}`}>
                       <div className={styles.stockEditTotalsMetrics}>
                         <span>Pcs : <b>{editProductTotals.pcs}</b></span>
                         <span>Carats : <b>{editProductTotals.carat.toFixed(3)}</b></span>
@@ -1643,8 +1753,13 @@ const TransactionStockTemplate = ({
                         <span>Amount : <b>{editProductTotals.amount.toFixed(2)}</b></span>
                       </div>
                       {!isVenyaSaleEdit ? (
-                        <Form.Item name="narretion" label="Narration" className={styles.stockEditTotalsNarration}>
-                          <Input placeholder="Narration..." />
+                        <Form.Item
+                          name="narretion"
+                          label="Narration"
+                          colon={false}
+                          className={styles.stockEditTotalsNarration}
+                        >
+                          <Input placeholder="Enter Narration" allowClear />
                         </Form.Item>
                       ) : null}
                     </div>

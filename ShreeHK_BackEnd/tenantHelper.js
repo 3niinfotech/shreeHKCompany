@@ -6,6 +6,7 @@ const META_ONLY_PREFIXES = [
   "/session/",
   "/portal/",
   "/admin/tenant-company",
+  "/admin/branch",
   "/admin/activity-log",
   "/getAdminManageUser",
   "/admin-manage-user",
@@ -150,14 +151,125 @@ function getTenantScope(req) {
 
 function buildUserContext(req) {
   const scope = getTenantScope(req);
+  const headerBranchId = req.headers ? Number(req.headers["x-branch-id"] || 0) : 0;
   return {
     companyId: scope.companyId || 0,
+    branchId: Number(req.user?.branchId ?? headerBranchId) || 0,
     userId: req.user?.user_id,
     user_id: req.user?.user_id,
     username: req.user?.username,
     yearId: scope.yearId,
     dbName: scope.dbName,
   };
+}
+
+async function getCompanyIdsByBranchId(branchId) {
+  const bid = Number(branchId) || 0;
+  if (!bid) return [];
+  try {
+    const rows = await metaQuery(
+      `SELECT id FROM company WHERE branch_id = ? ORDER BY id ASC`,
+      [bid]
+    );
+    return (rows || []).map((r) => Number(r.id)).filter((id) => id > 0);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * All tenant company ids under the same branch as the session company.
+ * HK login → [ShreeHK International, KG, ...] so stock/lists can include every company in branch.
+ */
+async function getBranchCompanyIds(sessionCompanyId) {
+  const sid = Number(sessionCompanyId) || 0;
+  if (!sid) return [];
+  try {
+    const sessionRows = await metaQuery(
+      `SELECT branch_id FROM company WHERE id = ? LIMIT 1`,
+      [sid]
+    );
+    const branchId =
+      sessionRows?.[0]?.branch_id != null ? Number(sessionRows[0].branch_id) : null;
+    if (!branchId) return [sid];
+    const ids = await getCompanyIdsByBranchId(branchId);
+    return ids.length ? ids : [sid];
+  } catch {
+    return [sid];
+  }
+}
+
+/**
+ * Resolve company id list for inventory / transaction lists.
+ * Prefer session company → branch siblings; else branch-only session; else fallbackId.
+ */
+async function resolveListCompanyIds(userContext = {}, fallbackId = 1) {
+  const sessionId = Number(userContext.companyId) || 0;
+  if (sessionId > 0) {
+    const ids = await getBranchCompanyIds(sessionId);
+    return ids.length ? ids : [sessionId];
+  }
+  const branchId = Number(userContext.branchId) || 0;
+  if (branchId > 0) {
+    const ids = await getCompanyIdsByBranchId(branchId);
+    if (ids.length) return ids;
+  }
+  const fb = Number(fallbackId) || 1;
+  return fb > 0 ? [fb] : [1];
+}
+
+/**
+ * Resolve operating company for sale/memo/lab/purchase actions.
+ * Must be same branch as session company and allowed by roll.
+ */
+async function resolveOperatingCompanyId(req, requestedCompanyId) {
+  const sessionCompanyId = Number(buildUserContext(req).companyId) || 0;
+  const requested = Number(requestedCompanyId) || 0;
+  const targetId = requested || sessionCompanyId;
+  if (!targetId) {
+    const err = new Error("Company is required");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const allowed = await userCanAccessCompany(req.user?.roll, targetId);
+  if (!allowed) {
+    const err = new Error("Selected company is not allowed for this user");
+    err.statusCode = 403;
+    throw err;
+  }
+
+  if (!sessionCompanyId || targetId === sessionCompanyId) {
+    return targetId;
+  }
+
+  try {
+    const rows = await metaQuery(
+      `SELECT c.id AS company_id, c.branch_id, s.branch_id AS session_branch_id
+       FROM company c
+       JOIN company s ON s.id = ?
+       WHERE c.id = ?
+       LIMIT 1`,
+      [sessionCompanyId, targetId]
+    );
+    if (!rows.length) {
+      const err = new Error("Selected company not found");
+      err.statusCode = 404;
+      throw err;
+    }
+    const sessionBranch = rows[0].session_branch_id != null ? Number(rows[0].session_branch_id) : null;
+    const targetBranch = rows[0].branch_id != null ? Number(rows[0].branch_id) : null;
+    if (sessionBranch && targetBranch && sessionBranch !== targetBranch) {
+      const err = new Error("Selected company must belong to the same branch");
+      err.statusCode = 400;
+      throw err;
+    }
+  } catch (err) {
+    if (err.statusCode) throw err;
+    // branch_id column missing — fall back to allow if roll-access already passed
+  }
+
+  return targetId;
 }
 
 module.exports = {
@@ -170,4 +282,8 @@ module.exports = {
   isMetaOnlyPath,
   getTenantScope,
   buildUserContext,
+  getBranchCompanyIds,
+  getCompanyIdsByBranchId,
+  resolveListCompanyIds,
+  resolveOperatingCompanyId,
 };

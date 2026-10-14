@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useRef, useCallback } from 'react';
 import { Select, DatePicker, Typography, Button } from 'antd';
 import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
 import {
@@ -12,7 +12,7 @@ import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../api/endpoints';
 import AdvancedFilterPanel, { FilterField, filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
 import styles from '../../assets/scss/pages/accountings/transaction.module.scss';
-import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
+import useTableBodyScrollHeight, { PAGINATION_MIN_RESERVE } from '../../hooks/useTableBodyScrollHeight';
 
 const { Option } = Select;
 const { Text } = Typography;
@@ -24,13 +24,13 @@ const Transaction = () => {
     const [fromDate, setFromDate] = useState(null);
     const [toDate, setToDate] = useState(null);
     const [dataSource, setDataSource] = useState([]);
-    const [initialLoading, setInitialLoading] = useState(true);
+    const [hasSearched, setHasSearched] = useState(false);
 
     const { data: bookData } = useFetchApi('accBooks', ENDPOINTS.accountingTxn.books);
     const { data: companyData } = useFetchApi('GetCompany', ENDPOINTS.company.options);
     const { mutate: fetchTxn, isPending: mutationLoading } = usePostApiRequest(ENDPOINTS.accountingTxn.list, 'accTransaction', { showToast: false });
 
-    const isTableLoading = initialLoading || mutationLoading;
+    const isTableLoading = mutationLoading;
 
     const bookOptions = useMemo(() => {
         const list = bookData?.Data || [];
@@ -65,10 +65,10 @@ const Transaction = () => {
     const columns = [
         { title: 'No', dataIndex: 'no', key: 'no', width: 50, align: 'center' },
         { title: 'Date', dataIndex: 'date', key: 'date', width: 100, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
-        { title: 'Account', dataIndex: 'account', key: 'account', width: 100 },
-        { title: 'Party', dataIndex: 'party', key: 'party', width: 230, render: (v) => resolvePartyName(v) },
-        { title: 'Other Party', dataIndex: 'otherParty', key: 'otherParty', width: 230, render: (v) => resolvePartyName(v) },
-        { title: 'Cheque', dataIndex: 'cheque', key: 'cheque', width: 100 },
+        { title: 'Account', dataIndex: 'account', key: 'account', width: 230 },
+        { title: 'Party', dataIndex: 'party', key: 'party', width: 275, render: (v) => resolvePartyName(v) },
+        { title: 'Other Party', dataIndex: 'otherParty', key: 'otherParty', width: 120, render: (v) => resolvePartyName(v) },
+        { title: 'Cheque', dataIndex: 'cheque', key: 'cheque', width: 160 },
         { title: 'Description', dataIndex: 'description', key: 'description', ellipsis: true },
         { title: 'Credit', dataIndex: 'credit', key: 'credit', width: 100, align: 'right', className: 'text-success' },
         { title: 'Debit', dataIndex: 'debit', key: 'debit', width: 100, align: 'right', className: 'text-danger' },
@@ -88,19 +88,11 @@ const Transaction = () => {
             toDate: toDate ? dayjs(toDate).format('DD-MM-YYYY') : undefined,
         };
 
+        setHasSearched(true);
         fetchTxn(filters, {
             onSuccess: (res) => setDataSource((res?.data || []).map((r, i) => ({ ...r, key: i }))),
-            onSettled: () => setInitialLoading(false),
         });
     }, [fetchTxn, selectedBook, party, otherParty, fromDate, toDate]);
-
-    // Load default data on page mount
-    useEffect(() => {
-        fetchTxn({}, {
-            onSuccess: (res) => setDataSource((res?.data || []).map((r, i) => ({ ...r, key: i }))),
-            onSettled: () => setInitialLoading(false),
-        });
-    }, [fetchTxn]);
 
     const handleClearFilters = () => {
         setSelectedBook('');
@@ -108,10 +100,8 @@ const Transaction = () => {
         setOtherParty('');
         setFromDate(null);
         setToDate(null);
-        fetchTxn({}, {
-            onSuccess: (res) => setDataSource((res?.data || []).map((r, i) => ({ ...r, key: i }))),
-            onSettled: () => setInitialLoading(false),
-        });
+        setDataSource([]);
+        setHasSearched(false);
     };
 
     const activeFilterCount = [
@@ -123,7 +113,11 @@ const Transaction = () => {
     ].filter(Boolean).length;
 
     const tableRef = useRef(null);
-    const tableHeight = useTableBodyScrollHeight(tableRef, [dataSource.length, isTableLoading]);
+    const tableHeight = useTableBodyScrollHeight(
+        tableRef,
+        [dataSource.length, isTableLoading, hasSearched],
+        { paginationReserve: PAGINATION_MIN_RESERVE },
+    );
 
     return (
         <div className={styles.pageContainer}>
@@ -205,17 +199,28 @@ const Transaction = () => {
                 </FilterField>
             </AdvancedFilterPanel>
 
-            <div ref={tableRef} className={`${styles.tableWrap} erp-table-container`}>
-                <SkeletonAwareTable
-                    dataSource={dataSource}
-                    columns={columns}
-                    loading={isTableLoading}
-                    pagination={{ pageSize: 50 }}
-                    bordered
-                    size="small"
-                    scroll={{ x: 'max-content', y: tableHeight }}
-                    className={styles.customTable}
-                />
+            <div className={styles.tableWrap}>
+                <div
+                    ref={tableRef}
+                    className={`${styles.tableBodyArea} erp-table-container`}
+                    style={{ '--table-scroll-y': `${tableHeight}px` }}
+                >
+                    <SkeletonAwareTable
+                        dataSource={dataSource}
+                        columns={columns}
+                        loading={isTableLoading}
+                        locale={{
+                            emptyText: hasSearched
+                                ? 'No transactions found'
+                                : 'Select filters and click Search to load transactions',
+                        }}
+                        pagination={{ pageSize: 50, showSizeChanger: true }}
+                        bordered
+                        size="small"
+                        scroll={{ x: 'max-content', y: tableHeight }}
+                        className={styles.customTable}
+                    />
+                </div>
             </div>
         </div>
     );

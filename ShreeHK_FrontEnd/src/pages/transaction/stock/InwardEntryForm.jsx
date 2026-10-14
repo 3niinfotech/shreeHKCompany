@@ -9,6 +9,7 @@ import DynamicForm from '../../../components/common/ui/DynamicFormField';
 import { useFetchApi, usePostApiRequest } from '../../../api/ApiFunction';
 import { ENDPOINTS } from '../../../api/endpoints';
 import useFormHandleChange from '../../../hooks/useFormHandleChange';
+import useBranchCompanies from '../../../hooks/useBranchCompanies';
 import ValidationTableModal from '../../../components/common/modals/ValidationTableModal';
 import styles from '../../../assets/scss/pages/transaction/inwardpurchase.module.scss';
 import PageHeroHeader, { pageHeroHeaderStyles } from '../../../components/common/PageHeroHeader';
@@ -33,7 +34,7 @@ function formatProductsPayload(items) {
   return items.map((item) => ({
     mfg_code: item.mfgCode || '',
     diamond_no: item.dNo || '',
-    sku: item.sku,
+    sku: String(item.sku || "").trim(),
     rought_pcs: (item.rPcs || item.pPcs || '')?.toString(),
     polish_pcs: (item.pPcs || item.rPcs || '')?.toString(),
     polish_carat: item.pCarat?.toString() || '0',
@@ -86,25 +87,28 @@ function normalizeLineItem(item) {
   return { ...item, pCarat, price, amount };
 }
 
-function getLineItemValidationError(item, rowNo) {
+function getLineItemValidationError(item, rowNo, { requirePcs = false } = {}) {
   const prefix = `Row ${rowNo}:`;
   if (!String(item.sku || '').trim()) return `${prefix} SKU is required.`;
-  if (!item.pCarat || item.pCarat <= 0) return `${prefix} P.Carat must be greater than 0.`;
+  if (requirePcs && (!item.pPcs || Number(item.pPcs) <= 0)) {
+    return `${prefix} Polish Pcs must be greater than 0.`;
+  }
+  if (!item.pCarat || item.pCarat <= 0) return `${prefix} Polish Carat must be greater than 0.`;
   if (!item.price || item.price <= 0) return `${prefix} Price must be greater than 0.`;
   const amount = item.amount || item.pCarat * item.price;
   if (!amount || amount <= 0) return `${prefix} Amount must be greater than 0.`;
   return null;
 }
 
-function getFirstLineItemValidationError(items) {
+function getFirstLineItemValidationError(items, options = {}) {
   const filledItems = getFilledLineItems(items);
   if (filledItems.length === 0) {
-    return 'Add at least one line item with SKU, carat and price.';
+    return 'Add at least one line item with SKU, pcs, carat, price and amount.';
   }
 
   for (let i = 0; i < items.length; i += 1) {
     if (!String(items[i].sku || '').trim()) continue;
-    const error = getLineItemValidationError(items[i], i + 1);
+    const error = getLineItemValidationError(items[i], i + 1, options);
     if (error) return error;
   }
 
@@ -117,6 +121,13 @@ function invalidateInventoryCaches(queryClient) {
   queryClient.invalidateQueries({ queryKey: ['InventoryList'] });
 }
 
+const INWARD_TYPE_LABELS = {
+  purchase: 'Purchase',
+  memo: 'In Memo',
+  export: 'Export',
+  consign: 'Consignment',
+};
+
 const InwardEntryForm = ({
   title,
   defaultInwardType = 'purchase',
@@ -125,6 +136,11 @@ const InwardEntryForm = ({
   visibleRowCount = 7,
   tableScrollY,
   scrollableTable = false,
+  skipExistCheck = false,
+  hideMfgDno = false,
+  wideLineFields = false,
+  requirePcs = false,
+  polishFieldLabels = false,
 }) => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -142,6 +158,10 @@ const InwardEntryForm = ({
 
   const queryClient = useQueryClient();
   const { data: companyData, isLoading: isCompanyLoading } = useFetchApi('GetCompany', ENDPOINTS.company.options);
+  const {
+    options: branchCompanyOptions,
+    isLoading: isBranchCompanyLoading,
+  } = useBranchCompanies();
   const { data: incrementData } = useFetchApi('GetIncrement', ENDPOINTS.common.increment);
   const { mutate: submitInward } = usePostApiRequest(ENDPOINTS.inward.checkExist, 'GetIncrementCheckExists', { showToast: false });
   const { mutate: saveInward, isLoading: isSaving } = usePostApiRequest(ENDPOINTS.inward.save, 'inwardSave');
@@ -157,17 +177,30 @@ const InwardEntryForm = ({
   };
 
   useEffect(() => {
+    form.setFieldsValue({
+      type: INWARD_TYPE_LABELS[defaultInwardType] || defaultInwardType,
+    });
+  }, [form, defaultInwardType]);
+
+  useEffect(() => {
     if (incrementData?.Data) {
       const d = incrementData.Data;
+      const isMemoType = defaultInwardType === 'memo' || defaultInwardType === 'consign';
+      const rawInv = String(d.invoice ?? '').trim();
+      const invoiceNo = isMemoType
+        ? (/^INV-\d+$/i.test(rawInv)
+          ? rawInv.toUpperCase()
+          : `INV-${rawInv.replace(/\D/g, '') || '1'}`)
+        : rawInv;
       form.setFieldsValue({
         entry: d.inward,
         reference: d.reference,
-        invoiceNo: d.invoice,
+        invoiceNo,
         company: d.company,
         date: dayjs(),
         terms: 0,
         dueDate: dayjs(),
-        type: defaultInwardType,
+        type: INWARD_TYPE_LABELS[defaultInwardType] || defaultInwardType,
       });
     }
   }, [incrementData, form, defaultInwardType]);
@@ -177,28 +210,33 @@ const InwardEntryForm = ({
     return Array.isArray(rawData) ? rawData.map((c) => ({ value: c.id, label: c.name })) : [];
   }, [companyData]);
 
+  const typeLabel = INWARD_TYPE_LABELS[defaultInwardType] || defaultInwardType;
   const purchaseFields = [
     { name: 'entry', label: 'Entry No', span: 6, disabled: true },
     {
       name: 'type',
-      label: 'Inward Type',
+      label: 'Type',
       span: 6,
-      type: 'select',
-      required: true,
       disabled: true,
-      options: [
-        { value: 'purchase', label: 'Purchase' },
-        { value: 'memo', label: 'In Memo' },
-        { value: 'export', label: 'Export' },
-        { value: 'consign', label: 'Consignment' },
-      ],
+      placeholder: typeLabel,
     },
     { name: 'reference', label: 'Reference', span: 6 },
     { name: 'invoiceNo', label: 'Invoice No', span: 6, required: true },
-    { name: 'company', label: 'Company', span: 6, type: 'select', required: true, loading: isCompanyLoading, options: companyOptions },
+    { name: 'company', label: 'Party', span: 6, type: 'select', required: true, loading: isCompanyLoading, options: companyOptions },
     { name: 'date', label: 'Date', span: 6, type: 'date', required: true },
     { name: 'terms', label: 'Terms (Days)', span: 6, type: 'number', required: true },
     { name: 'dueDate', label: 'Due Date', span: 6, type: 'date', required: true, disabled: true },
+    {
+      name: 'operating_company_id',
+      label: 'Company',
+      span: 6,
+      type: 'select',
+      required: true,
+      loading: isBranchCompanyLoading,
+      options: branchCompanyOptions,
+      placeholder: 'Select Company (e.g. ShreeHK / KG)',
+      allowClear: false,
+    },
   ];
 
   const handleUpdateCell = (key, field, value) => {
@@ -233,41 +271,87 @@ const InwardEntryForm = ({
   };
 
   const renderInput = (record, field, placeholder, type = 'text') => {
-    const isRequired = ['sku', 'pCarat', 'price', 'amount'].includes(field);
+    const isRequired = ['sku', 'pCarat', 'price', 'amount', ...(requirePcs ? ['pPcs'] : [])].includes(field);
     const hasError = isSubmitted && isRequired && String(record.sku || '').trim() && (
       field === 'sku' ? !String(record.sku || '').trim()
-        : field === 'pCarat' ? !record.pCarat || record.pCarat <= 0
-          : field === 'price' ? !record.price || record.price <= 0
-            : !record.amount || record.amount <= 0
+        : field === 'pPcs' ? !record.pPcs || Number(record.pPcs) <= 0
+          : field === 'pCarat' ? !record.pCarat || record.pCarat <= 0
+            : field === 'price' ? !record.price || record.price <= 0
+              : !record.amount || record.amount <= 0
     );
+    const inputW = wideLineFields
+      ? (type === 'number' ? '100%' : '100%')
+      : (type === 'number' ? '80px' : '100px');
     return type === 'number' ? (
-      <InputNumber status={hasError ? 'error' : ''} value={record[field]} onChange={(val) => handleUpdateCell(record.key, field, val)} style={{ width: '80px' }} />
+      <InputNumber status={hasError ? 'error' : ''} value={record[field]} onChange={(val) => handleUpdateCell(record.key, field, val)} style={{ width: inputW }} />
     ) : (
-      <Input status={hasError ? 'error' : ''} value={record[field]} onChange={(e) => handleUpdateCell(record.key, field, e.target.value)} placeholder={placeholder} style={{ width: '100px' }} />
+      <Input status={hasError ? 'error' : ''} value={record[field]} onChange={(e) => handleUpdateCell(record.key, field, e.target.value)} placeholder={placeholder} style={{ width: inputW }} />
     );
   };
 
+  const w = wideLineFields
+    ? {
+        no: 56,
+        sku: 180,
+        rPcs: 110,
+        pPcs: 110,
+        pCarat: 120,
+        cost: 130,
+        price: 130,
+        amount: 140,
+        mainColor: 140,
+        loc: 110,
+        lab: 110,
+        reportNo: 160,
+        shape: 140,
+        clarity: 120,
+        action: 56,
+      }
+    : {
+        no: 50,
+        sku: 120,
+        rPcs: 90,
+        pPcs: 90,
+        pCarat: 100,
+        cost: 100,
+        price: 100,
+        amount: 120,
+        mainColor: 100,
+        loc: 100,
+        lab: 100,
+        reportNo: 120,
+        shape: 100,
+        clarity: 100,
+        action: 50,
+      };
+
   const baseColumns = [
-    { title: 'No.', width: 50, fixed: 'left', render: (_, __, index) => index + 1 },
-    { title: 'Mfg. code', width: 100, fixed: 'left', render: (_, r) => renderInput(r, 'mfgCode', 'Mfg') },
-    { title: 'D. No.', width: 100, fixed: 'left', render: (_, r) => renderInput(r, 'dNo', 'D.No') },
-    { title: 'SKU', width: 120, fixed: 'left', render: (_, r) => renderInput(r, 'sku', 'SKU') },
+    { title: 'No.', width: w.no, fixed: 'left', render: (_, __, index) => index + 1 },
+    ...(!hideMfgDno
+      ? [
+          { title: 'Mfg. code', width: 100, fixed: 'left', render: (_, r) => renderInput(r, 'mfgCode', 'Mfg') },
+          { title: 'D. No.', width: 100, fixed: 'left', render: (_, r) => renderInput(r, 'dNo', 'D.No') },
+        ]
+      : []),
+    { title: 'SKU', width: w.sku, fixed: 'left', render: (_, r) => renderInput(r, 'sku', 'SKU') },
   ];
-  const rPcsColumn = { title: 'R.Pcs', width: 90, render: (_, r) => renderInput(r, 'rPcs', 'R.Pcs', 'number') };
+  const pcsTitle = polishFieldLabels ? 'Polish Pcs' : 'P.Pcs';
+  const caratTitle = polishFieldLabels ? 'Polish Carat' : 'P.Carat';
+  const rPcsColumn = { title: 'R.Pcs', width: w.rPcs, render: (_, r) => renderInput(r, 'rPcs', 'R.Pcs', 'number') };
   const restColumns = [
-    { title: 'P.Pcs', width: 90, render: (_, r) => renderInput(r, 'pPcs', 'P.Pcs', 'number') },
-    { title: 'P.Carat', width: 100, render: (_, r) => renderInput(r, 'pCarat', 'Carat', 'number') },
-    { title: 'Cost', width: 100, render: (_, r) => renderInput(r, 'cost', 'Cost', 'number') },
-    { title: 'Price', width: 100, render: (_, r) => renderInput(r, 'price', 'Price', 'number') },
-    { title: 'Amount', width: 120, align: 'right', render: (_, r) => renderInput(r, 'amount', 'Amount', 'number') },
-    { title: 'Main Color', width: 100, render: (_, r) => renderInput(r, 'mainColor', 'Color') },
-    { title: 'LOC', width: 100, render: (_, r) => renderInput(r, 'loc', 'LOC') },
-    { title: 'Lab', width: 100, render: (_, r) => renderInput(r, 'lab', 'Lab') },
-    { title: 'Report No', width: 120, render: (_, r) => renderInput(r, 'reportNo', 'Report') },
-    { title: 'Shape', width: 100, render: (_, r) => renderInput(r, 'shape', 'Shape') },
-    { title: 'Clarity', width: 100, render: (_, r) => renderInput(r, 'clarity', 'Clarity') },
+    { title: pcsTitle, width: w.pPcs, render: (_, r) => renderInput(r, 'pPcs', pcsTitle, 'number') },
+    { title: caratTitle, width: w.pCarat, render: (_, r) => renderInput(r, 'pCarat', caratTitle, 'number') },
+    { title: 'Cost', width: w.cost, render: (_, r) => renderInput(r, 'cost', 'Cost', 'number') },
+    { title: 'Price', width: w.price, render: (_, r) => renderInput(r, 'price', 'Price', 'number') },
+    { title: 'Amount', width: w.amount, align: 'right', render: (_, r) => renderInput(r, 'amount', 'Amount', 'number') },
+    { title: 'Main Color', width: w.mainColor, render: (_, r) => renderInput(r, 'mainColor', 'Color') },
+    { title: 'LOC', width: w.loc, render: (_, r) => renderInput(r, 'loc', 'LOC') },
+    { title: 'Lab', width: w.lab, render: (_, r) => renderInput(r, 'lab', 'Lab') },
+    { title: 'Report No', width: w.reportNo, render: (_, r) => renderInput(r, 'reportNo', 'Report') },
+    { title: 'Shape', width: w.shape, render: (_, r) => renderInput(r, 'shape', 'Shape') },
+    { title: 'Clarity', width: w.clarity, render: (_, r) => renderInput(r, 'clarity', 'Clarity') },
     {
-      title: '', key: 'action', fixed: 'right', width: 50,
+      title: '', key: 'action', fixed: 'right', width: w.action,
       render: (_, record) => <Button type="text" danger icon={<Trash2 size={16} />} onClick={() => removeRow(record.key)} />,
     },
   ];
@@ -290,11 +374,19 @@ const InwardEntryForm = ({
     try {
       await form.validateFields();
       const normalizedItems = items.map(normalizeLineItem);
-      const validationError = getFirstLineItemValidationError(normalizedItems);
+      const validationError = getFirstLineItemValidationError(normalizedItems, { requirePcs });
 
       if (validationError) {
         setItems(normalizedItems);
         toast.error(validationError);
+        return;
+      }
+
+      setItems(normalizedItems);
+
+      // In Memo / Import: skip checkExist API + confirmation modal → save directly
+      if (skipExistCheck) {
+        onFinalSave(normalizedItems);
         return;
       }
 
@@ -304,7 +396,6 @@ const InwardEntryForm = ({
         { products: formatProductsPayload(filledItems) },
         {
           onSuccess: (response) => {
-            setItems(normalizedItems);
             setExistData(response?.data || []);
             setCheckMessage(response?.message || '');
             setIsModalOpen(true);
@@ -317,17 +408,22 @@ const InwardEntryForm = ({
     }
   };
 
-  const onFinalSave = () => {
+  const onFinalSave = (lineItems = items) => {
     const headerValues = form.getFieldsValue();
-    const filledItems = getFilledLineItems(items).map(normalizeLineItem);
+    const filledItems = getFilledLineItems(lineItems).map(normalizeLineItem);
+    if (!headerValues.operating_company_id) {
+      toast.error('Please select Company');
+      return;
+    }
     const finalPayload = {
       place: headerValues.place || '',
       invoicedate: headerValues.date ? dayjs(headerValues.date).format('DD-MM-YYYY') : '',
       terms: headerValues.terms?.toString() || '0',
       duedate: headerValues.dueDate ? dayjs(headerValues.dueDate).format('DD-MM-YYYY') : '',
       party: headerValues.company,
+      operating_company_id: headerValues.operating_company_id,
       invoiceno: headerValues.invoiceNo || '',
-      inward_type: headerValues.type || defaultInwardType,
+      inward_type: defaultInwardType,
       narretion: headerValues.narration || '',
       reference: headerValues.reference || '',
       products: formatProductsPayload(filledItems),
@@ -335,10 +431,6 @@ const InwardEntryForm = ({
     saveInward(finalPayload, {
       onSuccess: () => {
         invalidateInventoryCaches(queryClient);
-        const skuList = filledItems.map((item) => item.sku).filter(Boolean).join(', ');
-        if (skuList) {
-          // toast.success(`Stock saved. Open Inventory → My Inventory and search: ${skuList}`);
-        }
         setIsModalOpen(false);
         setExistData([]);
         setCheckMessage('');
@@ -350,7 +442,11 @@ const InwardEntryForm = ({
   };
 
   const handlePartialReset = () => {
-    form.setFieldsValue({ type: defaultInwardType, terms: 0, dueDate: dayjs() });
+    form.setFieldsValue({
+      type: INWARD_TYPE_LABELS[defaultInwardType] || defaultInwardType,
+      terms: 0,
+      dueDate: dayjs(),
+    });
     setItems(createInitialLineItems(initialLineCount));
     setIsSubmitted(false);
   };
@@ -401,25 +497,33 @@ const InwardEntryForm = ({
             >
               Add New Line Item
             </Button>
-            <Button type="primary" icon={<CheckCircle size={18} />} className={styles.submitBtn} onClick={handleCheckAndSubmit}>
-              Check & Submit
+            <Button
+              type="primary"
+              icon={<CheckCircle size={18} />}
+              className={styles.submitBtn}
+              onClick={handleCheckAndSubmit}
+              loading={skipExistCheck ? isSaving : undefined}
+            >
+              {skipExistCheck ? 'Submit' : 'Check & Submit'}
             </Button>
           </div>
         </div>
       </div>
-      <ValidationTableModal
-        isVisible={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setExistData([]);
-          setCheckMessage('');
-        }}
-        onSave={onFinalSave}
-        existData={existData}
-        items={items}
-        message={checkMessage}
-        loading={isSaving}
-      />
+      {!skipExistCheck ? (
+        <ValidationTableModal
+          isVisible={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setExistData([]);
+            setCheckMessage('');
+          }}
+          onSave={() => onFinalSave()}
+          existData={existData}
+          items={items}
+          message={checkMessage}
+          loading={isSaving}
+        />
+      ) : null}
     </div>
   );
 };

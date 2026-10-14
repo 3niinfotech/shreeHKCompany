@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Card, Form, Input, Tag, Button, Typography, Switch, Tabs } from 'antd';
+import { Card, Form, Input, Tag, Button, Switch, Tabs, Tooltip, Badge } from 'antd';
 import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
 import { ReloadOutlined } from '@ant-design/icons';
 import {
     CircleDot, ScanText, History, BookOpen, Image,
     Pencil, ExternalLink, Link2, BadgeCheck, Tag as TagIcon,
-    ShieldAlert, Award, Gem,
+    ShieldAlert, Award, Gem, Network, ShieldCheck, Info,
 } from 'lucide-react';
 import useFormHandleChange from '../../hooks/useFormHandleChange';
 import DynamicForm from '../../components/common/ui/DynamicFormField';
@@ -19,8 +19,9 @@ import { buildStoneUpdateUrl } from '../../utils/inventorySkuNavigation';
 import styles from '../../assets/scss/pages/report/stoneHistory.module.scss';
 import { toastApiError } from '../../utils/toastNotify';
 import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
-
-const { Text } = Typography;
+import StockReconciliationCard from '../../components/report/StockReconciliationCard';
+import LineageTreePanel from '../../components/report/LineageTreePanel';
+import StoneAuditTrailPanel from '../../components/report/StoneAuditTrailPanel';
 
 const formatHistoryDateTime = (row) => {
     if (row?.date_display) return row.date_display;
@@ -48,20 +49,96 @@ const formatHistoryDate = (row) => {
     return `${dd}-${mm}-${yyyy}`;
 };
 
-const signedQty = (row, field) => {
-    const n = Number(row?.[field]) || 0;
-    return String(row?.type || '').toLowerCase() === 'cr' ? n : -n;
+/** Outward / stock-out actions must show as debit even if dai_history.type was saved wrong. */
+const HISTORY_DEBIT_ACTIONS = new Set([
+    'memo', 'sale', 'lab', 'export', 'consign',
+    'purchase_return', 'purchase_delete',
+    'sale_close', 'close_sale', 'memo_close', 'close_memo',
+    'lab_close', 'close_lab', 'export_close', 'consign_close',
+]);
+const HISTORY_CREDIT_ACTIONS = new Set([
+    'import', 'in_import', 'purchase', 'in_memo', 'in_consign',
+    'memo_return', 'sale_return', 'lab_return', 'consign_return',
+    'hold', 'unhold', 'price_change', 'unboxing', 'boxing',
+    'to_box', 'from_box', 'sku_change',
+]);
+
+const isHistoryCredit = (row) => {
+    const action = String(row?.action || '').toLowerCase().trim();
+    if (HISTORY_DEBIT_ACTIONS.has(action)) return false;
+    if (HISTORY_CREDIT_ACTIONS.has(action)) return true;
+    return String(row?.type || '').toLowerCase().trim() === 'cr';
 };
 
-const renderInvoiceCell = (invoice) => {
-    if (!invoice) return '—';
-    const value = String(invoice).trim();
+/** History stores absolute pcs/carat + type cr|dr; UI shows signed movement. */
+const signedQty = (row, field) => {
+    const n = Number(row?.[field]);
+    if (!Number.isFinite(n)) return 0;
+    const abs = Math.abs(n);
+    return isHistoryCredit(row) ? abs : -abs;
+};
+
+const formatQtyCell = (value) => {
+    if (value == null || value === '') return '—';
+    const n = Number(value);
+    if (!Number.isFinite(n)) return value;
+    // Keep integers clean; show up to 3 dp for carat without trailing zeros noise
+    if (Number.isInteger(n)) return String(n);
+    return String(Number(n.toFixed(3)));
+};
+
+/** Route invoice click by stone-history action → matching transaction list. */
+const getInvoiceLinkForAction = (action, invoice) => {
+    const value = String(invoice || '').trim();
+    if (!value) return null;
+    const a = String(action || '').toLowerCase().trim();
+    let path = '/transaction/purchase';
+    if (
+        a === 'memo' ||
+        a === 'memo_return' ||
+        a === 'memo_close' ||
+        a === 'close_memo' ||
+        a === 'consign' ||
+        a === 'consign_return' ||
+        a === 'consign_close'
+    ) {
+        path = '/transaction/out-memo';
+    } else if (a === 'in_memo' || a === 'in_consign') {
+        path = '/transaction/in-memo';
+    } else if (
+        a === 'sale' ||
+        a === 'sale_return' ||
+        a === 'sale_close' ||
+        a === 'close_sale' ||
+        a === 'export' ||
+        a === 'export_close'
+    ) {
+        path = '/transaction/sale';
+    } else if (
+        a === 'lab' ||
+        a === 'lab_return' ||
+        a === 'lab_close' ||
+        a === 'close_lab'
+    ) {
+        path = '/transaction/gia-memo';
+    } else if (a === 'import' || a === 'purchase' || a === 'purchase_delete') {
+        path = '/transaction/purchase';
+    }
+    const params = new URLSearchParams({ invoice: value });
+    return `${path}?${params.toString()}`;
+};
+
+const renderInvoiceCell = (invoice, row) => {
+    const value = String(invoice || '').trim();
     if (!value) return '—';
+    const to = getInvoiceLinkForAction(row?.action, value);
+    if (!to) return value;
     return (
         <Link
             className={styles.invoiceLink}
-            to={`/transaction/out-memo?invoice=${encodeURIComponent(value)}`}
+            to={to}
             onClick={(e) => e.stopPropagation()}
+            title="Open related invoice"
         >
             {value}
         </Link>
@@ -277,6 +354,9 @@ const StoneHistory = () => {
     const [status, setStatus] = useState('');
     const [lastUpdated, setLastUpdated] = useState('');
     const [stoneDetail, setStoneDetail] = useState(null);
+    const [stockSummary, setStockSummary] = useState(null);
+    const [lineage, setLineage] = useState(null);
+    const [activityLogs, setActivityLogs] = useState([]);
     const [holdInfo, setHoldInfo] = useState(null);
     const [hiddenImages, setHiddenImages] = useState({});
     const [loading, setLoading] = useState(false);
@@ -286,7 +366,7 @@ const StoneHistory = () => {
     const { form, resetAll } = useFormHandleChange();
 
     const applyDetailResponse = async (res) => {
-        const { detail, history, status: st } = res.data || {};
+        const { detail, history, status: st, stock_summary, lineage: lin, activity_logs } = res.data || {};
         if (!detail) return false;
         form.setFieldsValue(mapDetailToForm(detail));
         setStoneDetail(detail);
@@ -294,6 +374,9 @@ const StoneHistory = () => {
         setOldHistoryRows([]);
         setStatus(st || '');
         setLastUpdated(detail?.last_updated_display || '');
+        setStockSummary(stock_summary || null);
+        setLineage(lin || null);
+        setActivityLogs(activity_logs || []);
         setHiddenImages({});
         setActiveTab('history');
         setShowForm(true);
@@ -355,53 +438,133 @@ const StoneHistory = () => {
         { name: 'eyeClean', label: 'Eye Clean', span: 6, disabled: true },
     ];
 
+    const getActionTagColor = (action) => {
+        const a = String(action || '').toLowerCase().trim();
+        if (a === 'memo_return' || a === 'consign_return') return 'cyan';
+        if (a === 'sale_return' || a === 'lab_return' || a === 'purchase_return') return 'green';
+        if (a === 'memo' || a === 'consign') return 'orange';
+        if (a === 'sale' || a === 'export') return 'magenta';
+        if (a === 'lab') return 'purple';
+        return 'blue';
+    };
+
+    const historyRowClassName = (row) => {
+        if (row?.is_from_memo) return styles.rowFromMemo;
+        const a = String(row?.action || '').toLowerCase().trim();
+        if (a === 'memo_return' || a === 'consign_return') {
+            return row?.is_partial_memo_return
+                ? 'stone-row-memo-return-partial'
+                : 'stone-row-memo-return';
+        }
+        if (a === 'memo' || a === 'consign') return 'stone-row-memo-out';
+        return '';
+    };
+
     const historyColumns = [
-        { title: 'Action', dataIndex: 'action_label', key: 'action', width: 120 },
         {
-            title: 'Date',
-            dataIndex: 'date',
-            key: 'date',
-            width: 110,
-            render: (_, row) => formatHistoryDate(row),
+            title: 'Action',
+            dataIndex: 'action_label',
+            key: 'action',
+            width: 105,
+            render: (value, row) => {
+                const raw = value || row.action || '';
+                const label = String(raw).replace(/_/g, ' ').trim();
+                if (!label) return '—';
+                const display = label
+                    .toLowerCase()
+                    .replace(/\b\w/g, (ch) => ch.toUpperCase());
+                return (
+                    <div className={styles.actionCellWrap}>
+                        <Tag color={getActionTagColor(row.action)} className={styles.actionMainTag}>
+                            {display}
+                        </Tag>
+                        {row.is_from_memo ? (
+                            <Tag color="gold" className={styles.fromMemoTag}>
+                                From Memo
+                            </Tag>
+                        ) : null}
+                    </div>
+                );
+            },
         },
         {
             title: 'Date & Time',
             dataIndex: 'date_display',
             key: 'date_display',
-            width: 170,
+            width: 110,
             render: (_, row) => formatHistoryDateTime(row),
         },
         {
-            title: 'Updated By',
-            dataIndex: 'updated_by',
-            key: 'updated_by',
-            width: 120,
-            render: (value) => value || '—',
+            title: 'Party',
+            dataIndex: 'party_name',
+            key: 'party',
+            width: 190,
+            ellipsis: true,
+            render: (value, row) => {
+                const name = String(value || row.party || '').trim();
+                return name || '—';
+            },
         },
-        { title: 'Party', dataIndex: 'party_name', key: 'party', width: 140 },
         {
             title: 'Invoice',
             dataIndex: 'invoice',
             key: 'invoice',
-            width: 110,
-            render: (value) => renderInvoiceCell(value),
+            width: 75,
+            render: (value, row) => renderInvoiceCell(value, row),
         },
-        { title: 'Description', dataIndex: 'description', key: 'description', ellipsis: true },
+        {
+            title: 'Description',
+            dataIndex: 'description',
+            key: 'description',
+            width: 480,
+            ellipsis: true,
+            render: (value, row) => {
+                const text = String(value || '').trim();
+                if (!text) return '—';
+                const a = String(row?.action || '').toLowerCase().trim();
+                const isReturn = a === 'memo_return' || a === 'consign_return';
+                return (
+                    <div className={styles.descCellWrap}>
+                        {row?.is_from_memo ? (
+                            <span className={styles.fromMemoPill} title="Sold from open memo">
+                                From Memo
+                            </span>
+                        ) : null}
+                        <span className={isReturn ? styles.memoReturnDesc : ''} title={text}>
+                            {text}
+                        </span>
+                    </div>
+                );
+            },
+        },
         {
             title: 'Pcs',
             dataIndex: 'pcs',
             key: 'pcs',
             width: 70,
             align: 'right',
-            render: (_, row) => signedQty(row, 'pcs'),
+            render: (_, row) => formatQtyCell(signedQty(row, 'pcs')),
         },
-        {
+        {   
             title: 'Carat',
             dataIndex: 'carat',
             key: 'carat',
-            width: 80,
+            width: 95,
             align: 'right',
-            render: (_, row) => signedQty(row, 'carat'),
+            render: (_, row) => {
+                const val = formatQtyCell(signedQty(row, 'carat'));
+                if (row?.is_from_memo) {
+                    return (
+                        <div className={styles.memoQtyWrap}>
+                            <span className={styles.memoQtyVal}>{val}</span>
+                            <Tooltip title={row.balance_note || "Sold from open Memo balance. Carat was already debited from on-hand stock when Memo was issued, so B.Carat does not deduct again."}>
+                                <Info size={13} className={styles.memoInfoIcon} />
+                            </Tooltip>
+                        </div>
+                    );
+                }
+                return val;
+            },
         },
         {
             title: 'B.Pcs',
@@ -409,7 +572,15 @@ const StoneHistory = () => {
             key: 'balance_pcs',
             width: 80,
             align: 'right',
-            render: (value) => (value == null || value === '' ? '—' : value),
+            onHeaderCell: () => ({
+                className: 'stone-balance-col',
+                style: { background: '#ccfbf1', color: '#0f766e', fontWeight: 700 },
+            }),
+            onCell: () => ({
+                className: 'stone-balance-col',
+                style: { background: '#ecfdf5', fontWeight: 600 },
+            }),
+            render: (value) => formatQtyCell(value),
         },
         {
             title: 'B.Carat',
@@ -417,11 +588,54 @@ const StoneHistory = () => {
             key: 'balance_carat',
             width: 90,
             align: 'right',
-            render: (value) => (value == null || value === '' ? '—' : value),
+            onHeaderCell: () => ({
+                className: 'stone-balance-col',
+                style: { background: '#ccfbf1', color: '#0f766e', fontWeight: 700 },
+            }),
+            onCell: () => ({
+                className: 'stone-balance-col',
+                style: { background: '#ecfdf5', fontWeight: 600 },
+            }),
+            render: (value) => formatQtyCell(value),
         },
-        { title: 'Price', dataIndex: 'price', key: 'price', width: 90, align: 'right' },
-        { title: 'Amount', dataIndex: 'amount', key: 'amount', width: 100, align: 'right' },
+        {
+            title: 'Price',
+            dataIndex: 'price',
+            key: 'price',
+            width: 90,
+            align: 'right',
+            render: (value) => formatQtyCell(value),
+        },
+        {
+            title: 'Amount',
+            dataIndex: 'amount',
+            key: 'amount',
+            width: 100,
+            align: 'right',
+            render: (value) => formatQtyCell(value),
+        },
+        {
+            title: 'Updated By',
+            dataIndex: 'updated_by',
+            key: 'updated_by',
+            width: 130,
+            ellipsis: true,
+            render: (value, row) => {
+                const name = String(value || row?.user_name || '').trim();
+                if (name && name !== '—') return name;
+                if (row?.user != null && String(row.user).trim() !== '') {
+                    return `User #${row.user}`;
+                }
+                return '—';
+            },
+        },
     ];
+
+    // Fixed min table width so zoom / narrow view scrolls instead of clipping columns
+    const historyTableScrollX = historyColumns.reduce(
+        (sum, col) => sum + (Number(col.width) || 120),
+        0
+    );
 
     const handleSearch = async () => {
         const skuValue = (searchForm.getFieldValue('searchSku') || '').trim();
@@ -533,6 +747,9 @@ const StoneHistory = () => {
         setStatus('');
         setLastUpdated('');
         setStoneDetail(null);
+        setStockSummary(null);
+        setLineage(null);
+        setActivityLogs([]);
         setHoldInfo(null);
         setHiddenImages({});
         setActiveTab('history');
@@ -559,9 +776,6 @@ const StoneHistory = () => {
                 )}
             >
                 <div className={styles.stoneSearchRow}>
-                    {/* <label className={styles.searchLabel} htmlFor="stone-history-sku">
-                        Stone Id / SKU :
-                    </label> */}
                     <Form form={searchForm} className={styles.searchForm} layout="inline">
                         <Form.Item name="searchSku" className={styles.searchFieldItem}>
                             <Input
@@ -574,30 +788,50 @@ const StoneHistory = () => {
                             />
                         </Form.Item>
                     </Form>
+                    {status ? (
+                        <div className={styles.headerMeta}>
+                            <span className={styles.headerMetaItem}>
+                                <span className={styles.headerMetaLabel}>Status:</span>
+                                <Tag color="blue" className={styles.headerStatusTag}>{status}</Tag>
+                            </span>
+                            {lastUpdated ? (
+                                <span className={styles.headerMetaItem}>
+                                    <span className={styles.headerMetaLabel}>Last Updated:</span>
+                                    <span className={styles.headerMetaValue}>{lastUpdated}</span>
+                                </span>
+                            ) : null}
+                        </div>
+                    ) : null}
                 </div>
             </AdvancedFilterPanel>
 
             {showForm && (
                 <div className={styles.sectionsWrap}>
-                    {status ? (
-                        <Card size="small" style={{ marginBottom: 12 }}>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
-                                <span>
-                                    Status: <Tag color="blue">{status}</Tag>
-                                </span>
-                                {lastUpdated ? (
-                                    <Text type="secondary">
-                                        Last Updated: <Text strong>{lastUpdated}</Text>
-                                    </Text>
-                                ) : null}
-                            </div>
-                        </Card>
-                    ) : null}
                     <Card className={styles.detailsCard}>
                         <Tabs
                             activeKey={activeTab}
                             onChange={setActiveTab}
                             className={styles.detailTabs}
+                            tabBarExtraContent={
+                                activeTab === 'history' ? (
+                                    <span className={styles.historyTabActions}>
+                                        <Button
+                                            size="small"
+                                            icon={<History size={14} />}
+                                            loading={oldLoading}
+                                            onClick={handleLoadOld}
+                                        >
+                                            Load Old
+                                        </Button>
+                                        <ExportExcelButton
+                                            size="small"
+                                            loading={exporting}
+                                            onClick={handleExport}
+                                            disabled={!historyRows.length}
+                                        />
+                                    </span>
+                                ) : null
+                            }
                             items={[
                                 {
                                     key: 'history',
@@ -609,55 +843,87 @@ const StoneHistory = () => {
                                     ),
                                     children: (
                                         <div className={styles.historyTabContent}>
-                                            <div className={styles.historyTabHeader}>
-                                                <div className={styles.tabSectionTitle}>
-                                                    <History size={13} />
-                                                    Transaction History
-                                                </div>
-                                                <span className={styles.historyTabActions}>
-                                                    <Button
-                                                        size="small"
-                                                        icon={<History size={14} />}
-                                                        loading={oldLoading}
-                                                        onClick={handleLoadOld}
-                                                    >
-                                                        Load Old
-                                                    </Button>
-                                                    <ExportExcelButton
-                                                        size="small"
-                                                        loading={exporting}
-                                                        onClick={handleExport}
-                                                        disabled={!historyRows.length}
-                                                    />
-                                                </span>
-                                            </div>
-                                            <SkeletonAwareTable
-                                                columns={historyColumns}
-                                                dataSource={historyRows}
-                                                loading={loading}
-                                                size="small"
-                                                bordered
-                                                pagination={{ pageSize: 20 }}
-                                                scroll={{ x: 'max-content' }}
+                                            <StockReconciliationCard
+                                                stockSummary={stockSummary}
+                                                stoneDetail={stoneDetail}
+                                                historyRows={historyRows}
                                             />
+                                            <div className={styles.historyTableScroll}>
+                                                <SkeletonAwareTable
+                                                    columns={historyColumns}
+                                                    dataSource={historyRows}
+                                                    loading={loading}
+                                                    size="small"
+                                                    bordered
+                                                    pagination={false}
+                                                    tableLayout="fixed"
+                                                    scroll={{ x: historyTableScrollX }}
+                                                    rowClassName={historyRowClassName}
+                                                />
+                                            </div>
                                             {oldHistoryRows.length ? (
                                                 <div className={styles.oldHistoryBlock}>
                                                     <div className={styles.tabSectionTitle}>
                                                         <History size={13} />
                                                         Old History
                                                     </div>
-                                                    <SkeletonAwareTable
-                                                        columns={historyColumns}
-                                                        dataSource={oldHistoryRows}
-                                                        loading={oldLoading}
-                                                        size="small"
-                                                        bordered
-                                                        pagination={{ pageSize: 20 }}
-                                                        scroll={{ x: 'max-content' }}
-                                                    />
+                                                    <div className={styles.historyTableScroll}>
+                                                        <SkeletonAwareTable
+                                                            columns={historyColumns}
+                                                            dataSource={oldHistoryRows}
+                                                            loading={oldLoading}
+                                                            size="small"
+                                                            bordered
+                                                            pagination={false}
+                                                            tableLayout="fixed"
+                                                            scroll={{ x: historyTableScrollX }}
+                                                            rowClassName={historyRowClassName}
+                                                        />
+                                                    </div>
                                                 </div>
                                             ) : null}
                                         </div>
+                                    ),
+                                },
+                                {
+                                    key: 'lineage',
+                                    label: (
+                                        <span className={styles.tabLabel}>
+                                            <Network size={14} />
+                                            Tree & Lineage
+                                            {lineage?.has_lineage ? (
+                                                <Tag color="cyan" style={{ fontSize: '10px', margin: 0, padding: '0 4px', lineHeight: '16px' }}>
+                                                    {lineage.children?.length ? `${lineage.children.length} stones` : 'Active'}
+                                                </Tag>
+                                            ) : null}
+                                        </span>
+                                    ),
+                                    children: (
+                                        <LineageTreePanel
+                                            lineage={lineage}
+                                            currentDetail={stoneDetail}
+                                            onNavigateSku={(sku) => {
+                                                searchForm.setFieldsValue({ searchSku: sku });
+                                                navigate(`/report/stone-history?sku=${encodeURIComponent(sku)}${searchParams.get('companyId') ? `&companyId=${searchParams.get('companyId')}` : ''}`);
+                                            }}
+                                        />
+                                    ),
+                                },
+                                {
+                                    key: 'audit',
+                                    label: (
+                                        <span className={styles.tabLabel}>
+                                            <ShieldCheck size={14} />
+                                            Audit Trail
+                                            {activityLogs.length ? (
+                                                <Tag color="blue" style={{ fontSize: '10px', margin: 0, padding: '0 4px', lineHeight: '16px' }}>
+                                                    {activityLogs.length}
+                                                </Tag>
+                                            ) : null}
+                                        </span>
+                                    ),
+                                    children: (
+                                        <StoneAuditTrailPanel activityLogs={activityLogs} />
                                     ),
                                 },
                                 {

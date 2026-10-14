@@ -125,6 +125,11 @@ export const queryKeys = {
         activityLog: (params) => key("admin", "activityLog", params),
         activityLogSummary: (params) => key("admin", "activityLogSummary", params),
         loginHistory: (params) => key("admin", "loginHistory", params),
+        branch: {
+            root: key("admin", "branch"),
+            list: key("admin", "branch", "list"),
+            options: key("admin", "branch", "options"),
+        },
         tenantCompany: {
             root: key("admin", "tenantCompany"),
             list: key("admin", "tenantCompany", "list"),

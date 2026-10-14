@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import {
-  Layout, Typography, Button, Modal, Form, Space, Input, Tag, Empty, Alert, Upload, Row, Col,
+  Layout, Typography, Button, Modal, Form, Space, Input, Tag, Alert, Upload, Row, Col,
 } from "antd";
 import { SkeletonCard } from "../../components/common/skeleton";
 import { toast } from "sonner";
@@ -11,7 +11,6 @@ import {
   BankOutlined,
   PhoneOutlined,
   EnvironmentOutlined,
-  SearchOutlined,
   TeamOutlined,
   GlobalOutlined,
   CheckCircleFilled,
@@ -73,7 +72,6 @@ const TenantCompanyList = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletingCompany, setDeletingCompany] = useState(null);
   const [editing, setEditing] = useState(null);
-  const [search, setSearch] = useState("");
   const [form] = Form.useForm();
   const [deleteForm] = Form.useForm();
   const [logoFile, setLogoFile] = useState(null);
@@ -82,11 +80,16 @@ const TenantCompanyList = () => {
 
   const companyId = useAuthStore((s) => s.companyId);
   const companyName = useAuthStore((s) => s.companyName);
+  const sessionBranchId = useAuthStore((s) => s.branchId);
   const setSessionContext = useAuthStore((s) => s.setSessionContext);
 
   const { data, isLoading, refetch } = useFetchApi(
     "tenantCompanies",
     ENDPOINTS.tenantCompany.list
+  );
+  const { data: branchOptionsData } = useFetchApi(
+    "branchOptions",
+    ENDPOINTS.branch.options
   );
   const { mutate: saveCompany, isPending: isSaving } = usePostApiRequest(
     ENDPOINTS.tenantCompany.save,
@@ -99,25 +102,24 @@ const TenantCompanyList = () => {
 
   const companies = data?.Data || [];
   const activeCompanyId = companyId != null ? Number(companyId) : null;
-
-  const filteredCompanies = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return companies;
-    return companies.filter((item) => {
-      const haystack = [
-        item.name,
-        item.address,
-        item.number,
-        item.city,
-        item.country,
-        item.email,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return haystack.includes(q);
-    });
-  }, [companies, search]);
+  const activeBranchId = sessionBranchId != null ? Number(sessionBranchId) : null;
+  // Login branch ke andar jitni companies hain — sab active / usable
+  const activeBranchCompanies = useMemo(() => {
+    if (activeBranchId == null) return [];
+    return companies.filter((c) => Number(c.branch_id) === activeBranchId);
+  }, [companies, activeBranchId]);
+  const branchOptions = useMemo(
+    () =>
+      (branchOptionsData?.Data || []).map((b) => ({
+        label: b.shortcutName ? `${b.name} (${b.shortcutName})` : b.name,
+        value: b.id,
+      })),
+    [branchOptionsData]
+  );
+  const companyFormFields = useMemo(
+    () => tenantCompanyFields(branchOptions),
+    [branchOptions]
+  );
 
   const openCreate = () => {
     setEditing(null);
@@ -125,7 +127,11 @@ const TenantCompanyList = () => {
     setLogoPreview(null);
     setClearLogo(false);
     form.resetFields();
-    form.setFieldsValue({ id: 0 });
+    form.setFieldsValue({
+      id: 0,
+      // Pre-select login branch (e.g. Surat) so company maps under that branch
+      branch_id: sessionBranchId != null ? Number(sessionBranchId) : undefined,
+    });
     setModalOpen(true);
   };
 
@@ -228,15 +234,15 @@ const TenantCompanyList = () => {
         <PageHeroHeader
           as="section"
           breadcrumb="ADMINISTRATION"
-          title="Company List"
+          title="Companies"
           icon={<BankOutlined />}
           actions={(
             <Space wrap>
               <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>
                 Refresh
               </Button>
-              <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-                ADD NEW COMPANY
+              <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} className={styles.primaryBtn}>
+                Add company
               </Button>
             </Space>
           )}
@@ -244,30 +250,30 @@ const TenantCompanyList = () => {
 
         <section className={styles.statsRow}>
           <div className={styles.statCard}>
-            <span className={styles.statLabel}>Total Companies</span>
             <strong className={styles.statValue}>{companies.length}</strong>
+            <span className={styles.statLabel}>Total companies</span>
           </div>
           <div className={styles.statCard}>
+            <strong className={styles.statValue}>{companies.length}</strong>
             <span className={styles.statLabel}>Showing</span>
-            <strong className={styles.statValue}>{filteredCompanies.length}</strong>
           </div>
-          {activeCompanyId ? (
-            <div className={`${styles.statCard} ${styles.activeStatCard}`}>
-              <span className={styles.statLabel}>Your Active Company</span>
-              <strong className={styles.statValueActive} title={companyName || undefined}>
-                {companyName || `Company #${activeCompanyId}`}
+          <div className={`${styles.statCard} ${styles.activeStatCard}`}>
+            <span className={styles.statLabel}>
+              Active companies{activeBranchCompanies.length ? ` (${activeBranchCompanies.length})` : ""}
+            </span>
+            {activeBranchCompanies.length > 0 ? (
+              <div className={styles.activeCompanyList} title={activeBranchCompanies.map((c) => c.name).join(", ")}>
+                {activeBranchCompanies.map((c) => (
+                  <strong key={c.id} className={styles.statValueActive}>
+                    {c.name}
+                  </strong>
+                ))}
+              </div>
+            ) : (
+              <strong className={styles.statValueActive}>
+                {companyName || "—"}
               </strong>
-            </div>
-          ) : null}
-          <div className={styles.searchWrap}>
-            <Input
-              allowClear
-              prefix={<SearchOutlined />}
-              placeholder="Search by name, address, phone, city..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className={styles.searchInput}
-            />
+            )}
           </div>
         </section>
 
@@ -290,66 +296,47 @@ const TenantCompanyList = () => {
               Create Company Now
             </Button>
           </div>
-        ) : filteredCompanies.length === 0 ? (
-          <div className={styles.emptyState}>
-            <Empty description="No companies match your search" />
-          </div>
         ) : (
           <div className={styles.companyGrid}>
-            {filteredCompanies.map((item) => {
-              const isActive = activeCompanyId != null && Number(item.id) === activeCompanyId;
+            {companies.map((item) => {
+              const isBranchActive = activeBranchId != null && Number(item.branch_id) === activeBranchId;
               return (
               <article
                 key={item.id}
-                className={`${styles.companyCard} ${isActive ? styles.companyCardActive : ""}`}
+                className={`${styles.companyCard} ${isBranchActive ? styles.companyCardActive : ""}`}
               >
                 <div className={styles.cardTop}>
-                  <div className={styles.avatar} data-initials={getInitials(item.name)}>
+                  <div
+                    className={`${styles.avatar} ${isBranchActive ? "" : styles.avatarMuted}`}
+                    data-initials={getInitials(item.name)}
+                  >
                     {item.logo ? (
                       <img src={resolveUploadUrl(item.logo)} alt={item.name || "logo"} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit" }} />
                     ) : (
                       getInitials(item.name)
                     )}
                   </div>
-                  <Space size={4}>
-                    <Button
-                      type="text"
-                      icon={<EditOutlined />}
-                      onClick={() => openEdit(item)}
-                      aria-label="Edit company"
-                      className={styles.editBtn}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      type="text"
-                      danger
-                      icon={<DeleteOutlined />}
-                      onClick={() => openDelete(item)}
-                      aria-label="Delete company"
-                      className={styles.deleteBtn}
-                      disabled={isActive}
-                    >
-                      Delete
-                    </Button>
-                  </Space>
+                  {isBranchActive ? (
+                    <Tag icon={<CheckCircleFilled />} className={styles.activeBadge}>
+                      Active
+                    </Tag>
+                  ) : null}
                 </div>
-
-                {isActive ? (
-                  <Tag icon={<CheckCircleFilled />} className={styles.activeBadge}>
-                    Active — you are working in this company
-                  </Tag>
-                ) : null}
 
                 <Title level={5} className={styles.companyName} title={item.name}>
                   {item.name}
                 </Title>
 
-                {item.type ? (
-                  <Tag className={styles.typeTag}>{item.type}</Tag>
-                ) : (
-                  <Tag className={styles.typeTagMuted}>Tenant Company</Tag>
-                )}
+                <div className={styles.tagRow}>
+                  {item.branch_name ? (
+                    <Tag className={styles.typeTag}>{item.branch_name}</Tag>
+                  ) : (
+                    <Tag className={styles.typeTagMuted}>No Branch</Tag>
+                  )}
+                  {item.type ? (
+                    <Tag className={styles.typeTagMuted}>{item.type}</Tag>
+                  ) : null}
+                </div>
 
                 <div className={styles.metaBlock}>
                   <div className={styles.metaLine}>
@@ -374,6 +361,27 @@ const TenantCompanyList = () => {
                       <Text type="secondary">{item.partner}</Text>
                     </div>
                   )}
+                </div>
+
+                <div className={styles.cardActions}>
+                  <Button
+                    icon={<EditOutlined />}
+                    onClick={() => openEdit(item)}
+                    aria-label="Edit company"
+                    className={styles.editBtn}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    danger
+                    icon={<DeleteOutlined />}
+                    onClick={() => openDelete(item)}
+                    aria-label="Delete company"
+                    className={styles.deleteBtn}
+                    disabled={isBranchActive}
+                  >
+                    Delete
+                  </Button>
                 </div>
               </article>
             );
@@ -409,7 +417,7 @@ const TenantCompanyList = () => {
             className={styles.companyForm}
           >
             <Form.Item name="id" hidden><input type="hidden" /></Form.Item>
-            <DynamicForm fields={tenantCompanyFields} />
+            <DynamicForm fields={companyFormFields} />
             <Row gutter={[16, 0]} align="top">
               <Col span={12}>
                 <Form.Item name="rapnet_password" label="RapNet Password">

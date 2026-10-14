@@ -5,6 +5,7 @@ const productHelper = require("../../productHelper.js");
 const { authenticateToken } = require("../../authMiddleware.js");
 const { buildUserContext } = require("../../tenantHelper.js");
 const { logAudit } = require("../../services/auditIntegration.js");
+const stockMovement = require("../../services/stockMovementService.js");
 const inwardRouter = express.Router();
 const moment = require("moment");
 inwardRouter.use(express.json());
@@ -93,19 +94,69 @@ function advanceIncrementId(val, fallback = 1) {
   return String(Number.isNaN(parsed) ? fallback : parsed + 1);
 }
 
+function extractInvoiceSeq(value) {
+  const n = parseInt(String(value ?? "").replace(/\D/g, ""), 10);
+  return Number.isNaN(n) || n <= 0 ? 0 : n;
+}
+
+function isInwardMemoType(type) {
+  const t = String(type || "").trim().toLowerCase();
+  return t === "memo" || t === "consign" || t === "in_memo" || t === "in_consign";
+}
+
+/** In Memo / Consign invoice: INV-1, INV-2, … */
+function formatInwardMemoInvoice(seq) {
+  const n = extractInvoiceSeq(seq) || 1;
+  return `INV-${n}`;
+}
+
+async function allocateInwardMemoInvoice(q, companyId) {
+  const cid = Number(companyId) || helper.DEFAULT_COMPANY_ID;
+  const rows = await q(
+    `SELECT invoiceno FROM dai_inward
+     WHERE (company = ? OR company = ?)
+       AND LOWER(TRIM(inward_type)) IN ('memo','consign','in_memo','in_consign')
+       AND (deleted = 0 OR deleted IS NULL)`,
+    [cid, String(cid)]
+  );
+  let max = 0;
+  for (const r of rows || []) {
+    const n = extractInvoiceSeq(r.invoiceno);
+    if (n > max) max = n;
+  }
+  return formatInwardMemoInvoice(max + 1);
+}
+
 inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
   const { products, ...body } = req.body;
   const ctx = buildUserContext(req);
   const userid = ctx.userId || 1;
-  const companyId = ctx.companyId;
   const post = body;
 
   try {
+    const { resolveOperatingCompanyId } = require("../../tenantHelper.js");
+    if (!post.operating_company_id && !post.operating_company && !post.tenant_company_id) {
+      return res.status(400).json({
+        status: false,
+        Message: "Company is required",
+      });
+    }
+    const companyId = await resolveOperatingCompanyId(
+      req,
+      post.operating_company_id ?? post.operating_company ?? post.tenant_company_id
+    );
+
     let incre_id = await helper.getIncrementEntry("inward", companyId);
     if (incre_id && String(incre_id).includes("NaN")) {
-      incre_id = String(incre_id).replace(/-?NaN/gi, "") || "1";
+      incre_id = String(incre_id).replace(/-?NaN/gi, "") || "Inward-1";
     }
-    const reference = await helper.getIncrementEntry("reference", companyId);
+    if (!incre_id || String(incre_id).trim() === "") {
+      incre_id = "Inward-1";
+    }
+    let reference = await helper.getIncrementEntry("reference", companyId);
+    if (!reference || String(reference).trim() === "") {
+      reference = "1";
+    }
 
     const invoicedate = moment(post.invoicedate, "DD-MM-YYYY").format("YYYY-MM-DD");
     post.duedate = post.terms
@@ -114,12 +165,24 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
     post.date = invoicedate;
     post.invoicedate = invoicedate;
     post.company = companyId;
+    delete post.operating_company_id;
+    delete post.operating_company;
+    delete post.tenant_company_id;
     post.entryno = incre_id;
     post.reference = reference;
     post.deleted = 0;
     post.user = userid;
 
+    await stockMovement.ensureStockItemSchema(helper.query);
+
     const result = await helper.runInTransaction(async (q) => {
+      await stockMovement.ensureStockItemSchema(q);
+
+      // In Memo / Consign → INV-1, INV-2… (ignore plain client "1")
+      if (isInwardMemoType(post.inward_type)) {
+        post.invoiceno = await allocateInwardMemoInvoice(q, companyId);
+      }
+
       // 1. Insert inward header
       const data = helper.insertString(post);
       const insertResult = await q(`INSERT INTO dai_inward (${data[0]}) VALUES (${data[1]})`);
@@ -133,14 +196,6 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
         [setNewid, nextRef, companyId]
       );
 
-      // 3. Import category entry if applicable
-      if (post.inward_type === "import") {
-        await q(
-          "INSERT INTO category (name, parent) VALUES (?, ?)",
-          [moment().format("DD-MM-YYYY"), 0]
-        );
-      }
-
       let iTotal = 0;
       let iCarat = 0;
       let iPcs = 0;
@@ -152,10 +207,26 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
       for (const r of (Array.isArray(products) ? products : [])) {
         if (!r.sku || !r.polish_carat || !r.price || !r.amount) continue;
 
-        const skuRows = await q(
-          "SELECT * FROM dai_product WHERE sku = ? AND company = ? LIMIT 1",
-          [String(r.sku).trim(), companyId]
+        // Same stock id (SKU) → always reuse (never create VCJ-003 twice)
+        const skuKey = String(r.sku || "").trim();
+        r.sku = skuKey;
+        let skuRows = await q(
+          `SELECT * FROM dai_product
+           WHERE company = ? AND UPPER(TRIM(sku)) = UPPER(?)
+           ORDER BY id ASC
+           LIMIT 1`,
+          [companyId, skuKey]
         );
+        // Fallback: SKU exists under another/null company in this DB — still merge, no duplicate
+        if (!skuRows.length) {
+          skuRows = await q(
+            `SELECT * FROM dai_product
+             WHERE UPPER(TRIM(sku)) = UPPER(?)
+             ORDER BY id ASC
+             LIMIT 1`,
+            [skuKey]
+          );
+        }
         let SkuData = skuRows[0] || null;
 
         // Normalize Pcs: If polish_pcs is empty/0, fallback to rought_pcs (and vice versa)
@@ -196,8 +267,6 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
         else if (pc > 1) group = "box";
         else group = "parcel";
 
-        if (SkuData && SkuData.group_type === "single") continue;
-
         r.group_type = group;
         r.inward = post.inward_type;
         r.site_upload = 1;
@@ -210,21 +279,138 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
         const extraFields = ["bgm", "package", "measurements", "certificate"];
         extraFields.forEach((field) => delete r[field]);
 
-        if (!SkuData || Object.keys(SkuData).length === 0) {
-          r.visibility = 1;
-        } else {
-          r.visibility = 0;
-          r.parent_id = SkuData.id;
-          SkuData.child_count = (Number(SkuData.child_count) || 0) + 1;
-          r.sku = `${r.sku}-${SkuData.child_count}`;
+        const action =
+          post.inward_type === "purchase" ? post.inward_type : `in_${post.inward_type}`;
+        const addPcs = Number(r.purchase_pcs ?? r.polish_pcs) || 0;
+        const addCarat = Number(r.purchase_carat ?? r.polish_carat) || 0;
+
+        // Same SKU already in inventory → PLUS qty on same stock id (memo/sale later use this row)
+        if (SkuData) {
+          const pid = SkuData.id;
+          console.log(
+            `[inward/save] stock-add SKU=${skuKey} productId=${pid} +${addPcs}pcs/+${addCarat}ct company=${companyId}`
+          );
+          const bal = await stockMovement.applyInwardQty(q, pid, addPcs, addCarat, r.price, {
+            cost: r.cost,
+            amount: itemAmount,
+          });
+          // Align company + group so next lookup / inventory stay on this row.
+          // Safety: sold/exported SKUs are hidden from All Stock until outward is cleared.
+          await q(
+            `UPDATE dai_product
+             SET company = ?,
+                 visibility = 1,
+                 group_type = COALESCE(NULLIF(group_type, ''), ?),
+                 outward = CASE
+                   WHEN COALESCE(polish_carat, 0) > 0
+                     AND LOWER(TRIM(COALESCE(outward, ''))) IN ('sale', 'export')
+                   THEN ''
+                   ELSE outward
+                 END
+             WHERE id = ?`,
+            [companyId, group || SkuData.group_type || "single", pid]
+          );
+          iProducts.push(pid);
+          skuArray.push(SkuData.sku);
+
+          try {
+            const itemId = await stockMovement.insertInwardItem(q, {
+              company: companyId,
+              inward_id: lid,
+              product_id: pid,
+              sku: SkuData.sku,
+              party: post.party || "",
+              inward_type: post.inward_type,
+              pcs: addPcs,
+              carat: addCarat,
+              price: Number(r.price) || 0,
+              amount: itemAmount,
+              balance_pcs: bal.onhand_pcs,
+              balance_carat: bal.onhand_carat,
+              entry_date: post.invoicedate,
+              invoice_no: post.invoiceno || "",
+              reference: post.reference || "",
+              narretion: post.narretion || "",
+              user: userid,
+            });
+            if (!itemId) {
+              console.error(
+                `[inward/save] dai_inward_item insert skipped/failed for SKU=${SkuData.sku} inward=${lid}`
+              );
+            }
+          } catch (itemErr) {
+            console.error("[inward/save] insertInwardItem error:", itemErr?.message || itemErr);
+            throw itemErr;
+          }
+
+          insertedItems.push({
+            id: pid,
+            sku: SkuData.sku,
+            mfg_code: r.mfg_code || r.mfg || null,
+            d_no: r.d_no || r.dno || null,
+            r_pcs: r.rought_pcs ?? r.r_pcs ?? null,
+            p_pcs: addPcs,
+            p_carat: addCarat,
+            r_carat: Number(r.rought_carat ?? r.r_carat) || 0,
+            cost: Number(r.cost) || 0,
+            price: Number(r.price) || 0,
+            amount: itemAmount,
+            color: r.color || r.main_color || null,
+            loc: r.loc || r.location || null,
+            lab: r.lab || null,
+            report_no: r.report_no || r.reportno || null,
+            shape: r.shape || null,
+            clarity: r.clarity || null,
+            measurements: r.measurements || r.measurement || null,
+            stock_add: true,
+          });
+
+          try {
+            const histPayload = {
+              product_id: pid,
+              action,
+              party: post.party || "",
+              narretion: post.narretion || "",
+              date: post.invoicedate,
+              description: `Stock add ${post.inward_type} +${addPcs}pcs / +${addCarat}ct ref ${post.reference}`,
+              pcs: addPcs,
+              carat: addCarat,
+              balance_pcs: bal.onhand_pcs,
+              balance_carat: bal.onhand_carat,
+              amount: itemAmount,
+              price: Number(r.price) || 0,
+              sku: SkuData.sku,
+              type: "cr",
+              invoice: post.invoiceno || "",
+              entry_from: "inward",
+              entryno: lid,
+              user: userid,
+            };
+            const hData = helper.insertString(histPayload);
+            await q(`INSERT INTO dai_history (${hData[0]}) VALUES (${hData[1]})`);
+          } catch (histErr) {
+            console.error("inward/save addHistory (stock add) error:", histErr);
+          }
+          continue;
         }
 
+        // New main stock row (only when SKU does not exist at all)
+        r.visibility = 1;
+        r.company = companyId;
         skuArray.push(r.sku);
 
         const rData = helper.insertString(r);
         const pResult = await q(`INSERT INTO dai_product (${rData[0]}) VALUES (${rData[1]})`);
         const pid = pResult.insertId;
+        // Guarantee company is set (needed for next same-SKU lookup)
+        await q(`UPDATE dai_product SET company = ?, visibility = 1 WHERE id = ?`, [
+          companyId,
+          pid,
+        ]);
         iProducts.push(pid);
+
+        await stockMovement.setInitialBalances(q, pid, addPcs, addCarat);
+
         insertedItems.push({
           id: pid,
           sku: r.sku,
@@ -250,8 +436,26 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
         const attrData = helper.insertString(attr);
         await q(`INSERT INTO dai_product_value (${attrData[0]}) VALUES (${attrData[1]})`);
 
-        const action =
-          post.inward_type === "purchase" ? post.inward_type : `in_${post.inward_type}`;
+        await stockMovement.insertInwardItem(q, {
+          company: companyId,
+          inward_id: lid,
+          product_id: pid,
+          sku: r.sku,
+          party: post.party || "",
+          inward_type: post.inward_type,
+          pcs: addPcs,
+          carat: addCarat,
+          price: Number(r.price) || 0,
+          amount: itemAmount,
+          balance_pcs: addPcs,
+          balance_carat: addCarat,
+          entry_date: post.invoicedate,
+          invoice_no: post.invoiceno || "",
+          reference: post.reference || "",
+          narretion: post.narretion || "",
+          user: userid,
+        });
+
         try {
           const histPayload = {
             product_id: pid,
@@ -260,10 +464,10 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
             narretion: post.narretion || "",
             date: post.invoicedate,
             description: `New Stone ${post.inward_type} with reference no is ${post.reference}`,
-            pcs: r.polish_pcs ?? "",
-            carat: Number(r.polish_carat) || 0,
-            balance_pcs: r.polish_pcs ?? "",
-            balance_carat: Number(r.polish_carat) || 0,
+            pcs: addPcs,
+            carat: addCarat,
+            balance_pcs: addPcs,
+            balance_carat: addCarat,
             amount: Number(r.amount) || 0,
             price: Number(r.price) || 0,
             sku: r.sku,
@@ -278,49 +482,12 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
         } catch (histErr) {
           console.error("inward/save addHistory error:", histErr);
         }
-
-        // Parameterized update for parent Box/Parcel
-        if (SkuData && (SkuData.group_type === "box" || SkuData.group_type === "parcel")) {
-          const addPcs = Number(r.purchase_pcs ?? r.polish_pcs) || 0;
-          const addCarat = Number(r.purchase_carat ?? r.polish_carat) || 0;
-          const childCount = Number(SkuData.child_count) || 0;
-
-          await q(
-            "UPDATE dai_product SET polish_pcs = polish_pcs + ?, polish_carat = polish_carat + ?, child_count = ? WHERE id = ?",
-            [addPcs, addCarat, childCount, SkuData.id]
-          );
-
-          try {
-            const parentHist = {
-              product_id: SkuData.id,
-              action: post.inward_type,
-              party: post.party || "",
-              narretion: post.narretion || "",
-              date: post.invoicedate,
-              description: `New Stone ${post.inward_type} with reference no is ${post.reference}`,
-              pcs: r.polish_pcs ?? "",
-              carat: Number(r.polish_carat) || 0,
-              amount: Number(r.amount) || 0,
-              price: Number(r.price) || 0,
-              sku: r.sku,
-              type: "cr",
-              invoice: post.invoiceno || "",
-              entry_from: "inward",
-              entryno: lid,
-              user: userid,
-            };
-            const phData = helper.insertString(parentHist);
-            await q(`INSERT INTO dai_history (${phData[0]}) VALUES (${phData[1]})`);
-          } catch (histErr) {
-            console.error("inward/save parent addHistory error:", histErr);
-          }
-        }
       }
 
-      // Parameterized update for final inward summary
+      const uniqueProducts = [...new Set(iProducts.map(String))];
       await q(
         "UPDATE dai_inward SET products = ?, due_amount = ?, final_amount = ?, carat = ?, pcs = ? WHERE id = ?",
-        [iProducts.join(","), iTotal, iTotal, iCarat, iPcs, lid]
+        [uniqueProducts.join(","), iTotal, iTotal, iCarat, iPcs, lid]
       );
 
       const track = {
@@ -385,7 +552,8 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
     return res.status(200).json({ status: true, message: `${typeLabel} created successfully.` });
   } catch (error) {
     console.error("inward/save error:", error);
-    return res.status(500).json({
+    const status = error.statusCode || 500;
+    return res.status(status).json({
       status: false,
       message: error.sqlMessage || error.message || "Failed to save inward transaction.",
     });

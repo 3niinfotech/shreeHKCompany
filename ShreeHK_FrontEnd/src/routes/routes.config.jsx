@@ -93,6 +93,7 @@ const FiscalYearAdmin = React.lazy(() => import("../pages/admin/FiscalYearAdmin"
 const ActivityHistory = React.lazy(() => import("../pages/admin/ActivityHistory"));
 const LegacyAppsScope = React.lazy(() => import("../pages/admin/LegacyAppsScope"));
 const TenantCompanyList = React.lazy(() => import("../pages/admin/TenantCompanyList"));
+const BranchList = React.lazy(() => import("../pages/admin/BranchList"));
 
 // --- 8. OUTWARD DROPDOWN PAGE ---
 const Outward = React.lazy(() => import("../pages/outword/OutWord"));
@@ -123,7 +124,7 @@ export const allProtectedRoutes = [
     path: "/master",
     icon: "Settings",
     children: [
-      { path: "/master/company-details", name: "Company", element: <Company />, permissionKey: "master.company" },
+      { path: "/master/company-details", name: "Party", element: <Company />, permissionKey: "master.company" },
       { path: "/master/shipping-details", name: "Shipping", element: <Shipping />, permissionKey: "master.shipping" },
       { path: "/master/origin", name: "Origin", element: <Origin />, permissionKey: "master.origin" },
       { path: "/master/lab", name: "Lab", element: <Lab />, permissionKey: "master.lab" },
@@ -318,6 +319,7 @@ export const allProtectedRoutes = [
     path: "/admin",
     icon: "User",
     children: [
+      { path: "/admin/branch", name: "Branch", element: <BranchList />, requiredRole: ROLE_ACCESS.SUPER_ADMIN, permissionKey: "admin.branch" },
       { path: "/admin/tenant-company", name: "Company", element: <TenantCompanyList />, requiredRole: ROLE_ACCESS.SUPER_ADMIN, permissionKey: "admin.tenant_company" },
       { path: "/admin/manage-user", name: "Manage User", element: <ManageUser />, requiredRole: ROLE_ACCESS.SUPER_ADMIN, permissionKey: "admin.manage_user" },
       { path: "/admin/roll", name: "Roll", element: <AdvancedRollPage />, requiredRole: ROLE_ACCESS.SUPER_ADMIN, permissionKey: "admin.role" },

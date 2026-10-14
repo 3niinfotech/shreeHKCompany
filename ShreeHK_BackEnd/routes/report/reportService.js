@@ -118,11 +118,15 @@ const getCompanyId = (req) => {
 };
 const getUserId = (req) => Number(req.user?.user_id) || 1;
 const hideUser16 = (userId) => userId !== 16 && userId !== 1;
+/** Exclude system user 16 but keep rows with NULL user (older outward history). */
+const HISTORY_HIDE_USER16_SQL = " AND (user IS NULL OR user <> 16)";
 
 /** Mirrors PHP Helper::getStoneAction() */
 const STONE_ACTION_LABELS = {
   import: "Import",
+  in_import: "In Import",
   purchase: "Purchase",
+  purchase_return: "Purchase Return",
   lab: "Send To Lab",
   lab_return: "Lab Return",
   memo: "Memo",
@@ -146,6 +150,7 @@ const STONE_ACTION_LABELS = {
   export_close: "Export Close",
   consign: "Consignment",
   in_consign: "In Consign",
+  consign_return: "Consign Return",
   consign_close: "Consign Close",
   sku_change: "Sku Change",
   purchase_delete: "Purchase Delete",
@@ -158,12 +163,238 @@ function queryPool(pool, sql, values = []) {
   });
 }
 
-function mapStoneHistoryRows(history, partyMap) {
+function isBlankHistoryUser(user) {
+  return user == null || String(user).trim() === "" || String(user).trim() === "0";
+}
+
+function resolveHistoryUserName(h, userMap = {}) {
+  const fromMap =
+    userMap[h.user] ||
+    userMap[String(h.user)] ||
+    userMap[Number(h.user)] ||
+    "";
+  const existing =
+    h.updated_by && String(h.updated_by).trim() !== "—"
+      ? String(h.updated_by).trim()
+      : "";
+  const raw =
+    existing ||
+    (h.user_name && String(h.user_name).trim()) ||
+    fromMap ||
+    (!isBlankHistoryUser(h.user) ? `User #${h.user}` : "");
+  return String(raw || "").trim() || "—";
+}
+
+/** When dai_history.user is NULL (old sale/memo bugs), recover from outward/inward invoice. */
+async function backfillHistoryUsers(history) {
+  const need = (history || []).filter((h) => isBlankHistoryUser(h.user) && h.invoice);
+  if (!need.length) return history || [];
+
+  const invoices = [...new Set(need.map((h) => String(h.invoice).trim()).filter(Boolean))];
+  if (!invoices.length) return history;
+
+  const placeholders = invoices.map(() => "?").join(",");
+  const byInvoice = {};
+  try {
+    const outRows = await queryAsync(
+      `SELECT invoiceno, user FROM dai_outward
+       WHERE invoiceno IN (${placeholders}) AND user IS NOT NULL AND user <> 0
+       ORDER BY id DESC`,
+      invoices
+    );
+    (outRows || []).forEach((r) => {
+      const key = String(r.invoiceno || "").trim();
+      if (key && byInvoice[key] == null) byInvoice[key] = r.user;
+    });
+  } catch (_) {
+    /* ignore */
+  }
+  try {
+    const inRows = await queryAsync(
+      `SELECT invoiceno, user FROM dai_inward
+       WHERE invoiceno IN (${placeholders}) AND user IS NOT NULL AND user <> 0
+       ORDER BY id DESC`,
+      invoices
+    );
+    (inRows || []).forEach((r) => {
+      const key = String(r.invoiceno || "").trim();
+      if (key && byInvoice[key] == null) byInvoice[key] = r.user;
+    });
+  } catch (_) {
+    /* ignore */
+  }
+
+  const patched = [];
+  for (const h of history) {
+    if (!isBlankHistoryUser(h.user)) {
+      patched.push(h);
+      continue;
+    }
+    const key = String(h.invoice || "").trim();
+    const recovered = key ? byInvoice[key] : null;
+    if (recovered == null) {
+      patched.push(h);
+      continue;
+    }
+    patched.push({ ...h, user: recovered });
+    if (h.id != null) {
+      try {
+        await queryAsync(
+          `UPDATE dai_history SET user = ?
+           WHERE id = ? AND (user IS NULL OR user = 0 OR user = '')`,
+          [recovered, h.id]
+        );
+      } catch (_) {
+        /* non-fatal */
+      }
+    }
+  }
+  return patched;
+}
+
+function mapStoneHistoryRows(history, partyMap, userMap = {}) {
   return history.map((h) => ({
     ...h,
     party_name: partyMap[h.party] || h.party || "",
     action_label: STONE_ACTION_LABELS[h.action] || h.action,
+    updated_by: resolveHistoryUserName(h, userMap),
   }));
+}
+
+/**
+ * Enrich memo/consign return rows so Stone History can show
+ * "returned X of memo Y" even for older generic descriptions.
+ * Does not change pcs/carat/balance — display/context only.
+ */
+function enrichMemoReturnContext(history) {
+  const rows = Array.isArray(history) ? history : [];
+  /** @type {Map<string, { pcs: number, carat: number, invoice: string }>} */
+  const lastMemoByInvoice = new Map();
+
+  return rows.map((h) => {
+    const action = String(h.action || "").toLowerCase().trim();
+    const invoice = String(h.invoice || "").trim();
+    const pcs = Number(h.pcs) || 0;
+    const carat = Number(h.carat) || 0;
+
+    if (action === "memo" || action === "consign") {
+      if (invoice) {
+        lastMemoByInvoice.set(invoice, { pcs: Math.abs(pcs), carat: Math.abs(carat), invoice });
+      }
+      return {
+        ...h,
+        impacts_onhand_stock: true,
+      };
+    }
+
+    if (
+      action === "sale" ||
+      action === "export" ||
+      action === "sale_close" ||
+      action === "close_sale" ||
+      action === "memo_to_sale"
+    ) {
+      const descLower = String(h.description || "").toLowerCase();
+      const isExplicitMemoSale =
+        descLower.includes("from memo") ||
+        descLower.includes("memo to sale") ||
+        action === "memo_to_sale" ||
+        String(h.narretion || "").toLowerCase().includes("from memo");
+
+      const memoOf = invoice ? lastMemoByInvoice.get(invoice) : null;
+      const isMemoInvoiceMatch = Boolean(memoOf && memoOf.carat > 0.0001);
+      const isFromMemo = isExplicitMemoSale || isMemoInvoiceMatch;
+
+      if (isFromMemo) {
+        const soldCarat = Math.abs(carat);
+        const soldPcs = Math.abs(pcs);
+        if (memoOf) {
+          const leftCarat = Math.max(0, memoOf.carat - soldCarat);
+          const leftPcs = Math.max(0, memoOf.pcs - soldPcs);
+          lastMemoByInvoice.set(invoice, {
+            pcs: leftPcs,
+            carat: leftCarat,
+            invoice,
+          });
+        }
+        return {
+          ...h,
+          is_from_memo: true,
+          impacts_onhand_stock: false,
+          memo_invoice: invoice || (memoOf ? memoOf.invoice : ""),
+          action_label: "Sale (From Memo)",
+          balance_note: `Sold from Memo (${invoice || "open memo"}). This carat was already debited from on-hand stock when memo was issued, so B.Carat does not deduct again.`,
+        };
+      }
+      return {
+        ...h,
+        is_from_memo: false,
+        impacts_onhand_stock: true,
+      };
+    }
+
+    if (["hold", "unhold", "price_change", "sku_change"].includes(action)) {
+      return {
+        ...h,
+        impacts_onhand_stock: false,
+      };
+    }
+
+    if (action !== "memo_return" && action !== "consign_return") {
+      return {
+        ...h,
+        impacts_onhand_stock: true,
+      };
+    }
+
+    const memoOf = invoice ? lastMemoByInvoice.get(invoice) : null;
+    const existingDesc = String(h.description || "").trim();
+    const alreadyDetailed = /of memo|\(full\)/i.test(existingDesc);
+    const retPcsLabel = pcs;
+    const retCaratLabel = Number(carat.toFixed(3));
+
+    let description = existingDesc;
+    let memo_of_pcs = null;
+    let memo_of_carat = null;
+    let is_partial_memo_return = false;
+
+    if (memoOf) {
+      memo_of_pcs = memoOf.pcs;
+      memo_of_carat = memoOf.carat;
+      const leftPcs = Math.max(0, memoOf.pcs - pcs);
+      const leftCarat = Math.max(0, memoOf.carat - carat);
+      is_partial_memo_return =
+        leftCarat > 0.0001 || (memoOf.pcs > 0 && leftPcs > 0.0001);
+
+      if (!alreadyDetailed) {
+        description = is_partial_memo_return
+          ? `Stone Memo return ${retPcsLabel}pcs / ${retCaratLabel}ct of memo ${memoOf.pcs}pcs / ${Number(memoOf.carat.toFixed(3))}ct`
+          : `Stone Memo return ${retPcsLabel}pcs / ${retCaratLabel}ct (full) of memo ${memoOf.pcs}pcs / ${Number(memoOf.carat.toFixed(3))}ct`;
+        if (existingDesc && !/stone memo return/i.test(existingDesc)) {
+          description = `${description} — ${existingDesc}`;
+        }
+      }
+
+      // Reduce open memo qty so a 2nd partial return against same invoice still makes sense
+      lastMemoByInvoice.set(invoice, {
+        pcs: leftPcs,
+        carat: leftCarat,
+        invoice,
+      });
+    } else if (!alreadyDetailed && (pcs > 0 || carat > 0)) {
+      description = `Stone Memo return ${retPcsLabel}pcs / ${retCaratLabel}ct`;
+      if (existingDesc) description = `${description} — ${existingDesc}`;
+    }
+
+    return {
+      ...h,
+      description,
+      memo_of_pcs,
+      memo_of_carat,
+      is_partial_memo_return,
+      impacts_onhand_stock: true,
+    };
+  });
 }
 
 function buildDateFilter(from, to, column = "date") {
@@ -192,6 +423,40 @@ async function getPartyMap() {
   return map;
 }
 
+/** Map user_id → display name (first+last, else user_name). Prefer meta DB. */
+async function getUserMap() {
+  const map = {};
+  const addRows = (rows) => {
+    (rows || []).forEach((r) => {
+      const full = `${r.first_name || ""} ${r.last_name || ""}`.trim();
+      const name = full || r.user_name || String(r.user_id);
+      map[r.user_id] = name;
+      map[String(r.user_id)] = name;
+    });
+  };
+  try {
+    addRows(
+      await metaQuery(
+        "SELECT user_id, first_name, last_name, user_name FROM user"
+      )
+    );
+  } catch (_) {
+    /* fall through to tenant */
+  }
+  if (!Object.keys(map).length) {
+    try {
+      addRows(
+        await queryAsync(
+          "SELECT user_id, first_name, last_name, user_name FROM user"
+        )
+      );
+    } catch (_) {
+      /* leave empty */
+    }
+  }
+  return map;
+}
+
 async function getGroupReport(post, companyId, userId) {
   const report = post.report || post.reportType;
   if (!report) return [];
@@ -212,7 +477,7 @@ async function getGroupReport(post, companyId, userId) {
       : { sql: "", values: [] };
 
   const dateCol = buildDateFilter(post.cfrom || post.fromDate, post.cto || post.toDate, "date");
-  const userFilter = hideUser16(userId) ? " AND user <> 16" : "";
+  const userFilter = hideUser16(userId) ? HISTORY_HIDE_USER16_SQL : "";
   const data = [];
 
   const outwardReports = ["memo", "lab", "sale", "export", "close_memo", "close_sale"];
@@ -632,7 +897,8 @@ function formatStoneDateTime(value) {
 async function getActivityLogForStone(sku, productId, companyId) {
   try {
     return await auditQuery(
-      `SELECT action_type, module_name, description, user_name, created_at
+      `SELECT id, action_type, module_name, description, user_name, user_role,
+              changed_fields, old_value, new_value, created_at
        FROM dai_activity_log
        WHERE company_id = ? AND (record_reference = ? OR record_id = ?)
        ORDER BY created_at ASC, id ASC`,
@@ -659,18 +925,25 @@ function enrichHistoryDates(history, activityLogs) {
     const idx = dayIndex[day] || 0;
     dayIndex[day] = idx + 1;
     const log = pool[idx];
+    const fromLog = log?.user_name && String(log.user_name).trim();
+    const fromRow =
+      h.updated_by && String(h.updated_by).trim() !== "—"
+        ? String(h.updated_by).trim()
+        : "";
+    const updatedBy = fromLog || fromRow || "—";
 
     if (log?.created_at) {
       return {
         ...h,
         updated_at: log.created_at,
-        updated_by: log.user_name || "",
+        updated_by: updatedBy,
         date_display: formatStoneDateTime(log.created_at),
       };
     }
 
     return {
       ...h,
+      updated_by: updatedBy,
       date_display: formatStoneDateTime(h.date),
     };
   });
@@ -705,6 +978,290 @@ async function resolveStoneDetail(sku, companyId) {
   return detail;
 }
 
+function computeStockSummary(detail, enrichedHistory) {
+  const initialRow = enrichedHistory.find(
+    (h) => ["import", "in_import", "purchase", "in_memo", "in_consign"].includes(String(h.action || "").toLowerCase())
+  ) || enrichedHistory[0] || null;
+
+  const initialCarat = initialRow ? Math.abs(Number(initialRow.carat) || 0) : Number(detail.purchase_carat || detail.polish_carat || 0);
+  const initialPcs = initialRow ? Math.abs(Number(initialRow.pcs) || 0) : Number(detail.purchase_pcs || detail.polish_pcs || 0);
+
+  let totalMemoOutCarat = 0;
+  let totalMemoOutPcs = 0;
+  let totalMemoReturnCarat = 0;
+  let totalMemoReturnPcs = 0;
+  let totalSoldFromMemoCarat = 0;
+  let totalSoldFromMemoPcs = 0;
+  let totalDirectSaleCarat = 0;
+  let totalDirectSalePcs = 0;
+
+  enrichedHistory.forEach((h) => {
+    const act = String(h.action || "").toLowerCase();
+    const c = Math.abs(Number(h.carat) || 0);
+    const p = Math.abs(Number(h.pcs) || 0);
+
+    if (act === "memo" || act === "consign") {
+      totalMemoOutCarat += c;
+      totalMemoOutPcs += p;
+    } else if (act === "memo_return" || act === "consign_return") {
+      totalMemoReturnCarat += c;
+      totalMemoReturnPcs += p;
+    } else if (h.is_from_memo) {
+      totalSoldFromMemoCarat += c;
+      totalSoldFromMemoPcs += p;
+    } else if (act === "sale" || act === "export") {
+      totalDirectSaleCarat += c;
+      totalDirectSalePcs += p;
+    }
+  });
+
+  const onhandCarat = Number(detail.polish_carat != null ? detail.polish_carat : detail.onhand_carat || 0);
+  const onhandPcs = Number(detail.polish_pcs != null ? detail.polish_pcs : detail.onhand_pcs || 0);
+  const openMemoCarat = Math.max(0, Number((totalMemoOutCarat - totalMemoReturnCarat - totalSoldFromMemoCarat).toFixed(3)));
+
+  let formulaText = "";
+  if (totalSoldFromMemoCarat > 0) {
+    formulaText = `Initial (${initialCarat.toFixed(3)} ct) - Memo (${totalMemoOutCarat.toFixed(3)} ct) + Memo Return (${totalMemoReturnCarat.toFixed(3)} ct) = On-Hand (${onhandCarat.toFixed(3)} ct). Note: ${totalSoldFromMemoCarat.toFixed(3)} ct was sold from Memo (was already deducted on Memo stage).`;
+  } else if (totalMemoOutCarat > 0) {
+    formulaText = `Initial (${initialCarat.toFixed(3)} ct) - Memo (${totalMemoOutCarat.toFixed(3)} ct) + Memo Return (${totalMemoReturnCarat.toFixed(3)} ct) = On-Hand (${onhandCarat.toFixed(3)} ct).`;
+  } else if (totalDirectSaleCarat > 0) {
+    formulaText = `Initial (${initialCarat.toFixed(3)} ct) - Sale (${totalDirectSaleCarat.toFixed(3)} ct) = On-Hand (${onhandCarat.toFixed(3)} ct).`;
+  } else {
+    formulaText = `On-Hand Stock: ${onhandCarat.toFixed(3)} ct (${onhandPcs} pcs).`;
+  }
+
+  return {
+    initial_carat: Number(initialCarat.toFixed(3)),
+    initial_pcs: initialPcs,
+    onhand_carat: Number(onhandCarat.toFixed(3)),
+    onhand_pcs: onhandPcs,
+    memo_out_carat: Number(totalMemoOutCarat.toFixed(3)),
+    memo_return_carat: Number(totalMemoReturnCarat.toFixed(3)),
+    sold_from_memo_carat: Number(totalSoldFromMemoCarat.toFixed(3)),
+    sold_from_memo_pcs: totalSoldFromMemoPcs,
+    direct_sold_carat: Number(totalDirectSaleCarat.toFixed(3)),
+    open_memo_carat: openMemoCarat,
+    has_from_memo_sale: totalSoldFromMemoCarat > 0,
+    formula_text: formulaText,
+  };
+}
+
+async function getStoneLineageTree(detail, history, companyId) {
+  const current = {
+    id: detail.id,
+    sku: detail.sku,
+    group_type: detail.group_type || "single",
+    polish_pcs: detail.polish_pcs || 0,
+    polish_carat: detail.polish_carat || 0,
+    price: detail.price || 0,
+    amount: detail.amount || 0,
+    outward: detail.outward || "",
+    status: !detail.outward ? "AVAILABLE" : String(detail.outward).toUpperCase(),
+    shape: detail.shape || "",
+    color: detail.color || detail.main_color || "",
+    clarity: detail.clarity || "",
+    location: detail.location || "",
+  };
+
+  const parentId = Number(detail.parent_id || detail.box_id || detail.parcel_id || 0);
+  let parent = null;
+  if (parentId > 0 && parentId !== detail.id) {
+    try {
+      const parentRows = await queryAsync(
+        `SELECT p.id, p.sku, p.group_type, p.polish_pcs, p.polish_carat, p.price, p.amount,
+                p.outward, p.location, p.company, pv.shape, pv.color, pv.clarity
+         FROM dai_product p
+         LEFT JOIN dai_product_value pv ON p.id = pv.product_id
+         WHERE p.id = ? LIMIT 1`,
+        [parentId]
+      );
+      if (parentRows?.length) {
+        const pr = parentRows[0];
+        parent = {
+          id: pr.id,
+          sku: pr.sku,
+          group_type: pr.group_type || "box",
+          polish_pcs: pr.polish_pcs || 0,
+          polish_carat: pr.polish_carat || 0,
+          price: pr.price || 0,
+          amount: pr.amount || 0,
+          outward: pr.outward || "",
+          status: !pr.outward ? "AVAILABLE" : String(pr.outward).toUpperCase(),
+          shape: pr.shape || "",
+          color: pr.color || "",
+          clarity: pr.clarity || "",
+        };
+      }
+    } catch (_) {}
+  }
+
+  let children = [];
+  const childIdSet = new Set(
+    String(detail.box_products || detail.parcel_products || "")
+      .split(",")
+      .map((s) => Number(s.trim()))
+      .filter((n) => Number.isFinite(n) && n > 0 && n !== detail.id)
+  );
+
+  try {
+    let childQuery = `SELECT p.id, p.sku, p.group_type, p.polish_pcs, p.polish_carat, p.price, p.amount,
+                             p.outward, p.visibility, p.location, p.company,
+                             pv.shape, pv.color, pv.clarity, pv.cut, pv.report_no
+                      FROM dai_product p
+                      LEFT JOIN dai_product_value pv ON p.id = pv.product_id
+                      WHERE (p.parent_id = ? OR p.box_id = ? OR p.parcel_id = ?) AND p.id <> ?`;
+    const childParams = [detail.id, detail.id, detail.id, detail.id];
+    if (childIdSet.size > 0) {
+      childQuery += ` OR p.id IN (${[...childIdSet].map(() => "?").join(",")})`;
+      childParams.push(...childIdSet);
+    }
+    childQuery += ` ORDER BY p.id ASC LIMIT 200`;
+    const childRows = await queryAsync(childQuery, childParams);
+    children = (childRows || []).map((cr) => ({
+      id: cr.id,
+      sku: cr.sku,
+      group_type: cr.group_type || "single",
+      polish_pcs: cr.polish_pcs || 0,
+      polish_carat: cr.polish_carat || 0,
+      price: cr.price || 0,
+      amount: cr.amount || 0,
+      outward: cr.outward || "",
+      status: !cr.outward ? "AVAILABLE" : String(cr.outward).toUpperCase(),
+      shape: cr.shape || "",
+      color: cr.color || "",
+      clarity: cr.clarity || "",
+      cut: cr.cut || "",
+      report_no: cr.report_no || "",
+      visibility: cr.visibility,
+    }));
+  } catch (_) {}
+
+  let siblings = [];
+  if (parentId > 0 && parentId !== detail.id) {
+    try {
+      const sibRows = await queryAsync(
+        `SELECT p.id, p.sku, p.group_type, p.polish_pcs, p.polish_carat, p.price, p.amount,
+                p.outward, pv.shape, pv.color, pv.clarity
+         FROM dai_product p
+         LEFT JOIN dai_product_value pv ON p.id = pv.product_id
+         WHERE (p.parent_id = ? OR p.box_id = ? OR p.parcel_id = ?) AND p.id <> ?
+         ORDER BY p.id ASC LIMIT 50`,
+        [parentId, parentId, parentId, detail.id]
+      );
+      siblings = (sibRows || []).map((sr) => ({
+        id: sr.id,
+        sku: sr.sku,
+        group_type: sr.group_type || "single",
+        polish_pcs: sr.polish_pcs || 0,
+        polish_carat: sr.polish_carat || 0,
+        status: !sr.outward ? "AVAILABLE" : String(sr.outward).toUpperCase(),
+        shape: sr.shape || "",
+        color: sr.color || "",
+        clarity: sr.clarity || "",
+      }));
+    } catch (_) {}
+  }
+
+  let pair = null;
+  if (detail.pair && String(detail.pair).trim()) {
+    try {
+      const pairRows = await queryAsync(
+        `SELECT p.id, p.sku, p.group_type, p.polish_pcs, p.polish_carat, p.price, p.amount,
+                p.outward, pv.shape, pv.color, pv.clarity
+         FROM dai_product p
+         LEFT JOIN dai_product_value pv ON p.id = pv.product_id
+         WHERE UPPER(TRIM(p.sku)) = UPPER(?) LIMIT 1`,
+        [String(detail.pair).trim()]
+      );
+      if (pairRows?.length) {
+        const pr = pairRows[0];
+        pair = {
+          id: pr.id,
+          sku: pr.sku,
+          group_type: pr.group_type,
+          polish_pcs: pr.polish_pcs,
+          polish_carat: pr.polish_carat,
+          status: !pr.outward ? "AVAILABLE" : String(pr.outward).toUpperCase(),
+        };
+      }
+    } catch (_) {}
+  }
+
+  const transformations = [];
+  (history || []).forEach((h) => {
+    const act = String(h.action || "").toLowerCase().trim();
+    const desc = String(h.description || "").trim();
+    if (
+      [
+        "in_import", "import", "purchase", "in_memo", "in_consign",
+        "box_add", "to_box", "boxing", "unboxing", "from_box",
+        "parcel_add", "sku_change", "price_change", "hold", "unhold",
+        "memo", "memo_return", "sale", "export", "lab", "lab_return"
+      ].includes(act)
+    ) {
+      let typeLabel = "Movement";
+      let iconType = "arrow";
+      if (act === "in_import" || act === "purchase" || act === "import") {
+        typeLabel = "Inward Creation";
+        iconType = "inward";
+      } else if (act === "box_add" || act === "to_box" || act === "boxing") {
+        typeLabel = "Single → Box";
+        iconType = "box";
+      } else if (act === "unboxing" || act === "from_box") {
+        typeLabel = "Box → Single";
+        iconType = "unbox";
+      } else if (act === "parcel_add") {
+        typeLabel = "Single → Parcel";
+        iconType = "parcel";
+      } else if (act === "sku_change") {
+        typeLabel = "SKU Renamed";
+        iconType = "sku";
+      } else if (act === "price_change") {
+        typeLabel = "Price Changed";
+        iconType = "price";
+      } else if (act === "hold" || act === "unhold") {
+        typeLabel = act === "hold" ? "Put On Hold" : "Released from Hold";
+        iconType = "hold";
+      } else if (act === "memo") {
+        typeLabel = "Outward Memo";
+        iconType = "memo";
+      } else if (act === "memo_return") {
+        typeLabel = "Memo Return";
+        iconType = "return";
+      } else if (act === "sale") {
+        typeLabel = h.is_from_memo ? "Sale (from Memo)" : "Direct Sale";
+        iconType = "sale";
+      }
+
+      transformations.push({
+        id: h.id,
+        action: act,
+        type_label: typeLabel,
+        icon_type: iconType,
+        date: h.date_display || h.date,
+        description: desc,
+        invoice: h.invoice,
+        party: h.party_name || h.party,
+        pcs: h.pcs,
+        carat: h.carat,
+        balance_carat: h.balance_carat,
+        updated_by: h.updated_by,
+        is_from_memo: Boolean(h.is_from_memo),
+      });
+    }
+  });
+
+  return {
+    current,
+    parent,
+    children,
+    siblings,
+    pair,
+    transformations,
+    has_lineage: Boolean(parent || children.length > 0 || siblings.length > 0 || pair),
+  };
+}
+
 async function getStoneDetail(sku, companyId, userId) {
   const detail = await resolveStoneDetail(sku, companyId);
   if (!detail || !detail.id) return null;
@@ -712,34 +1269,57 @@ async function getStoneDetail(sku, companyId, userId) {
   let historySql = "SELECT * FROM dai_history WHERE product_id = ?";
   const historyValues = [detail.id];
   if (hideUser16(userId)) {
-    historySql += " AND user <> 16";
+    historySql += HISTORY_HIDE_USER16_SQL;
   }
   historySql += " ORDER BY id";
   // perf: history, box transfer, party map, and activity logs are independent
   const activityCompanyId = detail.company != null ? detail.company : companyId;
-  const [history, transfer, partyMap, activityLogs] = await Promise.all([
+  const stockCompanyId = Number(detail.company) || Number(companyId) || 0;
+  const [history, transfer, partyMap, userMap, activityLogs, companyRows] = await Promise.all([
     queryAsync(historySql, historyValues),
     getBoxHistoryByProductId(detail.id),
     getPartyMap(),
+    getUserMap(),
     getActivityLogForStone(sku, detail.id, activityCompanyId),
+    stockCompanyId > 0
+      ? metaQuery(
+          "SELECT id, name, shortcutName FROM company WHERE id = ? LIMIT 1",
+          [stockCompanyId]
+        ).catch(() => [])
+      : Promise.resolve([]),
   ]);
-  const mappedHistory = mapStoneHistoryRows(history, partyMap);
-  const enrichedHistory = enrichHistoryDates(mappedHistory, activityLogs);
+  const historyWithUsers = await backfillHistoryUsers(history);
+  const mappedHistory = mapStoneHistoryRows(historyWithUsers, partyMap, userMap);
+  const withMemoContext = enrichMemoReturnContext(mappedHistory);
+  const enrichedHistory = enrichHistoryDates(withMemoContext, activityLogs);
+  const lineageTree = await getStoneLineageTree(detail, enrichedHistory, stockCompanyId);
+  const stockSummary = computeStockSummary(detail, enrichedHistory);
 
   const lastUpdatedAt =
     activityLogs.length > 0
       ? activityLogs[activityLogs.length - 1].created_at
       : detail.date;
 
+  const companyMeta = companyRows?.[0] || null;
+  const companyName = companyMeta?.name || "";
+  const companyCode = companyMeta?.shortcutName || "";
+
   return {
     detail: {
       ...detail,
+      company_name: companyName,
+      company_code: companyCode,
       last_updated_at: lastUpdatedAt,
       last_updated_display: formatStoneDateTime(lastUpdatedAt),
     },
+    company_name: companyName,
+    company_code: companyCode,
     history: enrichedHistory,
     transfer,
     status: !detail.outward ? "AVAILABLE" : String(detail.outward).toUpperCase(),
+    stock_summary: stockSummary,
+    lineage: lineageTree,
+    activity_logs: activityLogs,
   };
 }
 
@@ -763,7 +1343,7 @@ async function getStoneOldHistory(sku, companyId, userId, currentDbName) {
       .filter((db) => db && db !== currentDb)
   )];
 
-  const userFilter = hideUser16(userId) ? " AND user <> 16" : "";
+  const userFilter = hideUser16(userId) ? HISTORY_HIDE_USER16_SQL : "";
   const sql = `SELECT * FROM dai_history WHERE product_id = ?${userFilter} ORDER BY date, id`;
   const rows = [];
 
@@ -778,11 +1358,11 @@ async function getStoneOldHistory(sku, companyId, userId, currentDbName) {
     }
   }
 
-  const partyMap = await getPartyMap();
+  const [partyMap, userMap] = await Promise.all([getPartyMap(), getUserMap()]);
   return {
     sku: detail.sku,
     product_id: detail.id,
-    history: mapStoneHistoryRows(rows, partyMap),
+    history: enrichMemoReturnContext(mapStoneHistoryRows(rows, partyMap, userMap)),
   };
 }
 
@@ -805,7 +1385,7 @@ async function getStoneInfoByParty(sku, companyId, userId) {
   for (const { party } of partyIds) {
     let sql = `SELECT * FROM dai_history WHERE product_id = ? AND party = ?`;
     const vals = [base.detail.id, party];
-    if (hideUser16(userId)) sql += " AND user <> 16";
+    if (hideUser16(userId)) sql += HISTORY_HIDE_USER16_SQL;
     sql += " ORDER BY date";
     const rows = await queryAsync(sql, vals);
 
@@ -923,7 +1503,7 @@ async function getOutwardTransactionRows(post, companyId, userId) {
   }
 
   const limit = parseInt(post.limit, 10) || 500;
-  const userFilter = hideUser16(userId) ? " AND user <> 16" : "";
+  const userFilter = hideUser16(userId) ? HISTORY_HIDE_USER16_SQL : "";
   const giaSql = buildGiaFilter(post);
 
   let typeSql = " AND type = ?";
@@ -1216,7 +1796,7 @@ async function getPurchaseTransactionRows(post, companyId, userId) {
   }
 
   const limit = parseInt(post.limit, 10) || 500;
-  const userFilter = hideUser16(userId) ? " AND user <> 16" : "";
+  const userFilter = hideUser16(userId) ? HISTORY_HIDE_USER16_SQL : "";
   const giaSql = buildGiaFilter(post);
 
   const inwardSql = `SELECT * FROM dai_inward
@@ -1363,6 +1943,7 @@ module.exports = {
   getStonePurchaseReport,
   getStoneDetail,
   getStoneOldHistory,
+  getUserMap,
   getStoneInfoByParty,
   getFilterOptions,
   getPartyMap,

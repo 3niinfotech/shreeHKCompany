@@ -98,6 +98,7 @@ export default defineConfig({
       '/role-delete': apiProxy(),
       '/permission-registry': apiProxy(),
       '/admin/tenant-company': apiProxy(),
+      '/admin/branch': apiProxy(),
       '/admin/activity-log': apiProxy(),
       '/portal': apiProxy(),
       '/config': apiProxy(),

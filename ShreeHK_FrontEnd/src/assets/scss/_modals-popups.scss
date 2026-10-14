@@ -144,3 +144,110 @@
     }
   }
 }
+
+/* Convert To Consign / Export — compact fit-content shell */
+.convert-export-modal-root .ant-modal-container,
+.convert-export-modal-root .ant-modal-content,
+.ant-modal-container.convert-export-modal-container {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+  height: auto !important;
+  max-height: calc(100vh - 40px) !important;
+}
+
+.convert-export-modal-root .ant-modal-header,
+.convert-export-modal-root .ant-modal-body,
+.convert-export-modal-root .ant-modal-footer {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+
+.convert-export-modal-root .ant-modal-header {
+  min-height: unset !important;
+  padding-inline: 0 !important;
+  border-bottom: 1px solid #e3e5ef !important;
+}
+
+.convert-export-modal-root .ant-modal-body {
+  padding-inline: 0 !important;
+  flex: 0 0 auto !important;
+  overflow: visible !important;
+}
+
+.convert-export-modal-root .ant-modal-footer {
+  padding-inline: 0 !important;
+  border-top: none !important;
+  box-shadow: none !important;
+  position: relative !important;
+}
+
+.convert-export-modal-root [class*="modalBody"] {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+
+/* Memo Return / Memo to Sale / Purchase — force 4px top/bottom */
+.memo-convert-modal-root .ant-modal-container,
+.memo-convert-modal-root .ant-modal-content,
+.ant-modal-container.memo-convert-modal-container {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+
+.memo-convert-modal-root .ant-modal-header,
+.memo-convert-modal-root .ant-modal-body,
+.memo-convert-modal-root .ant-modal-footer {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+
+.memo-convert-modal-root .ant-modal-header {
+  min-height: unset !important;
+  padding-inline: 12px !important;
+}
+
+.memo-convert-modal-root .ant-modal-body {
+  padding-inline: 12px !important;
+}
+
+.memo-convert-modal-root .ant-modal-footer {
+  padding: 4px 12px !important;
+  border-top: none !important;
+  box-shadow: none !important;
+}
+
+.memo-convert-modal-root [class*="modalBody"] {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+
+.memo-convert-modal-return [class*="modalBody"] {
+  flex: 1 1 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+
+/* Memo Return — taller shell (40% viewport) */
+.memo-convert-modal-return .ant-modal-container,
+.memo-convert-modal-return .ant-modal-content,
+.ant-modal-container.memo-convert-modal-return-container {
+  min-height: 40vh !important;
+  height: 40vh !important;
+}
+
+.memo-convert-modal-return .ant-modal-body {
+  min-height: calc(40vh - 96px) !important;
+  height: calc(40vh - 96px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.ant-modal-container.memo-convert-modal-return-container {
+  min-height: 40vh !important;
+  height: 40vh !important;
+}

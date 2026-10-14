@@ -40,6 +40,7 @@ const accSubgroupRouter = require("./routes/accounting/accSubgroupRoutes.js");
 const portalRouter = require("./routes/portal/portalRoutes.js");
 const integrationRouter = require("./routes/integration/integrationRoutes.js");
 const tenantCompanyRouter = require("./routes/admin/tenantCompanyRoutes.js");
+const branchRouter = require("./routes/admin/branchRoutes.js");
 const legacyApps = require("./config/legacyApps.js");
 const { authenticateToken, isSuperAdmin, enforceApiPermission } = require("./authMiddleware.js");
 const { proxyStoneMedia, MEDIA_PREFIX } = require("./routes/media/stoneMediaProxy.js");
@@ -92,6 +93,18 @@ const apiLimiter = rateLimit ? rateLimit({
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 app.get("/health", (req, res) => res.json({ ok: true }));
+// Prevent browser/proxy 304 on API GETs (empty body breaks React Query / axios)
+app.use((req, res, next) => {
+  if (req.path.startsWith("/uploads") || req.path.startsWith(MEDIA_PREFIX)) {
+    return next();
+  }
+  res.set({
+    "Cache-Control": "no-store, no-cache, must-revalidate, private",
+    Pragma: "no-cache",
+    Expires: "0",
+  });
+  next();
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(attachAuditContext);
@@ -115,6 +128,7 @@ app.use("/", accGroupRouter);
 app.use("/", accSubgroupRouter);
 app.use("/", portalRouter);
 app.use("/", tenantCompanyRouter);
+app.use("/", branchRouter);
 app.use("/", activityLogRouter);
 app.use("/", integrationRouter);
 app.use("/", productRouter);
@@ -163,8 +177,15 @@ app.use((err, req, res, next) => {
 const { ensureActivityLogTableOnMeta } = require("./scripts/ensureActivityLogTable.js");
 const { ensureUserActiveColumn } = require("./services/userActiveColumnService.js");
 const { ensureCompanyColumns } = require("./services/ensureCompanyColumnsService.js");
+const { ensureStockItemSchema, repairOrphanLabReturns } = require("./services/stockMovementService.js");
+const { ensureBranchSchema } = require("./services/ensureBranchSchemaService.js");
+const { fixDuplicateMemoEntryNos } = require("./services/renumberOutwardEntryService.js");
 
 ensureCompanyColumns().catch((err) => console.error("ensureCompanyColumns error:", err));
+ensureStockItemSchema().catch((err) => console.error("ensureStockItemSchema error:", err));
+ensureBranchSchema()
+  .then(() => console.log("branch schema ready (HK/Dubai + company.branch_id)"))
+  .catch((err) => console.error("ensureBranchSchema error:", err));
 
 
 if (process.env.ENABLE_HOLD_CRON === "true") {
@@ -203,6 +224,24 @@ app.listen(PORT, async () => {
     console.log("user.is_active column ready");
   } catch (e) {
     console.error("user.is_active bootstrap failed", e.message);
+  }
+  try {
+    const fixed = await fixDuplicateMemoEntryNos();
+    if (fixed.length) {
+      console.log(`outward entry/invoice renumbered for ${fixed.length} company(ies)`);
+    } else {
+      console.log("outward entry/invoice format OK (no renumber needed)");
+    }
+  } catch (e) {
+    console.error("outward entry/invoice renumber failed:", e.message);
+  }
+  try {
+    const labFix = await repairOrphanLabReturns();
+    if (labFix.fixed) {
+      console.log(`lab return balances restored for ${labFix.fixed} stone(s)`);
+    }
+  } catch (e) {
+    console.error("lab return balance repair failed:", e.message);
   }
   console.log(`Server is running on port ${PORT}`);
 });

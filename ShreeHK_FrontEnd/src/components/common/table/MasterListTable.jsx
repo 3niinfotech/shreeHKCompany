@@ -31,6 +31,8 @@ const MasterListTable = ({
     hideCrudActions = false,
     onRow,
     rowClassName,
+    /** Optional fixed table-body max-height (e.g. company-details: 662) */
+    tableScrollY,
 }) => {
     const theme = useThemeColors();
     const tableRef = useRef(null);
@@ -78,7 +80,8 @@ const MasterListTable = ({
         rowKey: "_skeletonKey",
     });
 
-    const tableHeight = useTableBodyScrollHeight(tableRef, [tableData.length, loading]);
+    const measuredHeight = useTableBodyScrollHeight(tableRef, [tableData.length, loading]);
+    const tableHeight = tableScrollY != null ? tableScrollY : measuredHeight;
 
     const resolveRowKey = (record) => {
         if (record?.__isSkeleton) return record._skeletonKey ?? record?.id ?? "skeleton";

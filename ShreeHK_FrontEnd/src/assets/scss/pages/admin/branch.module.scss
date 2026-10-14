@@ -1,0 +1,88 @@
+/* Branch-only accents on top of tenantCompany card layout */
+
+.avatarHk {
+  background: linear-gradient(145deg, #e85d4c, #c62828) !important;
+}
+
+.avatarDubai {
+  background: linear-gradient(145deg, #2bbbad, #0f766e) !important;
+}
+
+.avatarSurat {
+  background: linear-gradient(145deg, #5b8def, #1d4ed8) !important;
+}
+
+.branchCard {
+  position: relative;
+  overflow: hidden;
+  gap: 12px !important;
+}
+
+.branchHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.branchHeadMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.branchTitleRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.branchName {
+  margin: 0 !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  line-height: 1.3 !important;
+}
+
+.statusBadge {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.linkedBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.linkedLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary, #6b7f8f);
+}
+
+.linkedTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.linkedTag {
+  margin: 0 !important;
+  border: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  color: var(--color-primary-dark);
+  font-weight: 600;
+  font-size: 12px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.linkedEmpty {
+  font-size: 13px;
+  color: var(--color-text-muted, #94a3b8);
+}

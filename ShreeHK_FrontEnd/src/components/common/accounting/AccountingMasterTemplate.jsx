@@ -124,13 +124,35 @@ const AccountingMasterTemplate = ({
 
     const tableHeight = useTableBodyScrollHeight(tableRef, [tableData.length, loading]);
 
-    const handleTableScroll = (e) => {
-        if (showSkeleton) return;
-        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-        if (scrollHeight - scrollTop <= clientHeight + 20) {
-            if (!loading && hasMore && onLoadMore) {
+    // Native body scroll + auto-fill when first page does not overflow (no scrollbar = no load-more)
+    useEffect(() => {
+        if (showSkeleton || !hasMore || !onLoadMore || loading) return;
+
+        const tableBody = tableRef.current?.querySelector('.ant-table-body');
+        if (!tableBody) return;
+
+        const tryLoadMore = () => {
+            if (loading || !hasMore || !onLoadMore) return;
+            const { scrollTop, scrollHeight, clientHeight } = tableBody;
+            if (scrollHeight - scrollTop <= clientHeight + 40) {
                 onLoadMore();
             }
+        };
+
+        // If content does not fill the viewport, scroll never fires — load next page anyway
+        if (tableBody.scrollHeight <= tableBody.clientHeight + 40) {
+            tryLoadMore();
+        }
+
+        tableBody.addEventListener('scroll', tryLoadMore);
+        return () => tableBody.removeEventListener('scroll', tryLoadMore);
+    }, [showSkeleton, hasMore, onLoadMore, loading, tableData.length, tableHeight]);
+
+    const handleTableScroll = (e) => {
+        if (showSkeleton || loading || !hasMore || !onLoadMore) return;
+        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+        if (scrollHeight - scrollTop <= clientHeight + 40) {
+            onLoadMore();
         }
     };
 

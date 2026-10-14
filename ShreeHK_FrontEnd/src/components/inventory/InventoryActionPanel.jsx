@@ -26,14 +26,14 @@ export const INVENTORY_PRIMARY_ACTION_ITEMS = [
   { key: "unHold", label: "Un Hold", variant: "unHold", icon: Unlock },
   { key: "lab", label: "LAB", variant: "lab", icon: FlaskConical },
   { key: "hold", label: "Hold", variant: "hold", icon: Lock },
+  { key: "sale", label: "Sale", variant: "sale", icon: ShoppingCart },
+  { key: "changePrice", label: "Change Price", variant: "changePrice", icon: BadgeDollarSign },
   { key: "toExport", label: "To Export", variant: "toExport", icon: Send },
   { key: "reset", label: "Reset", variant: "reset", icon: RefreshCcw },
 ];
 
 /** Remaining items stay inside Actions popover */
 export const INVENTORY_ACTION_ITEMS = [
-  { key: "sale", label: "Sale", variant: "sale", icon: ShoppingCart },
-  { key: "changePrice", label: "Change Price", variant: "changePrice", icon: BadgeDollarSign },
   { key: "printLabel", label: "Print", variant: "labelA4", icon: Printer },
   { key: "labelA4", label: "Label A4", variant: "labelA4", icon: Printer },
   { key: "label", label: "Label", variant: "label", icon: Tag },

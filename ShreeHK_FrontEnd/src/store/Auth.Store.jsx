@@ -7,30 +7,50 @@ import { ENDPOINTS } from "../api/endpoints";
 /** Coarse granularity keeps persisted writes and subscriber re-renders infrequent. */
 const ACTIVITY_WRITE_INTERVAL_MS = 30 * 1000;
 
+const CLEARED_AUTH_STATE = {
+  user: null,
+  token: null,
+  permissions: [],
+  isAuthenticated: false,
+  companyId: null,
+  branchId: null,
+  branchName: null,
+  yearId: null,
+  companyName: null,
+  companyShortcutName: null,
+  companyLogo: null,
+  companyAddress: null,
+  companyNumber: null,
+  companyCity: null,
+  companyState: null,
+  companyPincode: null,
+  companyCountry: null,
+  companyEmail: null,
+  companyWebsite: null,
+  companyRapnetId: null,
+  dbName: null,
+  showContextPicker: false,
+  lastActiveAt: null,
+};
+
+/** Client-side JWT exp check so expired sessions never flash Branch picker. */
+const isJwtExpired = (token) => {
+  if (!token || typeof token !== "string") return true;
+  try {
+    const payloadPart = token.split(".")[1];
+    if (!payloadPart) return true;
+    const payload = JSON.parse(atob(payloadPart.replace(/-/g, "+").replace(/_/g, "/")));
+    if (payload?.exp == null) return false;
+    return Number(payload.exp) * 1000 <= Date.now();
+  } catch {
+    return true;
+  }
+};
+
 const useAuthStore = create(
   persist(
     (set, get) => ({
-      user: null,
-      token: null,
-      permissions: [],
-      isAuthenticated: false,
-      companyId: null,
-      yearId: null,
-      companyName: null,
-      companyShortcutName: null,
-      companyLogo: null,
-      companyAddress: null,
-      companyNumber: null,
-      companyCity: null,
-      companyState: null,
-      companyPincode: null,
-      companyCountry: null,
-      companyEmail: null,
-      companyWebsite: null,
-      companyRapnetId: null,
-      dbName: null,
-      showContextPicker: false,
-      lastActiveAt: null,
+      ...CLEARED_AUTH_STATE,
 
       setShowContextPicker: (show) => set({ showContextPicker: show }),
 
@@ -63,10 +83,22 @@ const useAuthStore = create(
           token,
           permissions,
           isAuthenticated: true,
-          companyId: context.companyId ?? get().companyId ?? null,
-          yearId: context.yearId ?? get().yearId ?? null,
-          companyName: context.companyName ?? user?.company_name ?? get().companyName ?? null,
-          companyShortcutName: context.companyShortcutName ?? get().companyShortcutName ?? null,
+          // Allow companyId: 0 (branch-only session before tenant company is created)
+          companyId:
+            context.companyId !== undefined ? context.companyId : (get().companyId ?? null),
+          branchId:
+            context.branchId !== undefined ? context.branchId : (get().branchId ?? null),
+          branchName:
+            context.branchName !== undefined ? context.branchName : (get().branchName ?? null),
+          yearId: context.yearId !== undefined ? context.yearId : (get().yearId ?? null),
+          companyName:
+            context.companyName !== undefined
+              ? context.companyName
+              : (user?.company_name ?? get().companyName ?? null),
+          companyShortcutName:
+            context.companyShortcutName !== undefined
+              ? context.companyShortcutName
+              : (get().companyShortcutName ?? null),
           companyLogo: context.companyLogo ?? get().companyLogo ?? null,
           companyAddress: context.companyAddress ?? get().companyAddress ?? null,
           companyNumber: context.companyNumber ?? context.companyTel ?? get().companyNumber ?? null,
@@ -87,6 +119,8 @@ const useAuthStore = create(
         const {
           token,
           companyId,
+          branchId,
+          branchName,
           yearId,
           companyName,
           companyShortcutName,
@@ -106,6 +140,8 @@ const useAuthStore = create(
         const updates = {};
         if (token) updates.token = token;
         if (companyId != null) updates.companyId = companyId;
+        if (branchId !== undefined) updates.branchId = branchId;
+        if (branchName !== undefined) updates.branchName = branchName;
         if (yearId != null) updates.yearId = yearId;
         if (companyName != null) updates.companyName = companyName;
         if (companyShortcutName != null) updates.companyShortcutName = companyShortcutName;
@@ -164,36 +200,22 @@ const useAuthStore = create(
             // Clear local session even if server logout fails
           }
         }
-        set({
-          user: null,
-          token: null,
-          permissions: [],
-          isAuthenticated: false,
-          companyId: null,
-          yearId: null,
-          companyName: null,
-          companyShortcutName: null,
-          companyLogo: null,
-          companyAddress: null,
-          companyNumber: null,
-          companyCity: null,
-          companyState: null,
-          companyPincode: null,
-          companyCountry: null,
-          companyEmail: null,
-          companyWebsite: null,
-          companyRapnetId: null,
-          dbName: null,
-          showContextPicker: false,
-          lastActiveAt: null,
-        });
+        set({ ...CLEARED_AUTH_STATE });
       },
     }),
     {
       name: "auth-storage",
       storage: createJSONStorage(() => localStorage),
       onRehydrateStorage: () => (state) => {
-        if (state?.user) {
+        if (!state) return;
+
+        const tokenGone = !state.token || isJwtExpired(state.token);
+        if (state.isAuthenticated && tokenGone) {
+          Object.assign(state, CLEARED_AUTH_STATE);
+          return;
+        }
+
+        if (state.user) {
           const user = normalizeAuthUser(state.user);
           state.user = user;
           state.permissions = user?.permissions ?? [];

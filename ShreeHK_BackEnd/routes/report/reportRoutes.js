@@ -132,14 +132,17 @@ reportRouter.get("/report/transfer-history", authenticateToken, async (req, res)
       fromDate: req.query.fromDate,
       toDate: req.query.toDate,
     });
-    const partyMap = await reportService.getPartyMap();
+    const [partyMap, userMap] = await Promise.all([
+      reportService.getPartyMap(),
+      reportService.getUserMap(),
+    ]);
     const Data = rows.map((r, i) => ({
       no: i + 1,
       sku: r.sku || "",
       date: r.date ? moment(r.date).format("YYYY/MM/DD") : "",
       toCompany: partyMap[r.party] || r.party || r.description || "",
       discription: r.description || "",
-      userBy: r.user || "",
+      userBy: userMap[r.user] || userMap[String(r.user)] || r.user || "",
     }));
     return res.json({ status: true, Data, TotalItems: Data.length });
   } catch (error) {
@@ -187,8 +190,6 @@ reportRouter.post("/report/outstanding", authenticateToken, async (req, res) => 
       filterParams.push(from, to);
     }
 
-    const page = parseInt(post.page, 10) || 1;
-    const offset = (page - 1) * 10;
     let query = "";
     let queryParams = [];
     const type = post.type;
@@ -208,8 +209,7 @@ reportRouter.post("/report/outstanding", authenticateToken, async (req, res) => 
                          LEFT JOIN dai_party p ON o.party = p.id AND p.company = ?
                          LEFT JOIN dai_product dp ON FIND_IN_SET(dp.id, o.products) AND dp.company = ?`;
     const saleGroupBy = `GROUP BY o.id, o.entryno, o.type, o.invoiceno, p.name, o.reference, o.invoicedate, o.date, o.duedate, o.terms, o.final_amount, o.paid_amount, o.due_amount
-                         ORDER BY o.date DESC, o.id DESC
-                         LIMIT ?, 10`;
+                         ORDER BY o.date DESC, o.id DESC`;
 
     if (type === "sale") {
       const userFilter = (userId === 16 || userId === 1) ? "" : " AND o.user != 16";
@@ -221,7 +221,7 @@ reportRouter.post("/report/outstanding", authenticateToken, async (req, res) => 
                          ${userFilter}
                          ${party} ${invoice} ${dateFilter}
                          ${saleGroupBy}`;
-      queryParams = [companyId, companyId, companyId, ...filterParams, offset];
+      queryParams = [companyId, companyId, companyId, ...filterParams];
     } else if (type === "purchase") {
       const userFilter = (userId === 16 || userId === 1) ? "" : " AND o.user != 16";
       query = `SELECT o.id, o.entryno, o.inward_type as type, o.invoiceno, p.name, o.reference,
@@ -241,9 +241,8 @@ reportRouter.post("/report/outstanding", authenticateToken, async (req, res) => 
                          AND (deleted = 0 OR deleted IS NULL)
                          ${userFilter}
                          ${party} ${invoice} ${dateFilter}
-                         ORDER BY o.date DESC, o.id DESC
-                         LIMIT ?, 10`;
-      queryParams = [companyId, companyId, ...filterParams, offset];
+                         ORDER BY o.date DESC, o.id DESC`;
+      queryParams = [companyId, companyId, ...filterParams];
     }
 
     connection.query(query, queryParams, (error, data) => {

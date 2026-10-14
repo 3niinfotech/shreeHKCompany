@@ -27,6 +27,7 @@ const InMemoStock = () => (
       editGetEndpoint: ENDPOINTS.inward.getById,
       printType: 'purchase',
     }}
+    infiniteScroll
   />
 );
 

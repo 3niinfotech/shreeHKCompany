@@ -15,11 +15,12 @@ import dayjs from "dayjs";
 import { BaseModal } from "../../common/modals";
 import { useFetchApi } from "../../../api/ApiFunction";
 import { ENDPOINTS, QUERY_KEYS } from "../../../api/endpoints";
+import useBranchCompanies from "../../../hooks/useBranchCompanies";
 import { toastWarning } from "../../../utils/toastNotify";
 import styles from "../../../assets/scss/pages/outward.module.scss";
+import { formatOutwardInvoiceNo } from "../../../utils/outwardInvoiceNo";
 
 const { Text } = Typography;
-const { TextArea } = Input;
 
 const ATTR_COLS = [
   { title: "Report No.", dataIndex: "report_no", width: 110 },
@@ -51,6 +52,7 @@ const ATTR_COLS = [
 const MemoConvertModal = ({
   open,
   mode = "sale",
+  returnVariant = "memo",
   record,
   productIds = [],
   products = [],
@@ -67,6 +69,7 @@ const MemoConvertModal = ({
     terms: 0,
     duedate: null,
     party: undefined,
+    operating_company_id: undefined,
     shipping_name: undefined,
     origin_of: undefined,
     shipping_charge: 0,
@@ -81,17 +84,44 @@ const MemoConvertModal = ({
     paid_amount: null,
     cheque: "",
   });
+  const [returnModalHeight, setReturnModalHeight] = useState(420);
 
   const isSale = mode === "sale";
-  const title = isSale ? "Memo to Sale" : "Memo Return";
+  const isPurchase = mode === "purchase";
+  const isReturnMode = mode === "return";
+  const isPurchaseReturn = isReturnMode && returnVariant === "purchase";
+  const isMemoHeader = isSale || isPurchase;
+
+  useEffect(() => {
+    if (!open || !isReturnMode) return undefined;
+    const updateHeight = () => {
+      // 40% of viewport height (min 360px)
+      setReturnModalHeight(Math.max(360, Math.round(window.innerHeight * 0.4)));
+    };
+    updateHeight();
+    window.addEventListener("resize", updateHeight);
+    return () => window.removeEventListener("resize", updateHeight);
+  }, [open, isReturnMode]);
+
+  const returnTableScrollY = Math.max(220, returnModalHeight - 160);
+  const title = isSale
+    ? "Memo to Sale"
+    : isPurchase
+      ? "Memo to Purchase"
+      : (isPurchaseReturn ? "Purchase Return" : "Memo Return");
+  const recordBadgePrefix = (isPurchase || isPurchaseReturn) ? "Inward" : "Outward";
 
   const { data: companyData } = useFetchApi(
     "GetCompany",
     ENDPOINTS.company.options,
     {},
     "GET",
-    { enabled: open && isSale }
+    { enabled: open && isMemoHeader }
   );
+  const {
+    options: branchCompanyOptions,
+    isLoading: isBranchCompanyLoading,
+  } = useBranchCompanies();
   const { data: shippingData } = useFetchApi(
     [QUERY_KEYS.shipping, "memo-sale"],
     ENDPOINTS.shipping.list,
@@ -109,6 +139,14 @@ const MemoConvertModal = ({
   const { data: bookData } = useFetchApi(
     ["memo-sale-books"],
     ENDPOINTS.accountingTxn.books,
+    {},
+    "GET",
+    { enabled: open && isSale }
+  );
+  // Fresh sale invoice from sequence — do not reuse memo invoice (duplicates Entry/Invoice #1)
+  const { data: incrementData } = useFetchApi(
+    ["memo-sale-increment", record?.id],
+    ENDPOINTS.common.increment,
     {},
     "GET",
     { enabled: open && isSale }
@@ -157,9 +195,9 @@ const MemoConvertModal = ({
     sku: p.sku || "-",
     group_type: p.group_type || "",
     location: p.location || p.loc || "",
-    remark: p.remark || "",
+    remark: p.remark || p.Remark || "",
     lab: p.lab || "",
-    report_no: p.report_no || "",
+    report_no: p.report_no || p.certificate || "",
     shape: p.shape || "",
     clarity: p.clarity || "",
     intensity: p.intensity || "",
@@ -169,22 +207,36 @@ const MemoConvertModal = ({
     polish: p.polish || "",
     symmentry: p.symmentry || p.symmetry || "",
     cut: p.cut || "",
-    f_intensity: p.f_intensity || p.fluorescence || "",
-    mesurment: p.mesurment || p.measurement || "",
-    table_pc: p.table_pc || "",
-    depth_pc: p.depth_pc || "",
+    f_intensity: p.f_intensity || p.fluorescence || p.fluro || "",
+    mesurment: p.mesurment || p.measurement || p.measurements || "",
+    table_pc: p.table_pc ?? p.table ?? "",
+    depth_pc: p.depth_pc ?? p.depth ?? "",
     gridle: p.gridle || p.girdle || "",
     bgm: p.bgm || "",
-    eyeclean: p.eyeclean || p.eyeClean || "",
+    eyeclean: p.eyeclean || p.eyeClean || p.eye_clean || "",
   });
 
   const buildRows = () => {
     if (!productIds?.length) return [];
-    return productIds.map((id) => {
+    // One row per product — duplicate ids from JOIN inflate pcs (5+5+5=15)
+    const uniqueIds = [...new Set(productIds.map(String))];
+    return uniqueIds.map((id) => {
       const p = products.find((row) => String(row.id) === String(id)) || {};
-      const pcs = Number(p.polish_pcs) || 0;
-      const carat = Number(p.polish_carat) || 0;
-      const price = Number(p.sell_price ?? p.price) || 0;
+      // Memo voucher line qty only — never remaining onhand / full stock polish_pcs
+      // (using polish_pcs here caused 15 when memo line was 5)
+      const linePcs = p.memo_line_pcs != null && p.memo_line_pcs !== "" ? Number(p.memo_line_pcs) : null;
+      const lineCarat = p.memo_line_carat != null && p.memo_line_carat !== "" ? Number(p.memo_line_carat) : null;
+      const pcs = linePcs != null && Number.isFinite(linePcs)
+        ? linePcs
+        : (Number(p.memo_pcs) || 0);
+      const carat = lineCarat != null && Number.isFinite(lineCarat)
+        ? lineCarat
+        : (Number(p.memo_carat) || 0);
+      const price = Number(
+        (isPurchase || isPurchaseReturn)
+          ? (p.purchase_price ?? p.price)
+          : (p.sell_price ?? p.price),
+      ) || 0;
       const cost = Number(p.cost) || 0;
       return {
         id: p.id || id,
@@ -203,15 +255,31 @@ const MemoConvertModal = ({
   const resetHeaderFromRecord = () => {
     const today = dayjs();
     const terms = Number(record?.terms) || 0;
+    const memoCompany =
+      Number(record?.company) ||
+      Number(branchCompanyOptions?.[0]?.value) ||
+      undefined;
+    const nextSaleInvoice =
+      incrementData?.Data?.invoice != null
+        ? formatOutwardInvoiceNo("sale", incrementData.Data.invoice)
+        : "";
+    const memoInv =
+      record?.invoiceno != null && String(record.invoiceno).trim() !== ""
+        ? String(record.invoiceno)
+        : "";
     setHeader({
-      invoice: record?.invoiceno || "",
-      reference: record?.reference || "",
+      // Sale gets next invoice #; purchase keeps memo/inward invoice editable
+      invoice: isSale ? nextSaleInvoice : (memoInv || ""),
+      reference:
+        record?.reference ||
+        (isSale && memoInv ? `Memo ${memoInv}` : ""),
       date: record?.date ? dayjs(record.date) : today,
       terms,
       duedate: record?.duedate
         ? dayjs(record.duedate)
         : today.add(terms, "day"),
       party: record?.party != null ? String(record.party) : undefined,
+      operating_company_id: memoCompany,
       shipping_name: record?.shipping_name != null && record.shipping_name !== ""
         ? String(record.shipping_name)
         : undefined,
@@ -240,11 +308,12 @@ const MemoConvertModal = ({
     }
     setRows(buildRows());
     setNarration("");
-    if (isSale) resetHeaderFromRecord();
-  }, [open, productIds, products, isSale, record]);
+    if (isMemoHeader) resetHeaderFromRecord();
+    // branchCompanyOptions / incrementData: refresh header when options or next invoice load
+  }, [open, productIds, products, isMemoHeader, isPurchaseReturn, record, branchCompanyOptions, incrementData]);
 
   useEffect(() => {
-    if (!isSale || !open) return;
+    if (!isMemoHeader || !open) return;
     const base = header.date ? dayjs(header.date) : null;
     if (!base?.isValid()) return;
     const days = Number(header.terms) || 0;
@@ -253,12 +322,12 @@ const MemoConvertModal = ({
       if (prev.duedate && dayjs(prev.duedate).isSame(nextDue, "day")) return prev;
       return { ...prev, duedate: nextDue };
     });
-  }, [header.date, header.terms, isSale, open]);
+  }, [header.date, header.terms, isMemoHeader, open]);
 
   const handleReset = () => {
     setRows(buildRows());
     setNarration("");
-    if (isSale) resetHeaderFromRecord();
+    if (isMemoHeader) resetHeaderFromRecord();
   };
 
   const updateRow = (id, field, value) => {
@@ -331,14 +400,18 @@ const MemoConvertModal = ({
         toastWarning(`Enter carat for SKU ${row.sku}`);
         return;
       }
-      if (isSale && (row.price === "" || row.price == null || Number.isNaN(Number(row.price)))) {
+      if ((isSale || isPurchase) && (row.price === "" || row.price == null || Number.isNaN(Number(row.price)))) {
         toastWarning(`Enter price for SKU ${row.sku}`);
         return;
       }
     }
 
-    if (isSale && !header.party) {
-      toastWarning("Select Company / Party");
+    if (isMemoHeader && !header.party) {
+      toastWarning("Select Party");
+      return;
+    }
+    if (isMemoHeader && !header.operating_company_id) {
+      toastWarning("Select Company");
       return;
     }
 
@@ -365,10 +438,22 @@ const MemoConvertModal = ({
       memo_id: record?.id,
       products: productsOut,
       record: payloadRecord,
-      type: isSale ? "sale" : "return",
-      party: isSale ? header.party : record?.party,
+      type: isSale ? "sale" : isPurchase ? "purchase" : "return",
+      party: isMemoHeader ? header.party : record?.party,
+      operating_company_id: isMemoHeader ? header.operating_company_id : undefined,
       narretion: narration,
     };
+
+    if (isPurchase) {
+      Object.assign(payload, {
+        invoiceno: header.invoice,
+        reference: header.reference,
+        date: header.date?.format?.("YYYY-MM-DD") ?? header.date,
+        invoicedate: header.date?.format?.("YYYY-MM-DD") ?? header.date,
+        terms: header.terms,
+        duedate: header.duedate?.format?.("YYYY-MM-DD") ?? header.duedate,
+      });
+    }
 
     if (isSale) {
       Object.assign(payload, {
@@ -406,6 +491,7 @@ const MemoConvertModal = ({
   };
 
   const columns = useMemo(() => {
+    // Full stone grid for Return Memo + Memo to Purchase (+ Sale)
     const cols = [
       {
         title: "No",
@@ -415,9 +501,9 @@ const MemoConvertModal = ({
         align: "center",
         render: (_v, _r, idx) => idx + 1,
       },
-      { title: "Mfg. code", dataIndex: "mfg_code", key: "mfg_code", width: 100, fixed: "left" },
-      { title: "D. No.", dataIndex: "diamond_no", key: "diamond_no", width: 90, fixed: "left" },
-      { title: "SKU", dataIndex: "sku", key: "sku", width: 160, fixed: "left" },
+      { title: "Mfg. code", dataIndex: "mfg_code", key: "mfg_code", width: 100 },
+      { title: "D. No.", dataIndex: "diamond_no", key: "diamond_no", width: 90 },
+      { title: "SKU", dataIndex: "sku", key: "sku", width: 120, fixed: "left" },
       {
         title: "Pcs",
         dataIndex: "polish_pcs",
@@ -457,7 +543,7 @@ const MemoConvertModal = ({
         key: "cost",
         width: 90,
         render: (v, row) =>
-          isSale ? (
+          (isSale || isPurchase) ? (
             <InputNumber
               min={0}
               step={0.01}
@@ -475,19 +561,16 @@ const MemoConvertModal = ({
         dataIndex: "price",
         key: "price",
         width: 90,
-        render: (v, row) =>
-          isSale ? (
-            <InputNumber
-              min={0}
-              step={0.01}
-              value={v}
-              size="small"
-              style={{ width: "100%" }}
-              onChange={(val) => updateRow(row.id, "price", val ?? 0)}
-            />
-          ) : (
-            Number(v || 0).toFixed(2)
-          ),
+        render: (v, row) => (
+          <InputNumber
+            min={0}
+            step={0.01}
+            value={v}
+            size="small"
+            style={{ width: "100%" }}
+            onChange={(val) => updateRow(row.id, "price", val ?? 0)}
+          />
+        ),
       },
       {
         title: "Amount",
@@ -504,11 +587,11 @@ const MemoConvertModal = ({
         key: c.dataIndex,
         width: c.width,
         ellipsis: true,
-        render: (v) => v || "",
+        render: (v) => (v == null || v === "" ? "" : String(v)),
       })),
     ];
     return cols;
-  }, [isSale]);
+  }, [isSale, isPurchase]);
 
   const scrollX = 48 + 100 + 90 + 120 + 80 + 90 + 90 + 90 + 100 + 90
     + ATTR_COLS.reduce((s, c) => s + c.width, 0);
@@ -517,7 +600,7 @@ const MemoConvertModal = ({
     <span className={styles.memoConvertTitle}>
       <span className={styles.memoConvertTitleText}>{title}</span>
       {record?.id ? (
-        <span className={styles.memoConvertBadge}>Outward-{record.id}</span>
+        <span className={styles.memoConvertBadge}>{recordBadgePrefix}-{record.id}</span>
       ) : null}
     </span>
   );
@@ -527,15 +610,49 @@ const MemoConvertModal = ({
       isOpen={open}
       onClose={onClose}
       title={titleNode}
-      width={isSale ? 1480 : 1280}
-      className={styles.memoConvertModal}
+      width="96vw"
+      style={{ maxWidth: 1680 }}
+      className={`memo-convert-modal ${styles.memoConvertModal}${isReturnMode ? ` ${styles.memoConvertModalReturn}` : ""}`}
+      rootClassName={`memo-convert-modal-root ${styles.memoConvertModalRoot}${isReturnMode ? " memo-convert-modal-return" : ""}`}
+      classNames={{
+        container: isReturnMode
+          ? "memo-convert-modal-container memo-convert-modal-return-container"
+          : "memo-convert-modal-container",
+        header: styles.memoConvertPadHeader,
+        body: isReturnMode
+          ? `${styles.memoConvertPadBody} ${styles.memoConvertPadBodyReturn}`
+          : styles.memoConvertPadBody,
+        footer: styles.memoConvertPadFooter,
+      }}
+      styles={{
+        container: {
+          paddingTop: 4,
+          paddingBottom: 4,
+          ...(isReturnMode
+            ? { height: returnModalHeight, minHeight: returnModalHeight }
+            : null),
+        },
+        header: { padding: "4px 12px", minHeight: "auto" },
+        body: {
+          padding: "4px 12px",
+          ...(isReturnMode
+            ? {
+                height: Math.max(260, returnModalHeight - 96),
+                minHeight: Math.max(260, returnModalHeight - 96),
+                overflow: "hidden",
+              }
+            : null),
+        },
+        footer: { padding: "4px 12px", borderTop: "none" },
+      }}
+      closable={false}
       footer={(
         <Space>
           <Button icon={<ReloadOutlined />} onClick={handleReset}>
             Reset
           </Button>
           <Button type="primary" icon={<CheckOutlined />} loading={loading} onClick={handleOk}>
-            {isSale ? "Save Sale" : "Return Memo"}
+            {isSale ? "Save Sale" : isPurchase ? "Save Purchase" : "Return Memo"}
           </Button>
           <Button danger onClick={onClose}>
             Close
@@ -543,105 +660,198 @@ const MemoConvertModal = ({
         </Space>
       )}
       content={(
-        <div className={styles.memoConvertBody}>
-          {isSale ? (
+        <div
+          className={`${styles.memoConvertBody}${isReturnMode ? ` ${styles.memoConvertBodyReturn}` : ""}`}
+          style={isReturnMode ? { minHeight: Math.max(240, returnModalHeight - 110) } : undefined}
+        >
+          {isMemoHeader ? (
             <div className={styles.memoConvertHeader}>
-              <div className={styles.memoConvertHeaderRow}>
-                <div className={styles.memoConvertField}>
-                  <label className={styles.memoConvertLbl}>Invoice</label>
-                  <Input
-                    value={header.invoice}
-                    onChange={(e) => setHeader((h) => ({ ...h, invoice: e.target.value }))}
-                  />
+              {isSale ? (
+                <>
+                  <div className={`${styles.memoConvertHeaderRow} ${styles.memoConvertHeaderRowSingle}`}>
+                    <div className={styles.memoConvertField}>
+                      <label className={styles.memoConvertLbl}>Invoice</label>
+                      <Input
+                        value={header.invoice}
+                        onChange={(e) => setHeader((h) => ({ ...h, invoice: e.target.value }))}
+                      />
+                    </div>
+                    <div className={styles.memoConvertField}>
+                      <label className={styles.memoConvertLbl}>Reference</label>
+                      <Input
+                        value={header.reference}
+                        onChange={(e) => setHeader((h) => ({ ...h, reference: e.target.value }))}
+                      />
+                    </div>
+                    <div className={`${styles.memoConvertField} ${styles.memoConvertFieldCompany}`}>
+                      <label className={styles.memoConvertLbl}>Party</label>
+                      <Select
+                        showSearch
+                        allowClear
+                        optionFilterProp="label"
+                        style={{ width: "100%" }}
+                        options={partyOptions}
+                        value={header.party}
+                        onChange={(v) => setHeader((h) => ({ ...h, party: v }))}
+                        placeholder="Select Party"
+                      />
+                    </div>
+                    <div className={`${styles.memoConvertField} ${styles.memoConvertFieldCompany}`}>
+                      <label className={styles.memoConvertLbl}>Company</label>
+                      <Select
+                        showSearch
+                        optionFilterProp="label"
+                        style={{ width: "100%" }}
+                        options={branchCompanyOptions}
+                        loading={isBranchCompanyLoading}
+                        value={header.operating_company_id}
+                        onChange={(v) => setHeader((h) => ({ ...h, operating_company_id: v }))}
+                        placeholder="Select Company"
+                      />
+                    </div>
+                    <div className={`${styles.memoConvertField} ${styles.memoConvertFieldMd}`}>
+                      <label className={styles.memoConvertLbl}>Shipping</label>
+                      <Select
+                        allowClear
+                        showSearch
+                        optionFilterProp="label"
+                        style={{ width: "100%" }}
+                        options={shippingOptions}
+                        value={header.shipping_name}
+                        onChange={(v) => setHeader((h) => ({ ...h, shipping_name: v }))}
+                        placeholder="Select Shipping"
+                      />
+                    </div>
+                  </div>
+                  <div className={`${styles.memoConvertHeaderRow} ${styles.memoConvertHeaderRowSingle}`}>
+                    <div className={`${styles.memoConvertField} ${styles.memoConvertFieldMd}`}>
+                      <label className={styles.memoConvertLbl}>Origin</label>
+                      <Select
+                        allowClear
+                        showSearch
+                        optionFilterProp="label"
+                        style={{ width: "100%" }}
+                        options={originOptions}
+                        value={header.origin_of}
+                        onChange={(v) => setHeader((h) => ({ ...h, origin_of: v }))}
+                        placeholder="Select Origin"
+                      />
+                    </div>
+                    <div className={styles.memoConvertField}>
+                      <label className={styles.memoConvertLbl}>Date</label>
+                      <DatePicker
+                        style={{ width: "100%" }}
+                        format="DD-MM-YYYY"
+                        value={header.date}
+                        onChange={(v) => setHeader((h) => ({ ...h, date: v }))}
+                      />
+                    </div>
+                    <div className={`${styles.memoConvertField} ${styles.memoConvertFieldTerms}`}>
+                      <label className={styles.memoConvertLbl}>Terms</label>
+                      <InputNumber
+                        min={0}
+                        style={{ width: "100%" }}
+                        value={header.terms}
+                        onChange={(v) => setHeader((h) => ({ ...h, terms: v ?? 0 }))}
+                      />
+                    </div>
+                    <div className={styles.memoConvertField}>
+                      <label className={styles.memoConvertLbl}>Due Date</label>
+                      <DatePicker
+                        style={{ width: "100%" }}
+                        format="DD-MM-YYYY"
+                        value={header.duedate}
+                        onChange={(v) => setHeader((h) => ({ ...h, duedate: v }))}
+                      />
+                    </div>
+                    <div className={styles.memoConvertField}>
+                      <label className={styles.memoConvertLbl}>Charge</label>
+                      <InputNumber
+                        min={0}
+                        style={{ width: "100%" }}
+                        value={header.shipping_charge}
+                        onChange={(v) => setHeader((h) => ({ ...h, shipping_charge: v ?? 0 }))}
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className={`${styles.memoConvertHeaderRow} ${styles.memoConvertHeaderRowSingle}`}>
+                  <div className={styles.memoConvertField}>
+                    <label className={styles.memoConvertLbl}>Invoice</label>
+                    <Input
+                      value={header.invoice}
+                      onChange={(e) => setHeader((h) => ({ ...h, invoice: e.target.value }))}
+                    />
+                  </div>
+                  <div className={styles.memoConvertField}>
+                    <label className={styles.memoConvertLbl}>Reference</label>
+                    <Input
+                      value={header.reference}
+                      onChange={(e) => setHeader((h) => ({ ...h, reference: e.target.value }))}
+                    />
+                  </div>
+                  <div className={`${styles.memoConvertField} ${styles.memoConvertFieldCompany}`}>
+                    <label className={styles.memoConvertLbl}>Party</label>
+                    <Select
+                      showSearch
+                      allowClear
+                      optionFilterProp="label"
+                      style={{ width: "100%" }}
+                      options={partyOptions}
+                      value={header.party}
+                      onChange={(v) => setHeader((h) => ({ ...h, party: v }))}
+                      placeholder="Select Party"
+                    />
+                  </div>
+                  <div className={`${styles.memoConvertField} ${styles.memoConvertFieldCompany}`}>
+                    <label className={styles.memoConvertLbl}>Company</label>
+                    <Select
+                      showSearch
+                      optionFilterProp="label"
+                      style={{ width: "100%" }}
+                      options={branchCompanyOptions}
+                      loading={isBranchCompanyLoading}
+                      value={header.operating_company_id}
+                      onChange={(v) => setHeader((h) => ({ ...h, operating_company_id: v }))}
+                      placeholder="Select Company"
+                    />
+                  </div>
+                  <div className={styles.memoConvertField}>
+                    <label className={styles.memoConvertLbl}>Date</label>
+                    <DatePicker
+                      style={{ width: "100%" }}
+                      format="DD-MM-YYYY"
+                      value={header.date}
+                      onChange={(v) => setHeader((h) => ({ ...h, date: v }))}
+                    />
+                  </div>
+                  <div className={`${styles.memoConvertField} ${styles.memoConvertFieldTerms}`}>
+                    <label className={styles.memoConvertLbl}>Terms</label>
+                    <InputNumber
+                      min={0}
+                      style={{ width: "100%" }}
+                      value={header.terms}
+                      onChange={(v) => setHeader((h) => ({ ...h, terms: v ?? 0 }))}
+                    />
+                  </div>
+                  <div className={styles.memoConvertField}>
+                    <label className={styles.memoConvertLbl}>Due Date</label>
+                    <DatePicker
+                      style={{ width: "100%" }}
+                      format="DD-MM-YYYY"
+                      value={header.duedate}
+                      onChange={(v) => setHeader((h) => ({ ...h, duedate: v }))}
+                    />
+                  </div>
                 </div>
-                <div className={styles.memoConvertField}>
-                  <label className={styles.memoConvertLbl}>Reference</label>
-                  <Input
-                    value={header.reference}
-                    onChange={(e) => setHeader((h) => ({ ...h, reference: e.target.value }))}
-                  />
-                </div>
-                <div className={`${styles.memoConvertField} ${styles.memoConvertFieldMd}`}>
-                  <label className={styles.memoConvertLbl}>Date</label>
-                  <DatePicker
-                    style={{ width: "100%" }}
-                    format="DD-MM-YYYY"
-                    value={header.date}
-                    onChange={(v) => setHeader((h) => ({ ...h, date: v }))}
-                  />
-                </div>
-                <div className={styles.memoConvertField}>
-                  <label className={styles.memoConvertLbl}>Terms</label>
-                  <InputNumber
-                    min={0}
-                    style={{ width: "100%" }}
-                    value={header.terms}
-                    onChange={(v) => setHeader((h) => ({ ...h, terms: v ?? 0 }))}
-                  />
-                </div>
-                <div className={`${styles.memoConvertField} ${styles.memoConvertFieldMd}`}>
-                  <label className={styles.memoConvertLbl}>Due Date</label>
-                  <DatePicker
-                    style={{ width: "100%" }}
-                    format="DD-MM-YYYY"
-                    value={header.duedate}
-                    onChange={(v) => setHeader((h) => ({ ...h, duedate: v }))}
-                  />
-                </div>
-              </div>
-              <div className={styles.memoConvertHeaderRow}>
-                <div className={`${styles.memoConvertField} ${styles.memoConvertFieldWide}`}>
-                  <label className={styles.memoConvertLbl}>Company</label>
-                  <Select
-                    showSearch
-                    optionFilterProp="label"
-                    style={{ width: "100%" }}
-                    options={partyOptions}
-                    value={header.party}
-                    onChange={(v) => setHeader((h) => ({ ...h, party: v }))}
-                    placeholder="Select Company"
-                  />
-                </div>
-                <div className={`${styles.memoConvertField} ${styles.memoConvertFieldMd}`}>
-                  <label className={styles.memoConvertLbl}>Shipping</label>
-                  <Select
-                    allowClear
-                    showSearch
-                    optionFilterProp="label"
-                    style={{ width: "100%" }}
-                    options={shippingOptions}
-                    value={header.shipping_name}
-                    onChange={(v) => setHeader((h) => ({ ...h, shipping_name: v }))}
-                    placeholder="Select Shipping"
-                  />
-                </div>
-                <div className={`${styles.memoConvertField} ${styles.memoConvertFieldMd}`}>
-                  <label className={styles.memoConvertLbl}>Origin</label>
-                  <Select
-                    allowClear
-                    showSearch
-                    optionFilterProp="label"
-                    style={{ width: "100%" }}
-                    options={originOptions}
-                    value={header.origin_of}
-                    onChange={(v) => setHeader((h) => ({ ...h, origin_of: v }))}
-                    placeholder="Select Origin"
-                  />
-                </div>
-                <div className={styles.memoConvertField}>
-                  <label className={styles.memoConvertLbl}>Charge</label>
-                  <InputNumber
-                    min={0}
-                    style={{ width: "100%" }}
-                    value={header.shipping_charge}
-                    onChange={(v) => setHeader((h) => ({ ...h, shipping_charge: v ?? 0 }))}
-                  />
-                </div>
-              </div>
+              )}
             </div>
           ) : null}
 
-          <div className={styles.stockEditProductWrap}>
+          <div
+            className={`${styles.stockEditProductWrap}${isReturnMode ? ` ${styles.stockEditProductWrapReturn}` : ""}`}
+          >
             <Table
               className={styles.stockEditProductTable}
               size="small"
@@ -649,7 +859,10 @@ const MemoConvertModal = ({
               pagination={false}
               dataSource={rows}
               columns={columns}
-              scroll={{ x: scrollX, y: isSale ? 240 : 280 }}
+              scroll={{
+                x: scrollX,
+                y: isMemoHeader ? 260 : isReturnMode ? returnTableScrollY : 300,
+              }}
             />
             <div className={styles.stockEditTotalsBar}>
               <div className={styles.stockEditTotalsMetrics}>
@@ -667,16 +880,6 @@ const MemoConvertModal = ({
                 </span>
               </div>
             </div>
-          </div>
-
-          <div className={styles.memoConvertNarration}>
-            <label>Narration</label>
-            <TextArea
-              rows={2}
-              value={narration}
-              placeholder="Narration..."
-              onChange={(e) => setNarration(e.target.value)}
-            />
           </div>
 
           {isSale ? (
@@ -739,7 +942,23 @@ const MemoConvertModal = ({
 
               <div className={styles.memoConvertPayRow}>
                 <div className={styles.memoConvertPayCheck}>
-                  <Checkbox checked={onPayment} onChange={(e) => setOnPayment(e.target.checked)}>
+                  <Checkbox
+                    checked={onPayment}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setOnPayment(checked);
+                      if (checked) {
+                        setPayment((prev) => ({
+                          ...prev,
+                          bdate: prev.bdate || dayjs(),
+                          paid_amount:
+                            prev.paid_amount != null
+                              ? prev.paid_amount
+                              : Number(discountCalc.finalAmount.toFixed(2)),
+                        }));
+                      }
+                    }}
+                  >
                     On Payment
                   </Checkbox>
                 </div>
@@ -749,9 +968,11 @@ const MemoConvertModal = ({
                     style={{ width: "100%" }}
                     options={bookOptions}
                     value={payment.book}
-                    onChange={(v) => setPayment((p) => ({ ...p, book: v }))}
+                    onChange={(v) => {
+                      setOnPayment(true);
+                      setPayment((p) => ({ ...p, book: v }));
+                    }}
                     placeholder="Book"
-                    disabled={!onPayment}
                   />
                 </div>
                 <div className={styles.memoConvertExtraGroup}>
@@ -760,8 +981,10 @@ const MemoConvertModal = ({
                     style={{ width: "100%" }}
                     format="DD-MM-YYYY"
                     value={payment.bdate}
-                    onChange={(v) => setPayment((p) => ({ ...p, bdate: v }))}
-                    disabled={!onPayment}
+                    onChange={(v) => {
+                      setOnPayment(true);
+                      setPayment((p) => ({ ...p, bdate: v }));
+                    }}
                   />
                 </div>
                 <div className={styles.memoConvertExtraGroup}>
@@ -769,16 +992,29 @@ const MemoConvertModal = ({
                   <InputNumber
                     style={{ width: "100%" }}
                     value={payment.paid_amount}
-                    onChange={(v) => setPayment((p) => ({ ...p, paid_amount: v }))}
-                    disabled={!onPayment}
+                    onChange={(v) => {
+                      setOnPayment(true);
+                      setPayment((p) => ({ ...p, paid_amount: v }));
+                    }}
                   />
                 </div>
                 <div className={styles.memoConvertExtraGroup}>
                   <label className={styles.memoConvertLbl}>Cheque</label>
                   <Input
                     value={payment.cheque}
-                    onChange={(e) => setPayment((p) => ({ ...p, cheque: e.target.value }))}
-                    disabled={!onPayment}
+                    onChange={(e) => {
+                      setOnPayment(true);
+                      setPayment((p) => ({ ...p, cheque: e.target.value }));
+                    }}
+                  />
+                </div>
+                <div className={`${styles.memoConvertExtraGroup} ${styles.memoConvertNarrationInExtras}`}>
+                  <label className={styles.memoConvertLbl}>Narration</label>
+                  <Input
+                    value={narration}
+                    placeholder="Enter Narration"
+                    onChange={(e) => setNarration(e.target.value)}
+                    allowClear
                   />
                 </div>
               </div>

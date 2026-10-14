@@ -69,20 +69,34 @@ const GroupReport = () => {
 
     const columns = [
         { title: 'No', dataIndex: 'no', key: 'no', width: 60, align: 'center', fixed: 'left' },
-        { title: 'Company', dataIndex: 'company', key: 'company', width: 240, fixed: 'left' },
-        { title: 'Date', dataIndex: 'date', key: 'date', width: 100, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
-        { title: 'Invoice', dataIndex: 'invoice', key: 'invoice', width: 120 },
         { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 100, render: (text, record) => <SkuLink sku={text} record={record} /> },
-        { title: 'Lab', dataIndex: 'lab', key: 'lab', width: 120 },
-        { title: 'Report No', dataIndex: 'reportNo', key: 'reportNo', width: 120 },
-        { title: 'P.pcs', dataIndex: 'pcs', key: 'pcs', align: 'center', width: 80 },
-        { title: 'P.Carat', dataIndex: 'carat', key: 'carat', align: 'right', width: 100 },
-        { title: 'Price', dataIndex: 'price', key: 'price', align: 'right', width: 100 },
-        { title: 'Amount', dataIndex: 'amount', key: 'amount', align: 'right', width: 120 },
-        { title: 'Shape', dataIndex: 'shape', key: 'shape', width: 100 },
-        { title: 'Color', dataIndex: 'color', key: 'color', width: 80 },
-        { title: 'Clarity', dataIndex: 'clarity', key: 'clarity', width: 100 },
-        { title: 'Remark', dataIndex: 'remark', key: 'remark', width: 120 },
+        { title: 'Party', dataIndex: 'company', key: 'company', width: 220, fixed: 'left' },
+        { title: 'Date', dataIndex: 'date', key: 'date', width: 100, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
+        { title: 'Invoice', dataIndex: 'invoice', key: 'invoice', width: 120, align: 'center' },
+        { title: 'Lab', dataIndex: 'lab', key: 'lab', width: 50, align: 'center' },
+        { title: 'Report No', dataIndex: 'reportNo', key: 'reportNo', width: 120, align: 'center' },
+        { title: 'P.pcs', dataIndex: 'pcs', key: 'pcs', align: 'center', width: 50 },
+        { title: 'P.Carat', dataIndex: 'carat', key: 'carat', align: 'center', width: 55 },
+        {
+            title: 'Price',
+            dataIndex: 'price',
+            key: 'price',
+            align: 'right',
+            width: 90,
+            render: (v) => <span style={{ color: 'var(--color-success-dark)' }}>{v ?? '-'}</span>,
+        },
+        {
+            title: 'Amount',
+            dataIndex: 'amount',
+            key: 'amount',
+            align: 'right',
+            width: 110,
+            render: (v) => <span style={{ color: 'var(--color-primary-dark)' }}>{v ?? '-'}</span>,
+        },
+        { title: 'Shape', dataIndex: 'shape', key: 'shape', width: 60, align: 'center' },
+        { title: 'Color', dataIndex: 'color', key: 'color', width: 40, align: 'center' },
+        { title: 'Clarity', dataIndex: 'clarity', key: 'clarity', width: 80, align: 'center' },
+        { title: 'Remark', dataIndex: 'remark', key: 'remark', width: 100 },
         { title: 'Main Group', dataIndex: 'mainGroup', key: 'mainGroup', width: 130 },
         { title: 'Sub Group', dataIndex: 'subGroup', key: 'subGroup', width: 130 },
     ];
@@ -248,7 +262,7 @@ const GroupReport = () => {
                         columns={columns}
                         dataSource={tableData}
                         loading={tableLoading}
-                        pagination={{ pageSize: 50 }}
+                        pagination={false}
                         bordered
                         size="small"
                         scroll={{ x: "max-content", y: tableHeight }}

@@ -191,7 +191,7 @@ const Integrations = () => {
   ];
 
   return (
-    <div style={{ padding: '7px 24px' }}>
+    <div className="page-shell" style={{ gap: 10 }}>
       <Title level={3} style={{ margin: 0 }}>Integrations</Title>
       <Tabs items={items} />
     </div>

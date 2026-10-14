@@ -1,25 +1,125 @@
 @use '../../variables' as *;
 
 .pageContainer {
-    padding: 16px 18px 20px;
-    height: var(--app-page-height);
+    flex: 1 1 auto;
+    height: 100%;
     min-height: 0;
+    width: 100%;
+    box-sizing: border-box;
     background: var(--color-page-bg);
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 10px;
     overflow: hidden;
 }
 
 .tableWrap {
-    flex: 1;
+    flex: 1 1 auto;
     min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-page-bg, #fff);
+}
+
+.tableBodyArea {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+
+    :global(.ant-table-wrapper),
+    :global(.ant-spin-nested-loading),
+    :global(.ant-spin-container) {
+        height: 100% !important;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    :global(.ant-table) {
+        flex: 1 1 auto;
+        min-height: 0;
+        height: 100% !important;
+        display: flex;
+        flex-direction: column;
+    }
+
+    :global(.ant-table-container) {
+        flex: 1 1 auto;
+        min-height: 0;
+        height: 100% !important;
+        display: flex;
+        flex-direction: column;
+    }
+
+    :global(.ant-table-header) {
+        flex-shrink: 0;
+    }
+
+    // Scroll area fills viewport; inner table stays content-height (rows not stretched)
+    :global(.ant-table-body) {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        height: var(--table-scroll-y, auto) !important;
+        max-height: var(--table-scroll-y, none) !important;
+    }
+
+    :global(.ant-table-body > table) {
+        height: auto !important;
+    }
+
+    :global(.ant-table-tbody > tr > td) {
+        height: auto !important;
+        padding-top: 6px !important;
+        padding-bottom: 6px !important;
+        vertical-align: middle;
+    }
+
+    // Empty placeholder only: fill scroll body so no short gray strip
+    :global(.ant-table-placeholder) {
+        height: var(--table-scroll-y, 100%) !important;
+    }
+
+    :global(.ant-table-placeholder .ant-table-cell) {
+        height: var(--table-scroll-y, auto) !important;
+        vertical-align: middle;
+    }
+
+    :global(.ant-table-pagination) {
+        flex-shrink: 0;
+        margin: 8px 0 0 !important;
+    }
+}
+
+.tableFooterBar {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 6px 12px;
+    border-top: 1px solid var(--color-border);
+    background: var(--color-page-bg, #fff);
+}
+
+.tableFooterText {
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.tableFooterSelect {
+    width: 100px;
 }
 
 .customTable {
-    background: $card-bg;
-    border: 0.5px solid $border-color;
-    border-radius: $radius-card;
+    height: 100%;
+    background: transparent;
+    border: none;
+    border-radius: 0;
     overflow: hidden;
 
     :global(.ant-table-thead > tr > th) {

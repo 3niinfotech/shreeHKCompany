@@ -261,6 +261,60 @@ async function addSinglesToParcel(body, userContext = {}) {
   };
 }
 
+const IMPORT_DATE_CATEGORY_NAME = /^\d{2}-\d{2}-\d{4}$/;
+
+function isImportDateCategoryName(name) {
+  return IMPORT_DATE_CATEGORY_NAME.test(String(name || "").trim());
+}
+
+function categoryStoneCount(cat, countMap) {
+  const byId = Number(countMap[String(cat.id)]) || 0;
+  const byName = Number(countMap[String(cat.name)]) || 0;
+  return byId + byName;
+}
+
+function countStonesForCategoryGroup(ids, name, countMap) {
+  let total = Number(countMap[String(name)]) || 0;
+  for (const id of ids) {
+    total += Number(countMap[String(id)]) || 0;
+  }
+  return total;
+}
+
+function mergeTreeNodesByName(nodes, countMap) {
+  if (!nodes?.length) return [];
+  const grouped = new Map();
+  for (const node of nodes) {
+    const nameKey = String(node.name || "").trim().toLowerCase();
+    if (!grouped.has(nameKey)) {
+      grouped.set(nameKey, {
+        name: node.name,
+        categoryIds: [...node.categoryIds],
+        children: [...(node.children || [])],
+      });
+      continue;
+    }
+    const existing = grouped.get(nameKey);
+    existing.categoryIds.push(...node.categoryIds);
+    existing.children.push(...(node.children || []));
+  }
+  return [...grouped.values()]
+    .map((group) => {
+      const categoryIds = [...new Set(group.categoryIds.map(String))];
+      const mergedChildren = mergeTreeNodesByName(group.children, countMap);
+      const stoneCount = countStonesForCategoryGroup(categoryIds, group.name, countMap);
+      if (isImportDateCategoryName(group.name) && stoneCount === 0 && !mergedChildren.length) {
+        return null;
+      }
+      return {
+        title: `${group.name} (${stoneCount})`,
+        key: categoryIds.join(","),
+        children: mergedChildren,
+      };
+    })
+    .filter(Boolean);
+}
+
 async function getCategorizeTree() {
   const categories = await helper.query(
     `SELECT id, name, parent FROM category ORDER BY name`,
@@ -272,18 +326,29 @@ async function getCategorizeTree() {
     (counts || []).map((r) => [String(r.category), Number(r.cnt) || 0]),
   );
 
+  const visibleCategories = (categories || []).filter((c) => {
+    if (isImportDateCategoryName(c.name) && categoryStoneCount(c, countMap) === 0) {
+      return false;
+    }
+    return true;
+  });
+
   const buildNode = (cat) => ({
-    title: `${cat.name} (${countMap[String(cat.id)] || 0})`,
-    key: String(cat.id),
-    children: (categories || [])
-      .filter((ch) => ch.parent === cat.name)
+    name: cat.name,
+    categoryIds: [String(cat.id)],
+    children: visibleCategories
+      .filter((ch) => Number(ch.parent) === Number(cat.id))
       .map(buildNode),
   });
 
-  const rootCats = (categories || []).filter(
-    (c) => !c.parent || c.parent === "" || !(categories || []).some((x) => x.name === c.parent),
-  );
-  return rootCats.map(buildNode);
+  const rootCats = visibleCategories.filter((c) => {
+    const parentId = Number(c.parent);
+    if (!c.parent || parentId === 0) return true;
+    return !visibleCategories.some((x) => Number(x.id) === parentId);
+  });
+
+  const rawTree = rootCats.map(buildNode);
+  return mergeTreeNodesByName(rawTree, countMap);
 }
 
 async function assignCategory(productIds, categoryId) {
@@ -384,10 +449,24 @@ async function assignCategory(productIds, categoryId) {
 }
 
 async function getCategoryStats(categoryId) {
+  const ids = String(categoryId || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!ids.length) {
+    return { total: 0, pcs: 0, carat: 0, amount: 0 };
+  }
+  const idPlaceholders = ids.map(() => "?").join(",");
+  const nameRows = await helper.query(
+    `SELECT DISTINCT name FROM category WHERE id IN (${idPlaceholders})`,
+    ids,
+  );
+  const keys = [...new Set([...ids, ...(nameRows || []).map((r) => String(r.name)).filter(Boolean)])];
+  const placeholders = keys.map(() => "?").join(",");
   const rows = await helper.query(
     `SELECT COUNT(*) AS total, SUM(polish_pcs) AS pcs, SUM(polish_carat) AS carat, SUM(amount) AS amount
-     FROM dai_product WHERE visibility = 1 AND category = ?`,
-    [String(categoryId)],
+     FROM dai_product WHERE visibility = 1 AND category IN (${placeholders})`,
+    keys,
   );
   return rows[0] || { total: 0, pcs: 0, carat: 0, amount: 0 };
 }

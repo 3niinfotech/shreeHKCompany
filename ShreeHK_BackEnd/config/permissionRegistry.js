@@ -54,6 +54,8 @@ const PAGE_ENTRIES = [
   { key: "accounting.transactions", label: "Transactions", path: "/accounting/account-transaction", moduleKey: "accounting", apiPrefixes: ["/transaction"], legacyKeys: ["account"] },
   { key: "accounting.advance_transaction", label: "Adv Transaction", path: "/accounting/advance-transaction", moduleKey: "accounting", apiPrefixes: ["/advance/", "/transaction"], legacyKeys: ["account"] },
   { key: "accounting.party_wise", label: "Party Wise Transaction", path: "/accounting/party-wise-transaction", moduleKey: "accounting", apiPrefixes: ["/partywisetransaction", "/ai/customer-insight"], legacyKeys: ["account_party", "account"] },
+  { key: "accounting.party", label: "Accounting Party", path: "/accounting/party", moduleKey: "accounting", apiPrefixes: ["/partywisetransaction"], legacyKeys: ["account_party", "account"] },
+  { key: "accounting.party_report", label: "Party Report", path: "/accounting/party-report", moduleKey: "accounting", apiPrefixes: ["/transaction", "/advance/assigned-invoice", "/company/getOption"], legacyKeys: ["account_party", "account"] },
   { key: "accounting.group", label: "Group", path: "/accounting/group", moduleKey: "accounting", apiPrefixes: ["/accounting/group"], legacyKeys: ["account"] },
   { key: "accounting.subgroup", label: "Sub Group", path: "/accounting/subgroup", moduleKey: "accounting", apiPrefixes: ["/accounting/subgroup"], legacyKeys: ["account"] },
 
@@ -67,6 +69,7 @@ const PAGE_ENTRIES = [
   { key: "reports.stone_info", label: "Party Stone Info", path: "/report/stone-info", moduleKey: "reports", apiPrefixes: ["/report/stone-info"], legacyKeys: ["stone_report"] },
 
   // Admin
+  { key: "admin.branch", label: "Branch", path: "/admin/branch", moduleKey: "admin", apiPrefixes: ["/admin/branch"], legacyKeys: ["company"] },
   { key: "admin.tenant_company", label: "Company (Tenant)", path: "/admin/tenant-company", moduleKey: "admin", apiPrefixes: ["/admin/tenant-company"], legacyKeys: ["company"] },
   { key: "admin.manage_user", label: "Manage User", path: "/admin/manage-user", moduleKey: "admin", apiPrefixes: ["/getAdminManageUser", "/admin-manage-user", "/manage-user/", "/getLoginAllUsers", "/addNewUser"], legacyKeys: ["user"] },
   { key: "admin.role", label: "Roll & Permissions", path: "/admin/roll", moduleKey: "admin", apiPrefixes: ["/role-list", "/role-add", "/role-update", "/role-delete", "/permission-registry"], legacyKeys: ["role"] },
@@ -83,7 +86,7 @@ const PAGE_ENTRIES = [
 const LEGACY_MODULE_MAP = {
   all: null,
   user: ["admin.manage_user"],
-  company: ["master.company", "admin.tenant_company"],
+  company: ["master.company", "admin.tenant_company", "admin.branch"],
   role: ["admin.role"],
   attribute: PAGE_ENTRIES.filter((p) => p.moduleKey === "master").map((p) => p.key),
   inventory: PAGE_ENTRIES.filter((p) => p.moduleKey === "inventory").map((p) => p.key),
@@ -103,7 +106,7 @@ const LEGACY_MODULE_MAP = {
   expanse: ["accounting.expanse", "accounting.expanse_list"],
   outstanding: ["reports.outstanding"],
   my_balance: ["accounting.my_balance"],
-  account_party: ["accounting.party_wise"],
+  account_party: ["accounting.party_wise", "accounting.party", "accounting.party_report"],
   account_report: PAGE_ENTRIES.filter((p) => p.moduleKey === "reports").map((p) => p.key),
   stock_report: ["inventory.on_hand_stock", "reports.group_report"],
   report_transaction: ["reports.transaction"],

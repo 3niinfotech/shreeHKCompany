@@ -8,13 +8,13 @@ export const api = axios.create({
 });
 
 let cachedAuthStorageRaw = null;
-let cachedContext = { token: null, companyId: null, yearId: null };
+let cachedContext = { token: null, companyId: null, yearId: null, branchId: null };
 
 const getAuthContext = () => {
     const authData = localStorage.getItem("auth-storage");
     if (!authData) {
         cachedAuthStorageRaw = null;
-        cachedContext = { token: null, companyId: null, yearId: null };
+        cachedContext = { token: null, companyId: null, yearId: null, branchId: null };
         return cachedContext;
     }
 
@@ -28,23 +28,35 @@ const getAuthContext = () => {
         const state = parsedData.state || {};
         cachedContext = {
             token: state.token || null,
-            companyId: state.companyId || null,
+            companyId: state.companyId ?? null,
             yearId: state.yearId || null,
+            branchId: state.branchId || null,
         };
         return cachedContext;
     } catch {
         localStorage.removeItem("auth-storage");
         cachedAuthStorageRaw = null;
-        cachedContext = { token: null, companyId: null, yearId: null };
+        cachedContext = { token: null, companyId: null, yearId: null, branchId: null };
         return cachedContext;
     }
 };
 
 api.interceptors.request.use((config) => {
-    const { token, companyId, yearId } = getAuthContext();
+    const { token, companyId, yearId, branchId } = getAuthContext();
     if (token) config.headers.Authorization = `Bearer ${token}`;
     if (companyId != null && companyId !== "") config.headers["X-Company-Id"] = String(companyId);
     if (yearId != null && yearId !== "") config.headers["X-Year-Id"] = String(yearId);
+    if (branchId != null && branchId !== "") config.headers["X-Branch-Id"] = String(branchId);
+    // Avoid HTTP 304 (cached empty body) on GETs like /admin/branch
+    config.headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+    config.headers.Pragma = "no-cache";
+    config.headers.Expires = "0";
+    if (typeof config.headers["If-None-Match"] !== "undefined") {
+        delete config.headers["If-None-Match"];
+    }
+    if (typeof config.headers["If-Modified-Since"] !== "undefined") {
+        delete config.headers["If-Modified-Since"];
+    }
     return config;
 });
 
@@ -64,7 +76,7 @@ api.interceptors.response.use(
         if (status === 401 && !isLoginRequest) {
             localStorage.removeItem("auth-storage");
             cachedAuthStorageRaw = null;
-            cachedContext = { token: null, companyId: null, yearId: null };
+            cachedContext = { token: null, companyId: null, yearId: null, branchId: null };
             window.location.href = "/auth/login";
         }
         return Promise.reject(error);

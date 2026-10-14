@@ -85,6 +85,52 @@ $compact-accent-hover: var(--color-primary-dark);
   white-space: nowrap;
 }
 
+.titleExtra {
+  display: flex;
+  align-items: center;
+  align-self: center;
+  height: 32px;
+  min-width: 220px;
+  --ant-color-text-placeholder: #000000;
+  --ant-color-text-quaternary: #000000;
+  --ant-color-border: #9fa2ae;
+
+  :global(.ant-select) {
+    width: 220px !important;
+    height: 32px;
+    --ant-color-text-placeholder: #000000 !important;
+    --ant-color-text-quaternary: #000000 !important;
+    --ant-color-border: #9fa2ae !important;
+  }
+
+  :global(.ant-select-selector) {
+    height: 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    border: 0.5px solid #9fa2ae !important;
+  }
+
+  :global(.ant-select:hover .ant-select-selector),
+  :global(.ant-select-focused .ant-select-selector),
+  :global(.ant-select-open .ant-select-selector) {
+    border: 0.5px solid #9fa2ae !important;
+  }
+
+  :global(.ant-select-selection-item),
+  :global(.ant-select-selection-placeholder) {
+    line-height: 30px !important;
+    display: flex;
+    align-items: center;
+  }
+
+  :global(.ant-select-selection-placeholder),
+  :global(.ant-select-selection-placeholder *) {
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+    opacity: 1 !important;
+  }
+}
+
 .totalBadge {
   font-size: 11px;
   font-weight: 600;
@@ -101,30 +147,16 @@ $compact-accent-hover: var(--color-primary-dark);
 }
 
 .compactRow {
-  // display: flex;
-  // align-items: center;
-  // grid-area: compact;
-  // flex-wrap: wrap;
-  // gap: 8px;
-  // min-width: 0;
-  // min-height: 36px;
-  // padding: 0;
-  // overflow: visible;
   display: flex;
   align-items: center;
   gap: 8px;
-
   flex: 0 1 auto;
   min-width: 0;
-
   flex-wrap: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
-
-  scrollbar-width: thin;
-
-  --ant-color-text-placeholder: #3A3F55;
-  --ant-input-placeholder-color: #3A3F55;
+  --ant-color-text-placeholder: #3a3f55;
+  --ant-input-placeholder-color: #3a3f55;
 
   &::-webkit-scrollbar {
     height: 5px;
@@ -140,7 +172,7 @@ $compact-accent-hover: var(--color-primary-dark);
   :global(.ant-select-selection-item),
   :global(.ant-select-selection-placeholder),
   :global(.ant-select-arrow) {
-    color: #3A3F55 !important;
+    color: #3a3f55 !important;
   }
 
   :global(.ant-input::placeholder),
@@ -148,8 +180,8 @@ $compact-accent-hover: var(--color-primary-dark);
   :global(input::placeholder),
   :global(.ant-select-selection-placeholder),
   :global(.ant-select-selection-placeholder *) {
-    color: #3A3F55 !important;
-    -webkit-text-fill-color: #3A3F55 !important;
+    color: #3a3f55 !important;
+    -webkit-text-fill-color: #3a3f55 !important;
     opacity: 1 !important;
   }
 }
@@ -257,8 +289,9 @@ $compact-accent-hover: var(--color-primary-dark);
 }
 
 .caratInput {
-  width: 104px !important;
-  min-width: 104px !important;
+  width: 72px !important;
+  min-width: 72px !important;
+  max-width: 72px !important;
   height: 32px !important;
   font-size: 12px !important;
   border-radius: 6px !important;
@@ -267,6 +300,7 @@ $compact-accent-hover: var(--color-primary-dark);
   border: 0.5px solid #9fa2ae !important;
   color: #3A3F55 !important;
   --ant-color-text-placeholder: #3A3F55;
+  box-shadow: none !important;
 
   &::placeholder,
   &:global(.ant-input)::placeholder,
@@ -278,14 +312,12 @@ $compact-accent-hover: var(--color-primary-dark);
     opacity: 1 !important;
   }
 
-  &:hover {
-    border-color: var(--color-border-strong) !important;
-  }
-
+  &:hover,
   &:focus,
-  &:focus-within {
-    border-color: $compact-accent-bg !important;
-    // box-shadow: 0 0 0 2px var(--color-input-focus-ring) !important;
+  &:focus-within,
+  &:global(.ant-input-focused) {
+    border: 0.5px solid #9fa2ae !important;
+    box-shadow: none !important;
   }
 }
 

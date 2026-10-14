@@ -100,14 +100,17 @@ const OutWord = () => {
 
     const { mutate: deleteOutward, isPending: isDeleting } = useDeleteApiRequest(ENDPOINTS.outward.delete, 'OutwardList', { queryParam: 'deleteId' });
 
-    const isFilterSelected = useMemo(() => !!(payload.party || payload.invoiceno || payload.type || payload.from || payload.to), [payload]);
+    const isFilterSelected = useMemo(
+        () => !!(payload.party || payload.invoiceno || payload.type || payload.from || payload.to),
+        [payload]
+    );
 
-    const { data: outwardData, isLoading: outwardLoading, isFetching: outwardFetching } = useFetchApi(
+    const { data: outwardData, isLoading: outwardLoading, isFetching: outwardFetching, refetch } = useFetchApi(
         'OutwardList',
         ENDPOINTS.outward.list,
         payload,
         'POST',
-        { enabled: isFilterSelected }
+        { enabled: isFilterSelected, staleTime: 0, refetchOnMount: 'always' }
     );
 
     const { data: editDetailData, isLoading: isProductLoading } = useFetchApi(
@@ -180,6 +183,12 @@ const OutWord = () => {
     }, [searchParams, form, setSearchParams]);
 
     useEffect(() => {
+        if (!isFilterSelected) {
+            setMainTableData([]);
+            setHasMore(false);
+            setIsFetchingMore(false);
+            return;
+        }
         if (!outwardData) return;
         const d = outwardData?.Data || outwardData?.data;
         const newRecords = Array.isArray(d) ? d : [];
@@ -206,7 +215,7 @@ const OutWord = () => {
             }
         }
         setIsFetchingMore(false);
-    }, [outwardData, payload.page]);
+    }, [outwardData, payload.page, isFilterSelected]);
 
     useEffect(() => {
         const tableBody = tableRef.current?.querySelector('.ant-table-body');
@@ -216,6 +225,7 @@ const OutWord = () => {
             const { scrollTop, scrollHeight, clientHeight } = tableBody;
             if (
                 scrollHeight - scrollTop <= clientHeight + 80 &&
+                isFilterSelected &&
                 !outwardLoading &&
                 !outwardFetching &&
                 !isFetchingMore &&
@@ -228,7 +238,7 @@ const OutWord = () => {
 
         tableBody.addEventListener('scroll', handleScroll);
         return () => tableBody.removeEventListener('scroll', handleScroll);
-    }, [outwardLoading, outwardFetching, isFetchingMore, hasMore]);
+    }, [outwardLoading, outwardFetching, isFetchingMore, hasMore, isFilterSelected]);
 
     const stats = useMemo(() => {
         return mainTableData.reduce((acc, curr) => ({
@@ -462,14 +472,13 @@ const OutWord = () => {
 
                     <Space>
                         <Checkbox style={{ marginLeft: '15px' }}>Non-GIA Only</Checkbox>
-                        <Button type="primary" icon={<ReloadOutlined />} onClick={() => {
-                            if (isFilterSelected) {
-                                setHasMore(true);
-                                if (payload.page === 1) {
-                                    refetch();
-                                } else {
-                                    setPayload(prev => ({ ...prev, page: 1 }));
-                                }
+                        <Button type="primary" icon={<ReloadOutlined />} disabled={!isFilterSelected} onClick={() => {
+                            if (!isFilterSelected) return;
+                            setHasMore(true);
+                            if (payload.page === 1) {
+                                refetch();
+                            } else {
+                                setPayload(prev => ({ ...prev, page: 1 }));
                             }
                         }}>
                             Refresh Data
@@ -478,7 +487,9 @@ const OutWord = () => {
                             danger
                             onClick={() => {
                                 handleClear();
-                                setHasMore(true);
+                                setHasMore(false);
+                                setMainTableData([]);
+                                setSelectedRowKeys([]);
                                 setPayload({ party: "", invoiceno: "", type: "", page: 1, limit: LIMIT, from: "", to: "" });
                             }}
                         >
@@ -532,8 +543,8 @@ const OutWord = () => {
                                 <div className={styles.statsBar}>
                                     <div className={styles.legendGroup}>
                                         <Text strong>
-                                            Total Record: {outwardData?.total || mainTableData.length || 0}
-                                            {mainTableData.length > 0 && ` | showing: ${mainTableData.length}`}
+                                            Total Record: {isFilterSelected ? (outwardData?.total || mainTableData.length || 0) : 0}
+                                            {isFilterSelected && mainTableData.length > 0 && ` | showing: ${mainTableData.length}`}
                                         </Text>
                                         <Space size="small" style={{ marginLeft: '15px' }}>
                                             <Tag color="blue">GIA Certified</Tag>

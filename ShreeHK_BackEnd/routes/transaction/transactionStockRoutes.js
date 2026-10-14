@@ -71,11 +71,29 @@ transactionStockRouter.post("/transaction/inward-stock/return", authenticateToke
 
 transactionStockRouter.post("/transaction/inward-stock/memo-to-purchase", authenticateToken, async (req, res) => {
   try {
-    const result = await stockService.inwardMemoToPurchase(req.body, buildUserContext(req));
+    const { resolveOperatingCompanyId } = require("../../tenantHelper.js");
+    const requestedCompany =
+      req.body?.operating_company_id ??
+      req.body?.operating_company ??
+      req.body?.tenant_company_id;
+    if (!requestedCompany) {
+      return res.status(400).json({ status: false, message: "Company is required" });
+    }
+    const operatingCompanyId = await resolveOperatingCompanyId(req, requestedCompany);
+    const userContext = {
+      ...buildUserContext(req),
+      companyId: operatingCompanyId,
+    };
+    const body = { ...req.body };
+    delete body.operating_company_id;
+    delete body.operating_company;
+    delete body.tenant_company_id;
+    const result = await stockService.inwardMemoToPurchase(body, userContext);
     return res.status(200).json({ status: result.ok, message: result.message, id: result.id });
   } catch (error) {
     console.error("memo to purchase error:", error);
-    return res.status(500).json({ status: false, message: error.message });
+    const status = error.statusCode || 500;
+    return res.status(status).json({ status: false, message: error.message });
   }
 });
 
@@ -91,11 +109,29 @@ transactionStockRouter.post("/transaction/outward-stock/return", authenticateTok
 
 transactionStockRouter.post("/transaction/outward-stock/memo-to-sale", authenticateToken, async (req, res) => {
   try {
-    const result = await stockService.outwardMemoToSale(req.body, buildUserContext(req));
+    const { resolveOperatingCompanyId } = require("../../tenantHelper.js");
+    const requestedCompany =
+      req.body?.operating_company_id ??
+      req.body?.operating_company ??
+      req.body?.tenant_company_id;
+    if (!requestedCompany) {
+      return res.status(400).json({ status: false, message: "Company is required" });
+    }
+    const operatingCompanyId = await resolveOperatingCompanyId(req, requestedCompany);
+    const userContext = {
+      ...buildUserContext(req),
+      companyId: operatingCompanyId,
+    };
+    const body = { ...req.body };
+    delete body.operating_company_id;
+    delete body.operating_company;
+    delete body.tenant_company_id;
+    const result = await stockService.outwardMemoToSale(body, userContext);
     return res.status(200).json({ status: result.ok, message: result.message, id: result.id });
   } catch (error) {
     console.error("memo to sale error:", error);
-    return res.status(500).json({ status: false, message: error.message });
+    const status = error.statusCode || 500;
+    return res.status(status).json({ status: false, message: error.message });
   }
 });
 

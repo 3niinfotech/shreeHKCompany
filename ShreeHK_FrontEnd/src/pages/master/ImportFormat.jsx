@@ -103,7 +103,7 @@ const ImportFormat = () => {
   }, []);
 
   return (
-    <div className="page-shell" style={{ padding: 20, background: cssVar("color-bg-page") }}>
+    <div className="page-shell" style={{ background: cssVar("color-bg-page") }}>
       <Row justify="center">
         <Col xs={24} sm={22} md={18} lg={14} xl={12}>
           <Card

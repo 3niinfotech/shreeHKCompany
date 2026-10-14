@@ -84,24 +84,7 @@
   }
 }
 
-.contentRow {
-  flex: 1;
-  min-height: 0;
-
-  :global(.ant-col) {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-  }
-}
-
-.treeCol,
-.detailCol {
-  min-height: 0;
-}
-
-.treeCard,
-.detailsCard {
+.hierarchyCard {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -112,41 +95,40 @@
   box-shadow: 0 6px 18px rgba(10, 30, 45, 0.06);
   overflow: hidden;
 
-  :global(.ant-card-head) {
-    min-height: 44px;
-    padding: 0 14px;
-    border-bottom: 1px solid var(--color-border);
-    background: linear-gradient(90deg, color-mix(in srgb, var(--color-primary) 8%, transparent), transparent);
-  }
-
-  :global(.ant-card-head-title) {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--color-text-heading);
-    padding: 10px 0;
-
-    span,
-    :global(.ant-typography) {
-      font-size: 14px;
-    }
-  }
-
-  :global(.ant-card-extra) {
-    padding: 8px 0;
-  }
-
   :global(.ant-card-body) {
     flex: 1;
     min-height: 0;
     display: flex;
     flex-direction: column;
-    padding: 10px 12px 12px;
+    padding: 0;
     overflow: hidden;
   }
 }
 
-.folderSearch {
-  margin-bottom: 10px;
+.hierarchyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-border);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-primary) 8%, transparent), transparent);
+  flex-shrink: 0;
+}
+
+.hierarchyTitle {
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  color: var(--color-text-heading);
+  white-space: nowrap;
+}
+
+.hierarchySearch {
+  flex: 1;
+  min-width: 200px;
+  max-width: 420px;
+  margin-left: auto;
   border-radius: 8px;
 
   :global(.ant-input) {
@@ -156,27 +138,92 @@
   }
 }
 
-.inventoryTree {
+.hierarchyBody {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  padding: 8px 10px 14px;
+}
+
+.treeBranch {
+  display: block;
+}
+
+.treeNodeRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 8px 4px 0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--color-text);
+  user-select: none;
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-primary) 6%, transparent);
+  }
+}
+
+.treeNodeRowSelected {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent) !important;
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.treeSwitcher {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
   background: transparent;
-  border-radius: 8px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
 
-  :global(.ant-tree-node-content-wrapper) {
-    border-radius: 6px;
-    font-size: 13px;
-  }
-
-  :global(.ant-tree-node-content-wrapper.ant-tree-node-selected) {
-    background: color-mix(in srgb, var(--color-primary) 12%, transparent) !important;
+  &:hover {
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
     color: var(--color-primary);
-    font-weight: 600;
   }
+}
 
-  :global(.ant-tree-treenode) {
-    padding: 2px 0;
-  }
+.treeSwitcherOpen {
+  transform: rotate(90deg);
+}
+
+.treeSwitcherSpacer {
+  width: 22px;
+  flex-shrink: 0;
+}
+
+.treeNodeTitle {
+  flex: 1;
+  min-width: 0;
+}
+
+.inlineTableWrap {
+  margin: 4px 0 10px 28px;
+  padding: 8px 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-page-bg) 40%, var(--color-card-bg));
+}
+
+.inlineTableMeta {
+  margin-bottom: 6px;
+  padding: 0 4px;
+  font-size: 12px;
+}
+
+.inlineTable {
+  min-height: 200px;
+  max-height: 360px;
 }
 
 .statsTag {

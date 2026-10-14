@@ -1,5 +1,5 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { Card, Form, Select, Input, DatePicker, Button, Pagination } from 'antd';
+import React, { useMemo, useState, useRef } from 'react';
+import { Card, Form, Select, Input, DatePicker, Button, Tag } from 'antd';
 import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
 import dayjs from 'dayjs';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
@@ -26,8 +26,8 @@ const SALE_EXCEL_HEADERS = [
     { title: 'Date', key: 'out_date', width: 14, align: 'center' },
     { title: 'GIA/NOGIA', key: 'lab', width: 12, align: 'center' },
     { title: 'Invoice No', key: 'invoiceno', width: 14, align: 'center' },
-    { title: 'Detail Of Goods', key: 'detail_of_goods', width: 22, align: 'center', accessor: detailOfGoods },
     { title: 'Pcs', key: 'polish_pcs', width: 8, align: 'center', type: 'n', total: true, decimals: 0 },
+    { title: 'Detail Of Goods', key: 'detail_of_goods', width: 22, align: 'center', accessor: detailOfGoods },
     { title: 'Cts', key: 'polish_carat', width: 10, align: 'center', type: 'n', total: true, decimals: 3 },
     { title: 'Price', key: 'sell_price', width: 12, align: 'center', type: 'n', total: true, decimals: 2 },
     { title: 'Amount', key: 'sell_amount', width: 14, align: 'center', type: 'n', total: true, decimals: 2 },
@@ -44,8 +44,6 @@ const SaleStoneReport = () => {
     const [form] = Form.useForm();
     const [tableData, setTableData] = useState([]);
     const [exporting, setExporting] = useState(false);
-    const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(50);
     const { data: companyData } = useFetchApi('GetCompanyAllParties', ENDPOINTS.company.options, { all: '1' });
     const { mutate: fetchReport, isPending: tableLoading } = usePostApiRequest(ENDPOINTS.report.saleStock, 'saleStoneReport', { showToast: false });
 
@@ -73,50 +71,73 @@ const SaleStoneReport = () => {
         }, {
             onSuccess: (res) => {
                 setTableData((res?.Data || []).map((r, i) => ({ ...r, key: i, no: i + 1 })));
-                setPage(1);
             },
         });
     };
 
-    useEffect(() => {
-        handleSearch();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    const pagedData = useMemo(() => {
-        const start = (page - 1) * pageSize;
-        return tableData.slice(start, start + pageSize);
-    }, [tableData, page, pageSize]);
-
     const columns = [
-        { title: 'No', dataIndex: 'no', width: 60, align: 'center' },
-        { title: 'SKU', dataIndex: 'sku', width: 200, render: (text, record) => <SkuLink sku={text} record={record} /> },
-        { title: 'Lab', dataIndex: 'lab', width: 80 },
-        { title: 'Report No', dataIndex: 'report_no', width: 110 },
-        { title: 'Pcs', dataIndex: 'polish_pcs', width: 70, align: 'center' },
-        { title: 'Carat', dataIndex: 'polish_carat', width: 90, align: 'right' },
-        { title: 'Price', dataIndex: 'sell_price', width: 90, align: 'right' },
-        { title: 'Amount', dataIndex: 'sell_amount', width: 100, align: 'right' },
-        { title: 'Shape', dataIndex: 'shape', width: 90 },
-        { title: 'Color', dataIndex: 'color', width: 80 },
-        { title: 'Clarity', dataIndex: 'clarity', width: 90 },
-        { title: 'Party', dataIndex: 'party', width: 240 },
-        { title: 'Date', dataIndex: 'out_date', width: 100, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
-        { title: 'Invoice', dataIndex: 'invoiceno', width: 110 },
-        { title: 'Terms', dataIndex: 'terms', width: 70 },
-        { title: 'Due Date', dataIndex: 'due_date', width: 100, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
-        { title: 'Paid', dataIndex: 'paid_amount', width: 90, align: 'right' },
+        { title: 'No', dataIndex: 'no', width: 50, align: 'center' },
+        { title: 'SKU', dataIndex: 'sku', width: 100, render: (text, record) => <SkuLink sku={text} record={record} /> },
+        {
+            title: 'Lab',
+            dataIndex: 'lab',
+            width: 70,
+            align: 'center',
+            render: (lab) => {
+                const value = String(lab || '').trim();
+                if (!value) return '-';
+                const colorMap = {
+                    GIA: 'blue',
+                    gia: 'blue',
+                    IGI: 'green',
+                    igi: 'green',
+                    CGL: 'orange',
+                    cgl: 'orange',
+                    AGT: 'purple',
+                    agt: 'purple',
+                };
+                return (
+                    <Tag color={colorMap[value] || 'default'} className="inventory-lab-tag">
+                        {value.toUpperCase()}
+                    </Tag>
+                );
+            },
+        },
+        { title: 'Pcs', dataIndex: 'polish_pcs', width: 30, align: 'center' },
+        { title: 'Report No', dataIndex: 'report_no', width: 90, align: 'center' },
+        { title: 'Carat', dataIndex: 'polish_carat', width: 50, align: 'center' },
+        {
+            title: 'Price',
+            dataIndex: 'sell_price',
+            width: 90,
+            align: 'right',
+            render: (v) => <span style={{ color: 'var(--color-success-dark)' }}>{v ?? '-'}</span>,
+        },
+        {
+            title: 'Amount',
+            dataIndex: 'sell_amount',
+            width: 100,
+            align: 'right',
+            render: (v) => <span style={{ color: 'var(--color-primary-dark)' }}>{v ?? '-'}</span>,
+        },
+        { title: 'Shape', dataIndex: 'shape', width: 90, align: 'center' },
+        { title: 'Color', dataIndex: 'color', width: 60, align: 'center' },
+        { title: 'Clarity', dataIndex: 'clarity', width: 60, align: 'center' },
+        { title: 'Party', dataIndex: 'party', width: 200 },
+        { title: 'Invoice', dataIndex: 'invoiceno', width: 90, align: 'center' },
+        { title: 'Date', dataIndex: 'out_date', width: 80, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')), align: 'center' },
+        { title: 'Terms', dataIndex: 'terms', width: 25, align: 'center' },
+        { title: 'Due Date', dataIndex: 'due_date', width: 80, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')), align: 'center' },
+        { title: 'Paid', dataIndex: 'paid_amount', width: 90, align: 'center' },
     ];
 
     const handleClear = () => {
         form.resetFields();
         setTableData([]);
-        setPage(1);
     };
 
     const tableRef = useRef(null);
-    // Pagination is outside table container (flex sibling) — do not reserve again
-    const tableHeight = useTableBodyScrollHeight(tableRef, [pagedData.length, tableLoading, tableData.length]);
+    const tableHeight = useTableBodyScrollHeight(tableRef, [tableData.length, tableLoading]);
 
     const handleExport = async () => {
         if (!tableData.length) {
@@ -236,7 +257,7 @@ const SaleStoneReport = () => {
                 <div ref={tableRef} className={`erp-table-container ${styles.saleStockTable}`}>
                     <SkeletonAwareTable
                         columns={columns}
-                        dataSource={pagedData}
+                        dataSource={tableData}
                         loading={tableLoading}
                         className={styles.saleStockAntTable}
                         pagination={false}
@@ -245,20 +266,6 @@ const SaleStoneReport = () => {
                         scroll={{
                             x: "max-content",
                             y: tableHeight,
-                        }}
-                    />
-                </div>
-                <div className={styles.paginationCenterRow}>
-                    <Pagination
-                        current={page}
-                        pageSize={pageSize}
-                        total={tableData.length}
-                        showSizeChanger
-                        pageSizeOptions={["20", "50", "100", "200"]}
-                        showTotal={(total, range) => `${range[0]}-${range[1]} of ${total}`}
-                        onChange={(p, size) => {
-                            setPage(p);
-                            setPageSize(size);
                         }}
                     />
                 </div>
