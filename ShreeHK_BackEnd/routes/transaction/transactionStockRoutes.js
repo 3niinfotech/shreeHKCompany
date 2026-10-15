@@ -39,7 +39,7 @@ transactionStockRouter.post("/transaction/purchase-stock/list", authenticateToke
 
 transactionStockRouter.post("/transaction/outward-stock/list", authenticateToken, async (req, res) => {
   try {
-    const allowed = ["sale", "memo", "export", "consign"];
+    const allowed = ["sale", "memo", "export", "consign", "inter_transfer", "inter_memo"];
     const stockType = allowed.includes(req.body.stockType) ? req.body.stockType : "memo";
     const result = await stockService.listOutwardStock(req.body, stockType, buildUserContext(req));
     return res.status(200).json({ status: true, Data: result.Data, TotalItems: result.TotalItems });

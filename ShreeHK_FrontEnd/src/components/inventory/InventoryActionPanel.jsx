@@ -15,6 +15,7 @@ import {
   Package,
   FlaskConical,
   Send,
+  ArrowLeftRight,
 } from "lucide-react";
 import styles from "../../assets/scss/components/inventoryFilterPanel.module.scss";
 import useThemeColors from "../../hooks/useThemeColors";
@@ -29,6 +30,7 @@ export const INVENTORY_PRIMARY_ACTION_ITEMS = [
   { key: "sale", label: "Sale", variant: "sale", icon: ShoppingCart },
   { key: "changePrice", label: "Change Price", variant: "changePrice", icon: BadgeDollarSign },
   { key: "toExport", label: "To Export", variant: "toExport", icon: Send },
+  { key: "transfer", label: "Transfer", variant: "transfer", icon: ArrowLeftRight },
   { key: "reset", label: "Reset", variant: "reset", icon: RefreshCcw },
 ];
 

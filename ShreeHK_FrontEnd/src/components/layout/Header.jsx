@@ -8,7 +8,7 @@ import NavBar from "./NavBar";
 import SkuActionModal from "../../hooks/useSkuModalAction";
 import styles from "../../assets/scss/layout/header.module.scss";
 import { Link, useNavigate } from "react-router-dom";
-import { Gem, Menu, Wifi, WifiOff, RefreshCw, CheckCircle2, Database, FileCheck, Send, ShoppingCart, ShoppingBag, Package, FlaskConical } from "lucide-react";
+import { Gem, Menu, Wifi, WifiOff, RefreshCw, CheckCircle2, Database, FileCheck, Send, ShoppingCart, ShoppingBag, Package, FlaskConical, ArrowLeftRight } from "lucide-react";
 import useAuthStore from "../../store/Auth.Store";
 import logo from "../../assets/loader/softWare_Header_white.svg";
 import { PAUSE_BACKGROUND_API } from "../../api/pauseBackgroundApi";
@@ -24,6 +24,7 @@ const HEADER_QUICK_ROUTES = {
   purchase: "/transaction/purchase",
   consign: "/transaction/out-memo?type=consign",
   lab: "/transaction/gia-memo",
+  interTransfer: "/inter-transfer/company-transfer",
 };
 
 const prefetchHeaderRoute = (path) => {
@@ -431,6 +432,20 @@ const Header = ({
                 }}
               >
                 <span className={styles.topQuickLabel}>Lab</span>
+              </Button>
+            </Tooltip>
+            <Tooltip title="Inter Transfer">
+              <Button
+                icon={<ArrowLeftRight size={20} />}
+                className={`${styles.topQuickBtn} ${styles.transferBtn}`}
+                onMouseEnter={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.interTransfer)}
+                onFocus={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.interTransfer)}
+                onClick={() => {
+                  prefetchHeaderRoute(HEADER_QUICK_ROUTES.interTransfer);
+                  navigate(HEADER_QUICK_ROUTES.interTransfer);
+                }}
+              >
+                <span className={styles.topQuickLabel}>Inter Transfer</span>
               </Button>
             </Tooltip>
           </div>

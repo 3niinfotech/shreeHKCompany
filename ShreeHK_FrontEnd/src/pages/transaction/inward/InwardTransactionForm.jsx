@@ -125,8 +125,15 @@ function getFirstLineItemValidationError(items) {
     return 'Add at least one line item with SKU, Polish Pcs, Polish Carat, Price and Amount.';
   }
 
+  const seenSkus = new Set();
   for (let i = 0; i < items.length; i += 1) {
-    if (!String(items[i].sku || '').trim()) continue;
+    const rawSku = String(items[i].sku || '').trim().toUpperCase();
+    if (!rawSku) continue;
+    if (seenSkus.has(rawSku)) {
+      return `Row ${i + 1}: Duplicate SKU "${items[i].sku}" entered in line items. Each line item must have a unique SKU.`;
+    }
+    seenSkus.add(rawSku);
+
     const error = getLineItemValidationError(items[i], i + 1);
     if (error) return error;
   }
@@ -724,8 +731,11 @@ const InwardTransactionForm = ({
         return;
       }
 
-      const filledItems = getFilledLineItems(normalizedItems).map(normalizeLineItem);
-      const checkPayload = { products: formatProductsPayload(filledItems) };
+      const operatingCompanyId = form.getFieldValue('operating_company_id');
+      const checkPayload = {
+        products: formatProductsPayload(filledItems),
+        operating_company_id: operatingCompanyId,
+      };
 
       submitInward(checkPayload, {
         onSuccess: (response) => {

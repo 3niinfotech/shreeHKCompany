@@ -20,7 +20,27 @@ inwardRouter.post("/inward/checkExist", authenticateToken, async (req, res) => {
   }
 
   try {
+    const { resolveOperatingCompanyId } = require("../../tenantHelper.js");
+    let targetCompanyId = null;
+    try {
+      targetCompanyId = await resolveOperatingCompanyId(
+        req,
+        req.body.operating_company_id ?? req.body.operating_company ?? req.body.tenant_company_id
+      );
+    } catch {
+      targetCompanyId = Number(buildUserContext(req).companyId) || 0;
+    }
+
+    let targetCompanyName = `Company #${targetCompanyId}`;
+    if (targetCompanyId) {
+      try {
+        const compRows = await helper.query("SELECT name FROM company WHERE id = ? LIMIT 1", [targetCompanyId]);
+        if (compRows?.[0]?.name) targetCompanyName = compRows[0].name;
+      } catch (_) {}
+    }
+
     let existData = [];
+    let conflicts = [];
     let status = true;
     let checkedCount = 0;
 
@@ -30,17 +50,60 @@ inwardRouter.post("/inward/checkExist", authenticateToken, async (req, res) => {
       }
 
       checkedCount += 1;
-      const skuData = await productHelper.getDetail(String(r.sku).trim(), "p.sku");
+      const skuKey = String(r.sku).trim();
 
-      if (skuData) {
-        existData.push({
-          sku: skuData.sku,
-          polish_carat: skuData.polish_carat,
-          polish_pcs: skuData.polish_pcs,
-          price: skuData.price,
-          amount: skuData.amount,
-        });
-        status = false;
+      // Check in dai_product
+      const prodRows = await helper.query(
+        `SELECT p.id, p.sku, p.company, p.polish_pcs, p.polish_carat, p.price, p.amount,
+                c.name AS company_name
+         FROM dai_product p
+         LEFT JOIN company c ON c.id = p.company
+         WHERE UPPER(TRIM(p.sku)) = UPPER(?)
+         ORDER BY p.id ASC
+         LIMIT 1`,
+        [skuKey]
+      );
+      let found = prodRows?.[0] || null;
+
+      // If not in dai_product, check if previously inwarded in dai_inward_item
+      if (!found) {
+        const itemRows = await helper.query(
+          `SELECT ii.id, ii.sku, ii.company, c.name AS company_name
+           FROM dai_inward_item ii
+           LEFT JOIN company c ON c.id = ii.company
+           WHERE UPPER(TRIM(ii.sku)) = UPPER(?)
+           ORDER BY ii.id DESC
+           LIMIT 1`,
+          [skuKey]
+        );
+        if (itemRows?.[0]) {
+          found = itemRows[0];
+        }
+      }
+
+      if (found) {
+        const ownerCompanyId = Number(found.company) || 0;
+        const isSameCompany = targetCompanyId && ownerCompanyId === Number(targetCompanyId);
+
+        if (isSameCompany) {
+          // Allowed: Same company inwarding or adding stock to same SKU
+          existData.push({
+            sku: found.sku || skuKey,
+            polish_carat: found.polish_carat,
+            polish_pcs: found.polish_pcs,
+            price: found.price,
+            amount: found.amount,
+          });
+          status = false;
+        } else {
+          // Blocked: SKU belongs to a different company!
+          const ownerName = found.company_name || `Company #${ownerCompanyId}`;
+          conflicts.push({
+            sku: skuKey,
+            ownerCompanyId,
+            ownerCompanyName: ownerName,
+          });
+        }
       }
     }
 
@@ -51,10 +114,22 @@ inwardRouter.post("/inward/checkExist", authenticateToken, async (req, res) => {
       });
     }
 
+    if (conflicts.length > 0) {
+      const conflictMsgs = conflicts
+        .map((c) => `SKU "${c.sku}" already belongs to "${c.ownerCompanyName}"`)
+        .join("; ");
+      return res.status(400).json({
+        status: false,
+        error: `Inward purchase not allowed: ${conflictMsgs}. A stone SKU is unique across companies; you cannot inward purchase or add stock to this SKU from "${targetCompanyName}".`,
+        message: `Inward purchase not allowed: ${conflictMsgs}. A stone SKU is unique across companies; you cannot inward purchase or add stock to this SKU from "${targetCompanyName}".`,
+        conflicts,
+      });
+    }
+
     const message = status ? "No existing products found" : "Some products already exist";
     res.status(201).json({ status, message, data: existData });
   } catch (err) {
-    console.error(err);
+    console.error("inward/checkExist error:", err);
     res.status(500).json({ status: false, error: err.message });
   }
 });
@@ -207,7 +282,7 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
       for (const r of (Array.isArray(products) ? products : [])) {
         if (!r.sku || !r.polish_carat || !r.price || !r.amount) continue;
 
-        // Same stock id (SKU) → always reuse (never create VCJ-003 twice)
+        // Same stock id (SKU) → only reuse within the SAME company
         const skuKey = String(r.sku || "").trim();
         r.sku = skuKey;
         let skuRows = await q(
@@ -217,17 +292,40 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
            LIMIT 1`,
           [companyId, skuKey]
         );
-        // Fallback: SKU exists under another/null company in this DB — still merge, no duplicate
-        if (!skuRows.length) {
-          skuRows = await q(
-            `SELECT * FROM dai_product
-             WHERE UPPER(TRIM(sku)) = UPPER(?)
-             ORDER BY id ASC
+        let SkuData = skuRows[0] || null;
+
+        // If not found in current company, ensure SKU does not belong to any other company
+        if (!SkuData) {
+          const otherProdRows = await q(
+            `SELECT p.id, p.sku, p.company, c.name AS company_name
+             FROM dai_product p
+             LEFT JOIN company c ON c.id = p.company
+             WHERE UPPER(TRIM(p.sku)) = UPPER(?)
+             ORDER BY p.id ASC
              LIMIT 1`,
             [skuKey]
           );
+          let otherOwner = otherProdRows[0] || null;
+          if (!otherOwner) {
+            const otherInwardRows = await q(
+              `SELECT ii.id, ii.sku, ii.company, c.name AS company_name
+               FROM dai_inward_item ii
+               LEFT JOIN company c ON c.id = ii.company
+               WHERE UPPER(TRIM(ii.sku)) = UPPER(?)
+               ORDER BY ii.id DESC
+               LIMIT 1`,
+              [skuKey]
+            );
+            otherOwner = otherInwardRows[0] || null;
+          }
+
+          if (otherOwner && Number(otherOwner.company) !== Number(companyId)) {
+            const ownerName = otherOwner.company_name || `Company #${otherOwner.company}`;
+            throw new Error(
+              `SKU "${skuKey}" already belongs to company "${ownerName}". Inward purchase on this SKU is only allowed from the owning company.`
+            );
+          }
         }
-        let SkuData = skuRows[0] || null;
 
         // Normalize Pcs: If polish_pcs is empty/0, fallback to rought_pcs (and vice versa)
         if (!r.polish_pcs || Number(r.polish_pcs) === 0) {
@@ -909,6 +1007,94 @@ inwardRouter.get("/inward/", authenticateToken, (req, res) => {
     });
   } catch (error) {
     return res.status(201).json({ status: false, message: error.message });
+  }
+});
+
+inwardRouter.post("/inward/update", authenticateToken, async (req, res) => {
+  const post = req.body;
+  const id = parseInt(post.id, 10);
+  if (!id) return res.status(400).json({ status: false, message: "Invalid id" });
+
+  try {
+    const rows = await helper.query("SELECT * FROM dai_inward WHERE id = ?", [id]);
+    if (!rows.length) return res.status(404).json({ status: false, message: "Inward record not found" });
+    const existing = rows[0];
+
+    const updateFields = {};
+    if (post.party != null) updateFields.party = post.party;
+    if (post.other_party != null) updateFields.other_party = post.other_party;
+    if (post.date != null) updateFields.date = post.date;
+    if (post.invoicedate != null) updateFields.invoicedate = post.invoicedate;
+    if (post.duedate != null) updateFields.duedate = post.duedate;
+    if (post.terms != null) updateFields.terms = post.terms;
+    if (post.reference != null) updateFields.reference = post.reference;
+    if (post.invoiceno != null) updateFields.invoiceno = post.invoiceno;
+    if (post.paid_amount != null) updateFields.paid_amount = Number(post.paid_amount) || 0;
+    if (post.due_amount != null) updateFields.due_amount = Number(post.due_amount) || 0;
+    if (post.boc != null) updateFields.boc = post.boc ? 1 : 0;
+    if (post.citi != null) updateFields.citi = post.citi ? 1 : 0;
+    if (post.dbs != null) updateFields.dbs = post.dbs ? 1 : 0;
+    if (post.sc != null) updateFields.sc = post.sc ? 1 : 0;
+    if (post.boc_sksm != null) updateFields.boc_sksm = post.boc_sksm ? 1 : 0;
+    if (post.citi_sksm != null) updateFields.citi_sksm = post.citi_sksm ? 1 : 0;
+    if (post.shipping_name != null) updateFields.shipping_name = post.shipping_name;
+    if (post.narretion != null) updateFields.narretion = post.narretion;
+
+    if (Array.isArray(post.products) && post.products.length > 0) {
+      let totalAmount = 0;
+      let totalCarat = 0;
+      let totalPcs = 0;
+      for (const p of post.products) {
+        if (!p.id) continue;
+        const pcs = Number(p.polish_pcs ?? p.pcs) || 0;
+        const carat = Number(p.polish_carat ?? p.carat) || 0;
+        const price = Number(p.price ?? p.purchase_price ?? p.sell_price) || 0;
+        const amount = Number(p.amount ?? p.purchase_amount ?? p.sell_amount) || Number((pcs ? price * carat : 0).toFixed(2));
+        totalAmount += amount;
+        totalCarat += carat;
+        totalPcs += pcs;
+
+        await helper.query(
+          `UPDATE dai_product SET
+             polish_pcs = ?, polish_carat = ?, onhand_pcs = ?, onhand_carat = ?,
+             price = ?, amount = ?, purchase_price = ?, purchase_amount = ?,
+             location = ?, remark = ?, lab = ?, mfg_code = ?, diamond_no = ?
+           WHERE id = ?`,
+          [
+            pcs, carat, pcs, carat,
+            price, amount, price, amount,
+            p.location || "", p.remark || "", p.lab || "", p.mfg_code || "", p.diamond_no || "",
+            p.id
+          ]
+        );
+      }
+      if (totalAmount > 0) {
+        updateFields.final_amount = totalAmount;
+        updateFields.carat = totalCarat;
+        updateFields.pcs = totalPcs;
+      }
+    }
+
+    if (Object.keys(updateFields).length > 0) {
+      const setClauses = Object.keys(updateFields).map((k) => `${k} = ?`).join(", ");
+      const setValues = Object.values(updateFields);
+      await helper.query(`UPDATE dai_inward SET ${setClauses} WHERE id = ?`, [...setValues, id]);
+    }
+
+    logAudit({
+      actionType: "UPDATE",
+      moduleName: "Inward",
+      recordId: id,
+      recordReference: String(existing.invoiceno || existing.entryno || id),
+      oldValue: existing,
+      newValue: { ...existing, ...updateFields },
+      companyId: existing.company,
+    }).catch(console.error);
+
+    return res.status(200).json({ status: true, message: "Inward transaction updated successfully" });
+  } catch (error) {
+    console.error("inward/update error:", error);
+    return res.status(500).json({ status: false, message: error.message || "Failed to update inward transaction" });
   }
 });
 

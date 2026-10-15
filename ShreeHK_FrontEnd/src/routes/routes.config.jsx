@@ -62,6 +62,11 @@ const SaleEntry = React.lazy(() => import("../pages/transaction/stock/SaleEntry"
 const GIAEntry = React.lazy(() => import("../pages/transaction/stock/GIAEntry"));
 const ExportEntry = React.lazy(() => import("../pages/transaction/stock/ExportEntry"));
 const ConsignEntry = React.lazy(() => import("../pages/transaction/stock/ConsignEntry"));
+const CompanyTransferList = React.lazy(() => import("../pages/transaction/CompanyTransferList"));
+const InterTransferPurchaseStock = React.lazy(() => import("../pages/interTransfer/InterTransferPurchaseStock"));
+const InterTransferSaleStock = React.lazy(() => import("../pages/interTransfer/InterTransferSaleStock"));
+const InterTransferInMemoStock = React.lazy(() => import("../pages/interTransfer/InterTransferInMemoStock"));
+const InterTransferOutMemoStock = React.lazy(() => import("../pages/interTransfer/InterTransferOutMemoStock"));
 
 // --- 5. ACCOUNTING DROPDOWN PAGE ---
 const Expanse = React.lazy(() => import("../pages/accounting/Expanse"));
@@ -248,6 +253,12 @@ export const allProtectedRoutes = [
         permissionKey: "transaction.purchase_stock",
         hideFromNav: true
       },
+      {
+        path: "/transaction/company-transfer",
+        element: <CompanyTransferList />,
+        permissionKey: "transaction.company_transfer",
+        hideFromNav: true
+      },
     ]
   },
   {
@@ -329,6 +340,43 @@ export const allProtectedRoutes = [
     ]
   },
   { path: "/outward", name: "Outward", icon: "ExternalLink", element: <Outward />, permissionKey: "outward.main" },
+  {
+    name: "Inter Transfer",
+    path: "/inter-transfer",
+    icon: "ArrowLeftRight",
+    children: [
+      {
+        path: "/inter-transfer/purchase",
+        name: "Purchase",
+        element: <InterTransferPurchaseStock />,
+        permissionKey: "transaction.company_transfer"
+      },
+      {
+        path: "/inter-transfer/sale",
+        name: "Sale",
+        element: <InterTransferSaleStock />,
+        permissionKey: "transaction.company_transfer"
+      },
+      {
+        path: "/inter-transfer/in-memo",
+        name: "In Memo",
+        element: <InterTransferInMemoStock />,
+        permissionKey: "transaction.company_transfer"
+      },
+      {
+        path: "/inter-transfer/out-memo",
+        name: "Out Memo",
+        element: <InterTransferOutMemoStock />,
+        permissionKey: "transaction.company_transfer"
+      },
+      {
+        path: "/inter-transfer/company-transfer",
+        name: "Transfer History",
+        element: <CompanyTransferList />,
+        permissionKey: "transaction.company_transfer"
+      },
+    ]
+  },
   { path: "/task-manager", name: "Task Manager", icon: "NotebookPen", element: <TaskManager />, permissionKey: "core.task_manager" },
   { path: "/my-account", name: "My Account", element: <MyAccount />, alwaysAllow: true, hideFromNav: true },
   { path: "/settings", name: "Settings", element: <Setting />, alwaysAllow: true, hideFromNav: true },

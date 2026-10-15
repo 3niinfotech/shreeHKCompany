@@ -71,6 +71,7 @@ export const ENDPOINTS = {
         checkExist: "/inward/checkExist",
         save: "/inward/save",
         getById: "/inward",
+        update: "/inward/update",
     },
     transactionStock: {
         gia: {
@@ -96,6 +97,12 @@ export const ENDPOINTS = {
             delete: "/transaction/outward-stock",
         },
         print: "/transaction/print",
+    },
+    companyTransfer: {
+        create: "/transaction/company-transfer",
+        list: "/transaction/company-transfer/list",
+        getById: (id) => `/transaction/company-transfer/${id}`,
+        return: "/transaction/company-transfer/return",
     },
     outward: {
         list: "/outward/list",

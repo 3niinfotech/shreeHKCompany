@@ -478,11 +478,6 @@ const StoneHistory = () => {
                         <Tag color={getActionTagColor(row.action)} className={styles.actionMainTag}>
                             {display}
                         </Tag>
-                        {row.is_from_memo ? (
-                            <Tag color="gold" className={styles.fromMemoTag}>
-                                From Memo
-                            </Tag>
-                        ) : null}
                     </div>
                 );
             },
@@ -545,7 +540,7 @@ const StoneHistory = () => {
             align: 'right',
             render: (_, row) => formatQtyCell(signedQty(row, 'pcs')),
         },
-        {   
+        {
             title: 'Carat',
             dataIndex: 'carat',
             key: 'carat',

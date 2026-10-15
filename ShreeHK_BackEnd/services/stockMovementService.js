@@ -306,6 +306,11 @@ async function applyOutwardQty(q, productId, type, pcs, carat) {
     next.memo_carat = Math.max(0, b.memo_carat - moveCarat);
     next.onhand_pcs = b.onhand_pcs + movePcs;
     next.onhand_carat = b.onhand_carat + moveCarat;
+  } else if (t === "sale_return" || t === "return_sale") {
+    next.sold_pcs = Math.max(0, b.sold_pcs - movePcs);
+    next.sold_carat = Math.max(0, b.sold_carat - moveCarat);
+    next.onhand_pcs = b.onhand_pcs + movePcs;
+    next.onhand_carat = b.onhand_carat + moveCarat;
   } else if (t === "memo" || t === "consign") {
     if (moveCarat > b.onhand_carat + 0.0001) {
       throw new Error(

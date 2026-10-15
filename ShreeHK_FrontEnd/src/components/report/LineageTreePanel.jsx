@@ -3,7 +3,7 @@ import { Tag, Button, Input, Table, Tooltip, Empty } from 'antd';
 import {
     Network, Box, Boxes, Layers, Gem, ArrowDown, ArrowRight,
     ExternalLink, Search, RefreshCw, GitCommit, CheckCircle2,
-    Calendar, User, Tag as TagIcon, ShieldCheck, ArrowUpRight
+    Calendar, User, Tag as TagIcon, ShieldCheck, ArrowUpRight, Info
 } from 'lucide-react';
 import styles from '../../assets/scss/pages/report/stoneHistory.module.scss';
 
@@ -52,7 +52,7 @@ const LineageTreePanel = ({ lineage, currentDetail, onNavigateSku }) => {
 
     const parent = lineage?.parent || null;
     const current = lineage?.current || currentDetail || {};
-    const rawChildren = lineage?.children || [];
+    const rawChildren = useMemo(() => lineage?.children || [], [lineage?.children]);
     const siblings = lineage?.siblings || [];
     const pair = lineage?.pair || null;
     const transformations = lineage?.transformations || [];
@@ -75,7 +75,7 @@ const LineageTreePanel = ({ lineage, currentDetail, onNavigateSku }) => {
             dataIndex: 'sku',
             key: 'sku',
             width: 130,
-            render: (sku, row) => (
+            render: (sku) => (
                 <button
                     type="button"
                     className={styles.treeLinkBtn}
@@ -148,8 +148,6 @@ const LineageTreePanel = ({ lineage, currentDetail, onNavigateSku }) => {
         },
     ];
 
-    const isContainer = current.group_type === 'box' || current.group_type === 'parcel' || rawChildren.length > 0;
-
     return (
         <div className={styles.lineagePanelWrap}>
             {/* Top Bar Summary */}
@@ -166,22 +164,6 @@ const LineageTreePanel = ({ lineage, currentDetail, onNavigateSku }) => {
                             Complete lineage showing Box, Parcel, Single transformations, parent containers, and child stones.
                         </div>
                     </div>
-                </div>
-                <div className={styles.lineageBadgeRow}>
-                    {getGroupTypeBadge(current.group_type)}
-                    <Tag color={getStatusColor(current.outward || current.status)} style={{ fontWeight: 600, padding: '2px 8px' }}>
-                        {current.outward ? String(current.outward).toUpperCase() : 'AVAILABLE'}
-                    </Tag>
-                    {rawChildren.length > 0 ? (
-                        <Tag color="cyan" style={{ fontWeight: 600 }}>
-                            {rawChildren.length} Child Stones
-                        </Tag>
-                    ) : null}
-                    {parent ? (
-                        <Tag color="geekblue" style={{ fontWeight: 600 }}>
-                            Part of Box/Parcel {parent.sku}
-                        </Tag>
-                    ) : null}
                 </div>
             </div>
 
@@ -233,46 +215,80 @@ const LineageTreePanel = ({ lineage, currentDetail, onNavigateSku }) => {
                         </div>
                     ) : null}
 
-                    {/* Level 2: Current Stone (Active Focus Node) */}
+                    {/* Level 2: Current Stone Card */}
                     <div className={styles.treeNodeGroup}>
                         <div className={`${styles.treeCard} ${styles.treeCardCurrent}`}>
-                            <div className={styles.currentActivePill}>
-                                <CheckCircle2 size={12} />
-                                <span>CURRENT STONE FOCUS</span>
-                            </div>
                             <div className={styles.treeCardHeader}>
-                                <div className={styles.treeNodeRole}>
-                                    {getGroupTypeBadge(current.group_type)}
+                                <div className={styles.treeSkuGroup}>
+                                    <div className={styles.skuIconBadge}>
+                                        <Gem size={17} />
+                                    </div>
+                                    <div>
+                                        <div className={styles.treeSkuTitle}>{current.sku}</div>
+                                        <div className={styles.treeNodeSubtitle}>
+                                            {parent ? 'Constituent Stone' : (rawChildren.length > 0 ? 'Container Unit' : 'Active Stone')}
+                                        </div>
+                                    </div>
                                 </div>
-                                <Tag color={getStatusColor(current.outward || current.status)} style={{ fontWeight: 700 }}>
-                                    {current.outward ? String(current.outward).toUpperCase() : 'AVAILABLE'}
-                                </Tag>
+                                <div className={styles.treeHeaderBadges}>
+                                    {getGroupTypeBadge(current.group_type)}
+                                    <Tag color={getStatusColor(current.outward || current.status)} style={{ fontWeight: 700, margin: 0, textTransform: 'uppercase', borderRadius: 4 }}>
+                                        {current.outward ? String(current.outward).toUpperCase() : (current.status ? String(current.status).toUpperCase() : 'AVAILABLE')}
+                                    </Tag>
+                                </div>
                             </div>
                             <div className={styles.treeCardMain}>
-                                <div className={styles.treeSkuLarge}>{current.sku}</div>
                                 <div className={styles.treeSpecsGrid}>
-                                    <div className={styles.treeSpecItem}>
+                                    <div className={styles.treeSpecTile}>
                                         <span className={styles.treeSpecLabel}>Carat</span>
-                                        <span className={styles.treeSpecVal}>{current.polish_carat} ct</span>
+                                        <span className={styles.treeSpecVal}>{formatNum(current.polish_carat)} <small>ct</small></span>
                                     </div>
-                                    <div className={styles.treeSpecItem}>
+                                    <div className={styles.treeSpecTile}>
                                         <span className={styles.treeSpecLabel}>Pcs</span>
-                                        <span className={styles.treeSpecVal}>{current.polish_pcs} pcs</span>
+                                        <span className={styles.treeSpecVal}>{formatNum(current.polish_pcs, 0)} <small>pcs</small></span>
                                     </div>
-                                    <div className={styles.treeSpecItem}>
-                                        <span className={styles.treeSpecLabel}>Price</span>
-                                        <span className={styles.treeSpecVal}>${current.price || 0}</span>
+                                    <div className={styles.treeSpecTile}>
+                                        <span className={styles.treeSpecLabel}>Price / Ct</span>
+                                        <span className={styles.treeSpecVal}>${formatNum(current.price, 2)}</span>
                                     </div>
-                                    <div className={styles.treeSpecItem}>
-                                        <span className={styles.treeSpecLabel}>Amount</span>
-                                        <span className={styles.treeSpecVal}>${current.amount || 0}</span>
+                                    <div className={`${styles.treeSpecTile} ${styles.treeSpecTileAmount}`}>
+                                        <span className={styles.treeSpecLabel}>Total Amount</span>
+                                        <span className={styles.treeSpecVal}>${formatNum(current.amount, 2)}</span>
                                     </div>
                                 </div>
-                                {current.shape || current.color || current.clarity ? (
-                                    <div className={styles.treeAttributePills}>
-                                        {current.shape ? <span className={styles.attrPill}>{current.shape}</span> : null}
-                                        {current.color ? <span className={styles.attrPill}>{current.color}</span> : null}
-                                        {current.clarity ? <span className={styles.attrPill}>{current.clarity}</span> : null}
+                                {(current.shape || current.color || current.clarity || current.cut || current.lab) ? (
+                                    <div className={styles.treeAttributesRow}>
+                                        {current.shape ? (
+                                            <span className={styles.attrPill}>
+                                                <span className={styles.attrPillLabel}>Shape:</span> {current.shape}
+                                            </span>
+                                        ) : null}
+                                        {current.color ? (
+                                            <span className={styles.attrPill}>
+                                                <span className={styles.attrPillLabel}>Color:</span> {current.color}
+                                            </span>
+                                        ) : null}
+                                        {current.clarity ? (
+                                            <span className={styles.attrPill}>
+                                                <span className={styles.attrPillLabel}>Clarity:</span> {current.clarity}
+                                            </span>
+                                        ) : null}
+                                        {current.cut ? (
+                                            <span className={styles.attrPill}>
+                                                <span className={styles.attrPillLabel}>Cut:</span> {current.cut}
+                                            </span>
+                                        ) : null}
+                                        {current.lab ? (
+                                            <span className={styles.attrPill}>
+                                                <span className={styles.attrPillLabel}>Lab:</span> {current.lab}
+                                            </span>
+                                        ) : null}
+                                    </div>
+                                ) : null}
+                                {!parent && rawChildren.length === 0 ? (
+                                    <div className={styles.treeStandaloneNote}>
+                                        <Info size={13} />
+                                        <span>Independent stock item · Not partitioned into child stones · Not part of a parent container</span>
                                     </div>
                                 ) : null}
                             </div>

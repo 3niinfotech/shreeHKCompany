@@ -132,7 +132,7 @@ outwardRouter.post("/outward/list", authenticateToken, async (req, res) => {
     // 2. Base Query Logic
     let typeFilter = "";
     if (post.type === "memo" || post.type === "consign") {
-      typeFilter = " AND o.type IN ('memo', 'consign') AND o.status IN ('on_memo', 'on_consign')";
+      typeFilter = " AND o.type IN ('memo', 'consign')";
     } else if (post.type === "sale" || post.type === "export") {
       typeFilter = " AND o.type IN ('sale', 'export') AND o.status IN ('on_sale', 'on_export')";
     } else {
@@ -160,16 +160,16 @@ outwardRouter.post("/outward/list", authenticateToken, async (req, res) => {
     const query = `SELECT o.id, o.entryno, o.type, o.invoiceno, p.name as party, o.reference,
                           DATE_FORMAT(o.invoicedate, '%d-%m-%Y') AS invoicedate,
                           DATE_FORMAT(o.date, '%d-%m-%Y') AS date,
-                          o.final_amount as finalAmount,
+                          COALESCE(NULLIF(o.final_amount, 0), (
+                            SELECT SUM(oi.amount) FROM dai_outward_item oi WHERE oi.outward_id = o.id
+                          ), 0) as finalAmount,
                           COALESCE((
                             SELECT SUM(oi.pcs) FROM dai_outward_item oi
                             WHERE oi.outward_id = o.id
-                              AND (oi.status IS NULL OR oi.status NOT IN ('returned','cancelled'))
                           ), 0) as totalPcs,
                           COALESCE((
                             SELECT SUM(oi.carat) FROM dai_outward_item oi
                             WHERE oi.outward_id = o.id
-                              AND (oi.status IS NULL OR oi.status NOT IN ('returned','cancelled'))
                           ), 0) as totalCarat
                    ${baseFromWhere}
                    GROUP BY o.id, o.entryno, o.type, o.invoiceno, p.name, o.reference, o.invoicedate, o.date, o.final_amount
@@ -239,7 +239,7 @@ outwardRouter.get("/outward/", authenticateToken, async (req, res) => {
           connection.query(
             `SELECT * FROM dai_outward_item
              WHERE outward_id = ?
-               AND (status IS NULL OR status NOT IN ('returned','cancelled'))`,
+               AND 1=1`,
             [id],
             (itemErr, items) => {
               let productsOut = dedupeProductsById(pdata || []);

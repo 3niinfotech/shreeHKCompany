@@ -90,6 +90,7 @@ const MemoConvertModal = ({
   const isPurchase = mode === "purchase";
   const isReturnMode = mode === "return";
   const isPurchaseReturn = isReturnMode && returnVariant === "purchase";
+  const isSaleReturn = isReturnMode && returnVariant === "sale";
   const isMemoHeader = isSale || isPurchase;
 
   useEffect(() => {
@@ -108,7 +109,7 @@ const MemoConvertModal = ({
     ? "Memo to Sale"
     : isPurchase
       ? "Memo to Purchase"
-      : (isPurchaseReturn ? "Purchase Return" : "Memo Return");
+      : (isPurchaseReturn ? "Purchase Return" : (isSaleReturn ? "Sale Return" : "Memo Return"));
   const recordBadgePrefix = (isPurchase || isPurchaseReturn) ? "Inward" : "Outward";
 
   const { data: companyData } = useFetchApi(
@@ -228,10 +229,10 @@ const MemoConvertModal = ({
       const lineCarat = p.memo_line_carat != null && p.memo_line_carat !== "" ? Number(p.memo_line_carat) : null;
       const pcs = linePcs != null && Number.isFinite(linePcs)
         ? linePcs
-        : (Number(p.memo_pcs) || 0);
+        : (Number(p.memo_pcs) || Number(p.polish_pcs) || 0);
       const carat = lineCarat != null && Number.isFinite(lineCarat)
         ? lineCarat
-        : (Number(p.memo_carat) || 0);
+        : (Number(p.memo_carat) || Number(p.polish_carat) || 0);
       const price = Number(
         (isPurchase || isPurchaseReturn)
           ? (p.purchase_price ?? p.price)
@@ -509,33 +510,39 @@ const MemoConvertModal = ({
         dataIndex: "polish_pcs",
         key: "polish_pcs",
         width: 80,
-        render: (v, row) => (
-          <InputNumber
-            min={0}
-            max={row.maxPcs}
-            value={v}
-            size="small"
-            style={{ width: "100%" }}
-            onChange={(val) => updateRow(row.id, "polish_pcs", val ?? 0)}
-          />
-        ),
+        render: (v, row) =>
+          isSaleReturn ? (
+            <Text strong>{v}</Text>
+          ) : (
+            <InputNumber
+              min={0}
+              max={row.maxPcs}
+              value={v}
+              size="small"
+              style={{ width: "100%" }}
+              onChange={(val) => updateRow(row.id, "polish_pcs", val ?? 0)}
+            />
+          ),
       },
       {
         title: "Carat",
         dataIndex: "polish_carat",
         key: "polish_carat",
         width: 90,
-        render: (v, row) => (
-          <InputNumber
-            min={0}
-            max={row.maxCarat}
-            step={0.001}
-            value={v}
-            size="small"
-            style={{ width: "100%" }}
-            onChange={(val) => updateRow(row.id, "polish_carat", val ?? 0)}
-          />
-        ),
+        render: (v, row) =>
+          isSaleReturn ? (
+            <Text strong>{Number(v || 0).toFixed(3)}</Text>
+          ) : (
+            <InputNumber
+              min={0}
+              max={row.maxCarat}
+              step={0.001}
+              value={v}
+              size="small"
+              style={{ width: "100%" }}
+              onChange={(val) => updateRow(row.id, "polish_carat", val ?? 0)}
+            />
+          ),
       },
       {
         title: "Cost",
@@ -543,7 +550,7 @@ const MemoConvertModal = ({
         key: "cost",
         width: 90,
         render: (v, row) =>
-          (isSale || isPurchase) ? (
+          (isSale || isPurchase) && !isSaleReturn ? (
             <InputNumber
               min={0}
               step={0.01}
@@ -561,16 +568,19 @@ const MemoConvertModal = ({
         dataIndex: "price",
         key: "price",
         width: 90,
-        render: (v, row) => (
-          <InputNumber
-            min={0}
-            step={0.01}
-            value={v}
-            size="small"
-            style={{ width: "100%" }}
-            onChange={(val) => updateRow(row.id, "price", val ?? 0)}
-          />
-        ),
+        render: (v, row) =>
+          isSaleReturn ? (
+            Number(v || 0).toFixed(2)
+          ) : (
+            <InputNumber
+              min={0}
+              step={0.01}
+              value={v}
+              size="small"
+              style={{ width: "100%" }}
+              onChange={(val) => updateRow(row.id, "price", val ?? 0)}
+            />
+          ),
       },
       {
         title: "Amount",
@@ -591,7 +601,7 @@ const MemoConvertModal = ({
       })),
     ];
     return cols;
-  }, [isSale, isPurchase]);
+  }, [isSale, isPurchase, isSaleReturn]);
 
   const scrollX = 48 + 100 + 90 + 120 + 80 + 90 + 90 + 90 + 100 + 90
     + ATTR_COLS.reduce((s, c) => s + c.width, 0);
@@ -652,7 +662,7 @@ const MemoConvertModal = ({
             Reset
           </Button>
           <Button type="primary" icon={<CheckOutlined />} loading={loading} onClick={handleOk}>
-            {isSale ? "Save Sale" : isPurchase ? "Save Purchase" : "Return Memo"}
+            {isSale ? "Save Sale" : isPurchase ? "Save Purchase" : (isPurchaseReturn ? "Purchase Return" : (isSaleReturn ? "Sale Return" : "Return Memo"))}
           </Button>
           <Button danger onClick={onClose}>
             Close

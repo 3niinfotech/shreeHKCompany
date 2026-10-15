@@ -106,8 +106,15 @@ function getFirstLineItemValidationError(items, options = {}) {
     return 'Add at least one line item with SKU, pcs, carat, price and amount.';
   }
 
+  const seenSkus = new Set();
   for (let i = 0; i < items.length; i += 1) {
-    if (!String(items[i].sku || '').trim()) continue;
+    const rawSku = String(items[i].sku || '').trim().toUpperCase();
+    if (!rawSku) continue;
+    if (seenSkus.has(rawSku)) {
+      return `Row ${i + 1}: Duplicate SKU "${items[i].sku}" entered in line items. Each line item must have a unique SKU.`;
+    }
+    seenSkus.add(rawSku);
+
     const error = getLineItemValidationError(items[i], i + 1, options);
     if (error) return error;
   }
@@ -160,6 +167,7 @@ const InwardEntryForm = ({
   const { data: companyData, isLoading: isCompanyLoading } = useFetchApi('GetCompany', ENDPOINTS.company.options);
   const {
     options: branchCompanyOptions,
+    defaultCompanyId,
     isLoading: isBranchCompanyLoading,
   } = useBranchCompanies();
   const { data: incrementData } = useFetchApi('GetIncrement', ENDPOINTS.common.increment);
@@ -181,6 +189,12 @@ const InwardEntryForm = ({
       type: INWARD_TYPE_LABELS[defaultInwardType] || defaultInwardType,
     });
   }, [form, defaultInwardType]);
+
+  useEffect(() => {
+    if (defaultCompanyId && !form.getFieldValue('operating_company_id')) {
+      form.setFieldsValue({ operating_company_id: defaultCompanyId });
+    }
+  }, [defaultCompanyId, form]);
 
   useEffect(() => {
     if (incrementData?.Data) {
@@ -384,6 +398,12 @@ const InwardEntryForm = ({
 
       setItems(normalizedItems);
 
+      const operatingCompanyId = form.getFieldValue('operating_company_id');
+      if (!operatingCompanyId) {
+        toast.error('Please select Company');
+        return;
+      }
+
       // In Memo / Import: skip checkExist API + confirmation modal → save directly
       if (skipExistCheck) {
         onFinalSave(normalizedItems);
@@ -393,7 +413,10 @@ const InwardEntryForm = ({
       const filledItems = getFilledLineItems(normalizedItems).map(normalizeLineItem);
 
       submitInward(
-        { products: formatProductsPayload(filledItems) },
+        {
+          products: formatProductsPayload(filledItems),
+          operating_company_id: operatingCompanyId,
+        },
         {
           onSuccess: (response) => {
             setExistData(response?.data || []);

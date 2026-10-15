@@ -39,6 +39,7 @@ export const PAGE_ENTRIES = [
   { key: "transaction.out_memo", label: "Out Memo", path: "/transaction/out-memo", moduleKey: "transaction" },
   { key: "transaction.sale_stock", label: "Sale", path: "/transaction/sale", moduleKey: "transaction" },
   { key: "transaction.purchase_stock", label: "Purchase", path: "/transaction/purchase", moduleKey: "transaction" },
+  { key: "transaction.company_transfer", label: "Inter-Company Stone Transfer", path: "/transaction/company-transfer", moduleKey: "transaction" },
 
   { key: "accounting.expanse", label: "Expense Entry", path: "/accounting/expanse", moduleKey: "accounting" },
   { key: "accounting.expanse_list", label: "Expense List", path: "/accounting/expanse/table-data", moduleKey: "accounting" },

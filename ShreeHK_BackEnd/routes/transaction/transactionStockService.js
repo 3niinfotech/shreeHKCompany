@@ -417,6 +417,7 @@ function normalizeInwardRow(row, products) {
   return {
     id: row.id,
     company: row.company != null ? Number(row.company) : undefined,
+    company_name: row.company_name || "",
     entryno,
     party: row.party,
     party_name: partyName,
@@ -449,6 +450,7 @@ function normalizeOutwardRow(row, products) {
   return {
     id: row.id,
     company: row.company != null ? Number(row.company) : undefined,
+    company_name: row.company_name || "",
     entryno,
     party: row.party,
     party_name: row.party_name || row.party,
@@ -465,8 +467,11 @@ function normalizeOutwardRow(row, products) {
     duedate: row.duedate,
     terms: row.terms,
     type: row.type,
+    status: row.status || (row.type === "sale" ? "on_sale" : row.type === "memo" ? "on_memo" : ""),
     lab: row.lab,
-    final_amount: row.final_amount,
+    final_amount:
+      Number(row.final_amount) ||
+      products.reduce((acc, p) => acc + (Number(p.sell_amount || p.amount) || 0), 0),
     paid_amount: row.paid_amount,
     due_amount: row.due_amount,
     shipping_name: row.shipping_name,
@@ -487,7 +492,14 @@ function normalizeOutwardRow(row, products) {
 
 async function listGia(post, userContext = {}) {
   const companyIds = await resolveListCompanyIds(userContext, DEFAULT_COMPANY_ID);
-  const companySql = companyInClause("o", companyIds);
+  let effectiveCompanyIds = companyIds;
+  if (post.company && Number(post.company) > 0) {
+    const requestedComp = Number(post.company);
+    if (companyIds.includes(requestedComp)) {
+      effectiveCompanyIds = [requestedComp];
+    }
+  }
+  const companySql = companyInClause("o", effectiveCompanyIds);
   const userId = userContext.userId || helper.DEFAULT_USER_ID;
   const userFilter = buildUserFilter("o", userId);
   const limit = parseInt(post.limit, 10) || 10;
@@ -517,8 +529,9 @@ async function listGia(post, userContext = {}) {
     params
   );
   const rows = await query(
-    `SELECT o.*, ${PARTY_FIELDS} FROM dai_outward o
+    `SELECT o.*, ${PARTY_FIELDS}, c.name AS company_name FROM dai_outward o
      LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name)
+     LEFT JOIN company c ON (o.company = c.id)
      WHERE ${companySql.clause} AND o.type = 'lab' AND o.status = 'on_lab'
      ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${dateClause}
      ORDER BY o.date DESC, o.id DESC LIMIT ? OFFSET ?`,
@@ -543,7 +556,14 @@ async function listInwardStock(post, userContext = {}) {
     console.error("listInwardStock ensureStockItemSchema:", schemaErr?.message || schemaErr);
   }
   const companyIds = await resolveListCompanyIds(userContext, DEFAULT_COMPANY_ID);
-  const companySql = companyInClause("i", companyIds);
+  let effectiveCompanyIds = companyIds;
+  if (post.company && Number(post.company) > 0) {
+    const requestedComp = Number(post.company);
+    if (companyIds.includes(requestedComp)) {
+      effectiveCompanyIds = [requestedComp];
+    }
+  }
+  const companySql = companyInClause("i", effectiveCompanyIds);
   const userId = userContext.userId || helper.DEFAULT_USER_ID;
   const userFilter = buildUserFilter("i", userId);
   const params = [...companySql.params, ...userFilter.params];
@@ -564,11 +584,16 @@ async function listInwardStock(post, userContext = {}) {
     params.push(String(post.type).toLowerCase());
   }
   const dateClause = buildDateFilterClause("i", post, params);
+  const isInterMemo = post.stockType === "inter_memo" || post.isInterTransfer === true;
+  const typeClause = isInterMemo
+    ? " AND i.inward_type IN ('inter_memo', 'inter_transfer_memo', 'transfer_memo')"
+    : " AND i.inward_type IN ('memo','consign') AND i.inward_type NOT IN ('inter_transfer', 'transfer', 'inter_memo', 'inter_transfer_memo', 'transfer_memo')";
   const rows = await query(
-    `SELECT i.*, ${PARTY_FIELDS} FROM dai_inward i
+    `SELECT i.*, ${PARTY_FIELDS}, c.name AS company_name FROM dai_inward i
      LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party = p.id OR i.party = p.name)
+     LEFT JOIN company c ON (i.company = c.id)
      WHERE (i.deleted = 0 OR i.deleted IS NULL) AND ${companySql.clause}
-     AND i.inward_type IN ('memo','consign')
+     ${typeClause}
      ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${dateClause}
      ORDER BY i.date DESC, i.id DESC`,
     params
@@ -590,7 +615,14 @@ async function listPurchaseStock(post, userContext = {}) {
     console.error("listPurchaseStock ensureStockItemSchema:", schemaErr?.message || schemaErr);
   }
   const companyIds = await resolveListCompanyIds(userContext, DEFAULT_COMPANY_ID);
-  const companySql = companyInClause("i", companyIds);
+  let effectiveCompanyIds = companyIds;
+  if (post.company && Number(post.company) > 0) {
+    const requestedComp = Number(post.company);
+    if (companyIds.includes(requestedComp)) {
+      effectiveCompanyIds = [requestedComp];
+    }
+  }
+  const companySql = companyInClause("i", effectiveCompanyIds);
   const userId = userContext.userId || helper.DEFAULT_USER_ID;
   const userFilter = buildUserFilter("i", userId);
   const limit = parseInt(post.limit, 10) || 10;
@@ -598,8 +630,8 @@ async function listPurchaseStock(post, userContext = {}) {
   const params = [...companySql.params, ...userFilter.params];
   let partyClause = "";
   if (post.party && post.party !== "0" && post.party !== "") {
-    partyClause = " AND i.party = ?";
-    params.push(post.party);
+    partyClause = " AND (i.party = ? OR i.party = CAST(? AS CHAR) OR p.name = ? OR p.id = ?)";
+    params.push(post.party, post.party, post.party, post.party);
   }
   let invoiceClause = "";
   let limitClause = " LIMIT ? OFFSET ?";
@@ -615,20 +647,26 @@ async function listPurchaseStock(post, userContext = {}) {
     params.push(String(post.type).toLowerCase());
   }
   const dateClause = buildDateFilterClause("i", post, params);
+  const isInterTransfer = post.isInterTransfer === true || post.stockType === "inter_transfer";
+  const typeClause = isInterTransfer
+    ? " AND i.inward_type IN ('inter_transfer', 'transfer')"
+    : " AND i.inward_type IN ('import','purchase','consign') AND i.inward_type NOT IN ('inter_transfer', 'transfer', 'inter_memo', 'inter_transfer_memo', 'transfer_memo')";
+
   const countParams = [...params];
   const countRows = await query(
     `SELECT COUNT(*) AS total FROM dai_inward i
      WHERE (i.deleted = 0 OR i.deleted IS NULL) AND ${companySql.clause}
-     AND i.inward_type IN ('import','purchase','consign')
+     ${typeClause}
      ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${dateClause}`,
     countParams
   );
   const listParams = limitClause ? [...params, limit, offset] : params;
   const rows = await query(
-    `SELECT i.*, ${PARTY_FIELDS} FROM dai_inward i
+    `SELECT i.*, ${PARTY_FIELDS}, c.name AS company_name FROM dai_inward i
      LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party = p.id OR i.party = p.name)
+     LEFT JOIN company c ON (i.company = c.id)
      WHERE (i.deleted = 0 OR i.deleted IS NULL) AND ${companySql.clause}
-     AND i.inward_type IN ('import','purchase','consign')
+     ${typeClause}
      ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${dateClause}
      ORDER BY i.date DESC, i.id DESC ${limitClause}`,
     listParams
@@ -650,7 +688,14 @@ async function listOutwardStock(post, stockType, userContext = {}) {
     console.error("listOutwardStock ensureStockItemSchema:", schemaErr?.message || schemaErr);
   }
   const companyIds = await resolveListCompanyIds(userContext, DEFAULT_COMPANY_ID);
-  const companySql = companyInClause("o", companyIds);
+  let effectiveCompanyIds = companyIds;
+  if (post.company && Number(post.company) > 0) {
+    const requestedComp = Number(post.company);
+    if (companyIds.includes(requestedComp)) {
+      effectiveCompanyIds = [requestedComp];
+    }
+  }
+  const companySql = companyInClause("o", effectiveCompanyIds);
   const userId = userContext.userId || helper.DEFAULT_USER_ID;
   const userFilter = buildUserFilter("o", userId);
   const limit = parseInt(post.limit, 10) || 10;
@@ -661,6 +706,12 @@ async function listOutwardStock(post, stockType, userContext = {}) {
     case "sale":
       typeClause = " AND o.type IN ('sale','export') AND o.status IN ('on_sale','on_export')";
       break;
+    case "inter_transfer":
+      typeClause = " AND o.type IN ('inter_transfer','transfer') AND o.status IN ('transferred','on_sale')";
+      break;
+    case "inter_memo":
+      typeClause = " AND o.type IN ('inter_memo', 'inter_transfer_memo', 'transfer_memo') AND o.status IN ('on_memo', 'on_transfer', 'transferred')";
+      break;
     case "export":
       typeClause = " AND o.type = 'export' AND o.status = 'on_export'";
       break;
@@ -668,15 +719,18 @@ async function listOutwardStock(post, stockType, userContext = {}) {
       typeClause = " AND o.type = 'consign' AND o.status = 'on_consign'";
       break;
     case "memo":
-      typeClause = " AND o.type IN ('memo','consign') AND o.status IN ('on_memo','on_consign')";
+      typeClause = " AND o.type IN ('memo','consign')";
       break;
     default:
-      typeClause = " AND o.type IN ('memo','consign') AND o.status IN ('on_memo','on_consign')";
+      typeClause = " AND o.type IN ('memo','consign')";
   }
+  const excludeTransferClause = (stockType === "inter_transfer" || stockType === "inter_memo")
+    ? ""
+    : " AND o.type NOT IN ('inter_transfer', 'transfer', 'inter_memo', 'inter_transfer_memo', 'transfer_memo')";
   let partyClause = "";
   if (post.party && post.party !== "0" && post.party !== "") {
-    partyClause = " AND o.party = ?";
-    params.push(post.party);
+    partyClause = " AND (o.party = ? OR o.party = CAST(? AS CHAR) OR p.name = ? OR p.id = ?)";
+    params.push(post.party, post.party, post.party, post.party);
   }
   let invoiceClause = "";
   if (post.invoice || post.invoiceno) {
@@ -709,13 +763,16 @@ async function listOutwardStock(post, stockType, userContext = {}) {
   const countRows = await query(
     `SELECT COUNT(*) AS total FROM dai_outward o
      WHERE ${companySql.clause} ${typeClause}
+     ${excludeTransferClause}
      ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${skuClause} ${dateClause}`,
     params
   );
   const rows = await query(
-    `SELECT o.*, ${PARTY_FIELDS} FROM dai_outward o
+    `SELECT o.*, ${PARTY_FIELDS}, c.name AS company_name FROM dai_outward o
      LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name)
+     LEFT JOIN company c ON (o.company = c.id)
      WHERE ${companySql.clause} ${typeClause}
+     ${excludeTransferClause}
      ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${skuClause} ${dateClause}
      ORDER BY o.date DESC, o.id DESC LIMIT ? OFFSET ?`,
     [...params, limit, offset]
@@ -730,7 +787,10 @@ async function listOutwardStock(post, stockType, userContext = {}) {
     products = await applyOutwardItemQtys(row.id, products);
     if (!products.length) {
       try {
-        const items = await stockMovement.getOutwardItems(query, row.id);
+        const items = await query(
+          "SELECT * FROM dai_outward_item WHERE outward_id = ? ORDER BY id ASC",
+          [row.id]
+        );
         if (items.length) {
           products = items.map((it) => ({
             id: it.product_id,
@@ -1035,6 +1095,34 @@ async function returnOutwardMemo(post, userContext = {}) {
   // Load once per voucher (not per product)
   const outwardItems = await stockMovement.getOutwardItems(query, post.id);
 
+  const outwardType = String(mdata.type || "").toLowerCase();
+  if (outwardType === "inter_transfer" || outwardType === "transfer") {
+    const transferRows = await query(
+      "SELECT * FROM dai_company_transfer WHERE source_outward_id = ? OR id = ? LIMIT 1",
+      [post.id, post.id]
+    );
+    if (transferRows.length) {
+      const companyTransferService = require("../../services/transaction/companyTransferService.js");
+      const transferRes = await companyTransferService.executeSaleReturn(
+        {
+          transfer_id: transferRows[0].id,
+          notes: post.narretion || "Sale return via Inter Transfer Sale",
+        },
+        userContext
+      );
+      return {
+        ok: true,
+        message: transferRes.message || "Sale return completed successfully.",
+      };
+    }
+  }
+
+  const isSaleVoucher =
+    outwardType === "sale" ||
+    outwardType === "export" ||
+    outwardType === "inter_transfer" ||
+    outwardType === "transfer";
+
   for (const pid of (mdata.products || "").split(",").filter(Boolean)) {
     if (!products.includes(pid)) {
       mp.push(pid);
@@ -1043,18 +1131,29 @@ async function returnOutwardMemo(post, userContext = {}) {
     const pdata = await getProductDetail(pid);
     if (!pdata) continue;
 
+    const isSale =
+      isSaleVoucher ||
+      String(pdata.outward || "").toLowerCase() === "sale" ||
+      String(pdata.outward || "").toLowerCase() === "export" ||
+      String(pdata.outward || "").toLowerCase() === "transferred";
+    const returnAction = isSale ? "sale_return" : "memo_return";
+    const returnTypeLabel = isSale ? "Sale" : "Memo";
+
     const itemForProduct = outwardItems.find(
       (it) => String(it.product_id) === String(pid)
     );
-    // New model: memo qty lives on outward_item / memo_* buckets (polish may be 0 after full memo)
+    // New model: memo/sale qty lives on outward_item / balances
     const isMainStockMemoLine =
       !pdata.outward_parent &&
       (Boolean(itemForProduct) ||
         Number(pdata.memo_carat) > 0 ||
+        (isSale && Number(pdata.sold_carat) > 0) ||
         pdata.outward === "memo" ||
-        pdata.outward === "consign");
+        pdata.outward === "consign" ||
+        (isSale && (pdata.outward === "sale" || pdata.outward === "export" || pdata.outward === "transferred")));
 
     if (
+      !isSale &&
       pdata.outward !== "memo" &&
       pdata.outward !== "consign" &&
       !pdata.outward_parent &&
@@ -1068,26 +1167,25 @@ async function returnOutwardMemo(post, userContext = {}) {
     }
 
     const rec = recordMap[pid] || recordMap[String(pid)] || {};
-    // Memo ceiling: item line → memo bucket → product polish (legacy child rows)
+    // Ceiling: item line → memo/sold bucket → product polish (legacy child rows)
     const memoPcsCeiling =
       Number(itemForProduct?.pcs) ||
-      Number(pdata.memo_pcs) ||
+      Number(isSale ? pdata.sold_pcs : pdata.memo_pcs) ||
       Number(pdata.polish_pcs) ||
       0;
     const memoCaratCeiling =
       Number(itemForProduct?.carat) ||
-      Number(pdata.memo_carat) ||
+      Number(isSale ? pdata.sold_carat : pdata.memo_carat) ||
       Number(pdata.polish_carat) ||
       0;
 
-    const retPcs =
-      rec.polish_pcs != null && rec.polish_pcs !== ""
-        ? Number(rec.polish_pcs)
-        : memoPcsCeiling;
-    const retCarat =
-      rec.polish_carat != null && rec.polish_carat !== ""
-        ? Number(rec.polish_carat)
-        : memoCaratCeiling;
+    // For sale return, carat and pcs must never be altered or updated
+    const retPcs = isSale
+      ? memoPcsCeiling
+      : (rec.polish_pcs != null && rec.polish_pcs !== "" ? Number(rec.polish_pcs) : memoPcsCeiling);
+    const retCarat = isSale
+      ? memoCaratCeiling
+      : (rec.polish_carat != null && rec.polish_carat !== "" ? Number(rec.polish_carat) : memoCaratCeiling);
     const stockPcs = memoPcsCeiling;
     const stockCarat = memoCaratCeiling;
 
@@ -1097,11 +1195,11 @@ async function returnOutwardMemo(post, userContext = {}) {
     if (retCarat > stockCarat + 0.0001) {
       return {
         ok: false,
-        message: `Carat exceed memo qty for SKU ${pdata.sku || pid} (returning ${retCarat}, memo has ${stockCarat})`,
+        message: `Carat exceed ${returnTypeLabel.toLowerCase()} qty for SKU ${pdata.sku || pid} (returning ${retCarat}, ${returnTypeLabel.toLowerCase()} has ${stockCarat})`,
       };
     }
     if (pdata.group_type === "box" && retPcs > stockPcs + 0.0001) {
-      return { ok: false, message: `Pcs exceed memo qty for SKU ${pdata.sku || pid}` };
+      return { ok: false, message: `Pcs exceed ${returnTypeLabel.toLowerCase()} qty for SKU ${pdata.sku || pid}` };
     }
 
     // New model: same main stock id → restore onhand via balances (full or partial)
@@ -1109,7 +1207,7 @@ async function returnOutwardMemo(post, userContext = {}) {
       const bal = await stockMovement.applyOutwardQty(
         query,
         pid,
-        "memo_return",
+        returnAction,
         retPcs,
         retCarat
       );
@@ -1118,11 +1216,10 @@ async function returnOutwardMemo(post, userContext = {}) {
       const leftCarat = Math.max(0, stockCarat - retCarat);
       const hasLeftover =
         leftCarat > 0.0001 || (stockPcs > 0 && leftPcs > 0.0001);
-      // Partial leftover: keep classic memo/consign flag if it was set; blank stays blank
-      // (main-stock partial memo model keeps remaining onhand visible in inventory).
+      // Partial leftover: keep classic memo/consign/sale flag if it was set; blank stays blank
       const priorOut = String(pdata.outward || "").toLowerCase();
       const nextOut =
-        priorOut === "memo" || priorOut === "consign" ? priorOut : "";
+        priorOut === "memo" || priorOut === "consign" || priorOut === "sale" || priorOut === "export" ? priorOut : "";
       if (hasLeftover) {
         await query(
           "UPDATE dai_product SET outward=?, site_upload=0, rapnet_upload=0 WHERE id = ?",
@@ -1144,13 +1241,13 @@ async function returnOutwardMemo(post, userContext = {}) {
       const memoCaratLabel = Number(Number(stockCarat).toFixed(3));
       await addHistoryAudited({
         product_id: pid,
-        action: "memo_return",
+        action: returnAction,
         party: mdata.party,
         narretion: mdata.narretion,
         date: moment().format("YYYY-MM-DD HH:mm:ss"),
         description: hasLeftover
-          ? `Stone Memo return ${retPcsLabel}pcs / ${retCaratLabel}ct of memo ${memoPcsLabel}pcs / ${memoCaratLabel}ct — ref ${mdata.reference || mdata.invoiceno || ""}`
-          : `Stone Memo return ${retPcsLabel}pcs / ${retCaratLabel}ct (full) — ref ${mdata.reference || mdata.invoiceno || ""}`,
+          ? `Stone ${returnTypeLabel} return ${retPcsLabel}pcs / ${retCaratLabel}ct of ${returnTypeLabel.toLowerCase()} ${memoPcsLabel}pcs / ${memoCaratLabel}ct — ref ${mdata.reference || mdata.invoiceno || ""}`
+          : `Stone ${returnTypeLabel} return ${retPcsLabel}pcs / ${retCaratLabel}ct (full) — ref ${mdata.reference || mdata.invoiceno || ""}`,
         pcs: retPcs,
         carat: retCarat,
         amount: retAmount,
@@ -1193,13 +1290,13 @@ async function returnOutwardMemo(post, userContext = {}) {
         const memoCaratLabel = Number(Number(stockCarat).toFixed(3));
         await addHistoryAudited({
           product_id: edata.id,
-          action: "memo_return",
+          action: returnAction,
           party: mdata.party,
           narretion: mdata.narretion,
           date: moment().format("YYYY-MM-DD HH:mm:ss"),
           description: isPartial
-            ? `Stone Memo return ${retPcsLabel}pcs / ${retCaratLabel}ct of memo ${memoPcsLabel}pcs / ${memoCaratLabel}ct — ref ${mdata.reference || mdata.invoiceno || ""}`
-            : `Stone Memo return ${retPcsLabel}pcs / ${retCaratLabel}ct (full) — ref ${mdata.reference || mdata.invoiceno || ""}`,
+            ? `Stone ${returnTypeLabel} return ${retPcsLabel}pcs / ${retCaratLabel}ct of ${returnTypeLabel.toLowerCase()} ${memoPcsLabel}pcs / ${memoCaratLabel}ct — ref ${mdata.reference || mdata.invoiceno || ""}`
+            : `Stone ${returnTypeLabel} return ${retPcsLabel}pcs / ${retCaratLabel}ct (full) — ref ${mdata.reference || mdata.invoiceno || ""}`,
           pcs: retPcs,
           carat: retCarat,
           amount: retAmount,
@@ -1233,18 +1330,18 @@ async function returnOutwardMemo(post, userContext = {}) {
         message: `Partial return for SKU ${pdata.sku || pid} is only supported for box/parcel splits. Return full carat or split first.`,
       };
     } else {
-      await query("UPDATE dai_product SET outward='', site_upload=0, rapnet_upload=0 WHERE outward IN ('memo','consign') AND id = ?", [pid]);
+      await query("UPDATE dai_product SET outward='', site_upload=0, rapnet_upload=0 WHERE outward IN ('memo','consign','sale','export') AND id = ?", [pid]);
       const unitPrice = Number(pdata.sell_price || pdata.price) || 0;
       const retAmount = Number((unitPrice * retCarat).toFixed(2));
       const retPcsLabel = Number(retPcs) || 0;
       const retCaratLabel = Number(Number(retCarat).toFixed(3));
       await addHistoryAudited({
         product_id: pid,
-        action: "memo_return",
+        action: returnAction,
         party: mdata.party,
         narretion: mdata.narretion,
         date: moment().format("YYYY-MM-DD HH:mm:ss"),
-        description: `Stone Memo return ${retPcsLabel}pcs / ${retCaratLabel}ct (full) — ref ${mdata.reference || mdata.invoiceno || ""}`,
+        description: `Stone ${returnTypeLabel} return ${retPcsLabel}pcs / ${retCaratLabel}ct (full) — ref ${mdata.reference || mdata.invoiceno || ""}`,
         pcs: retPcs,
         carat: retCarat,
         amount: retAmount,
@@ -1274,9 +1371,12 @@ async function returnOutwardMemo(post, userContext = {}) {
 
   returnProduct = [...new Set(returnProduct)];
   if (!mp.length) {
+    const closeStatus = isSaleVoucher
+      ? (outwardType === "export" ? "close_export" : (outwardType === "inter_transfer" || outwardType === "transfer" ? "returned" : "close_sale"))
+      : "close_memo";
     await query(
-      "UPDATE dai_outward SET products='', status='close_memo', return_products=?, final_amount=0, due_amount=0 WHERE id = ?",
-      [returnProduct.join(","), post.id]
+      "UPDATE dai_outward SET products='', status=?, return_products=?, final_amount=0, due_amount=0 WHERE id = ?",
+      [closeStatus, returnProduct.join(","), post.id]
     );
   } else {
     const paidAmount = Number(mdata.paid_amount || 0);
@@ -1286,7 +1386,7 @@ async function returnOutwardMemo(post, userContext = {}) {
       [mp.join(","), returnProduct.join(","), remainingFinalAmount, dueAmount, post.id]
     );
   }
-  return { ok: true, message: "Out memo return completed" };
+  return { ok: true, message: isSaleVoucher ? "Sale return completed" : "Out memo return completed" };
 }
 
 async function outwardMemoToSale(post, userContext = {}) {

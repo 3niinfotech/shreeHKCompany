@@ -44,6 +44,7 @@ const PAGE_ENTRIES = [
   { key: "transaction.out_memo", label: "Out Memo", path: "/transaction/out-memo", moduleKey: "transaction", apiPrefixes: ["/transaction/outward-stock", "/transaction/print"], legacyKeys: ["o_memo", "outward_memo"] },
   { key: "transaction.sale_stock", label: "Sale", path: "/transaction/sale", moduleKey: "transaction", apiPrefixes: ["/transaction/outward-stock", "/transaction/print"], legacyKeys: ["sale"] },
   { key: "transaction.purchase_stock", label: "Purchase", path: "/transaction/purchase", moduleKey: "transaction", apiPrefixes: ["/transaction/purchase-stock", "/transaction/inward-stock", "/transaction/print"], legacyKeys: ["purchase"] },
+  { key: "transaction.company_transfer", label: "Inter-Company Stone Transfer", path: "/transaction/company-transfer", moduleKey: "transaction", apiPrefixes: ["/transaction/company-transfer"], legacyKeys: ["sale", "purchase"] },
 
   // Accounting
   { key: "accounting.expanse", label: "Expense Entry", path: "/accounting/expanse", moduleKey: "accounting", apiPrefixes: ["/expanse/"], legacyKeys: ["expanse", "account"] },

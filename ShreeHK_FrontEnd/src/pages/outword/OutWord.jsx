@@ -110,7 +110,7 @@ const OutWord = () => {
         ENDPOINTS.outward.list,
         payload,
         'POST',
-        { enabled: isFilterSelected, staleTime: 0, refetchOnMount: 'always' }
+        { enabled: true, staleTime: 0, refetchOnMount: 'always' }
     );
 
     const { data: editDetailData, isLoading: isProductLoading } = useFetchApi(
@@ -148,8 +148,8 @@ const OutWord = () => {
 
     const { form, renderFilters, handleClear } = useFiltersFormFields(['type', 'invoice', 'date', 'party'], {
         typeOptions: [
+            { label: 'Out Memo (Memo)', value: 'memo' },
             { label: 'Sale', value: 'sale' },
-            { label: 'Memo', value: 'memo' },
             { label: 'Export', value: 'export' },
             { label: 'Consignment', value: 'consign' }
         ],
@@ -183,12 +183,6 @@ const OutWord = () => {
     }, [searchParams, form, setSearchParams]);
 
     useEffect(() => {
-        if (!isFilterSelected) {
-            setMainTableData([]);
-            setHasMore(false);
-            setIsFetchingMore(false);
-            return;
-        }
         if (!outwardData) return;
         const d = outwardData?.Data || outwardData?.data;
         const newRecords = Array.isArray(d) ? d : [];
@@ -225,7 +219,6 @@ const OutWord = () => {
             const { scrollTop, scrollHeight, clientHeight } = tableBody;
             if (
                 scrollHeight - scrollTop <= clientHeight + 80 &&
-                isFilterSelected &&
                 !outwardLoading &&
                 !outwardFetching &&
                 !isFetchingMore &&
@@ -238,7 +231,7 @@ const OutWord = () => {
 
         tableBody.addEventListener('scroll', handleScroll);
         return () => tableBody.removeEventListener('scroll', handleScroll);
-    }, [outwardLoading, outwardFetching, isFetchingMore, hasMore, isFilterSelected]);
+    }, [outwardLoading, outwardFetching, isFetchingMore, hasMore]);
 
     const stats = useMemo(() => {
         return mainTableData.reduce((acc, curr) => ({
@@ -472,8 +465,7 @@ const OutWord = () => {
 
                     <Space>
                         <Checkbox style={{ marginLeft: '15px' }}>Non-GIA Only</Checkbox>
-                        <Button type="primary" icon={<ReloadOutlined />} disabled={!isFilterSelected} onClick={() => {
-                            if (!isFilterSelected) return;
+                        <Button type="primary" icon={<ReloadOutlined />} onClick={() => {
                             setHasMore(true);
                             if (payload.page === 1) {
                                 refetch();
@@ -487,8 +479,7 @@ const OutWord = () => {
                             danger
                             onClick={() => {
                                 handleClear();
-                                setHasMore(false);
-                                setMainTableData([]);
+                                setHasMore(true);
                                 setSelectedRowKeys([]);
                                 setPayload({ party: "", invoiceno: "", type: "", page: 1, limit: LIMIT, from: "", to: "" });
                             }}

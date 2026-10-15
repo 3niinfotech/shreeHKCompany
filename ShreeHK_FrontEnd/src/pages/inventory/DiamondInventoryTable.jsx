@@ -38,6 +38,8 @@ import { buildInventoryApiFilters } from "../../utils/inventoryApiFilters";
 import useBranchCompanies from "../../hooks/useBranchCompanies";
 import useTableSkeleton from "../../components/common/skeleton/useTableSkeleton";
 import { StoneActionSuccessModal } from "./components/ShopTopActionFilter";
+import CompanyTransferModal from "../../components/inventory/CompanyTransferModal";
+import { ArrowLeftRight } from "lucide-react";
 import InventoryTableSection from "./InventoryTableSection";
 import { InventoryFooterDataContext } from "./InventoryFooterDataContext";
 import {
@@ -513,6 +515,7 @@ const DiamondInventoryTable = () => {
   const [tableHeight, setTableHeight] = useState(600);
   const [, setStoneDetailModal] = useState({ open: false, data: null });
   const [bulkActionModal, setBulkActionModal] = useState({ open: false, actionKey: null });
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
   const pageModalsRef = useRef(null);
   const [filterForm] = Form.useForm();
   const [advancedFilterForm] = Form.useForm();
@@ -1483,6 +1486,14 @@ const DiamondInventoryTable = () => {
       pageModalsRef.current?.openStock("export");
       return;
     }
+    if (key === "transfer" || key === "companyTransfer") {
+      if (selectedRowKeys.length === 0) {
+        toastWarning("Please select at least one diamond to transfer");
+        return;
+      }
+      setTransferModalOpen(true);
+      return;
+    }
     if (key === "hold" || key === "unHold") {
       handleHoldAction(key, selectedRowKeys);
       return;
@@ -2078,6 +2089,18 @@ const DiamondInventoryTable = () => {
             }
             printType={invoiceModal.printType}
             company={{ name: companyName || "", logo: companyLogo || "" }}
+          />
+
+          <CompanyTransferModal
+            open={transferModalOpen}
+            onClose={() => setTransferModalOpen(false)}
+            selectedStones={selectedRows}
+            onSuccess={async () => {
+              clearSelection();
+              queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
+              queryClient.invalidateQueries({ queryKey: ["myInventorySummary"] });
+              await refetchInventory();
+            }}
           />
         </div>
       </InventoryFooterDataContext.Provider>

@@ -41,6 +41,7 @@ const portalRouter = require("./routes/portal/portalRoutes.js");
 const integrationRouter = require("./routes/integration/integrationRoutes.js");
 const tenantCompanyRouter = require("./routes/admin/tenantCompanyRoutes.js");
 const branchRouter = require("./routes/admin/branchRoutes.js");
+const companyTransferRouter = require("./routes/transaction/companyTransferRoutes.js");
 const legacyApps = require("./config/legacyApps.js");
 const { authenticateToken, isSuperAdmin, enforceApiPermission } = require("./authMiddleware.js");
 const { proxyStoneMedia, MEDIA_PREFIX } = require("./routes/media/stoneMediaProxy.js");
@@ -139,6 +140,7 @@ app.use("/", dashboardRouter);
 app.use("/", quickNotesRouter);
 app.use("/", outwardRouter);
 app.use("/", transactionStockRouter);
+app.use("/", companyTransferRouter);
 app.use("/", commonRouter);
 app.use("/", notificationRouter);
 app.use("/", reportRouter);
@@ -180,9 +182,11 @@ const { ensureCompanyColumns } = require("./services/ensureCompanyColumnsService
 const { ensureStockItemSchema, repairOrphanLabReturns } = require("./services/stockMovementService.js");
 const { ensureBranchSchema } = require("./services/ensureBranchSchemaService.js");
 const { fixDuplicateMemoEntryNos } = require("./services/renumberOutwardEntryService.js");
+const { ensureCompanyTransferSchema } = require("./services/transaction/companyTransferSchemaService.js");
 
 ensureCompanyColumns().catch((err) => console.error("ensureCompanyColumns error:", err));
 ensureStockItemSchema().catch((err) => console.error("ensureStockItemSchema error:", err));
+ensureCompanyTransferSchema().catch((err) => console.error("ensureCompanyTransferSchema error:", err));
 ensureBranchSchema()
   .then(() => console.log("branch schema ready (HK/Dubai + company.branch_id)"))
   .catch((err) => console.error("ensureBranchSchema error:", err));

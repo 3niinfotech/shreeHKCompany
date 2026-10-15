@@ -1256,32 +1256,63 @@
 }
 
 .treeCardCurrent {
-    background: linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 5%, #fff) 0%, #fff 100%);
-    border: 2px solid var(--color-primary);
-    box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 20%, transparent);
+    background: var(--color-bg-card, #ffffff);
+    border: 1px solid var(--color-border, #cbd5e1);
+    border-top: 3px solid var(--color-primary, #1e3a8a);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05), 0 4px 12px rgba(15, 23, 42, 0.04);
     position: relative;
+    padding: 16px 20px;
 }
 
-.currentActivePill {
-    display: inline-flex;
+.treeSkuGroup {
+    display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 0.04em;
-    background: var(--color-primary);
-    color: #fff;
-    margin-bottom: 8px;
+    gap: 12px;
+}
+
+.skuIconBadge {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--color-primary, #1e3a8a) 8%, #ffffff);
+    border: 1px solid color-mix(in srgb, var(--color-primary, #1e3a8a) 20%, transparent);
+    color: var(--color-primary, #1e3a8a);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.treeSkuTitle {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--color-text-heading, #0f172a);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+}
+
+.treeNodeSubtitle {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--color-text-secondary, #64748b);
+    margin-top: 2px;
+}
+
+.treeHeaderBadges {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
 }
 
 .treeCardHeader {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 8px;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--color-border, #e2e8f0);
 }
 
 .treeNodeRole {
@@ -1299,13 +1330,6 @@
     color: var(--color-text-heading);
 }
 
-.treeSkuLarge {
-    font-size: 18px;
-    font-weight: 800;
-    color: var(--color-primary);
-    letter-spacing: 0.01em;
-}
-
 .treeMetricsLine {
     font-size: 12px;
     color: var(--color-text-secondary);
@@ -1315,44 +1339,90 @@
 .treeSpecsGrid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px dashed var(--color-border);
+    gap: 10px;
+    margin-top: 14px;
 }
 
-.treeSpecItem {
+.treeSpecTile {
     display: flex;
     flex-direction: column;
+    gap: 2px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: var(--color-bg-muted, #f8fafc);
+    border: 1px solid var(--color-border, #e2e8f0);
+}
+
+.treeSpecTileAmount {
+    background: color-mix(in srgb, var(--color-primary, #1e3a8a) 4%, #f8fafc);
+    border-color: color-mix(in srgb, var(--color-primary, #1e3a8a) 25%, transparent);
+
+    .treeSpecVal {
+        color: var(--color-primary, #1e3a8a);
+        font-weight: 800;
+    }
 }
 
 .treeSpecLabel {
     font-size: 10px;
     font-weight: 600;
-    color: var(--color-text-secondary);
+    color: var(--color-text-secondary, #64748b);
     text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
 
 .treeSpecVal {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
-    color: var(--color-text-heading);
+    color: var(--color-text-heading, #0f172a);
+
+    small {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--color-text-secondary, #64748b);
+        margin-left: 2px;
+    }
 }
 
-.treeAttributePills {
+.treeAttributesRow {
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
-    margin-top: 8px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--color-border, #e2e8f0);
 }
 
 .attrPill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     font-size: 11px;
     font-weight: 600;
-    padding: 1px 6px;
+    padding: 3px 8px;
     border-radius: 4px;
-    background: var(--color-bg-muted);
-    border: 1px solid var(--color-border);
-    color: var(--color-text-body);
+    background: #f1f5f9;
+    border: 1px solid var(--color-border, #e2e8f0);
+    color: var(--color-text-body, #334155);
+}
+
+.attrPillLabel {
+    color: var(--color-text-secondary, #64748b);
+    font-weight: 500;
+}
+
+.treeStandaloneNote {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: #f8fafc;
+    border: 1px dashed var(--color-border, #cbd5e1);
+    font-size: 11px;
+    color: var(--color-text-secondary, #64748b);
+    font-weight: 500;
 }
 
 .treeCardAction {

@@ -1,8 +1,7 @@
-import React from 'react';
-import { Tag, Tooltip } from 'antd';
+import { Tag } from 'antd';
 import {
-    Gem, Info, AlertTriangle, TrendingDown, TrendingUp, CheckCircle2,
-    ArrowRight, ShoppingBag, FileSpreadsheet, RefreshCw
+    Gem, TrendingDown, TrendingUp, CheckCircle2,
+    ShoppingBag, FileSpreadsheet,
 } from 'lucide-react';
 import styles from '../../assets/scss/pages/report/stoneHistory.module.scss';
 
@@ -142,29 +141,6 @@ const StockReconciliationCard = ({ stockSummary, stoneDetail, historyRows }) => 
                     </div>
                 </div>
             </div>
-
-            {/* Explanatory Calculation Banner */}
-            {hasMemoSale ? (
-                <div className={styles.mathNoticeBanner}>
-                    <div className={styles.mathNoticeHeader}>
-                        <Info size={15} className={styles.mathNoticeIcon} />
-                        <span className={styles.mathNoticeTitle}>
-                            Diamond Accounting Verification Rule (Why B.Carat is {formatNum(onhandCarat)} ct, Not {formatNum(onhandCarat - soldFromMemoCarat)} ct)
-                        </span>
-                    </div>
-                    <div className={styles.mathNoticeBody}>
-                        <div className={styles.mathFormulaLine}>
-                            <span className={styles.formulaPill}>Formula</span>
-                            <code>
-                                {formatNum(initialCarat)} (Initial) - {formatNum(memoOutCarat)} (Memo) + {formatNum(memoReturnCarat)} (Memo Return) = <strong>{formatNum(onhandCarat)} ct On-Hand</strong>
-                            </code>
-                        </div>
-                        <div className={styles.mathNoticeExplanation}>
-                            💡 <strong>Important Note for Diamond Calculation:</strong> The <strong>{formatNum(soldFromMemoCarat)} ct</strong> sale was converted <i>directly from the open client memo</i>. Because those carats were <u>already debited</u> from main stock when the stone was given on Memo (Step 2), this sale does <strong>not</strong> deduct from the on-hand stock again. <strong>Do not subtract the {formatNum(soldFromMemoCarat)} ct sale twice manually!</strong>
-                        </div>
-                    </div>
-                </div>
-            ) : null}
         </div>
     );
 };

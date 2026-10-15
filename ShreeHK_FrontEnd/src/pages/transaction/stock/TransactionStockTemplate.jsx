@@ -15,7 +15,7 @@ import {
   ImportOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { toastApiSuccess, toastApiError, toastWarning } from '../../../utils/toastNotify';
+import { toastApiSuccess, toastApiError, toastWarning, toastInfo } from '../../../utils/toastNotify';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useFetchApi, useDeleteApiRequest, usePostApiRequest } from '../../../api/ApiFunction';
@@ -31,6 +31,7 @@ import AdvancedFilterPanel, { FilterField, filterPanelStyles } from '../../../co
 import PageHeroHeader from '../../../components/common/PageHeroHeader';
 import { FileTextOutlined } from '@ant-design/icons';
 import useAuthStore from '../../../store/Auth.Store';
+import useBranchCompanies from '../../../hooks/useBranchCompanies';
 import useTableBodyScrollHeight from '../../../hooks/useTableBodyScrollHeight';
 import useTableSkeleton from '../../../components/common/skeleton/useTableSkeleton';
 import { SkeletonForm } from '../../../components/common/skeleton';
@@ -68,6 +69,9 @@ const typeColors = {
   lab: 'blue',
   purchase: 'purple',
   import: 'cyan',
+  inter_transfer: 'geekblue',
+  inter_memo: 'volcano',
+  transfer: 'geekblue',
 };
 
 const skuMatchesProduct = (product, sku) => {
@@ -97,6 +101,15 @@ const TransactionStockTemplate = ({
   const [searchParams] = useSearchParams();
   const companyName = useAuthStore((s) => s.companyName);
   const companyLogo = useAuthStore((s) => s.companyLogo);
+  const { options: branchCompanies } = useBranchCompanies();
+  const companyMap = useMemo(() => {
+    const map = new Map();
+    (branchCompanies || []).forEach((c) => {
+      map.set(Number(c.value), c.name || c.label);
+    });
+    return map;
+  }, [branchCompanies]);
+  const [selectedCompany, setSelectedCompany] = useState('');
   const [party, setParty] = useState('');
   const [invoice, setInvoice] = useState(() => (searchParams.get('invoice') || '').trim());
   const [filterType, setFilterType] = useState(() => (searchParams.get('type') || '').trim());
@@ -109,6 +122,7 @@ const TransactionStockTemplate = ({
   const [allGroups, setAllGroups] = useState([]);
   const [hasMore, setHasMore] = useState(true);
   const [scrollFetching, setScrollFetching] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState({});
   const [expandedRowKeys, setExpandedRowKeys] = useState([]);
   const [deleteModal, setDeleteModal] = useState({ open: false, record: null });
@@ -139,6 +153,7 @@ const TransactionStockTemplate = ({
   const listStart = infiniteScroll ? offset : (page - 1) * pageSize;
 
   const payload = useMemo(() => ({
+    company: selectedCompany || '',
     party: party || '',
     invoice: invoice || '',
     invoiceno: invoice || '',
@@ -151,7 +166,7 @@ const TransactionStockTemplate = ({
     ...(showSkuFilter && skuSearch.trim() ? { sku: skuSearch.trim() } : {}),
     ...(fromDate ? { fromDate: dayjs(fromDate).format('YYYY-MM-DD') } : {}),
     ...(toDate ? { toDate: dayjs(toDate).format('YYYY-MM-DD') } : {}),
-  }), [party, invoice, page, listLimit, listStart, listPayload, stockType, infiniteScroll, filterType, showSkuFilter, skuSearch, fromDate, toDate]);
+  }), [selectedCompany, party, invoice, page, listLimit, listStart, listPayload, stockType, infiniteScroll, filterType, showSkuFilter, skuSearch, fromDate, toDate]);
 
   const queryClient = useQueryClient();
   const [actionLoading, setActionLoading] = useState(false);
@@ -167,7 +182,10 @@ const TransactionStockTemplate = ({
 
   const { mutate: deleteRecord, isPending: isDeleting } = useDeleteApiRequest(deleteEndpoint, deleteQueryKey || queryKey, { queryParam: 'deleteId' });
 
-  const editSaveEndpoint = actions.editSaveEndpoint || ENDPOINTS.outward.update;
+  const isOutwardRecord = !String(actions.editGetEndpoint || "").includes("inward");
+  const editSaveEndpoint =
+    actions.editSaveEndpoint ||
+    (isOutwardRecord ? ENDPOINTS.outward.update : ENDPOINTS.inward.update);
   const { mutate: updateOutwardRecord, isPending: isUpdating } = usePostApiRequest(
     editSaveEndpoint,
     queryKey,
@@ -277,8 +295,9 @@ const TransactionStockTemplate = ({
       queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey?.[0];
-          if (Array.isArray(key)) return key[0] === queryKey;
-          return key === queryKey;
+          const queryFirst = Array.isArray(key) ? key[0] : key;
+          const targetFirst = Array.isArray(queryKey) ? queryKey[0] : queryKey;
+          return queryFirst === targetFirst;
         },
       });
       queryClient.invalidateQueries({ queryKey: ['GetProductData'] });
@@ -309,8 +328,16 @@ const TransactionStockTemplate = ({
 
   const partyOptions = useMemo(() => {
     const d = companyData?.Data || companyData?.data;
-    return Array.isArray(d) ? d.map((item) => ({ label: item.name, value: String(item.id) })) : [];
-  }, [companyData]);
+    const baseParties = Array.isArray(d) ? d.map((item) => ({ label: item.name, value: String(item.id) })) : [];
+    if (stockType === 'inter_transfer' || stockType === 'inter_memo') {
+      const compOptions = (branchCompanies || []).map((c) => ({
+        label: c.label || c.name,
+        value: c.label || c.name,
+      }));
+      return [...compOptions, ...baseParties];
+    }
+    return baseParties;
+  }, [companyData, branchCompanies, stockType]);
 
   // Venya sale edit (sform.php): sale / export / consign share this modal layout
   const isVenyaSaleEdit =
@@ -510,29 +537,27 @@ const TransactionStockTemplate = ({
   }, [infiniteScroll, scrollFetching, isFetching, hasMore]);
 
   const refreshList = useCallback(async () => {
+    setIsRefreshing(true);
     setExpandedRowKeys([]);
+    setSelectedProducts({});
+    setHasMore(true);
+    setScrollFetching(false);
+    setOffset(0);
+    setPage(1);
 
-    const invalidateStockQueries = () => {
-      queryClient.invalidateQueries({
+    const invalidateStockQueries = async () => {
+      await queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey?.[0];
-          if (Array.isArray(key)) return key[0] === queryKey;
-          return key === queryKey;
+          const queryFirst = Array.isArray(key) ? key[0] : key;
+          const targetFirst = Array.isArray(queryKey) ? queryKey[0] : queryKey;
+          return queryFirst === targetFirst;
         },
       });
     };
 
-    if (infiniteScroll) {
-      setHasMore(true);
-      setScrollFetching(false);
-      // Clearing allGroups before a same-key refetch can stick on empty when
-      // React Query structural-shares identical data and useEffect never re-runs.
-      if (offset !== 0) {
-        setOffset(0);
-        setAllGroups([]);
-        invalidateStockQueries();
-        return;
-      }
+    try {
+      await invalidateStockQueries();
       const result = await refetch();
       const d = result?.data?.Data || result?.data?.data;
       const newRecords = Array.isArray(d) ? d : [];
@@ -543,16 +568,14 @@ const TransactionStockTemplate = ({
       } else {
         setHasMore(true);
       }
-      return;
+      toastInfo('Data refreshed');
+    } catch (err) {
+      console.error('Refresh error:', err);
+      toastApiError(err);
+    } finally {
+      setIsRefreshing(false);
     }
-
-    if (page !== 1) {
-      setPage(1);
-      invalidateStockQueries();
-      return;
-    }
-    await refetch();
-  }, [infiniteScroll, offset, page, refetch, listLimit, queryClient, queryKey]);
+  }, [queryClient, queryKey, refetch, listLimit]);
 
   const pageStats = useMemo(() => groups.reduce((acc, group) => {
     (group.products || []).forEach((p) => {
@@ -915,7 +938,7 @@ const TransactionStockTemplate = ({
       } else {
         setMemoConvertLoading(false);
       }
-    } catch (e) {
+    } catch {
       setMemoConvertLoading(false);
     }
   };
@@ -953,7 +976,7 @@ const TransactionStockTemplate = ({
       const ok = await postAction(actions.toExportEndpoint, payload);
       if (ok) closeToExportModal();
       else setToExportLoading(false);
-    } catch (e) {
+    } catch {
       setToExportLoading(false);
     }
   };
@@ -969,8 +992,9 @@ const TransactionStockTemplate = ({
         queryClient.invalidateQueries({
           predicate: (query) => {
             const key = query.queryKey?.[0];
-            if (Array.isArray(key)) return key[0] === queryKey;
-            return key === queryKey;
+            const queryFirst = Array.isArray(key) ? key[0] : key;
+            const targetFirst = Array.isArray(queryKey) ? queryKey[0] : queryKey;
+            return queryFirst === targetFirst;
           },
         });
         queryClient.invalidateQueries({ queryKey: ['GetProductData'] });
@@ -1117,13 +1141,28 @@ const TransactionStockTemplate = ({
       },
     },
     {
+      title: 'Company',
+      key: 'company',
+      width: 220,
+      ellipsis: true,
+      render: (_, record) => {
+        const compId = record.company != null ? Number(record.company) : null;
+        const compName = record.company_name || companyMap.get(compId) || (compId ? `Company #${compId}` : '—');
+        return (
+          <Tag color="blue" style={{ fontWeight: 600 }}>
+            {compName}
+          </Tag>
+        );
+      },
+    },
+    {
       title: 'Type',
       key: 'type',
-      width: 100,
+      width: actions.typeWidth || 180,
       render: (_, record) => {
         const displayType = record.type || record.inward_type;
         return (
-          <Tag color={typeColors[displayType] || 'default'} style={{ textTransform: 'uppercase', fontWeight: 600 }}>
+          <Tag color={typeColors[displayType] || 'default'} style={{ textTransform: 'uppercase', fontWeight: 600, whiteSpace: 'nowrap' }}>
             {String(displayType || '-')}
           </Tag>
         );
@@ -1134,7 +1173,16 @@ const TransactionStockTemplate = ({
       key: 'party',
       width: 180,
       ellipsis: true,
-      render: (_, record) => record.party_name || record.party || '-',
+      render: (_, record) => {
+        if (record.party_name) return record.party_name;
+        if (stockType === 'inter_transfer' || stockType === 'inter_memo') {
+          const compId = Number(record.party);
+          if (compId && companyMap.has(compId)) {
+            return companyMap.get(compId);
+          }
+        }
+        return record.party || '-';
+      },
     },
     {
       title: 'Invoice',
@@ -1155,20 +1203,20 @@ const TransactionStockTemplate = ({
       title: 'Date',
       dataIndex: 'date',
       key: 'date',
-      width: 110,
+      width: 90,
       render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')),
     },
     {
       title: 'Stones',
       key: 'stoneCount',
-      width: 80,
+      width: 60,
       align: 'center',
       render: (_, record) => (record.products || []).length,
     },
     {
       title: 'Pcs',
       key: 'totalPcs',
-      width: 70,
+      width: 55,
       align: 'center',
       render: (_, record) => (record.products || []).reduce(
         (sum, p) => sum + Number(p.polish_pcs || 0),
@@ -1216,14 +1264,27 @@ const TransactionStockTemplate = ({
       ? [{
         title: 'Operations',
         key: 'buttons',
-        width: 260,
+        width: actions.operationsWidth || (
+          [
+            actions.showReturn,
+            actions.showMemoToSale,
+            actions.showMemoToPurchase,
+            actions.showToConsign,
+            actions.showToExport,
+            actions.showToPurchase,
+            actions.showToImport,
+          ].filter(Boolean).length <= 1 ? 115 : 180
+        ),
         align: 'center',
         render: (_, record) => {
-          const selectedCount = getSelected(record.id).length;
           const displayType = record.type || record.inward_type;
           const groupProductCount = (record.products || []).length;
-          const needsSelectionDisabled = !selectedCount || actionLoading;
-          const returnDisabled = actionLoading || groupProductCount === 0;
+          const isAlreadyReturned =
+            record.status === 'returned' ||
+            record.status === 'close_sale' ||
+            record.status === 'close_memo' ||
+            record.status === 'close_export';
+          const returnDisabled = actionLoading || groupProductCount === 0 || isAlreadyReturned;
 
           return (
             <div className={styles.actionButtons}>
@@ -1231,13 +1292,15 @@ const TransactionStockTemplate = ({
                 <button
                   type="button"
                   className={`${styles.actionBtn} ${styles.actionReturn} ${returnDisabled ? styles.actionDisabled : ''}`}
+                  disabled={returnDisabled}
+                  title={isAlreadyReturned ? 'Already returned' : ''}
                   onClick={(e) => {
                     e.stopPropagation();
                     if (!returnDisabled) handleReturn(record);
                   }}
                 >
                   <RollbackOutlined />
-                  Return
+                  {actions.returnBtnText || 'Return'}
                 </button>
               )}
               {actions.showMemoToSale && (
@@ -1394,8 +1457,9 @@ const TransactionStockTemplate = ({
       <AdvancedFilterPanel
         title={`${title}`}
         // subtitle="Filter records by company and invoice number."
-        activeCount={[party, invoice, filterType, skuSearch, fromDate, toDate].filter(Boolean).length}
+        activeCount={[selectedCompany, party, invoice, filterType, skuSearch, fromDate, toDate].filter(Boolean).length}
         onClear={() => {
+          setSelectedCompany('');
           setParty('');
           setInvoice('');
           setFilterType('');
@@ -1404,7 +1468,7 @@ const TransactionStockTemplate = ({
           setToDate(null);
           resetList();
         }}
-        clearDisabled={!party && !invoice && !filterType && !skuSearch && !fromDate && !toDate}
+        clearDisabled={!selectedCompany && !party && !invoice && !filterType && !skuSearch && !fromDate && !toDate}
         showSearch={false}
         extraActions={
           <Space>
@@ -1421,7 +1485,7 @@ const TransactionStockTemplate = ({
             <Button
               type="primary"
               icon={<ReloadOutlined />}
-              loading={isFetching && (!infiniteScroll || offset === 0)}
+              loading={isRefreshing || (isFetching && (!infiniteScroll || offset === 0))}
               onClick={refreshList}
             >
               Refresh
@@ -1429,6 +1493,19 @@ const TransactionStockTemplate = ({
           </Space>
         }
       >
+        <FilterField>
+          <Select
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            placeholder="All Company"
+            className={filterPanelStyles.filterControl}
+            value={selectedCompany || undefined}
+            onChange={(v) => { setSelectedCompany(v || ''); resetList(); }}
+            options={branchCompanies}
+            style={{ minWidth: 150, borderRadius: 8 }}
+          />
+        </FilterField>
         {showSkuFilter && (
           <FilterField>
             <Input
@@ -1441,13 +1518,12 @@ const TransactionStockTemplate = ({
             />
           </FilterField>
         )}
-        {/* <FilterField label="Company" icon={<TeamOutlined />}> */}
         <FilterField>
           <Select
             allowClear
             showSearch
             optionFilterProp="label"
-            placeholder="All Company Name"
+            placeholder="All Party Name"
             className={filterPanelStyles.filterControl}
             value={party || undefined}
             onChange={(v) => { setParty(v || ''); resetList(); }}
@@ -1515,7 +1591,7 @@ const TransactionStockTemplate = ({
             columns={skeletonAwareColumns}
             dataSource={skeletonAwareGroups}
             rowKey={showSkeleton ? '_skeletonKey' : 'id'}
-            loading={tableLoading}
+            loading={tableLoading || isRefreshing}
             className={styles.tableWrapper}
             size="small"
             bordered
@@ -1614,7 +1690,10 @@ const TransactionStockTemplate = ({
         open={memoConvertModal.open}
         mode={memoConvertModal.mode}
         returnVariant={
-          actions.returnEndpoint?.includes('/inward-stock/return') ? 'purchase' : 'memo'
+          actions.returnVariant ||
+          (actions.returnEndpoint?.includes('/inward-stock/return')
+            ? 'purchase'
+            : (stockType === 'sale' || stockType === 'inter_transfer' ? 'sale' : 'memo'))
         }
         record={memoConvertModal.record}
         productIds={memoConvertModal.productIds}
