@@ -290,9 +290,13 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
   useEffect(() => {
     if (incrementData?.Data) {
       const d = incrementData.Data;
+      let prefix = d.invoice_prefix;
+      if (config.type === 'lab') prefix = d.lab_prefix;
+      else if (config.type === 'memo' || config.type === 'consign') prefix = d.memo_prefix || d.invoice_prefix;
+
       form.setFieldsValue({
         entryno: formatOutwardEntryNo(config.type, d.outward),
-        invoiceno: formatOutwardInvoiceNo(config.type, d.invoice),
+        invoiceno: formatOutwardInvoiceNo(config.type, d.invoice, prefix),
         party: d.company,
         date: dayjs(),
         invoicedate: dayjs(),

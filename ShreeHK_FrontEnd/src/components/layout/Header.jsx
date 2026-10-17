@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Layout, Modal, Tooltip } from "antd";
 import TopbarSearch from "../sub_component/TopBarSearch";
 import ProfileDropdown from "../sub_component/ProfileDropdown";
@@ -8,7 +8,7 @@ import NavBar from "./NavBar";
 import SkuActionModal from "../../hooks/useSkuModalAction";
 import styles from "../../assets/scss/layout/header.module.scss";
 import { Link, useNavigate } from "react-router-dom";
-import { Gem, Menu, Wifi, WifiOff, RefreshCw, CheckCircle2, Database, FileCheck, Send, ShoppingCart, ShoppingBag, Package, FlaskConical, ArrowLeftRight } from "lucide-react";
+import { Gem, Menu, Wifi, WifiOff, RefreshCw, CheckCircle2, Database, Boxes, FileCheck, Send, ShoppingCart, ShoppingBag, Package, FlaskConical, ArrowLeftRight } from "lucide-react";
 import useAuthStore from "../../store/Auth.Store";
 import logo from "../../assets/loader/softWare_Header_white.svg";
 import { PAUSE_BACKGROUND_API } from "../../api/pauseBackgroundApi";
@@ -150,8 +150,24 @@ const Header = ({
   const offlineTimerRef = useRef(null);
   const reconnectTimerRef = useRef(null);
   const authCompanyName = useAuthStore((s) => s.companyName);
-  const authCompanyShortcutName = useAuthStore((s) => s.companyShortcutName);
-  const companyName = authCompanyShortcutName || authCompanyName || "Smart DIA";
+  const companyName = useMemo(() => {
+    const name = authCompanyName && String(authCompanyName).trim();
+    if (!name) return "SI";
+    const cleanWithoutSuffix = name
+      .replace(/\b(Pvt\.?|Ltd\.?|Private|Limited|LLP|Inc\.?|Co\.?|Corp\.?)\b/gi, "")
+      .trim();
+    const target = cleanWithoutSuffix || name;
+    const words = target.split(/[\s\-_/]+/).filter(Boolean);
+    if (words.length >= 2) {
+      return `${words[0][0]}${words[words.length - 1][0]}`.toUpperCase();
+    }
+    if (words.length === 1) {
+      const caps = words[0].replace(/[^A-Z0-9]/g, "");
+      if (caps.length >= 2) return caps.slice(0, 2).toUpperCase();
+      return words[0].slice(0, 2).toUpperCase();
+    }
+    return "SI";
+  }, [authCompanyName]);
 
   const checkServerHealth = async () => {
     if (!navigator.onLine) {
@@ -338,7 +354,7 @@ const Header = ({
           <div className={styles.topQuickActions}>
             <Tooltip title="My Inventory">
               <Button
-                icon={<Database size={20} />}
+                icon={<Boxes size={20} />}
                 className={`${styles.topQuickBtn} ${styles.myInventoryBtn}`}
                 onMouseEnter={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.inventory)}
                 onFocus={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.inventory)}

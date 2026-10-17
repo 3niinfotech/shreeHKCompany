@@ -15,7 +15,6 @@ import {
   RotateCcw,
   ShieldCheck,
   WalletCards,
-  X,
 } from "lucide-react";
 import { useFetchApi, usePostApiRequest } from "../../api/ApiFunction";
 import { ENDPOINTS } from "../../api/endpoints";
@@ -312,7 +311,9 @@ const OutstandingCalculationModal = ({ open, onClose, data, onSaved }) => {
       width={920}
       centered
       destroyOnClose
-      closeIcon={<X size={19} />}
+      closable={false}
+      maskClosable={false}
+      mask={{ closable: false }}
     >
       {data && (
         <div className={styles.content}>

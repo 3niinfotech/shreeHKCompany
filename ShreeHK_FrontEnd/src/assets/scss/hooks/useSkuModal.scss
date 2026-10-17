@@ -412,57 +412,65 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  padding: 1px 7px !important;
+  border-radius: 3px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.25px !important;
+  text-transform: uppercase !important;
   border: 1px solid transparent;
-  line-height: 1.2;
+  line-height: 18px !important;
+  min-height: 20px !important;
 
   &--available {
-    background: var(--color-success-light);
-    color: var(--color-success-dark);
-    border-color: color-mix(in srgb, var(--color-success) 35%, transparent);
+    background: #ecfdf5 !important;
+    color: #15803d !important;
+    border-color: #a7f3d0 !important;
   }
 
   &--sale,
   &--export {
-    background: var(--color-error-light);
-    color: var(--color-error-dark);
-    border-color: color-mix(in srgb, var(--color-error) 35%, transparent);
+    background: #fef2f2 !important;
+    color: #b91c1c !important;
+    border-color: #fecaca !important;
   }
 
   &--hold {
-    background: var(--color-warning-light);
-    color: var(--color-warning-dark);
-    border-color: color-mix(in srgb, var(--color-warning) 35%, transparent);
+    background: #fff7ed !important;
+    color: #c2410c !important;
+    border-color: #fed7aa !important;
   }
 
   &--memo {
-    background: var(--color-info-light);
-    color: var(--color-info-dark);
-    border-color: color-mix(in srgb, var(--color-info) 35%, transparent);
+    background: #fffbeb !important;
+    color: #b45309 !important;
+    border-color: #fde68a !important;
   }
 
   &--lab {
-    background: color-mix(in srgb, var(--color-info) 12%, var(--color-card-bg));
-    color: var(--color-info-dark);
-    border-color: color-mix(in srgb, var(--color-info) 30%, transparent);
+    background: #eff6ff !important;
+    color: #1d4ed8 !important;
+    border-color: #bfdbfe !important;
   }
 
   &--consign,
   &--consignment {
-    background: var(--color-primary-pale, var(--color-primary-light));
-    color: var(--color-primary-dark);
-    border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+    background: #fdf2f8 !important;
+    color: #be185d !important;
+    border-color: #fbcfe8 !important;
+  }
+
+  &--notfound,
+  &--not_found {
+    background: #fef2f2 !important;
+    color: #b91c1c !important;
+    border-color: #fecaca !important;
   }
 
   &--default {
-    background: var(--color-bg-muted, var(--color-bg-surface));
-    color: var(--color-text-body);
-    border-color: var(--color-border);
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    border-color: #cbd5e1 !important;
   }
 }
 

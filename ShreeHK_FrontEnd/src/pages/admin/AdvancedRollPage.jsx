@@ -551,6 +551,9 @@ const AdvancedRollPage = () => {
         ]}
         destroyOnClose
         centered
+        closable={false}
+        maskClosable={false}
+        mask={{ closable: false }}
         className={styles.createModal}
         width="min(520px, calc(100vw - 32px))"
       >

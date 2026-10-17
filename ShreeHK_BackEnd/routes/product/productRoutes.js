@@ -1057,6 +1057,47 @@ productRouter.post("/product/parcel/add-stones", authenticateToken, async (req, 
   }
 });
 
+productRouter.get("/product/mixing/container-children", authenticateToken, async (req, res) => {
+  try {
+    const result = await boxParcelService.getContainerChildren(req.query.containerId, buildUserContext(req));
+    return res.status(200).json(result);
+  } catch (error) {
+    const code = error.statusCode || 500;
+    return res.status(code).json({ ok: false, message: error.message || "Server error" });
+  }
+});
+
+productRouter.post("/product/mixing/unbox", authenticateToken, async (req, res) => {
+  try {
+    const result = await boxParcelService.unboxStonesFromContainer(req.body, buildUserContext(req));
+    return res.status(200).json(result);
+  } catch (error) {
+    const code = error.statusCode || 500;
+    return res.status(code).json({ ok: false, message: error.message || "Server error" });
+  }
+});
+
+productRouter.post("/product/mixing/separate", authenticateToken, async (req, res) => {
+  try {
+    const result = await boxParcelService.separateContainerStones(req.body, buildUserContext(req));
+    return res.status(200).json(result);
+  } catch (error) {
+    const code = error.statusCode || 500;
+    return res.status(code).json({ ok: false, message: error.message || "Server error" });
+  }
+});
+
+productRouter.post("/product/mixing/transfer", authenticateToken, async (req, res) => {
+  try {
+    const result = await boxParcelService.transferBetweenContainers(req.body, buildUserContext(req));
+    return res.status(200).json(result);
+  } catch (error) {
+    const code = error.statusCode || 500;
+    return res.status(code).json({ ok: false, message: error.message || "Server error" });
+  }
+});
+
+
 productRouter.get("/product/categorize/tree", authenticateToken, async (req, res) => {
   try {
     const Data = await boxParcelService.getCategorizeTree();

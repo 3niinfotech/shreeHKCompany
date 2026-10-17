@@ -131,6 +131,10 @@ const TenantCompanyList = () => {
       id: 0,
       // Pre-select login branch (e.g. Surat) so company maps under that branch
       branch_id: sessionBranchId != null ? Number(sessionBranchId) : undefined,
+      invoice_prefix: "INV-",
+      memo_prefix: "MEMO-",
+      purchase_prefix: "PUR-",
+      lab_prefix: "LAB-",
     });
     setModalOpen(true);
   };
@@ -336,6 +340,12 @@ const TenantCompanyList = () => {
                   {item.type ? (
                     <Tag className={styles.typeTagMuted}>{item.type}</Tag>
                   ) : null}
+                  {item.invoice_prefix ? (
+                    <Tag color="blue" title="Sale Invoice Prefix">{item.invoice_prefix}</Tag>
+                  ) : null}
+                  {item.memo_prefix ? (
+                    <Tag color="cyan" title="Out-Memo Prefix">{item.memo_prefix}</Tag>
+                  ) : null}
                 </div>
 
                 <div className={styles.metaBlock}>
@@ -402,6 +412,8 @@ const TenantCompanyList = () => {
           width="min(900px, calc(100vw - 32px))"
           centered
           closable={false} 
+          maskClosable={false}
+          mask={{ closable: false }}
           destroyOnClose
           className={styles.companyModal}
         >
@@ -486,6 +498,9 @@ const TenantCompanyList = () => {
             </Button>
           ]}
           centered
+          closable={false}
+          maskClosable={false}
+          mask={{ closable: false }}
           className={styles.deleteModal}
         >
           <Alert

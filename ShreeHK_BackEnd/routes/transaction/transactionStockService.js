@@ -56,10 +56,14 @@ function advanceSequenceValue(val) {
   return String(extractSeqNumber(val) + 1);
 }
 
-/** memo/consign/sale/export → INV-1; lab → LAB-1 */
-function formatOutwardInvoiceNo(type, seq) {
+/** memo/consign/sale/export → INV-1; lab → LAB-1 (supports company prefix) */
+function formatOutwardInvoiceNo(type, seq, customPrefix = null) {
   const n = extractSeqNumber(seq);
   const t = String(type || "").toLowerCase();
+  if (customPrefix && typeof customPrefix === "string" && customPrefix.trim()) {
+    const p = customPrefix.trim();
+    return p.endsWith("-") ? `${p}${n}` : `${p}-${n}`;
+  }
   if (t === "lab") return `LAB-${n}`;
   return `INV-${n}`;
 }
@@ -1458,8 +1462,20 @@ async function outwardMemoToSale(post, userContext = {}) {
     }
     const entrySeq = maxEntry + 1;
     const invoiceSeq = maxInvoice + 1;
+
+    let compPrefix = "INV-";
+    try {
+      const compRows = await q(
+        "SELECT invoice_prefix, memo_prefix FROM company WHERE id = ? LIMIT 1",
+        [companyId]
+      );
+      if (compRows?.[0]?.invoice_prefix) {
+        compPrefix = compRows[0].invoice_prefix;
+      }
+    } catch (_) {}
+
     const incre_id = formatOutwardEntryNo(type, entrySeq);
-    const invoice = formatOutwardInvoiceNo(type, invoiceSeq);
+    const invoice = formatOutwardInvoiceNo(type, invoiceSeq, compPrefix);
     const nextOutward = String(Math.max(maxEntryAll, entrySeq) + 1);
     const nextInvoice = String(Math.max(maxInvoiceAll, invoiceSeq) + 1);
 

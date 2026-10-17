@@ -714,6 +714,7 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
       }}
       destroyOnClose
       maskClosable={false}
+      mask={{ closable: false }}
       title={
         <div className="memo-modal-title">
           <span className="memo-title-text">{config.title}</span>

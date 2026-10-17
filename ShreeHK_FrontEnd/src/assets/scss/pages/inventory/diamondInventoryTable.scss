@@ -2,9 +2,9 @@
 
 $border-soft: var(--color-border);
 $border-cell: var(--color-table-border);
-$header-bg: #ddd8f5;
-$header-text: #1A1840;
-$header-hover: #d0c9ef;
+$header-bg: #f2f6f9;
+$header-text: #334155;
+$header-hover: #e2e8f0;
 $body-text: var(--color-text-body);
 $accent-muted: var(--color-text-muted);
 $accent-link: var(--color-badge-neutral-text);
@@ -22,7 +22,8 @@ $row-green-text: #14532d;
 $row-green-hover: #bbf7d0;
 
 $row-blue-bg: #e0f2fe;
-$row-blue-text: #0369a1;
+// $row-blue-text: #0369a1;
+$row-blue-text: #000000;
 $row-blue-hover: #bae6fd;
 
 $row-red-bg: #fee2e2;
@@ -40,10 +41,10 @@ $row-selected-bg: #fce7f3;
 $row-selected-text: #9d174d;
 $row-selected-border: #ec4899;
 
-// Finance column accents — subtle, readable
+// Finance column accents — vibrant, readable
 $rap-value: var(--color-entity-product-text);
-$price-value: var(--color-success-dark);
-$amount-value: var(--color-primary-dark);
+$price-value: #16a34a;
+$amount-value: #16a34a;
 $finance-empty: var(--color-chart-muted);
 
 .inventory-page-wrapper {
@@ -222,15 +223,15 @@ $finance-empty: var(--color-chart-muted);
 
         .ant-table-thead>tr>th.ant-table-cell {
           padding: 4px !important;
-          height: 40px;
+          height: 38px;
           font-size: 11px;
-          font-weight: 600;
+          font-weight: 700;
           letter-spacing: 0.03em;
           text-transform: uppercase;
           color: $header-text !important;
           background: $header-bg !important;
           border-color: $border-cell !important;
-          border-bottom: 1px solid $border-soft !important;
+          border-bottom: 1px solid #e2e8f0 !important;
           white-space: nowrap;
           transition: background 0.18s ease, color 0.18s ease;
 
@@ -438,25 +439,15 @@ $finance-empty: var(--color-chart-muted);
           }
         }
 
-        // Finance columns — header tint only
-        .inventory-finance-col {
-
-          &.inventory-rap-col {
-            background: color-mix(in srgb, var(--table-row-hover) 65%, transparent) !important;
-          }
-
-          &.inventory-price-col {
-            background: color-mix(in srgb, var(--color-success-light) 55%, transparent) !important;
-          }
-
-          &.inventory-amount-col {
-            background: color-mix(in srgb, var(--color-primary-pale) 45%, transparent) !important;
-          }
-        }
-
-        .ant-table-thead .inventory-finance-col {
-          font-weight: 600;
+        // Finance columns — header has uniform background matching screenshot
+        .ant-table-thead th.inventory-finance-col {
+          background: $header-bg !important;
+          font-weight: 700;
           color: $header-text !important;
+
+          &:hover {
+            background: $header-hover !important;
+          }
         }
 
         @mixin inventory-row-tone($bg, $text, $bg-hover) {
@@ -478,8 +469,7 @@ $finance-empty: var(--color-chart-muted);
             }
 
             .inventory-lab-tag {
-              background: color-mix(in srgb, var(--color-bg-card) 85%, transparent) !important;
-              color: $text !important;
+              vertical-align: middle;
             }
 
             .inventory-finance-value {
@@ -680,16 +670,15 @@ a.sku-table-link {
 }
 
 .inventory-lab-tag {
-  margin: 0;
-  padding: 0 7px;
-  font-size: 10px;
-  line-height: 18px;
-  font-weight: 600;
-  border-radius: 4px;
-  background: var(--table-row-hover) !important;
-  color: var(--color-badge-neutral-text) !important;
-  border: 1px solid var(--color-border) !important;
-  vertical-align: middle;
+  margin: 0 !important;
+  padding: 1px 7px !important;
+  font-size: 11px !important;
+  line-height: 18px !important;
+  min-height: 20px !important;
+  height: auto !important;
+  font-weight: 600 !important;
+  border-radius: 3px !important;
+  vertical-align: middle !important;
 }
 
 .inventory-remark-cell {
@@ -772,12 +761,18 @@ a.sku-table-link {
 }
 
 .inventory-price-value {
-  color: $price-value;
+  color: #16a34a !important;
+  font-weight: 600;
 }
 
 .inventory-amount-value {
-  color: $amount-value;
+  color: #16a34a !important;
   font-weight: 600;
+}
+
+[data-theme="dark"] .inventory-price-value,
+[data-theme="dark"] .inventory-amount-value {
+  color: #22c55e !important;
 }
 
 .inventory-finance-empty {

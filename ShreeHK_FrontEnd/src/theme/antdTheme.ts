@@ -118,6 +118,11 @@ export function getAntdThemeConfig(mode: ThemeMode, viewMode: ViewMode = "web") 
         borderRadius: parseInt(t.radiusControl, 10),
         itemActiveBg: t.colorBtnPrimaryBg,
       },
+      Tag: {
+        borderRadiusSM: 3,
+        fontSize: 11,
+        lineHeight: 1.4,
+      },
       Menu: {
         itemSelectedColor: t.colorNavActive,
         itemHoverColor: t.colorNavActive,

@@ -30,8 +30,11 @@ const historyColumns = [
             if (act.includes('memo')) color = 'orange';
             else if (act.includes('sale')) color = 'green';
             else if (act.includes('export')) color = 'blue';
-            else if (act.includes('consign')) color = 'purple';
-            else if (act.includes('import') || act.includes('inward') || act.includes('purchase')) color = 'cyan';
+            else if (act.includes('consign')) color = 'magenta';
+            else if (act.includes('purchase')) color = 'purple';
+            else if (act.includes('import') || act.includes('inward')) color = 'cyan';
+            else if (act.includes('transfer')) color = 'geekblue';
+            else if (act.includes('lab')) color = 'blue';
             return <Tag color={color} style={{ fontWeight: 600 }}>{formatActionLabel(text)}</Tag>;
         }
     },

@@ -66,6 +66,10 @@ export const ENDPOINTS = {
         pairAssign: "/product/pair/assign",
         pairUnpair: "/product/pair/unpair",
         packageAssign: "/product/package/assign",
+        mixingChildren: "/product/mixing/container-children",
+        mixingUnbox: "/product/mixing/unbox",
+        mixingSeparate: "/product/mixing/separate",
+        mixingTransfer: "/product/mixing/transfer",
     },
     inward: {
         checkExist: "/inward/checkExist",

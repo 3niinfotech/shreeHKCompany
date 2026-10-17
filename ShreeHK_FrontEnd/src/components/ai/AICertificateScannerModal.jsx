@@ -68,6 +68,9 @@ export default function AICertificateScannerModal({ open, onClose, onApplyScanDa
       open={open}
       onCancel={handleClose}
       footer={null}
+      closable={false}
+      maskClosable={false}
+      mask={{ closable: false }}
       width={650}
       title={
         <Space size={8}>
@@ -103,6 +106,12 @@ export default function AICertificateScannerModal({ open, onClose, onApplyScanDa
             )}
           </div>
         </Upload.Dragger>
+
+        {!scannedData && (
+          <div className="flex justify-end pt-1">
+            <Button onClick={handleClose}>Cancel</Button>
+          </div>
+        )}
 
         {scannedData && (
           <Card

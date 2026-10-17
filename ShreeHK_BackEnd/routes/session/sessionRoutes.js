@@ -140,7 +140,7 @@ sessionRouter.post("/session/context", authenticateToken, async (req, res) => {
       return res.status(200).json({
         status: true,
         Message: isFirstLoginContext
-          ? `Login successful — Branch: ${branchLabel} (add company from Admin)`
+          ? "Login successful"
           : `Switched successfully — Branch: ${branchLabel}`,
         token,
         Data: {
@@ -245,7 +245,7 @@ sessionRouter.post("/session/context", authenticateToken, async (req, res) => {
       ? `Branch: ${branchLabel} | Company: ${companyLabel}`
       : `Company: ${companyLabel}`;
     const successMessage = isFirstLoginContext
-      ? `Login successful — ${contextLabel}`
+      ? "Login successful"
       : `Switched successfully — ${contextLabel}`;
 
     res.status(200).json({

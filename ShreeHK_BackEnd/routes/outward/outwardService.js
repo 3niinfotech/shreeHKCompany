@@ -55,11 +55,16 @@ function extractSeqNumber(value) {
 
 /**
  * Invoice display: memo/consign/sale/export → INV-1; lab → LAB-1
+ * Supports company-specific custom prefixes (e.g. HK-INV-1, HK-MEMO-1)
  * Counter in dai_incrementid.invoice stays numeric.
  */
-function formatOutwardInvoiceNo(type, seq) {
+function formatOutwardInvoiceNo(type, seq, customPrefix = null) {
   const n = extractSeqNumber(seq);
   const t = String(type || "").toLowerCase();
+  if (customPrefix && typeof customPrefix === "string" && customPrefix.trim()) {
+    const p = customPrefix.trim();
+    return p.endsWith("-") ? `${p}${n}` : `${p}-${n}`;
+  }
   if (t === "lab") return `LAB-${n}`;
   return `INV-${n}`;
 }
@@ -139,9 +144,26 @@ async function allocateOutwardNumbers(q, companyId, type) {
   const entryno = maxEntry + 1;
   const invoiceSeq = maxInvoice + 1;
 
+  let compRows = [];
+  try {
+    compRows = await q(
+      "SELECT invoice_prefix, memo_prefix, purchase_prefix, lab_prefix FROM company WHERE id = ? LIMIT 1",
+      [cid]
+    );
+  } catch (_) {
+    /* fallback to default */
+  }
+  const compPrefix = compRows?.[0] || {};
+  let customPrefix = compPrefix.invoice_prefix || "INV-";
+  if (tLower === "lab") {
+    customPrefix = compPrefix.lab_prefix || "LAB-";
+  } else if (tLower === "memo" || tLower === "consign") {
+    customPrefix = compPrefix.memo_prefix || compPrefix.invoice_prefix || "MEMO-";
+  }
+
   return {
     entryno: formatOutwardEntryNo(type, entryno),
-    invoiceno: formatOutwardInvoiceNo(type, invoiceSeq),
+    invoiceno: formatOutwardInvoiceNo(type, invoiceSeq, customPrefix),
     // Shared counters track global max so getIncrement stays ahead
     nextOutward: String(Math.max(maxEntryAll, entryno) + 1),
     nextInvoice: String(Math.max(maxInvoiceAll, invoiceSeq) + 1),

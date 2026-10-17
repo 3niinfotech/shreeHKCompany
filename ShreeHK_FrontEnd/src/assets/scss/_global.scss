@@ -6,9 +6,23 @@
 
 body {
   margin: 0;
-  font-family: var(--font-family-base);
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  font-feature-settings: "tnum";
   background: v.$page-bg;
   color: v.$text-color;
+}
+
+.ag-theme-alpine {
+  font-family: "Inter", sans-serif;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ag-header-cell-text {
+  font-weight: 600;
+  font-size: 11px;
 }
 
 #root {
@@ -71,5 +85,4 @@ input[type="number"]::-webkit-inner-spin-button {
 input[type="number"] {
   -moz-appearance: textfield !important;
   appearance: textfield !important;
-}
-
+} 

@@ -74,6 +74,20 @@ const typeColors = {
   transfer: 'geekblue',
 };
 
+const getTypeColor = (type) => {
+  const t = String(type || '').trim().toLowerCase();
+  if (t.includes('import')) return 'cyan';
+  if (t.includes('purchase')) return 'purple';
+  if (t.includes('sale')) return 'success';
+  if (t.includes('inter_memo')) return 'volcano';
+  if (t.includes('memo')) return 'warning';
+  if (t.includes('consign')) return 'magenta';
+  if (t.includes('export')) return 'processing';
+  if (t.includes('lab')) return 'blue';
+  if (t.includes('transfer')) return 'geekblue';
+  return typeColors[t] || 'default';
+};
+
 const skuMatchesProduct = (product, sku) => {
   const needle = String(sku || '').trim().toLowerCase();
   if (!needle) return true;
@@ -148,6 +162,26 @@ const TransactionStockTemplate = ({
   const [originalSproducts, setOriginalSproducts] = useState('');
   const [editForm] = Form.useForm();
   const tableRef = useRef(null);
+
+  const branchCompanyOptions = useMemo(() => {
+    const list = (branchCompanies || []).map((c) => ({
+      label: c.label || c.name,
+      value: isNaN(Number(c.value)) ? c.value : Number(c.value),
+    }));
+    const rawComp = editingRecord?.company;
+    const currentCompId =
+      rawComp != null && rawComp !== ''
+        ? (isNaN(Number(rawComp)) ? rawComp : Number(rawComp))
+        : null;
+    if (currentCompId != null && !list.some((o) => String(o.value) === String(currentCompId))) {
+      const fallbackName =
+        editingRecord?.company_name ||
+        companyMap.get(Number(currentCompId)) ||
+        `Company #${currentCompId}`;
+      list.unshift({ label: fallbackName, value: currentCompId });
+    }
+    return list;
+  }, [branchCompanies, editingRecord, companyMap]);
 
   const listLimit = infiniteScroll ? SCROLL_LIMIT : pageSize;
   const listStart = infiniteScroll ? offset : (page - 1) * pageSize;
@@ -237,8 +271,24 @@ const TransactionStockTemplate = ({
       color: p.color ?? p.main_color ?? "",
     }));
 
+    const rawCompany = details.company != null && details.company !== ''
+      ? details.company
+      : (editingRecord?.company != null && editingRecord?.company !== '' ? editingRecord.company : undefined);
+    const compId =
+      rawCompany != null && rawCompany !== '' && !isNaN(Number(rawCompany))
+        ? Number(rawCompany)
+        : null;
+    const resolvedCompanyText =
+      details.company_name ||
+      editingRecord?.company_name ||
+      (compId ? companyMap.get(compId) : '') ||
+      (typeof rawCompany === 'string' && isNaN(Number(rawCompany)) ? rawCompany : '') ||
+      companyName ||
+      '';
+
     editForm.setFieldsValue({
       ...details,
+      company: resolvedCompanyText,
       type: details.type || details.inward_type || '',
       entryno: details.entryno ?? details.id,
       date: details.date ? dayjs(details.date) : null,
@@ -273,7 +323,7 @@ const TransactionStockTemplate = ({
       ? details.products
       : normalizedProducts.map((p) => p.id).filter(Boolean).join(',');
     setOriginalSproducts(csvIds || '');
-  }, [editForm]);
+  }, [editForm, editingRecord, companyMap, companyName]);
 
   useEffect(() => {
     if (!editDetailData || editDetailData.status === false) return;
@@ -377,6 +427,80 @@ const TransactionStockTemplate = ({
     }));
   }, [originMasterData]);
 
+  const editModalTitle = useMemo(() => {
+    const recType = editingRecord?.type || editingRecord?.inward_type;
+    const formatType = (t) => {
+      const s = String(t || '').trim().toLowerCase();
+      if (s === 'memo') return 'Memo';
+      if (s === 'sale') return 'Sale';
+      if (s === 'purchase') return 'Purchase';
+      if (s === 'import') return 'Import';
+      if (s === 'export') return 'Export';
+      if (s === 'consign') return 'Consignment';
+      if (s === 'lab' || s === 'gia') return 'GIA Lab';
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    };
+
+    if (recType) {
+      const formattedType = formatType(recType);
+      if (title) {
+        const cleanTitle = title.trim();
+        if (cleanTitle.toLowerCase().includes(formattedType.toLowerCase())) {
+          return cleanTitle.toLowerCase().startsWith('edit') ? cleanTitle : `Edit ${cleanTitle}`;
+        }
+        return `Edit ${cleanTitle} (${formattedType})`;
+      }
+      return `Edit ${formattedType}`;
+    }
+
+    if (title) {
+      const cleanTitle = title.trim();
+      return cleanTitle.toLowerCase().startsWith('edit') ? cleanTitle : `Edit ${cleanTitle}`;
+    }
+    return 'Edit Transaction';
+  }, [title, editingRecord]);
+
+  const editModalSubtitle = useMemo(() => {
+    const idText =
+      editingRecord?.invoiceno ||
+      (editingRecord?.entryno ? `#${editingRecord.entryno}` : (editingRecord?.id ? `#${editingRecord.id}` : ''));
+    const compId =
+      editingRecord?.company != null && editingRecord?.company !== ''
+        ? Number(editingRecord.company)
+        : null;
+    const compName =
+      editingRecord?.company_name ||
+      (compId ? companyMap.get(compId) : '') ||
+      '';
+    if (idText && compName) {
+      return `${idText} • ${compName}`;
+    }
+    return idText || compName || '';
+  }, [editingRecord, companyMap]);
+
+  const resolvedEditCompanyName = useMemo(() => {
+    const rawComp = editingRecord?.company;
+    const compId =
+      rawComp != null && rawComp !== '' && !isNaN(Number(rawComp))
+        ? Number(rawComp)
+        : null;
+    return (
+      editingRecord?.company_name ||
+      (compId ? companyMap.get(compId) : '') ||
+      (typeof rawComp === 'string' && isNaN(Number(rawComp)) ? rawComp : '') ||
+      companyName ||
+      ''
+    );
+  }, [editingRecord, companyMap, companyName]);
+
+  useEffect(() => {
+    if (!isEditModalOpen) return;
+    const currentVal = editForm.getFieldValue('company');
+    if (!currentVal && resolvedEditCompanyName) {
+      editForm.setFieldsValue({ company: resolvedEditCompanyName });
+    }
+  }, [isEditModalOpen, resolvedEditCompanyName, editForm]);
+
   const editMainFields = useMemo(() => {
     // 5 fields per row (account for Row gutter)
     const c5 = '1 1 calc(20% - 13px)';
@@ -384,6 +508,7 @@ const TransactionStockTemplate = ({
       // Match Venya sform.php header (no Type field — type is hidden)
       return [
         { name: 'entryno', label: 'Entry', type: 'text', required: true, flex: c5, disabled: true },
+        { name: 'company', label: 'Company', type: 'text', flex: c5, disabled: true },
         { name: 'place', label: 'Sale @', type: 'text', flex: c5 },
         { name: 'date', label: 'Date', type: 'date', required: true, flex: c5 },
         { name: 'reference', label: 'Reference', type: 'text', flex: c5 },
@@ -399,6 +524,7 @@ const TransactionStockTemplate = ({
     }
     return [
       { name: 'entryno', label: 'Entry', type: 'text', required: true, flex: c5, disabled: true },
+      { name: 'company', label: 'Company', type: 'text', flex: c5, disabled: true },
       { name: 'type', label: 'Type', type: 'text', required: true, flex: c5, disabled: true },
       { name: 'place', label: 'Place', type: 'text', flex: c5 },
       { name: 'date', label: 'Date', type: 'date', required: true, flex: c5 },
@@ -414,7 +540,7 @@ const TransactionStockTemplate = ({
       {
         type: 'custom',
         noFormItem: true,
-        flex: '1 1 calc(40% - 13px)',
+        flex: c5,
         render: () => (
           <Form.Item
             label={<span className={styles.stockEditBankLabel}>Bank</span>}
@@ -438,7 +564,7 @@ const TransactionStockTemplate = ({
         ),
       },
     ];
-  }, [partyOptions, isVenyaSaleEdit]);
+  }, [partyOptions, isVenyaSaleEdit, branchCompanyOptions]);
 
   const watchInvoiceDate = Form.useWatch('invoicedate', editForm);
   const watchTerms = Form.useWatch('terms', editForm);
@@ -763,36 +889,36 @@ const TransactionStockTemplate = ({
       },
       ...(isVenyaSaleEditGrid
         ? [
-            textCol("SKU", "sku", 120, { fixed: "left", placeholder: "SKU" }),
-            textCol("P.Pcs", "polish_pcs", 80, { type: "number", placeholder: "0" }),
-            textCol("P.Carat", "polish_carat", 90, { type: "number", placeholder: "0.00" }),
-            textCol("Cost", "cost", 90, { type: "number", placeholder: "0.00" }),
-            textCol("Price", "sell_price", 90, { type: "number", placeholder: "0.00" }),
-            textCol("Amount", "sell_amount", 100, { type: "number", placeholder: "0.00" }),
-            textCol("LOC", "location", 90, { placeholder: "LOC" }),
-            textCol("Remark", "remark", 120, { placeholder: "Remark" }),
-            textCol("Lab", "lab", 80, { placeholder: "Lab" }),
-          ]
+          textCol("SKU", "sku", 120, { fixed: "left", placeholder: "SKU" }),
+          textCol("P.Pcs", "polish_pcs", 80, { type: "number", placeholder: "0" }),
+          textCol("P.Carat", "polish_carat", 90, { type: "number", placeholder: "0.00" }),
+          textCol("Cost", "cost", 90, { type: "number", placeholder: "0.00" }),
+          textCol("Price", "sell_price", 90, { type: "number", placeholder: "0.00" }),
+          textCol("Amount", "sell_amount", 100, { type: "number", placeholder: "0.00" }),
+          textCol("LOC", "location", 90, { placeholder: "LOC" }),
+          textCol("Remark", "remark", 120, { placeholder: "Remark" }),
+          textCol("Lab", "lab", 80, { placeholder: "Lab" }),
+        ]
         : [
-            textCol("Mfg. code", "mfg_code", 100, { fixed: "left", placeholder: "Mfg" }),
-            textCol("D. No.", "diamond_no", 90, { fixed: "left", placeholder: "D.No" }),
-            textCol("SKU", "sku", 120, { fixed: "left", placeholder: "SKU" }),
-            textCol("Pcs", "polish_pcs", 80, { type: "number", placeholder: "0" }),
-            textCol("Carat", "polish_carat", 90, { type: "number", placeholder: "0.00" }),
-            textCol("Cost", "cost", 90, { type: "number", placeholder: "0.00" }),
-            textCol("Price", "sell_price", 90, { type: "number", placeholder: "0.00" }),
-            textCol("Amount", "sell_amount", 100, { type: "number", placeholder: "0.00" }),
-            textCol("LOC", "location", 90, { placeholder: "LOC" }),
-            textCol("Remark", "remark", 120, { placeholder: "Remark" }),
-            textCol("Lab", "lab", 80, { placeholder: "Lab" }),
-            textCol("Group Type", "group_type", 100, { placeholder: "Group" }),
-            textCol("Report No.", "report_no", 110, { placeholder: "Report" }),
-            textCol("Shape", "shape", 90, { placeholder: "Shape" }),
-            textCol("Clarity", "clarity", 90, { placeholder: "Clarity" }),
-            textCol("Intensity", "intensity", 90, { placeholder: "Intensity" }),
-            textCol("Overtone", "overtone", 90, { placeholder: "Overtone" }),
-            textCol("Color", "color", 80, { placeholder: "Color" }),
-          ]),
+          textCol("Mfg. code", "mfg_code", 100, { fixed: "left", placeholder: "Mfg" }),
+          textCol("D. No.", "diamond_no", 90, { fixed: "left", placeholder: "D.No" }),
+          textCol("SKU", "sku", 120, { fixed: "left", placeholder: "SKU" }),
+          textCol("Pcs", "polish_pcs", 80, { type: "number", placeholder: "0" }),
+          textCol("Carat", "polish_carat", 90, { type: "number", placeholder: "0.00" }),
+          textCol("Cost", "cost", 90, { type: "number", placeholder: "0.00" }),
+          textCol("Price", "sell_price", 90, { type: "number", placeholder: "0.00" }),
+          textCol("Amount", "sell_amount", 100, { type: "number", placeholder: "0.00" }),
+          textCol("LOC", "location", 90, { placeholder: "LOC" }),
+          textCol("Remark", "remark", 120, { placeholder: "Remark" }),
+          textCol("Lab", "lab", 80, { placeholder: "Lab" }),
+          textCol("Group Type", "group_type", 100, { placeholder: "Group" }),
+          textCol("Report No.", "report_no", 110, { placeholder: "Report" }),
+          textCol("Shape", "shape", 90, { placeholder: "Shape" }),
+          textCol("Clarity", "clarity", 90, { placeholder: "Clarity" }),
+          textCol("Intensity", "intensity", 90, { placeholder: "Intensity" }),
+          textCol("Overtone", "overtone", 90, { placeholder: "Overtone" }),
+          textCol("Color", "color", 80, { placeholder: "Color" }),
+        ]),
     ];
 
     if (allowAddProductInEdit) {
@@ -841,11 +967,18 @@ const TransactionStockTemplate = ({
       const values = await editForm.validateFields();
       const originalIds = originalSproducts
         || (editingRecord?.products || []).map((p) => (typeof p === 'object' ? p.id : p)).filter(Boolean).join(',');
+
+      const originalCompanyId =
+        editingRecord?.company != null && editingRecord?.company !== ''
+          ? (isNaN(Number(editingRecord.company)) ? editingRecord.company : Number(editingRecord.company))
+          : undefined;
+
       const payload = {
         id: editingRecord.id,
         type: editingRecord.type,
         sproducts: originalIds,
         ...values,
+        ...(originalCompanyId != null ? { company: originalCompanyId } : {}),
         boc: values.boc ? 1 : 0,
         citi: values.citi ? 1 : 0,
         dbs: values.dbs ? 1 : 0,
@@ -924,12 +1057,12 @@ const TransactionStockTemplate = ({
       const body =
         memoConvertModal.mode === 'return'
           ? {
-              id: payload.id,
-              outid: payload.id,
-              products: payload.products,
-              record: payload.record,
-              narretion: payload.narretion,
-            }
+            id: payload.id,
+            outid: payload.id,
+            products: payload.products,
+            record: payload.record,
+            narretion: payload.narretion,
+          }
           : payload;
       const ok = await postAction(endpoint, body);
       if (ok) {
@@ -1134,10 +1267,10 @@ const TransactionStockTemplate = ({
       title: 'Entry No',
       dataIndex: 'entryno',
       key: 'entryno',
-      width: 110,
+      width: actions.entryWidth || 110,
       render: (val, record) => {
         const entry = String(val ?? record?.id ?? '').trim();
-        return <Text strong>{entry ? `#${entry}` : '—'}</Text>;
+        return <Text strong style={{ whiteSpace: 'nowrap' }}>{entry ? `#${entry}` : '—'}</Text>;
       },
     },
     {
@@ -1158,11 +1291,11 @@ const TransactionStockTemplate = ({
     {
       title: 'Type',
       key: 'type',
-      width: actions.typeWidth || 180,
+      width: actions.typeWidth || 100,
       render: (_, record) => {
         const displayType = record.type || record.inward_type;
         return (
-          <Tag color={typeColors[displayType] || 'default'} style={{ textTransform: 'uppercase', fontWeight: 600, whiteSpace: 'nowrap' }}>
+          <Tag color={getTypeColor(displayType)} style={{ textTransform: 'uppercase', fontWeight: 600, whiteSpace: 'nowrap' }}>
             {String(displayType || '-')}
           </Tag>
         );
@@ -1171,7 +1304,7 @@ const TransactionStockTemplate = ({
     {
       title: 'Party',
       key: 'party',
-      width: 180,
+      width: actions.partyWidth || 180,
       ellipsis: true,
       render: (_, record) => {
         if (record.party_name) return record.party_name;
@@ -1188,14 +1321,14 @@ const TransactionStockTemplate = ({
       title: 'Invoice',
       dataIndex: 'invoiceno',
       key: 'invoiceno',
-      width: 130,
+      width: actions.invoiceWidth || 130,
       ellipsis: true,
     },
     {
       title: 'Reference',
       dataIndex: 'reference',
       key: 'reference',
-      width: 120,
+      width: actions.referenceWidth || 140,
       ellipsis: true,
       render: (v) => v || '-',
     },
@@ -1203,8 +1336,12 @@ const TransactionStockTemplate = ({
       title: 'Date',
       dataIndex: 'date',
       key: 'date',
-      width: 90,
-      render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')),
+      width: actions.dateWidth || 100,
+      render: (v) => (
+        <span style={{ whiteSpace: 'nowrap' }}>
+          {v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')}
+        </span>
+      ),
     },
     {
       title: 'Stones',
@@ -1257,15 +1394,15 @@ const TransactionStockTemplate = ({
           (sum, p) => sum + Number(p.sell_amount || p.amount || 0),
           0
         );
-        return <Text strong>${Number(amount || 0).toLocaleString()}</Text>;
+        return <Text strong style={{ whiteSpace: 'nowrap' }}>${Number(amount || 0).toLocaleString()}</Text>;
       },
     },
     ...(actions.showReturn || actions.showMemoToSale || actions.showMemoToPurchase || actions.showToConsign || actions.showToExport || actions.showToPurchase || actions.showToImport
       ? [{
         title: 'Operations',
         key: 'buttons',
-        width: actions.operationsWidth || (
-          [
+        width: actions.operationsWidth || (() => {
+          const count = [
             actions.showReturn,
             actions.showMemoToSale,
             actions.showMemoToPurchase,
@@ -1273,8 +1410,11 @@ const TransactionStockTemplate = ({
             actions.showToExport,
             actions.showToPurchase,
             actions.showToImport,
-          ].filter(Boolean).length <= 1 ? 115 : 180
-        ),
+          ].filter(Boolean).length;
+          if (count <= 1) return 115;
+          if (count === 2) return 165;
+          return 230;
+        })(),
         align: 'center',
         render: (_, record) => {
           const displayType = record.type || record.inward_type;
@@ -1339,7 +1479,7 @@ const TransactionStockTemplate = ({
                   }}
                 >
                   <SwapOutlined />
-                  To Consign
+                  Consign
                 </button>
               )}
               {actions.showToExport && displayType === 'sale' && (
@@ -1728,8 +1868,8 @@ const TransactionStockTemplate = ({
 
       {actions.showEdit && (
         <BaseModal
-          title="Edit"
-          subtitle={editingRecord?.invoiceno || ''}
+          title={editModalTitle}
+          subtitle={editModalSubtitle}
           variant="edit"
           headerIcon={<Pencil size={16} strokeWidth={2} />}
           saveIcon={<CircleCheck size={15} strokeWidth={2.25} />}
@@ -1749,9 +1889,20 @@ const TransactionStockTemplate = ({
                 .edit-modal-form-readable .ant-picker-disabled input,
                 .edit-modal-form-readable .ant-picker-input > input[disabled],
                 .edit-modal-form-readable textarea.ant-input-disabled {
-                  color: #000 !important;
-                  -webkit-text-fill-color: #000 !important;
+                  color: var(--color-text, #0f172a) !important;
+                  -webkit-text-fill-color: var(--color-text, #0f172a) !important;
                   opacity: 1 !important;
+                }
+                [data-theme='dark'] .edit-modal-form-readable .ant-input-disabled,
+                [data-theme='dark'] .edit-modal-form-readable .ant-input[disabled],
+                [data-theme='dark'] .edit-modal-form-readable .ant-input-number-disabled .ant-input-number-input,
+                [data-theme='dark'] .edit-modal-form-readable .ant-input-number-disabled input,
+                [data-theme='dark'] .edit-modal-form-readable .ant-select-disabled .ant-select-selection-item,
+                [data-theme='dark'] .edit-modal-form-readable .ant-picker-disabled input,
+                [data-theme='dark'] .edit-modal-form-readable .ant-picker-input > input[disabled],
+                [data-theme='dark'] .edit-modal-form-readable textarea.ant-input-disabled {
+                  color: #e2e8f0 !important;
+                  -webkit-text-fill-color: #e2e8f0 !important;
                 }
               `}</style>
               <Form form={editForm} layout="vertical" className={`edit-modal-form-readable ${styles.stockEditForm}`}>

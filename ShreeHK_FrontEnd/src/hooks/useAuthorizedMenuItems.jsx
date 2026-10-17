@@ -1,11 +1,11 @@
 import { useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { House, Settings, Package, Repeat, Book, BarChart, ExternalLink, User, Users, Shield, NotebookPen, ArrowLeftRight } from "lucide-react";
+import { House, Settings, Package, Boxes, Repeat, Book, BarChart, ExternalLink, User, Users, Shield, NotebookPen, ArrowLeftRight } from "lucide-react";
 import { getAuthorizedRouteMeta } from "../routes/Routes";
 import { prefetchRoute, prefetchRouteTree } from "../routes/routePrefetch";
 import useAuthUser from "./useAuthUser";
 
-const ICON_MAP = { House, Settings, Package, Repeat, Book, BarChart, ExternalLink, User, Users, Shield, NotebookPen, ArrowLeftRight };
+const ICON_MAP = { House, Settings, Package, Boxes, Repeat, Book, BarChart, ExternalLink, User, Users, Shield, NotebookPen, ArrowLeftRight };
 
 const renderIcon = (iconName) => {
   if (!iconName) return null;

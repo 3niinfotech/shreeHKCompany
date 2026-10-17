@@ -201,10 +201,10 @@ const InwardEntryForm = ({
       const d = incrementData.Data;
       const isMemoType = defaultInwardType === 'memo' || defaultInwardType === 'consign';
       const rawInv = String(d.invoice ?? '').trim();
+      const p = (d.memo_prefix || d.invoice_prefix || 'INV-').trim();
+      const prefix = p.endsWith('-') ? p : `${p}-`;
       const invoiceNo = isMemoType
-        ? (/^INV-\d+$/i.test(rawInv)
-          ? rawInv.toUpperCase()
-          : `INV-${rawInv.replace(/\D/g, '') || '1'}`)
+        ? `${prefix}${rawInv.replace(/\D/g, '') || '1'}`
         : rawInv;
       form.setFieldsValue({
         entry: d.inward,

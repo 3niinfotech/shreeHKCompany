@@ -326,8 +326,37 @@
         background: #e0f2fe !important;
     }
 
-    :global(.ant-table-tbody > tr.stone-row-memo-return-partial > td.stone-balance-col) {
-        background: #bae6fd !important;
+    /* Highlighted row flash animation on internal jump */
+    :global(.ant-table-tbody > tr.stone-row-highlighted > td) {
+        animation: stoneRowFlash 3s ease-in-out forwards !important;
+        border-top: 2px solid #ca8a04 !important;
+        border-bottom: 2px solid #ca8a04 !important;
+
+        &:first-child {
+            border-left: 5px solid #b45309 !important;
+        }
+        &:last-child {
+            border-right: 2px solid #ca8a04 !important;
+        }
+    }
+}
+
+@keyframes stoneRowFlash {
+    0% {
+        background-color: #fde047 !important;
+        box-shadow: inset 0 0 0 2px #ca8a04, 0 0 16px rgba(202, 138, 4, 0.45);
+    }
+    20% {
+        background-color: #facc15 !important;
+        box-shadow: inset 0 0 0 2px #a16207, 0 0 20px rgba(202, 138, 4, 0.6);
+    }
+    55% {
+        background-color: #fde047 !important;
+        box-shadow: inset 0 0 0 2px #ca8a04, 0 0 12px rgba(202, 138, 4, 0.35);
+    }
+    100% {
+        background-color: #fef08a !important;
+        box-shadow: inset 0 0 0 1.5px #eab308;
     }
 }
 
@@ -478,33 +507,40 @@
     justify-content: center;
     gap: 6px;
     width: 100%;
-    min-height: 36px;
-    padding: 6px 10px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    color: #fff;
-    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
-    box-shadow: var(--shadow-sm);
+    min-height: 24px;
+    padding: 2px 10px;
+    border-radius: 3px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.25px !important;
+    text-transform: uppercase !important;
+    border: 1px solid transparent;
 }
 
 .status_available {
-    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    color: #15803d !important;
+    background: #ecfdf5 !important;
+    border-color: #a7f3d0 !important;
 }
 
 .status_sale,
 .status_other {
-    background: linear-gradient(135deg, var(--color-info) 0%, color-mix(in srgb, var(--color-info) 72%, #000) 100%);
+    color: #b91c1c !important;
+    background: #fef2f2 !important;
+    border-color: #fecaca !important;
 }
 
 .status_memo,
 .status_consign {
-    background: linear-gradient(135deg, var(--color-danger) 0%, color-mix(in srgb, var(--color-danger) 72%, #000) 100%);
+    color: #b45309 !important;
+    background: #fffbeb !important;
+    border-color: #fde68a !important;
 }
 
 .status_lab {
-    background: linear-gradient(135deg, var(--color-success) 0%, color-mix(in srgb, var(--color-success) 72%, #000) 100%);
+    color: #1d4ed8 !important;
+    background: #eff6ff !important;
+    border-color: #bfdbfe !important;
 }
 
 .pairBtn {
@@ -1095,7 +1131,8 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    overflow: hidden;
+    flex-wrap: wrap;
+    line-height: 1.4;
 }
 
 .fromMemoPill {
@@ -1109,6 +1146,137 @@
     background: #fef3c7;
     color: #b45309;
     border: 1px solid #fde68a;
+}
+
+.fromMemoPillBtn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fde68a;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+        background: #f59e0b;
+        color: #ffffff;
+        border-color: #d97706;
+        box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+        transform: translateY(-1px);
+    }
+
+    &:active {
+        transform: translateY(0);
+    }
+}
+
+.historyJumpPill {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 6px;
+    margin: 0 2px;
+    border-radius: 4px;
+    border: 1px solid #7dd3fc;
+    background: #e0f2fe;
+    color: #0369a1;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    line-height: 16px;
+    transition: all 0.15s ease;
+    vertical-align: middle;
+
+    &:hover {
+        background: #0284c7;
+        color: #ffffff;
+        border-color: #0284c7;
+        box-shadow: 0 2px 5px rgba(2, 132, 199, 0.3);
+        transform: translateY(-1px);
+    }
+
+    &:active {
+        transform: translateY(0);
+    }
+}
+
+.historyJumpIcon {
+    opacity: 0.85;
+}
+
+.relatedLinksWrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 4px;
+}
+
+.memoRelatedPill {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 1px 5px;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: 3px;
+    border: 1px dashed #0284c7;
+    background: #f0f9ff;
+    color: #0369a1;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+        background: #0284c7;
+        color: #ffffff;
+        border-style: solid;
+        box-shadow: 0 1px 3px rgba(2, 132, 199, 0.3);
+    }
+}
+
+.invoiceCellWrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.invoiceLink {
+    color: var(--color-primary, #1e3a8a);
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: color 0.15s ease;
+
+    &:hover {
+        color: #0284c7;
+    }
+}
+
+.invoiceJumpBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 17px;
+    height: 17px;
+    padding: 0;
+    border-radius: 3px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #0284c7;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+        background: #0284c7;
+        color: #ffffff;
+        border-color: #0284c7;
+        transform: scale(1.1);
+    }
 }
 
 .rowFromMemo {
@@ -1179,11 +1347,11 @@
 .groupTypePill {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 2px 8px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 700;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
 }
 
 .groupTypeSingle {
@@ -1201,7 +1369,7 @@
 .groupTypeParcel {
     background: #fff7ed;
     color: #c2410c;
-    border: 1px solid #ffedd5;
+    border: 1px solid #fed7aa;
 }
 
 .visualTreeContainer {
@@ -1237,7 +1405,7 @@
     flex-direction: column;
     align-items: center;
     width: 100%;
-    max-width: 650px;
+    max-width: 100%;
 }
 
 .treeCard {
@@ -1253,50 +1421,122 @@
 .treeCardParent {
     background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
     border-color: #cbd5e1;
+    max-width: 650px;
 }
 
 .treeCardCurrent {
-    background: var(--color-bg-card, #ffffff);
-    border: 1px solid var(--color-border, #cbd5e1);
-    border-top: 3px solid var(--color-primary, #1e3a8a);
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05), 0 4px 12px rgba(15, 23, 42, 0.04);
+    width: 100%;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
     position: relative;
-    padding: 16px 20px;
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
 }
 
 .treeSkuGroup {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
 }
 
 .skuIconBadge {
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    background: color-mix(in srgb, var(--color-primary, #1e3a8a) 8%, #ffffff);
-    border: 1px solid color-mix(in srgb, var(--color-primary, #1e3a8a) 20%, transparent);
-    color: var(--color-primary, #1e3a8a);
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: #eef2ff;
+    border: 1px solid #e0e7ff;
+    color: #4f46e5;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
 }
 
+.skuTitleBlock {
+    display: flex;
+    flex-direction: column;
+}
+
 .treeSkuTitle {
-    font-size: 16px;
+    font-size: 19px;
     font-weight: 700;
-    color: var(--color-text-heading, #0f172a);
+    color: #0f172a;
     line-height: 1.2;
     letter-spacing: -0.01em;
 }
 
+.treeSubRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 3px;
+}
+
 .treeNodeSubtitle {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
-    color: var(--color-text-secondary, #64748b);
-    margin-top: 2px;
+    color: #64748b;
+}
+
+.statusPillAvailable {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 3px !important;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    color: #16a34a;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 16px;
+}
+
+.statusPillSale {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 3px !important;
+    background: #fdf2f8;
+    border: 1px solid #fbcfe8;
+    color: #be185d;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 16px;
+}
+
+.statusPillMemo {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 3px !important;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #b45309;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 16px;
+}
+
+.statusPillDefault {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 3px !important;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 16px;
+}
+
+.statusIcon {
+    opacity: 0.9;
 }
 
 .treeHeaderBadges {
@@ -1311,8 +1551,6 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--color-border, #e2e8f0);
 }
 
 .treeNodeRole {
@@ -1336,93 +1574,120 @@
     margin-top: 2px;
 }
 
-.treeSpecsGrid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-    margin-top: 14px;
+.heroSingleRowBar {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 18px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 6px 0;
+    scrollbar-width: thin;
 }
 
-.treeSpecTile {
+.heroMetricItem {
+    display: inline-flex;
+    align-items: flex-start;
+    flex-shrink: 0;
+}
+
+.heroMetricIconWrap {
+    display: none;
+}
+
+.heroMetricMeta {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding: 8px 12px;
-    border-radius: 6px;
-    background: var(--color-bg-muted, #f8fafc);
-    border: 1px solid var(--color-border, #e2e8f0);
 }
 
-.treeSpecTileAmount {
-    background: color-mix(in srgb, var(--color-primary, #1e3a8a) 4%, #f8fafc);
-    border-color: color-mix(in srgb, var(--color-primary, #1e3a8a) 25%, transparent);
-
-    .treeSpecVal {
-        color: var(--color-primary, #1e3a8a);
-        font-weight: 800;
-    }
-}
-
-.treeSpecLabel {
-    font-size: 10px;
+.heroMetricLabel {
+    font-size: 11px;
     font-weight: 600;
-    color: var(--color-text-secondary, #64748b);
-    text-transform: uppercase;
+    color: #64748b;
     letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    line-height: 1.2;
 }
 
-.treeSpecVal {
-    font-size: 14px;
+.heroMetricValue {
+    font-size: 16px;
     font-weight: 700;
-    color: var(--color-text-heading, #0f172a);
-
-    small {
-        font-size: 11px;
-        font-weight: 500;
-        color: var(--color-text-secondary, #64748b);
-        margin-left: 2px;
-    }
+    color: #0f172a;
+    line-height: 1.2;
+    white-space: nowrap;
+    margin-top: 1px;
 }
 
-.treeAttributesRow {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 12px;
-    padding-top: 10px;
-    border-top: 1px dashed var(--color-border, #e2e8f0);
+.heroMetricUnit {
+    font-size: 13px;
+    font-weight: 500;
+    color: #64748b;
+    margin-left: 2px;
 }
 
-.attrPill {
+.heroMetricValueAmount {
+    color: #2563eb;
+}
+
+.heroMetricDivider {
+    width: 1px;
+    height: 28px;
+    background: #e2e8f0;
+    flex-shrink: 0;
+}
+
+.heroAttrRowGroup {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 3px 8px;
-    border-radius: 4px;
-    background: #f1f5f9;
-    border: 1px solid var(--color-border, #e2e8f0);
-    color: var(--color-text-body, #334155);
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
-.attrPillLabel {
-    color: var(--color-text-secondary, #64748b);
-    font-weight: 500;
-}
-
-.treeStandaloneNote {
+.heroAttributesRow {
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin-top: 12px;
-    padding: 6px 12px;
-    border-radius: 6px;
-    background: #f8fafc;
-    border: 1px dashed var(--color-border, #cbd5e1);
-    font-size: 11px;
-    color: var(--color-text-secondary, #64748b);
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.heroAttrPill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+    color: #1e293b;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+    white-space: nowrap;
+}
+
+.heroAttrLabel {
+    color: #64748b;
     font-weight: 500;
+    margin-right: 4px;
+}
+
+.heroStandaloneNote {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px dashed #bfdbfe;
+    background: #f8fafc;
+    font-size: 12px;
+    font-weight: 500;
+    color: #64748b;
+}
+
+.heroNoteIcon {
+    color: #3b82f6;
+    flex-shrink: 0;
 }
 
 .treeCardAction {
@@ -1837,4 +2102,226 @@
     font-weight: 600;
     width: 37.5%;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   STOCK SUMMARY & MEMO LIFECYCLE LEDGER
+   ═══════════════════════════════════════════════════════════ */
+.stockSummaryContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-card);
+    box-shadow: var(--shadow-xs);
+}
+
+.summaryCardsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.summaryKpiCard {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-muted);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+    &:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+    }
+}
+
+.summaryKpiHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+}
+
+.summaryKpiLabel {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-secondary);
+}
+
+.summaryKpiValue {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--color-text-heading);
+    line-height: 1.2;
+}
+
+.summaryKpiSub {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.memoLedgerSection {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--color-border);
+}
+
+.memoLedgerHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-text-heading);
+}
+
+.memoLedgerGrid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.memoLedgerRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-card);
+    font-size: 12px;
+    flex-wrap: wrap;
+    transition: background 0.15s ease, border-color 0.15s ease;
+
+    &:hover {
+        border-color: var(--color-primary);
+        background: color-mix(in srgb, var(--color-primary) 3%, var(--color-bg-card));
+    }
+}
+
+.memoLedgerRowOpen {
+    border-color: #fcd34d;
+    background: #fffbeb;
+
+    &:hover {
+        border-color: #f59e0b;
+        background: #fef3c7;
+    }
+}
+
+.memoLedgerInvBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--color-primary);
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: underline;
+
+    &:hover {
+        color: #0284c7;
+    }
+}
+
+.memoLedgerParty {
+    font-weight: 600;
+    color: var(--color-text-heading);
+}
+
+.memoLedgerStats {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--color-text-body);
+}
+
+.historyTableScroll {
+    width: 100%;
+    overflow-x: auto;
+
+    :global(.ant-table-tbody > tr > td) {
+        white-space: nowrap !important;
+    }
+}
+
+.descCellWrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.descText {
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.memoLifecycleWrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    margin-top: 0;
+}
+
+.memoStatusTag {
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    padding: 1px 7px !important;
+    line-height: 18px !important;
+    min-height: 20px !important;
+    border-radius: 3px !important;
+    margin: 0 !important;
+    text-transform: uppercase !important;
+}
+
+.memoStatusTagSm {
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    padding: 1px 6px !important;
+    line-height: 16px !important;
+    border-radius: 3px !important;
+    margin: 0 !important;
+    text-transform: uppercase !important;
+}
+
+.inwardAddTag {
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    padding: 1px 7px !important;
+    line-height: 18px !important;
+    min-height: 20px !important;
+    border-radius: 3px !important;
+    margin: 0 4px 0 0 !important;
+    text-transform: uppercase !important;
+}
+
+.memoReturnDesc {
+    color: var(--color-text-heading);
+}
+
 

@@ -179,14 +179,29 @@ function isInwardMemoType(type) {
   return t === "memo" || t === "consign" || t === "in_memo" || t === "in_consign";
 }
 
-/** In Memo / Consign invoice: INV-1, INV-2, … */
-function formatInwardMemoInvoice(seq) {
+/** In Memo / Consign invoice: INV-1, INV-2, … (supports company prefix) */
+function formatInwardMemoInvoice(seq, customPrefix = null) {
   const n = extractInvoiceSeq(seq) || 1;
+  if (customPrefix && typeof customPrefix === "string" && customPrefix.trim()) {
+    const p = customPrefix.trim();
+    return p.endsWith("-") ? `${p}${n}` : `${p}-${n}`;
+  }
   return `INV-${n}`;
 }
 
 async function allocateInwardMemoInvoice(q, companyId) {
   const cid = Number(companyId) || helper.DEFAULT_COMPANY_ID;
+  let customPrefix = "INV-";
+  try {
+    const compRows = await q(
+      "SELECT memo_prefix, invoice_prefix FROM company WHERE id = ? LIMIT 1",
+      [cid]
+    );
+    if (compRows?.[0]) {
+      customPrefix = compRows[0].memo_prefix || compRows[0].invoice_prefix || "INV-";
+    }
+  } catch (_) {}
+
   const rows = await q(
     `SELECT invoiceno FROM dai_inward
      WHERE (company = ? OR company = ?)
@@ -199,7 +214,7 @@ async function allocateInwardMemoInvoice(q, companyId) {
     const n = extractInvoiceSeq(r.invoiceno);
     if (n > max) max = n;
   }
-  return formatInwardMemoInvoice(max + 1);
+  return formatInwardMemoInvoice(max + 1, customPrefix);
 }
 
 inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {

@@ -171,6 +171,9 @@ const BatchStockAuditModal = ({ open, onClose }) => {
       footer={null}
       centered
       width={850}
+      closable={false}
+      maskClosable={false}
+      mask={{ closable: false }}
       destroyOnClose
     >
       {/* Rapid Scanner Input Bar */}

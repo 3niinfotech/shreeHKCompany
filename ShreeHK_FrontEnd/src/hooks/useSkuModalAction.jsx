@@ -48,11 +48,12 @@ const formatPrice = (value) => {
 const statusPillClass = (status) => {
   const s = String(status || "").toUpperCase();
   if (s === "AVAILABLE") return "available";
-  if (s === "SALE" || s === "EXPORT") return "sale";
-  if (s === "HOLD") return "hold";
-  if (s === "MEMO") return "memo";
+  if (s === "SALE" || s === "EXPORT" || s === "SOLD") return "sale";
+  if (s === "HOLD" || s === "ON HOLD") return "hold";
+  if (s === "MEMO" || s === "ON MEMO") return "memo";
   if (s === "LAB") return "lab";
   if (s === "CONSIGN" || s === "CONSIGNMENT") return "consign";
+  if (s === "NOT FOUND" || s === "NOT_FOUND" || s === "NOT AVAILABLE") return "notfound";
   return "default";
 };
 
@@ -85,12 +86,19 @@ export const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
     api
       .get(ENDPOINTS.report.stoneDetail, { params })
       .then((res) => {
-        if (isMounted && res?.data) {
-          setApiData(res.data);
+        if (isMounted) {
+          if (res?.data?.detail) {
+            setApiData(res.data);
+          } else {
+            setApiData({ status: "NOT FOUND", notFound: true });
+          }
         }
       })
       .catch((err) => {
         console.error("Error fetching stone details for SKU modal:", err);
+        if (isMounted) {
+          setApiData({ status: "NOT FOUND", notFound: true });
+        }
       })
       .finally(() => {
         if (isMounted) {
@@ -105,21 +113,47 @@ export const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
 
   if (!skuData) return null;
 
-  const detail = apiData?.detail || {};
+  const detail = apiData?.detail || null;
+  const isNotFound = Boolean(apiData?.notFound || (!detail && !loading && !skuData?.id && !skuData?.polish_carat));
 
-  const rawStatus =
-    typeof apiData?.status === "string"
-      ? apiData.status
-      : detail?.outward
-        ? String(detail.outward).toUpperCase()
-        : skuData?.outward
-          ? String(skuData.outward).toUpperCase()
-          : skuData?.status
-            ? String(skuData.status).toUpperCase()
-            : "AVAILABLE";
+  const actualStatus = (() => {
+    // 1. If backend returned stone detail
+    if (detail) {
+      if (detail.hold === 1 || detail.hold === "1" || detail.hold === true) {
+        return "ON HOLD";
+      }
+      if (typeof apiData?.status === "string" && apiData.status.trim()) {
+        return apiData.status.trim().toUpperCase();
+      }
+      if (detail.outward) {
+        return String(detail.outward).trim().toUpperCase();
+      }
+      return "AVAILABLE";
+    }
 
-  const actualStatus =
-    rawStatus && rawStatus.trim() ? rawStatus.toUpperCase() : "AVAILABLE";
+    // 2. If stone record was already passed from table row selection
+    if (skuData?.id || skuData?.polish_carat || skuData?.carat) {
+      if (skuData?.hold === 1 || skuData?.hold === "1" || skuData?.hold === true) {
+        return "ON HOLD";
+      }
+      if (skuData?.outward) {
+        return String(skuData.outward).trim().toUpperCase();
+      }
+      if (skuData?.status) {
+        return String(skuData.status).trim().toUpperCase();
+      }
+      return "AVAILABLE";
+    }
+
+    // 3. While still loading
+    if (loading) {
+      return "CHECKING...";
+    }
+
+    // 4. Non-existent stone in backend / system
+    return "NOT FOUND";
+  })();
+
   const statusClass = statusPillClass(actualStatus);
 
   const d = detail;
@@ -288,7 +322,8 @@ export const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
       centered
       width={560}
       closable={false}
-      maskClosable
+      maskClosable={false}
+      mask={{ closable: false }}
       keyboard
       className="sku-action-modal"
       wrapClassName="sku-action-modal-wrap"
@@ -340,7 +375,12 @@ export const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
                     ))}
                   </ul>
                 ) : (
-                  <p className="sku-spec-sheet__empty">No graded specs available</p>
+                  <p
+                    className="sku-spec-sheet__empty"
+                    style={isNotFound ? { color: "#dc2626", fontWeight: 600 } : undefined}
+                  >
+                    {isNotFound ? "Stone not found in system" : "No graded specs available"}
+                  </p>
                 )}
 
                 {hasLocation && (

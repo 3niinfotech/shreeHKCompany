@@ -10,28 +10,32 @@ import {
   BadgeDollarSign,
   Mail,
   RefreshCcw,
+  RotateCcw,
+  Settings,
   ChevronDown,
   Sparkles,
   Package,
   FlaskConical,
   Send,
   ArrowLeftRight,
+  Boxes,
 } from "lucide-react";
 import styles from "../../assets/scss/components/inventoryFilterPanel.module.scss";
 import useThemeColors from "../../hooks/useThemeColors";
 
 /** Shown outside Actions — aligned with On Hand Pcs / Carat / Amount row */
 export const INVENTORY_PRIMARY_ACTION_ITEMS = [
-  { key: "onMemo", label: "On Memo", variant: "onMemo", icon: Undo2 },
-  { key: "consignment", label: "Consignment", variant: "consignment", icon: Undo2 },
+  { key: "onMemo", label: "On Memo", variant: "onMemo", icon: Tag },
+  { key: "consignment", label: "Consignment", variant: "consignment", icon: Tag },
   { key: "unHold", label: "Un Hold", variant: "unHold", icon: Unlock },
-  { key: "lab", label: "LAB", variant: "lab", icon: FlaskConical },
+  { key: "lab", label: "Lab", variant: "lab", icon: FlaskConical },
   { key: "hold", label: "Hold", variant: "hold", icon: Lock },
   { key: "sale", label: "Sale", variant: "sale", icon: ShoppingCart },
-  { key: "changePrice", label: "Change Price", variant: "changePrice", icon: BadgeDollarSign },
+  { key: "changePrice", label: "Change Price", variant: "changePrice", icon: Settings },
   { key: "toExport", label: "To Export", variant: "toExport", icon: Send },
   { key: "transfer", label: "Transfer", variant: "transfer", icon: ArrowLeftRight },
-  { key: "reset", label: "Reset", variant: "reset", icon: RefreshCcw },
+  { key: "mixing", label: "Mixing", variant: "mixing", icon: Boxes },
+  { key: "reset", label: "Reset", variant: "reset", icon: RotateCcw },
 ];
 
 /** Remaining items stay inside Actions popover */

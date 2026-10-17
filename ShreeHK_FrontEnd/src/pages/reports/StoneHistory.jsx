@@ -6,7 +6,8 @@ import { ReloadOutlined } from '@ant-design/icons';
 import {
     CircleDot, ScanText, History, BookOpen, Image,
     Pencil, ExternalLink, Link2, BadgeCheck, Tag as TagIcon,
-    ShieldAlert, Award, Gem, Network, ShieldCheck, Info,
+    ShieldAlert, Award, Gem, Network, Info,
+    CornerDownRight,
 } from 'lucide-react';
 import useFormHandleChange from '../../hooks/useFormHandleChange';
 import DynamicForm from '../../components/common/ui/DynamicFormField';
@@ -19,9 +20,7 @@ import { buildStoneUpdateUrl } from '../../utils/inventorySkuNavigation';
 import styles from '../../assets/scss/pages/report/stoneHistory.module.scss';
 import { toastApiError } from '../../utils/toastNotify';
 import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
-import StockReconciliationCard from '../../components/report/StockReconciliationCard';
 import LineageTreePanel from '../../components/report/LineageTreePanel';
-import StoneAuditTrailPanel from '../../components/report/StoneAuditTrailPanel';
 
 const formatHistoryDateTime = (row) => {
     if (row?.date_display) return row.date_display;
@@ -128,20 +127,267 @@ const getInvoiceLinkForAction = (action, invoice) => {
     return `${path}?${params.toString()}`;
 };
 
-const renderInvoiceCell = (invoice, row) => {
+const renderInvoiceCell = (invoice, row, allRows, onJump) => {
     const value = String(invoice || '').trim();
     if (!value) return '—';
     const to = getInvoiceLinkForAction(row?.action, value);
-    if (!to) return value;
+
+    const hasRelatedRow = (allRows || []).some(
+        (r) =>
+            String(r.invoice || '').trim().toLowerCase() === value.toLowerCase() &&
+            r.key !== row?.key
+    );
+
+    if (hasRelatedRow && onJump) {
+        return (
+            <div className={styles.invoiceCellWrap}>
+                <button
+                    type="button"
+                    className={styles.invoiceLink}
+                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onJump(value, 'memo', row);
+                    }}
+                    title={`Jump to related history entry for ${value}`}
+                >
+                    {value}
+                </button>
+                {to ? (
+                    <Tooltip title="Open invoice page">
+                        <Link
+                            to={to}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ display: 'inline-flex', alignItems: 'center', color: '#64748b', marginLeft: 4 }}
+                        >
+                            <ExternalLink size={11} />
+                        </Link>
+                    </Tooltip>
+                ) : null}
+            </div>
+        );
+    }
+
     return (
-        <Link
-            className={styles.invoiceLink}
-            to={to}
-            onClick={(e) => e.stopPropagation()}
-            title="Open related invoice"
-        >
-            {value}
-        </Link>
+        <div className={styles.invoiceCellWrap}>
+            {to ? (
+                <Link
+                    className={styles.invoiceLink}
+                    to={to}
+                    onClick={(e) => e.stopPropagation()}
+                    title="Open related invoice"
+                >
+                    {value}
+                </Link>
+            ) : (
+                <span className={styles.invoiceText}>{value}</span>
+            )}
+        </div>
+    );
+};
+
+const NON_INVOICE_WORDS = new Set([
+    '1pcs', '0pcs', '2pcs', '3pcs', '4pcs', '5pcs', 'pcs', 'ct', 'carat',
+    'settled', 'left', 'return', 'returns', 'outward', 'inward', 'purchase',
+    'import', 'sale', 'sold', 'party', 'original', 'active', 'pending',
+    'memo', 'inv', 'invoice', 'ref'
+]);
+
+const isRealInvoiceIdentifier = (candidate, fullMatch, knownInvoices) => {
+    if (!candidate) return false;
+    const clean = candidate.trim().toLowerCase();
+    if (!clean || NON_INVOICE_WORDS.has(clean)) return false;
+
+    // Check if it exists in known history invoices
+    if ((knownInvoices || []).some((k) => k.toLowerCase() === clean)) {
+        return true;
+    }
+
+    // Check standard patterns like INV-3, MEMO-4, SALE-1
+    if (/^(?:INV|MEMO|SALE)[-_]\d+/i.test(candidate)) {
+        return true;
+    }
+
+    // Has digits and is preceded by REF, INVOICE, INV, MEMO followed by colon or hash (e.g. Ref: 10002, Memo #INV-3)
+    if (/\d+/.test(candidate) && /^(?:REF|INVOICE|INV|MEMO)\s*[:#-]\s*[A-Za-z0-9_-]+/i.test(fullMatch)) {
+        return true;
+    }
+
+    return false;
+};
+
+/**
+ * Splits description text to convert references like "REF INV-4" or standalone invoice numbers
+ * into clickable jump links that scroll directly to the matching memo/history row.
+ */
+const renderParsedDescriptionText = (text, row, knownInvoices, onJump) => {
+    if (!text) return '—';
+
+    const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    const sortedInvoices = [...(knownInvoices || [])].sort((a, b) => b.length - a.length);
+    const invoicePattern = sortedInvoices.length
+        ? `|\\b(?:${sortedInvoices.map(escapeRegExp).join('|')})\\b`
+        : '';
+
+    const regex = new RegExp(
+        `(?:REF|INVOICE|INV|MEMO)\\s*[:#-]?\\s*([A-Za-z0-9_-]+)|\\b(INV-[A-Za-z0-9_-]+|MEMO-[A-Za-z0-9_-]+|SALE-[A-Za-z0-9_-]+)\\b${invoicePattern}`,
+        'gi'
+    );
+
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = regex.exec(text)) !== null) {
+        const matchStart = match.index;
+        const matchEnd = regex.lastIndex;
+        const fullMatch = match[0];
+        const invCandidate = (
+            match[1] ||
+            match[2] ||
+            fullMatch.replace(/^(?:REF|INVOICE|INV|MEMO)\s*[:#-]?\s*/i, '')
+        ).trim();
+
+        if (matchStart > lastIndex) {
+            parts.push(text.slice(lastIndex, matchStart));
+        }
+
+        const isValidInvoice = isRealInvoiceIdentifier(invCandidate, fullMatch, knownInvoices);
+
+        if (isValidInvoice && invCandidate && onJump) {
+            parts.push(
+                <button
+                    key={`jump-${matchStart}`}
+                    type="button"
+                    className={styles.historyJumpPill}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onJump(invCandidate, 'memo', row);
+                    }}
+                    title={`Jump to history entry for ${invCandidate}`}
+                >
+                    <span>{fullMatch}</span>
+                    <CornerDownRight size={11} className={styles.historyJumpIcon} />
+                </button>
+            );
+        } else {
+            parts.push(fullMatch);
+        }
+
+        lastIndex = matchEnd;
+    }
+
+    if (lastIndex < text.length) {
+        parts.push(text.slice(lastIndex));
+    }
+
+    return parts.length ? parts : text;
+};
+
+const renderDescriptionCell = (value, row, historyRows, oldHistoryRows, onJump) => {
+    const text = String(value || '').trim();
+    const a = String(row?.action || '').toLowerCase().trim();
+    const isReturn = a === 'memo_return' || a === 'consign_return';
+
+    const allRows = [...(historyRows || []), ...(oldHistoryRows || [])];
+    const knownInvoices = Array.from(
+        new Set(allRows.map((r) => String(r.invoice || '').trim()).filter(Boolean))
+    );
+
+    const ml = row?.memo_lifecycle;
+    const lm = row?.linked_memo;
+    const isInwardAdd = row?.is_inward_addition;
+    const textHasSettlement = text.includes('[✓ Memo Settled') || text.includes('[⏳ Active Memo');
+    const textHasParentMemo = lm && (text.includes(`Memo #${lm.invoice}`) || text.includes(`against Memo #${lm.invoice}`) || text.includes(`from Memo #${lm.invoice}`));
+
+    return (
+        <div className={styles.descCellWrap} title={text}>
+            <span className={`${styles.descText} ${isReturn ? styles.memoReturnDesc : ''}`}>
+                {isInwardAdd && (
+                    <Tag color="geekblue" className={styles.inwardAddTag}>
+                        + Stock Addition
+                    </Tag>
+                )}
+                {renderParsedDescriptionText(text, row, knownInvoices, onJump)}
+            </span>
+
+            {/* If this is a Memo row, show linked return/sale jump pills cleanly without duplicate settlement tag */}
+            {ml && (
+                <span className={styles.memoLifecycleWrap}>
+                    {!textHasSettlement && (
+                        ml.status === 'OPEN' ? (
+                            <Tag color="warning" className={styles.memoStatusTag}>
+                                ⏳ Active Memo: {ml.pending_carat} ct Pending
+                            </Tag>
+                        ) : (
+                            <Tag color="success" className={styles.memoStatusTag}>
+                                ✓ Memo Settled
+                            </Tag>
+                        )
+                    )}
+
+                    {ml.linked_returns?.map((ret) => (
+                        <button
+                            key={`ret-${ret.id}`}
+                            type="button"
+                            className={styles.historyJumpPill}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onJump(ret.invoice, 'memo_return', row, `h-${ret.id}`);
+                            }}
+                            title={`Jump to Return row (${ret.carat} ct)`}
+                        >
+                            <span>↳ Ret: {ret.carat} ct</span>
+                            <CornerDownRight size={10} className={styles.historyJumpIcon} />
+                        </button>
+                    ))}
+
+                    {ml.linked_sales?.map((sale) => (
+                        <button
+                            key={`sale-${sale.id}`}
+                            type="button"
+                            className={styles.historyJumpPill}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onJump(sale.invoice, 'sale', row, `h-${sale.id}`);
+                            }}
+                            title={`Jump to Sale row (${sale.carat} ct)`}
+                        >
+                            <span>↳ Sale: {sale.carat} ct</span>
+                            <CornerDownRight size={10} className={styles.historyJumpIcon} />
+                        </button>
+                    ))}
+                </span>
+            )}
+
+            {/* If this is a Return or Sale row linked to a parent memo, show jump pill ONLY if not already linked in text */}
+            {lm && !textHasParentMemo && (
+                <span className={styles.memoLifecycleWrap}>
+                    <button
+                        type="button"
+                        className={styles.historyJumpPill}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onJump(lm.invoice, 'memo', row, lm.parent_row_id ? `h-${lm.parent_row_id}` : null);
+                        }}
+                        title={`Jump to Memo #${lm.invoice} (Original: ${lm.total_memo_carat} ct)`}
+                    >
+                        <span>↰ Memo #{lm.invoice} ({lm.total_memo_carat} ct)</span>
+                        <CornerDownRight size={10} className={styles.historyJumpIcon} />
+                    </button>
+                    {lm.status === 'OPEN' ? (
+                        <Tag color="warning" className={styles.memoStatusTagSm}>
+                            ⏳ {lm.pending_carat} ct Left
+                        </Tag>
+                    ) : (
+                        <Tag color="success" className={styles.memoStatusTagSm}>
+                            ✓ Settled
+                        </Tag>
+                    )}
+                </span>
+            )}
+        </div>
     );
 };
 
@@ -215,12 +461,17 @@ const ExtraFlagTile = ({ label, on }) => (
     </div>
 );
 
-const ExtraMetric = ({ value, label }) => (
-    <div className={styles.metric}>
-        <span className={styles.metricValue}>{value}</span>
-        <span className={styles.metricLabel}>{label}</span>
-    </div>
-);
+const ExtraMetric = ({ value, label }) => {
+    const isPriceOrAmount = typeof label === 'string' && (label.includes('Price') || label.includes('Amount'));
+    return (
+        <div className={styles.metric}>
+            <span className={styles.metricValue} style={isPriceOrAmount ? { color: '#16A34A', fontWeight: 600 } : undefined}>
+                {value}
+            </span>
+            <span className={styles.metricLabel}>{label}</span>
+        </div>
+    );
+};
 
 const ExtraDetailPanel = ({ stoneDetail, holdInfo, onPairClick }) => {
     const status = extraStatusMeta(stoneDetail.outward);
@@ -351,6 +602,8 @@ const StoneHistory = () => {
     const [activeTab, setActiveTab] = useState('history');
     const [historyRows, setHistoryRows] = useState([]);
     const [oldHistoryRows, setOldHistoryRows] = useState([]);
+    const [highlightedRowKey, setHighlightedRowKey] = useState(null);
+    const highlightTimerRef = React.useRef(null);
     const [status, setStatus] = useState('');
     const [lastUpdated, setLastUpdated] = useState('');
     const [stoneDetail, setStoneDetail] = useState(null);
@@ -370,8 +623,9 @@ const StoneHistory = () => {
         if (!detail) return false;
         form.setFieldsValue(mapDetailToForm(detail));
         setStoneDetail(detail);
-        setHistoryRows((history || []).map((h, i) => ({ ...h, key: i })));
+        setHistoryRows((history || []).map((h, i) => ({ ...h, key: h.id != null ? `h-${h.id}` : `h-${i}` })));
         setOldHistoryRows([]);
+        setHighlightedRowKey(null);
         setStatus(st || '');
         setLastUpdated(detail?.last_updated_display || '');
         setStockSummary(stock_summary || null);
@@ -440,24 +694,164 @@ const StoneHistory = () => {
 
     const getActionTagColor = (action) => {
         const a = String(action || '').toLowerCase().trim();
-        if (a === 'memo_return' || a === 'consign_return') return 'cyan';
-        if (a === 'sale_return' || a === 'lab_return' || a === 'purchase_return') return 'green';
-        if (a === 'memo' || a === 'consign') return 'orange';
-        if (a === 'sale' || a === 'export') return 'magenta';
-        if (a === 'lab') return 'purple';
-        return 'blue';
+        if (a === 'memo_return' || a === 'consign_return' || a.includes('import')) return 'cyan';
+        if (a === 'purchase') return 'purple';
+        if (a === 'sale_return' || a === 'lab_return' || a === 'purchase_return' || a === 'sale') return 'green';
+        if (a === 'memo') return 'orange';
+        if (a === 'consign') return 'magenta';
+        if (a === 'export') return 'blue';
+        if (a === 'lab') return 'blue';
+        if (a.includes('transfer')) return 'geekblue';
+        return 'default';
+    };
+
+    const handleJumpToRow = (targetKey, invLabel) => {
+        if (!targetKey) return;
+        if (activeTab !== 'history') {
+            setActiveTab('history');
+        }
+        setHighlightedRowKey(targetKey);
+        if (highlightTimerRef.current) {
+            clearTimeout(highlightTimerRef.current);
+        }
+        highlightTimerRef.current = setTimeout(() => {
+            setHighlightedRowKey(null);
+        }, 3200);
+
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                const el =
+                    document.querySelector(`[data-history-row-key="${targetKey}"]`) ||
+                    document.getElementById(`stone-history-row-${targetKey}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 60);
+        });
+    };
+
+    const findTargetRow = (invoice, preferredAction, sourceRow) => {
+        const inv = String(invoice || '').trim();
+        if (!inv) return null;
+
+        const allRows = [...(historyRows || []), ...(oldHistoryRows || [])];
+        if (!allRows.length) return null;
+
+        // 1. If preferredAction is specified (e.g. 'memo'), look for that first
+        if (preferredAction) {
+            const prefMatch = allRows.find(
+                (r) =>
+                    String(r.invoice || '').trim().toLowerCase() === inv.toLowerCase() &&
+                    String(r.action || '').toLowerCase().trim() === preferredAction.toLowerCase() &&
+                    r.key !== sourceRow?.key
+            );
+            if (prefMatch) return prefMatch;
+        }
+
+        // 2. If source row is a return or sale from memo, prefer the parent memo/consign
+        const sourceAction = String(sourceRow?.action || '').toLowerCase().trim();
+        if (
+            sourceAction === 'memo_return' ||
+            sourceAction === 'consign_return' ||
+            sourceAction === 'sale' ||
+            sourceAction === 'export' ||
+            sourceAction === 'close_memo' ||
+            sourceAction === 'memo_close'
+        ) {
+            const memoMatch = allRows.find(
+                (r) =>
+                    String(r.invoice || '').trim().toLowerCase() === inv.toLowerCase() &&
+                    ['memo', 'consign', 'in_memo', 'in_consign'].includes(
+                        String(r.action || '').toLowerCase().trim()
+                    ) &&
+                    r.key !== sourceRow?.key
+            );
+            if (memoMatch) return memoMatch;
+        }
+
+        // 3. If source row is a lab_return, prefer the parent lab
+        if (sourceAction === 'lab_return' || sourceAction === 'close_lab') {
+            const labMatch = allRows.find(
+                (r) =>
+                    String(r.invoice || '').trim().toLowerCase() === inv.toLowerCase() &&
+                    String(r.action || '').toLowerCase().trim() === 'lab' &&
+                    r.key !== sourceRow?.key
+            );
+            if (labMatch) return labMatch;
+        }
+
+        // 4. If source row is a purchase_return, prefer purchase
+        if (sourceAction === 'purchase_return') {
+            const purchMatch = allRows.find(
+                (r) =>
+                    String(r.invoice || '').trim().toLowerCase() === inv.toLowerCase() &&
+                    ['purchase', 'import', 'in_import'].includes(
+                        String(r.action || '').toLowerCase().trim()
+                    ) &&
+                    r.key !== sourceRow?.key
+            );
+            if (purchMatch) return purchMatch;
+        }
+
+        // 5. If source row is a parent memo, prefer return or sale
+        if (sourceAction === 'memo' || sourceAction === 'consign') {
+            const childMatch = allRows.find(
+                (r) =>
+                    String(r.invoice || '').trim().toLowerCase() === inv.toLowerCase() &&
+                    ['memo_return', 'consign_return', 'sale', 'export'].includes(
+                        String(r.action || '').toLowerCase().trim()
+                    ) &&
+                    r.key !== sourceRow?.key
+            );
+            if (childMatch) return childMatch;
+        }
+
+        // 6. Otherwise find any other row with this invoice
+        const anyOtherMatch = allRows.find(
+            (r) =>
+                String(r.invoice || '').trim().toLowerCase() === inv.toLowerCase() &&
+                r.key !== sourceRow?.key
+        );
+        if (anyOtherMatch) return anyOtherMatch;
+
+        // 7. Fallback: match any row with that invoice
+        return (
+            allRows.find(
+                (r) => String(r.invoice || '').trim().toLowerCase() === inv.toLowerCase()
+            ) || null
+        );
+    };
+
+    const handleJumpToInvoice = (invoice, preferredAction, sourceRow, directKey) => {
+        if (directKey) {
+            handleJumpToRow(directKey, invoice);
+            return;
+        }
+        const target = findTargetRow(invoice, preferredAction, sourceRow);
+        if (target) {
+            handleJumpToRow(target.key, invoice);
+        } else {
+            toastWarning(`No corresponding history record found for invoice ${invoice}`);
+        }
     };
 
     const historyRowClassName = (row) => {
-        if (row?.is_from_memo) return styles.rowFromMemo;
+        const classes = [];
+        if (highlightedRowKey === row.key) {
+            classes.push('stone-row-highlighted', styles.rowHighlighted);
+        }
+        if (row?.is_from_memo) classes.push(styles.rowFromMemo);
         const a = String(row?.action || '').toLowerCase().trim();
         if (a === 'memo_return' || a === 'consign_return') {
-            return row?.is_partial_memo_return
-                ? 'stone-row-memo-return-partial'
-                : 'stone-row-memo-return';
+            classes.push(
+                row?.is_partial_memo_return
+                    ? 'stone-row-memo-return-partial'
+                    : 'stone-row-memo-return'
+            );
+        } else if (a === 'memo' || a === 'consign') {
+            classes.push('stone-row-memo-out');
         }
-        if (a === 'memo' || a === 'consign') return 'stone-row-memo-out';
-        return '';
+        return classes.join(' ');
     };
 
     const historyColumns = [
@@ -465,7 +859,7 @@ const StoneHistory = () => {
             title: 'Action',
             dataIndex: 'action_label',
             key: 'action',
-            width: 105,
+            width: 140,
             render: (value, row) => {
                 const raw = value || row.action || '';
                 const label = String(raw).replace(/_/g, ' ').trim();
@@ -486,51 +880,48 @@ const StoneHistory = () => {
             title: 'Date & Time',
             dataIndex: 'date_display',
             key: 'date_display',
-            width: 110,
-            render: (_, row) => formatHistoryDateTime(row),
+            width: 200,
+            render: (_, row) => (
+                <span style={{ whiteSpace: 'nowrap' }}>{formatHistoryDateTime(row)}</span>
+            ),
         },
         {
             title: 'Party',
             dataIndex: 'party_name',
             key: 'party',
-            width: 190,
+            width: 320,
             ellipsis: true,
             render: (value, row) => {
                 const name = String(value || row.party || '').trim();
-                return name || '—';
+                return <span style={{ whiteSpace: 'nowrap' }}>{name || '—'}</span>;
             },
         },
         {
             title: 'Invoice',
             dataIndex: 'invoice',
             key: 'invoice',
-            width: 75,
-            render: (value, row) => renderInvoiceCell(value, row),
+            width: 90,
+            render: (value, row) =>
+                renderInvoiceCell(
+                    value,
+                    row,
+                    [...historyRows, ...oldHistoryRows],
+                    handleJumpToInvoice
+                ),
         },
         {
             title: 'Description',
             dataIndex: 'description',
             key: 'description',
-            width: 480,
-            ellipsis: true,
-            render: (value, row) => {
-                const text = String(value || '').trim();
-                if (!text) return '—';
-                const a = String(row?.action || '').toLowerCase().trim();
-                const isReturn = a === 'memo_return' || a === 'consign_return';
-                return (
-                    <div className={styles.descCellWrap}>
-                        {row?.is_from_memo ? (
-                            <span className={styles.fromMemoPill} title="Sold from open memo">
-                                From Memo
-                            </span>
-                        ) : null}
-                        <span className={isReturn ? styles.memoReturnDesc : ''} title={text}>
-                            {text}
-                        </span>
-                    </div>
-                );
-            },
+            width: 800,
+            render: (value, row) =>
+                renderDescriptionCell(
+                    value,
+                    row,
+                    historyRows,
+                    oldHistoryRows,
+                    handleJumpToInvoice
+                ),
         },
         {
             title: 'Pcs',
@@ -599,7 +990,15 @@ const StoneHistory = () => {
             key: 'price',
             width: 90,
             align: 'right',
-            render: (value) => formatQtyCell(value),
+            render: (value) => {
+                const formatted = formatQtyCell(value);
+                if (formatted === '—') return formatted;
+                return (
+                    <span style={{ color: '#16A34A', fontWeight: 600 }}>
+                        {formatted}
+                    </span>
+                );
+            },
         },
         {
             title: 'Amount',
@@ -607,7 +1006,15 @@ const StoneHistory = () => {
             key: 'amount',
             width: 100,
             align: 'right',
-            render: (value) => formatQtyCell(value),
+            render: (value) => {
+                const formatted = formatQtyCell(value);
+                if (formatted === '—') return formatted;
+                return (
+                    <span style={{ color: '#16A34A', fontWeight: 600 }}>
+                        {formatted}
+                    </span>
+                );
+            },
         },
         {
             title: 'Updated By',
@@ -721,7 +1128,7 @@ const StoneHistory = () => {
         try {
             const res = await api.get(ENDPOINTS.report.stoneDetailOld, { params: { sku: skuValue } });
             const history = res.data?.history || [];
-            setOldHistoryRows(history.map((h, i) => ({ ...h, key: `old-${i}` })));
+            setOldHistoryRows(history.map((h, i) => ({ ...h, key: h.id != null ? `old-${h.id}` : `old-${i}` })));
             if (!history.length) {
                 toastWarning('No old history found for this SKU.');
             } else {
@@ -739,6 +1146,8 @@ const StoneHistory = () => {
         resetAll();
         setHistoryRows([]);
         setOldHistoryRows([]);
+        setHighlightedRowKey(null);
+        if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
         setStatus('');
         setLastUpdated('');
         setStoneDetail(null);
@@ -838,11 +1247,129 @@ const StoneHistory = () => {
                                     ),
                                     children: (
                                         <div className={styles.historyTabContent}>
-                                            <StockReconciliationCard
-                                                stockSummary={stockSummary}
-                                                stoneDetail={stoneDetail}
-                                                historyRows={historyRows}
-                                            />
+                                            {stockSummary && (
+                                                <div className={styles.stockSummaryContainer}>
+                                                    <div className={styles.summaryCardsGrid}>
+                                                        <div className={styles.summaryKpiCard}>
+                                                            <div className={styles.summaryKpiHeader}>
+                                                                <span className={styles.summaryKpiLabel}>Total Inward</span>
+                                                                <Tag color="blue" style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>
+                                                                    Purchase / Import
+                                                                </Tag>
+                                                            </div>
+                                                            <div className={styles.summaryKpiValue}>
+                                                                {formatQtyCell(stockSummary.total_inward_carat || stockSummary.initial_carat)} ct
+                                                            </div>
+                                                            <div className={styles.summaryKpiSub}>
+                                                                <span>{stockSummary.total_inward_pcs || stockSummary.initial_pcs} pcs</span>
+                                                                {stockSummary.additional_inward_carat > 0 && (
+                                                                    <Tag color="cyan" style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>
+                                                                        Initial {stockSummary.initial_carat} ct + {stockSummary.additional_inward_carat} ct add
+                                                                    </Tag>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        <div className={styles.summaryKpiCard}>
+                                                            <div className={styles.summaryKpiHeader}>
+                                                                <span className={styles.summaryKpiLabel}>On-Hand Stock</span>
+                                                                <Tag color="success" style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>
+                                                                    In Office / Safe
+                                                                </Tag>
+                                                            </div>
+                                                            <div className={styles.summaryKpiValue} style={{ color: '#16a34a' }}>
+                                                                {formatQtyCell(stockSummary.onhand_carat)} ct
+                                                            </div>
+                                                            <div className={styles.summaryKpiSub}>
+                                                                <span>{stockSummary.onhand_pcs} pcs available for sale</span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className={styles.summaryKpiCard}>
+                                                            <div className={styles.summaryKpiHeader}>
+                                                                <span className={styles.summaryKpiLabel}>Pending on Memo</span>
+                                                                {stockSummary.open_memo_carat > 0 ? (
+                                                                    <Tag color="warning" style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>
+                                                                        {stockSummary.active_memos?.length || 1} Active Memo
+                                                                    </Tag>
+                                                                ) : (
+                                                                    <Tag color="default" style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>
+                                                                        None Pending
+                                                                    </Tag>
+                                                                )}
+                                                            </div>
+                                                            <div className={styles.summaryKpiValue} style={{ color: stockSummary.open_memo_carat > 0 ? '#d97706' : 'inherit' }}>
+                                                                {formatQtyCell(stockSummary.open_memo_carat)} ct
+                                                            </div>
+                                                            <div className={styles.summaryKpiSub}>
+                                                                <span>{stockSummary.open_memo_pcs || 0} pcs with party</span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className={styles.summaryKpiCard}>
+                                                            <div className={styles.summaryKpiHeader}>
+                                                                <span className={styles.summaryKpiLabel}>Total Sold</span>
+                                                                <Tag color="purple" style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>
+                                                                    Completed Sales
+                                                                </Tag>
+                                                            </div>
+                                                            <div className={styles.summaryKpiValue}>
+                                                                {formatQtyCell(stockSummary.total_sold_carat != null ? stockSummary.total_sold_carat : stockSummary.sold_from_memo_carat)} ct
+                                                            </div>
+                                                            <div className={styles.summaryKpiSub}>
+                                                                <span>
+                                                                    {stockSummary.sold_from_memo_carat > 0
+                                                                        ? `From Memo: ${stockSummary.sold_from_memo_carat} ct`
+                                                                        : 'Direct Sale'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {stockSummary.memo_ledger?.length > 0 && (
+                                                        <div className={styles.memoLedgerSection}>
+                                                            <div className={styles.memoLedgerHeader}>
+                                                                <span>Memo Tracking & Audit Ledger ({stockSummary.memo_ledger.length} memo{stockSummary.memo_ledger.length > 1 ? 's' : ''})</span>
+                                                                <span style={{ fontSize: 11, fontWeight: 500, color: '#64748b' }}>Click memo to jump directly to history row</span>
+                                                            </div>
+                                                            <div className={styles.memoLedgerGrid}>
+                                                                {stockSummary.memo_ledger.map((m) => (
+                                                                    <div
+                                                                        key={m.invoice}
+                                                                        className={`${styles.memoLedgerRow} ${m.status === 'OPEN' ? styles.memoLedgerRowOpen : ''}`}
+                                                                    >
+                                                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                                                                            <button
+                                                                                type="button"
+                                                                                className={styles.memoLedgerInvBtn}
+                                                                                onClick={() => handleJumpToInvoice(m.invoice, 'memo', null, m.row_id ? `h-${m.row_id}` : null)}
+                                                                                title="Click to jump to memo row in history table"
+                                                                            >
+                                                                                Memo #{m.invoice}
+                                                                                <CornerDownRight size={11} />
+                                                                            </button>
+                                                                            <span className={styles.memoLedgerParty}>{m.party_name}</span>
+                                                                        </div>
+                                                                        <div className={styles.memoLedgerStats}>
+                                                                            <span>Issued: <b>{formatQtyCell(m.memo_carat)} ct</b></span>
+                                                                            <span>Returned: <b>{formatQtyCell(m.return_carat)} ct</b></span>
+                                                                            <span>Sold: <b>{formatQtyCell(m.sold_carat)} ct</b></span>
+                                                                            <span style={{ color: m.pending_carat > 0 ? '#b45309' : '#16a34a' }}>
+                                                                                Pending: <b>{formatQtyCell(m.pending_carat)} ct</b>
+                                                                            </span>
+                                                                            {m.status === 'OPEN' ? (
+                                                                                <Tag color="warning" style={{ margin: 0 }}>Active</Tag>
+                                                                            ) : (
+                                                                                <Tag color="success" style={{ margin: 0 }}>Closed</Tag>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                             <div className={styles.historyTableScroll}>
                                                 <SkeletonAwareTable
                                                     columns={historyColumns}
@@ -854,6 +1381,12 @@ const StoneHistory = () => {
                                                     tableLayout="fixed"
                                                     scroll={{ x: historyTableScrollX }}
                                                     rowClassName={historyRowClassName}
+                                                    rowKey="key"
+                                                    onRow={(record) => ({
+                                                        id: `stone-history-row-${record.key}`,
+                                                        'data-history-row-key': record.key,
+                                                        'data-invoice': record.invoice || '',
+                                                    })}
                                                 />
                                             </div>
                                             {oldHistoryRows.length ? (
@@ -873,6 +1406,12 @@ const StoneHistory = () => {
                                                             tableLayout="fixed"
                                                             scroll={{ x: historyTableScrollX }}
                                                             rowClassName={historyRowClassName}
+                                                            rowKey="key"
+                                                            onRow={(record) => ({
+                                                                id: `stone-history-row-${record.key}`,
+                                                                'data-history-row-key': record.key,
+                                                                'data-invoice': record.invoice || '',
+                                                            })}
                                                         />
                                                     </div>
                                                 </div>
@@ -902,23 +1441,6 @@ const StoneHistory = () => {
                                                 navigate(`/report/stone-history?sku=${encodeURIComponent(sku)}${searchParams.get('companyId') ? `&companyId=${searchParams.get('companyId')}` : ''}`);
                                             }}
                                         />
-                                    ),
-                                },
-                                {
-                                    key: 'audit',
-                                    label: (
-                                        <span className={styles.tabLabel}>
-                                            <ShieldCheck size={14} />
-                                            Audit Trail
-                                            {activityLogs.length ? (
-                                                <Tag color="blue" style={{ fontSize: '10px', margin: 0, padding: '0 4px', lineHeight: '16px' }}>
-                                                    {activityLogs.length}
-                                                </Tag>
-                                            ) : null}
-                                        </span>
-                                    ),
-                                    children: (
-                                        <StoneAuditTrailPanel activityLogs={activityLogs} />
                                     ),
                                 },
                                 {

@@ -800,6 +800,22 @@ $compact-accent-hover: var(--color-primary-dark);
   }
 }
 
+.actionTile_mixing {
+  background: rgba(30, 58, 138, 0.08) !important;
+  border: 1px solid rgba(30, 58, 138, 0.3) !important;
+
+  .actionTileIcon,
+  .actionTileLabel,
+  svg {
+    color: #1e3a8a !important;
+  }
+
+  &:hover {
+    background: rgba(30, 58, 138, 0.16) !important;
+    border-color: #1e3a8a !important;
+  }
+}
+
 .actionTile_addPackage,
 .actionTile_reset {
   background: $row-white-bg !important;

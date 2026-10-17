@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Modal, Typography, Empty } from "antd";
+import { Modal, Typography, Empty, Button } from "antd";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   CalendarOutlined,
@@ -501,9 +501,18 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
       title={modalTitle}
       open={open}
       onCancel={force ? undefined : onClose}
-      footer={null}
-      closable={!force}
-      mask={{ closable: !force }}
+      footer={
+        force
+          ? null
+          : [
+              <Button key="close" danger onClick={onClose}>
+                Close
+              </Button>,
+            ]
+      }
+      closable={false}
+      maskClosable={false}
+      mask={{ closable: false }}
       centered
       className={styles.companyYearModal}
       classNames={{ mask: styles.companyYearMask }}

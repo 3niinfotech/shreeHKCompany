@@ -20,6 +20,7 @@ const COMPANY_COLUMNS = [
   "pincode", "country", "email", "website", "panno", "tinno", "iecno",
   "vatno", "vwef", "cstno", "cwef", "period", "startdate", "enddate",
   "rapnet_id", "rapnet_password", "shortcutName", "logo", "branch_id",
+  "invoice_prefix", "memo_prefix", "purchase_prefix", "lab_prefix",
 ];
 const COMPANY_SAFE_SELECT = ["id", ...COMPANY_COLUMNS.filter((column) => column !== "rapnet_password")]
   .map((column) => `c.\`${column}\``)
@@ -62,6 +63,25 @@ const ensureLogoColumn = async () => {
     }
   }
   logoColumnReady = true;
+};
+
+let prefixColumnsReady = false;
+const ensureCompanyPrefixColumns = async () => {
+  if (prefixColumnsReady) return;
+  const cols = [
+    { name: "invoice_prefix", def: "VARCHAR(50) NULL DEFAULT 'INV-'" },
+    { name: "memo_prefix", def: "VARCHAR(50) NULL DEFAULT 'MEMO-'" },
+    { name: "purchase_prefix", def: "VARCHAR(50) NULL DEFAULT 'PUR-'" },
+    { name: "lab_prefix", def: "VARCHAR(50) NULL DEFAULT 'LAB-'" },
+  ];
+  for (const c of cols) {
+    try {
+      await metaQuery(`ALTER TABLE company ADD COLUMN ${c.name} ${c.def}`);
+    } catch (_) {
+      // already exists
+    }
+  }
+  prefixColumnsReady = true;
 };
 
 const seedIncrementId = (companyId, pool, cb) => {
@@ -121,6 +141,7 @@ tenantCompanyRouter.get("/admin/tenant-company/options", authenticateToken, isSu
 tenantCompanyRouter.get("/admin/tenant-company", authenticateToken, isSuperAdmin, async (req, res) => {
   try {
     await ensureLogoColumn();
+    await ensureCompanyPrefixColumns();
     await ensureBranchSchema();
     const { searchInput = "", branch_id: branchId } = req.query;
     let sql = `
@@ -151,6 +172,7 @@ tenantCompanyRouter.get("/admin/tenant-company", authenticateToken, isSuperAdmin
 tenantCompanyRouter.get("/admin/tenant-company/:id", authenticateToken, isSuperAdmin, async (req, res) => {
   try {
     await ensureLogoColumn();
+    await ensureCompanyPrefixColumns();
     await ensureBranchSchema();
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ status: false, message: "Invalid id" });
@@ -185,6 +207,7 @@ tenantCompanyRouter.post(
   async (req, res) => {
     try {
       await ensureLogoColumn();
+      await ensureCompanyPrefixColumns();
       await ensureBranchSchema();
       const body = req.body || {};
       const id = Number(body.id) || 0;

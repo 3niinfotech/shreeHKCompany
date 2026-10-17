@@ -245,6 +245,9 @@ const FiscalYearAdmin = () => {
         ]}
         destroyOnClose
         centered
+        closable={false}
+        maskClosable={false}
+        mask={{ closable: false }}
         className={styles.editModal}
       >
         <Form form={editForm} layout="vertical" onFinish={handleUpdate}>

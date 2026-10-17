@@ -504,22 +504,27 @@
   min-height: 56px;
 
   .statItem {
-    text-align: right;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
 
     label {
-      display: block;
-      font-size: 10px;
+      display: inline-block;
+      font-size: 12px;
       font-weight: 600;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.02em;
       text-transform: uppercase;
       color: var(--color-text-secondary, #5f7383);
-      margin-bottom: 1px;
+      margin-bottom: 0;
+      white-space: nowrap;
     }
 
     span {
       font-size: 15px;
       font-weight: 700;
       color: var(--color-text-heading);
+      white-space: nowrap;
     }
 
     .amount {
@@ -531,7 +536,7 @@
 .footerStatsTotals {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 24px;
   flex-shrink: 0;
 }
 

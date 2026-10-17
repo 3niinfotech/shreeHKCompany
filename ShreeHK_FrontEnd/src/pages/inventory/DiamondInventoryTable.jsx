@@ -56,6 +56,7 @@ import "../../assets/scss/pages/inventory/diamondInventoryTable.scss";
 const InventoryPageModals = lazy(() => import("./InventoryPageModals"));
 const AIResultPanel = lazy(() => import("../../components/ai/AIResultPanel"));
 const InventoryBulkActionModal = lazy(() => import("../../components/inventory/InventoryBulkActionModal"));
+const InventoryMixingModal = lazy(() => import("../../components/inventory/InventoryMixingModal"));
 
 const EMPTY_ARRAY = [];
 
@@ -516,6 +517,7 @@ const DiamondInventoryTable = () => {
   const [, setStoneDetailModal] = useState({ open: false, data: null });
   const [bulkActionModal, setBulkActionModal] = useState({ open: false, actionKey: null });
   const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [mixingModalOpen, setMixingModalOpen] = useState(false);
   const pageModalsRef = useRef(null);
   const [filterForm] = Form.useForm();
   const [advancedFilterForm] = Form.useForm();
@@ -1175,7 +1177,7 @@ const DiamondInventoryTable = () => {
       title: "Company Code",
       key: "companyCode",
       dataIndex: "companyCode",
-      width: 100,
+      width: 104,
       align: "center",
       ellipsis: true,
       render: (v) => v || "-",
@@ -1303,7 +1305,7 @@ const DiamondInventoryTable = () => {
       key: "price",
       dataIndex: "price",
       width: 92,
-      align: "center",
+      align: "right",
       className: "inventory-finance-col inventory-price-col",
       render: (v) => (
         <span className="inventory-finance-value inventory-price-value">${Number(v || 0).toLocaleString()}</span>
@@ -1496,6 +1498,14 @@ const DiamondInventoryTable = () => {
     }
     if (key === "hold" || key === "unHold") {
       handleHoldAction(key, selectedRowKeys);
+      return;
+    }
+    if (key === "mixing" || mapped === "mixing") {
+      if (selectedRowKeys.length === 0) {
+        toastWarning("Please select at least one diamond for Mixing");
+        return;
+      }
+      setMixingModalOpen(true);
       return;
     }
     if (key === "addPackage") {
@@ -2095,6 +2105,18 @@ const DiamondInventoryTable = () => {
             open={transferModalOpen}
             onClose={() => setTransferModalOpen(false)}
             selectedStones={selectedRows}
+            onSuccess={async () => {
+              clearSelection();
+              queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
+              queryClient.invalidateQueries({ queryKey: ["myInventorySummary"] });
+              await refetchInventory();
+            }}
+          />
+
+          <InventoryMixingModal
+            open={mixingModalOpen}
+            onClose={() => setMixingModalOpen(false)}
+            selectedRows={selectedRows}
             onSuccess={async () => {
               clearSelection();
               queryClient.invalidateQueries({ queryKey: ["GetProductData"] });

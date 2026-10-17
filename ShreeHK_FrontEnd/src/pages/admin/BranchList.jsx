@@ -328,6 +328,8 @@ const BranchList = () => {
           width="min(900px, calc(100vw - 32px))"
           centered
           closable={false}
+          maskClosable={false}
+          mask={{ closable: false }}
           destroyOnClose
           className={styles.companyModal}
         >
@@ -360,6 +362,9 @@ const BranchList = () => {
           okText="Delete"
           okButtonProps={{ danger: true, loading: isDeleting }}
           centered
+          closable={false}
+          maskClosable={false}
+          mask={{ closable: false }}
           className={styles.companyModal}
         >
           <Text>

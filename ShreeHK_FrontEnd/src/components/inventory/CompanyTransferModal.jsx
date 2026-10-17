@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Form, Select, DatePicker, Input, InputNumber, Table, Alert, Typography, Row, Col, Card } from "antd";
+import { Form, Select, DatePicker, Input, InputNumber, Table, Typography, Row, Col, Card } from "antd";
 import { ArrowLeftRight, Building, Calendar, FileText, User } from "lucide-react";
 import dayjs from "dayjs";
 import { BaseModal } from "../common/modals";
@@ -90,11 +90,6 @@ const CompanyTransferModal = ({
           const c = Number(val) || 0;
           const p = Number(item.price) || 0;
           updated.amount = Math.round(c * p * 100) / 100;
-          if (item.availPcs > 1 && item.availCarat > 0) {
-            const ratio = Math.min(1, Math.max(0, c / item.availCarat));
-            const suggestedPcs = Math.max(1, Math.round(item.availPcs * ratio));
-            updated.pcs = suggestedPcs;
-          }
         } else if (field === "price") {
           const c = Number(item.carat) || 0;
           const p = Number(val) || 0;
@@ -283,59 +278,50 @@ const CompanyTransferModal = ({
   ];
 
   const modalContent = (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <Alert
-        type="info"
-        showIcon
-        message="Inter-Company Stone Transfer"
-        description={
-          <span>
-            Transferring stock will automatically generate a <b>Sale Invoice</b> in <b>{sourceCompanyName}</b> and a <b>Purchase Bill</b> in the destination company.
-          </span>
-        }
-      />
-
-      <Form form={form} layout="vertical">
-        <Row gutter={16}>
-          <Col span={12}>
-            <Form.Item label="Source Company">
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <Form form={form} layout="vertical" style={{ marginBottom: 2 }}>
+        <Row gutter={10}>
+          <Col span={6}>
+            <Form.Item label="Source Company" style={{ marginBottom: 0 }}>
               <Input
                 value={sourceCompanyName}
                 disabled
-                prefix={<Building size={15} style={{ color: "#64748b" }} />}
+                size="middle"
+                prefix={<Building size={14} style={{ color: "#64748b" }} />}
               />
             </Form.Item>
           </Col>
-          <Col span={12}>
+          <Col span={6}>
             <Form.Item
               name="to_company_id"
               label="Destination Company"
-              rules={[{ required: true, message: "Please select destination company" }]}
+              rules={[{ required: true, message: "Required" }]}
+              style={{ marginBottom: 0 }}
             >
               <Select
                 placeholder="Select Destination Company"
                 loading={isCompaniesLoading}
                 options={targetCompanyOptions}
+                size="middle"
               />
             </Form.Item>
           </Col>
-        </Row>
-
-        <Row gutter={16}>
-          <Col span={8}>
+          <Col span={5}>
             <Form.Item
               name="transfer_date"
               label="Transfer Date"
-              rules={[{ required: true, message: "Date is required" }]}
+              rules={[{ required: true, message: "Required" }]}
+              style={{ marginBottom: 0 }}
             >
-              <DatePicker style={{ width: "100%" }} format="DD-MM-YYYY" />
+              <DatePicker style={{ width: "100%" }} format="DD-MM-YYYY" size="middle" />
             </Form.Item>
           </Col>
-          <Col span={16}>
-            <Form.Item name="notes" label="Notes / Reference">
+          <Col span={7}>
+            <Form.Item name="notes" label="Notes / Reference" style={{ marginBottom: 0 }}>
               <Input
-                placeholder="Optional transfer note or internal reference"
-                prefix={<FileText size={15} style={{ color: "#64748b" }} />}
+                placeholder="Optional transfer note / reference"
+                prefix={<FileText size={14} style={{ color: "#64748b" }} />}
+                size="middle"
               />
             </Form.Item>
           </Col>
@@ -349,13 +335,21 @@ const CompanyTransferModal = ({
             Adjust pcs or carats if performing a partial transfer
           </Text>
         </div>
+        <style>{`
+          .company-transfer-table .ant-table-body {
+            height: 320px !important;
+            max-height: 320px !important;
+            overflow-y: auto !important;
+          }
+        `}</style>
         <Table
+          className="company-transfer-table"
           dataSource={items}
           columns={columns}
           pagination={false}
           size="small"
           bordered
-          scroll={{ x: 1050, y: 280 }}
+          scroll={{ x: "max-content", y: 320 }}
         />
       </div>
 
@@ -400,7 +394,7 @@ const CompanyTransferModal = ({
       saveBtnText="Confirm & Transfer"
       cancelBtnText="Cancel"
       loading={isSubmitting}
-      width={1250}
+      width={1300}
       content={modalContent}
     />
   );

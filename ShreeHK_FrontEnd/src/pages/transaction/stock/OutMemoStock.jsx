@@ -44,6 +44,13 @@ const OutMemoStock = () => (
       memoToSaleEndpoint: ENDPOINTS.transactionStock.outward.memoToSale,
       toExportEndpoint: ENDPOINTS.transactionStock.outward.toExport,
       printType: 'memo',
+      typeWidth: 60,
+      referenceWidth: 80,
+      entryWidth: 80,
+      partyWidth: 160,
+      invoiceWidth: 80,
+      dateWidth: 100,
+      operationsWidth: 230,
     }}
   />
 );

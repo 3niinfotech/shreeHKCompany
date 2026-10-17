@@ -27,7 +27,7 @@
   display: flex !important;
   align-items: center !important;
   min-height: 48px;
-  padding-inline-end: 48px !important;
+  padding-inline-end: 16px !important;
   margin-bottom: 0 !important;
   flex-shrink: 0 !important;
 }
@@ -60,30 +60,11 @@
   align-items: center;
 }
 
-// Close sits on .ant-modal-container (Ant Design 6) — keep in header band, not modal center
-.ant-modal-close {
-  position: absolute !important;
-  top: 8px !important;
-  inset-inline-end: 8px !important;
-  left: auto !important;
-  transform: none !important;
-  z-index: 11 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  border-radius: 5px !important;
-}
-
-.ant-modal-close-x {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 100% !important;
-  height: 100% !important;
-  line-height: 1 !important;
-  font-size: 14px !important;
+// ShreeHK ERP: Remove cross icon from header across all modals project-wide
+.ant-modal-close,
+.ant-modal-root .ant-modal-close,
+.ant-modal-container > .ant-modal-close {
+  display: none !important;
 }
 
 .ant-popover .ant-popover-inner,

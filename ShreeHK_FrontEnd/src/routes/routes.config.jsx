@@ -34,13 +34,8 @@ const Integrations = React.lazy(() => import("../pages/master/Integrations"));
 
 // --- 3. INVENTORY DROPDOWN PAGE ---
 const DiamondInventoryTable = React.lazy(() => import("../pages/inventory/DiamondInventoryTable"));
-const SingleToBox = React.lazy(() => import("../pages/inventory/SingleToBox"));
-const SingleToParcel = React.lazy(() => import("../pages/inventory/SingleToParcel"));
 const OnHandStock = React.lazy(() => import("../pages/inventory/OnHandStock"));
 const Barcode = React.lazy(() => import("../pages/inventory/Barcode"));
-const Box = React.lazy(() => import("../pages/inventory/Box"));
-const Parcel = React.lazy(() => import("../pages/inventory/Parcel"));
-const Pair = React.lazy(() => import("../pages/inventory/Pair"));
 const CycleCount = React.lazy(() => import("../pages/inventory/CycleCount"));
 const Categories = React.lazy(() => import("../pages/inventory/Category"));
 
@@ -145,24 +140,13 @@ export const allProtectedRoutes = [
   {
     name: "Inventory",
     path: "/inventory",
-    icon: "Package",
+    icon: "Boxes",
     children: [
       { path: "/inventory/my-inventory", name: "My Inventory", element: <DiamondInventoryTable />, permissionKey: "inventory.my_inventory" },
       { path: "/inventory/categorize-inventory", name: "Categorize", element: <Categories />, permissionKey: "inventory.categorize" },
-      {
-        name: "Single/Two",
-        path: "/inventory/singal-two",
-        children: [
-          { path: "/inventory/box", name: "Box To", element: <SingleToBox />, permissionKey: "inventory.single_to_box" },
-          { path: "/inventory/parcel", name: "Parcel To", element: <SingleToParcel />, permissionKey: "inventory.single_to_parcel" }
-        ]
-      },
       { path: "/inventory/on-hand-stock", name: "On Hand Stock", element: <OnHandStock />, permissionKey: "inventory.on_hand_stock" },
       { path: "/inventory/barcode", name: "Barcode", element: <Barcode />, permissionKey: "inventory.barcode" },
       { path: "/inventory/cycle-count", name: "Cycle Count", element: <CycleCount />, permissionKey: "inventory.on_hand_stock" },
-      { path: "/inventory/box-to", name: "Box", element: <Box />, permissionKey: "inventory.box" },
-      { path: "/inventory/parcel-to", name: "Parcel", element: <Parcel />, permissionKey: "inventory.parcel" },
-      { path: "/inventory/pair", name: "Pair", element: <Pair />, permissionKey: "inventory.pair" },
     ]
   },
   {

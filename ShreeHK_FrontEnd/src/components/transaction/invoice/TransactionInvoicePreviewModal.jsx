@@ -89,6 +89,9 @@ const TransactionInvoicePreviewModal = ({
       width={920}
       centered
       destroyOnHidden
+      closable={false}
+      maskClosable={false}
+      mask={{ closable: false }}
       title={
         invoiceData
           ? `${invoiceData.invoiceTitle} — ${invoiceData.invoiceNo}`

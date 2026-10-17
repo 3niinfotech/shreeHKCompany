@@ -332,11 +332,13 @@ const companyTransferService = {
         }
 
         // 8c. History in source company
+        const sourceBalPcs = isFullTransfer ? 0 : remPcs;
+        const sourceBalCarat = isFullTransfer ? 0 : remCarat;
         await queryWith(
           q,
           `INSERT INTO dai_history
-           (product_id, action, party, date, description, pcs, carat, amount, price, sku, type, invoice, entry_from, entryno, user)
-           VALUES (?, 'inter_transfer', ?, ?, ?, ?, ?, ?, ?, ?, 'dr', ?, 'company_transfer', ?, ?)`,
+           (product_id, action, party, date, description, pcs, carat, amount, price, sku, type, invoice, entry_from, entryno, user, balance_pcs, balance_carat)
+           VALUES (?, 'inter_transfer', ?, ?, ?, ?, ?, ?, ?, ?, 'dr', ?, 'company_transfer', ?, ?, ?, ?)`,
           [
             item.product_id,
             toCompName,
@@ -350,6 +352,8 @@ const companyTransferService = {
             saleInvoiceNo,
             sourceOutwardId,
             userId,
+            sourceBalPcs,
+            sourceBalCarat,
           ]
         );
 
@@ -457,8 +461,8 @@ const companyTransferService = {
         await queryWith(
           q,
           `INSERT INTO dai_history
-           (product_id, action, party, date, description, pcs, carat, amount, price, sku, type, invoice, entry_from, entryno, user)
-           VALUES (?, 'inter_transfer', ?, ?, ?, ?, ?, ?, ?, ?, 'cr', ?, 'company_transfer', ?, ?)`,
+           (product_id, action, party, date, description, pcs, carat, amount, price, sku, type, invoice, entry_from, entryno, user, balance_pcs, balance_carat)
+           VALUES (?, 'inter_transfer', ?, ?, ?, ?, ?, ?, ?, ?, 'cr', ?, 'company_transfer', ?, ?, ?, ?)`,
           [
             targetProductId,
             fromCompName,
@@ -472,6 +476,8 @@ const companyTransferService = {
             purchaseInvoiceNo,
             targetInwardId,
             userId,
+            item.pcs,
+            item.carat,
           ]
         );
 
@@ -618,8 +624,8 @@ const companyTransferService = {
           await queryWith(
             q,
             `INSERT INTO dai_history
-             (product_id, action, party, date, description, pcs, carat, amount, price, sku, type, invoice, entry_from, entryno, user)
-             VALUES (?, 'return', ?, ?, ?, ?, ?, ?, ?, ?, 'dr', ?, 'transfer_return', ?, ?)`,
+             (product_id, action, party, date, description, pcs, carat, amount, price, sku, type, invoice, entry_from, entryno, user, balance_pcs, balance_carat)
+             VALUES (?, 'return', ?, ?, ?, ?, ?, ?, ?, ?, 'dr', ?, 'transfer_return', ?, ?, 0, 0)`,
             [
               item.target_product_id,
               transfer.from_company_name,
@@ -662,8 +668,8 @@ const companyTransferService = {
           await queryWith(
             q,
             `INSERT INTO dai_history
-             (product_id, action, party, date, description, pcs, carat, amount, price, sku, type, invoice, entry_from, entryno, user)
-             VALUES (?, 'return', ?, ?, ?, ?, ?, ?, ?, ?, 'cr', ?, 'transfer_return', ?, ?)`,
+             (product_id, action, party, date, description, pcs, carat, amount, price, sku, type, invoice, entry_from, entryno, user, balance_pcs, balance_carat)
+             VALUES (?, 'return', ?, ?, ?, ?, ?, ?, ?, ?, 'cr', ?, 'transfer_return', ?, ?, ?, ?)`,
             [
               item.source_product_id,
               transfer.to_company_name,
@@ -677,6 +683,8 @@ const companyTransferService = {
               transfer.source_invoice_no,
               transfer.source_outward_id,
               userId,
+              newPcs,
+              newCarat,
             ]
           );
         }

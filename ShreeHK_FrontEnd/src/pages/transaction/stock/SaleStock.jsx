@@ -44,6 +44,8 @@ const SaleStock = () => (
       showToExport: true,
       toExportEndpoint: ENDPOINTS.transactionStock.outward.toExport,
       printType: 'sale',
+      typeWidth: 80,
+      referenceWidth: 160,
     }}
   />
 );
