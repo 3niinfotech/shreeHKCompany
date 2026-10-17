@@ -58,32 +58,34 @@ $edit-gap: 12px;
 
   .master-edit-modal__title-text {
     display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 2px;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
     min-width: 0;
   }
 
   .master-edit-modal__title {
-    display: block;
+    display: inline-flex;
+    align-items: center;
     font-size: 16px;
     font-weight: 700;
     line-height: 22px;
     color: var(--color-text-heading);
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   .master-edit-modal__subtitle {
-    display: block;
-    font-size: 12px;
-    font-weight: 500;
-    line-height: 16px;
-    color: var(--color-text-muted, #8a94a6);
+    display: inline-flex;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--color-primary, #0D7B6B);
+    background: color-mix(in srgb, var(--color-primary, #0D7B6B) 10%, #fff);
+    border: 1px solid color-mix(in srgb, var(--color-primary, #0D7B6B) 25%, transparent);
+    padding: 2px 8px;
+    border-radius: 4px;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   .ant-modal-close {

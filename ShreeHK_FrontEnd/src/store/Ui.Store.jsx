@@ -21,7 +21,7 @@ import { persist } from "zustand/middleware";
 const useUIStore = create(
     persist(
         (set) => ({
-            sidebarOpen: true,
+            sidebarOpen: false,
             isDarkMode: false,
             viewMode: "web",
             toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),

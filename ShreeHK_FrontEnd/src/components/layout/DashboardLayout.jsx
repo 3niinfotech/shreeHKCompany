@@ -31,7 +31,7 @@ const { Sider, Content } = Layout;
 const DashboardLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [navSearchText, setNavSearchText] = useState("");
   const isDarkMode = useUIStore((state) => state.isDarkMode);
   const menuTheme = useMemo(
@@ -41,8 +41,42 @@ const DashboardLayout = () => {
   const menuItems = useAuthorizedMenuItems();
   const userWithPerms = useAuthUser();
   const companyLogo = useAuthStore((state) => state.companyLogo);
-  const companyName = useAuthStore((state) => state.companyName);
+  const authCompanyName = useAuthStore((state) => state.companyName);
   const openTab = useTabsStore((state) => state.openTab);
+
+  const displayShortName = useMemo(() => {
+    // Derive shortcut strictly from Company Name (e.g. "ShreeHK International" -> "SI", "KG Infrastructure" -> "KI")
+    // Never show branch code like "HK"
+    const name = authCompanyName && String(authCompanyName).trim();
+    if (!name) return "SI";
+
+    const cleanWithoutSuffix = name
+      .replace(/\b(Pvt\.?|Ltd\.?|Private|Limited|LLP|Inc\.?|Co\.?|Corp\.?)\b/gi, "")
+      .trim();
+
+    const target = cleanWithoutSuffix || name;
+    const words = target.split(/[\s\-_/]+/).filter(Boolean);
+
+    if (words.length >= 2) {
+      const firstChar = words[0][0].toUpperCase();
+      const secondChar = words[words.length - 1][0].toUpperCase();
+      return `${firstChar}${secondChar}`;
+    }
+
+    if (words.length === 1) {
+      const caps = words[0].replace(/[^A-Z0-9]/g, "");
+      if (caps.length >= 2) {
+        return caps.slice(0, 2).toUpperCase();
+      }
+      return words[0].slice(0, 2).toUpperCase();
+    }
+
+    return "SI";
+  }, [authCompanyName]);
+
+  const displayFullName = useMemo(() => {
+    return authCompanyName || "ShreeHK International";
+  }, [authCompanyName]);
 
   const logoUrl = useMemo(() => resolveCompanyLogoUrl(companyLogo), [companyLogo]);
 
@@ -147,19 +181,17 @@ const DashboardLayout = () => {
           theme={isDarkMode ? "dark" : "light"}
           trigger={null}
         >
-          <div className={styles.brand}>
-            <Link to={homePath}>
-              <span className={styles.brandIcon}>
-                <img
-                  src={logoUrl || logoHeader}
-                  alt={companyName || "ShreeHK"}
-                  onError={(e) => {
-                    e.currentTarget.onerror = null;
-                    e.currentTarget.src = logoHeader;
-                  }}
-                />
-              </span>
-              {!collapsed && <span className={styles.brandText}>{"ShreeHK"}</span>}
+          <div className={`${styles.brand} ${collapsed ? styles.brandCollapsed : ""}`}>
+            <Link to={homePath} className={styles.brandLink} title={displayFullName}>
+              {collapsed ? (
+                <span className={styles.brandBadgeShort} title={displayFullName}>
+                  {displayShortName}
+                </span>
+              ) : (
+                <span className={styles.brandText} title={displayFullName}>
+                  {displayFullName}
+                </span>
+              )}
             </Link>
           </div>
 

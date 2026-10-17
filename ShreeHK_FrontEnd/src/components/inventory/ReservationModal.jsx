@@ -68,6 +68,7 @@ const ReservationModal = ({ open, selectedIds = [], partyHint = "", onClose, onS
       closable={false}
       destroyOnClose
       maskClosable={false}
+      mask={{ closable: false }}
       width={520}
       styles={{
         header: {

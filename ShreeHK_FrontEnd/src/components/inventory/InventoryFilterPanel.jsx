@@ -6,6 +6,7 @@ const { Text } = Typography;
 
 const InventoryFilterPanel = ({
   sectionTitle = "Total Inventory",
+  titleExtra,
   totalLabel,
   searchSlot,
   compactFilters,
@@ -91,9 +92,14 @@ const InventoryFilterPanel = ({
     <div className={styles.panel}>
       <div className={styles.header}>
         <div className={styles.headerMain}>
-          <div className={styles.headerLeft}>
-            <Text className={styles.sectionTitle}>{sectionTitle}</Text>
-          </div>
+          {(sectionTitle || titleExtra) ? (
+            <div className={styles.headerLeft}>
+              {sectionTitle ? (
+                <Text className={styles.sectionTitle}>{sectionTitle}</Text>
+              ) : null}
+              {titleExtra ? <div className={styles.titleExtra}>{titleExtra}</div> : null}
+            </div>
+          ) : null}
           {hasCompactRow ? (
             <div className={styles.compactRow}>
               {searchSlot ? (

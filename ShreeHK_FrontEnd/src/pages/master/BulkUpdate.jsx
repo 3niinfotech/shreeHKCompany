@@ -237,7 +237,7 @@ const BulkUpdate = () => {
         <div className={`page-shell ${styles.wrapper}`}>
             {/* Control Bar */}
             <Row gutter={[20, 20]} align="middle" className={styles.topRow}>
-                <Col xs={24} md={9}>
+                <Col xs={24} md={10}>
                     <Form
                         form={form}
                         initialValues={{ updateType: undefined }}
@@ -258,27 +258,26 @@ const BulkUpdate = () => {
                     </Form>
                 </Col>
 
-                <Col xs={24} md={9}>
-                    <div className={styles.uploadWrap}>
-                        <Upload
-                            fileList={fileList}
-                            beforeUpload={() => false}
-                            onChange={({ fileList: nextFileList }) => setFileList(nextFileList.slice(-1))}
-                            onRemove={() => setFileList([])}
-                            accept=".xls,.xlsx"
-                            maxCount={1}
-                        >
-                            <Button icon={<UploadIcon size={16} />} className={styles.chooseButton}>
-                                {fileList.length > 0 ? fileList[0].name : "Choose Excel File"}
-                            </Button>
-                        </Upload>
+                <Col xs={24} md={14} className={styles.rightAlign}>
+                    <div className={styles.actionsRow}>
+                        <div className={styles.uploadWrap}>
+                            <Upload
+                                fileList={fileList}
+                                beforeUpload={() => false}
+                                onChange={({ fileList: nextFileList }) => setFileList(nextFileList.slice(-1))}
+                                onRemove={() => setFileList([])}
+                                accept=".xls,.xlsx"
+                                maxCount={1}
+                            >
+                                <Button icon={<UploadIcon size={16} />} className={styles.chooseButton}>
+                                    {fileList.length > 0 ? fileList[0].name : "Choose Excel File"}
+                                </Button>
+                            </Upload>
+                        </div>
+                        <Button type="primary" icon={<UploadIcon size={16} />} className={styles.updateBtn} onClick={handleBulkUpdate} loading={isPending}>
+                            Update Data
+                        </Button>
                     </div>
-                </Col>
-
-                <Col xs={24} md={6} className={styles.rightAlign}>
-                    <Button type="primary" icon={<UploadIcon size={16} />} className={styles.updateBtn} onClick={handleBulkUpdate} loading={isPending}>
-                        Update Data
-                    </Button>
                 </Col>
             </Row>
 

@@ -7,23 +7,55 @@ import React, {
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { Modal, Button, Typography, Tag, Spin } from "antd";
+import { Modal, Spin, Button } from "antd";
+import { CloseOutlined } from "@ant-design/icons";
 import {
-  DatabaseOutlined,
-  HistoryOutlined,
-  EditOutlined,
-  SwapOutlined,
-  CloseOutlined,
-} from "@ant-design/icons";
+  Package,
+  History,
+  PenSquare,
+  ArrowLeftRight,
+  MapPin,
+} from "lucide-react";
 import { api } from "../api/client/axiosInstance";
 import { ENDPOINTS } from "../api/endpoints";
 import {
   buildStoneHistoryUrl,
   buildTransferHistoryUrl,
 } from "../utils/inventorySkuNavigation";
+import { renderLocationWithFlag } from "../components/inventory/LocationWithFlag";
 import "../assets/scss/hooks/useSkuModal.scss";
 
-const { Text } = Typography;
+const pickDetail = (...values) => {
+  for (const v of values) {
+    if (v !== undefined && v !== null && String(v).trim() !== "") {
+      return v;
+    }
+  }
+  return null;
+};
+
+const formatPrice = (value) => {
+  if (value == null || value === "") return null;
+  const n = Number(String(value).replace(/,/g, ""));
+  if (Number.isNaN(n)) return String(value);
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(n);
+};
+
+const statusPillClass = (status) => {
+  const s = String(status || "").toUpperCase();
+  if (s === "AVAILABLE") return "available";
+  if (s === "SALE" || s === "EXPORT" || s === "SOLD") return "sale";
+  if (s === "HOLD" || s === "ON HOLD") return "hold";
+  if (s === "MEMO" || s === "ON MEMO") return "memo";
+  if (s === "LAB") return "lab";
+  if (s === "CONSIGN" || s === "CONSIGNMENT") return "consign";
+  if (s === "NOT FOUND" || s === "NOT_FOUND" || s === "NOT AVAILABLE") return "notfound";
+  return "default";
+};
 
 const SkuModalContext = createContext(null);
 
@@ -54,12 +86,19 @@ export const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
     api
       .get(ENDPOINTS.report.stoneDetail, { params })
       .then((res) => {
-        if (isMounted && res?.data) {
-          setApiData(res.data);
+        if (isMounted) {
+          if (res?.data?.detail) {
+            setApiData(res.data);
+          } else {
+            setApiData({ status: "NOT FOUND", notFound: true });
+          }
         }
       })
       .catch((err) => {
         console.error("Error fetching stone details for SKU modal:", err);
+        if (isMounted) {
+          setApiData({ status: "NOT FOUND", notFound: true });
+        }
       })
       .finally(() => {
         if (isMounted) {
@@ -74,80 +113,150 @@ export const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
 
   if (!skuData) return null;
 
-  const detail = apiData?.detail || {};
+  const detail = apiData?.detail || null;
+  const isNotFound = Boolean(apiData?.notFound || (!detail && !loading && !skuData?.id && !skuData?.polish_carat));
 
-  const rawStatus =
-    typeof apiData?.status === "string"
-      ? apiData.status
-      : detail?.outward
-      ? String(detail.outward).toUpperCase()
-      : skuData?.outward
-      ? String(skuData.outward).toUpperCase()
-      : skuData?.status
-      ? String(skuData.status).toUpperCase()
-      : "AVAILABLE";
+  const actualStatus = (() => {
+    // 1. If backend returned stone detail
+    if (detail) {
+      if (detail.hold === 1 || detail.hold === "1" || detail.hold === true) {
+        return "ON HOLD";
+      }
+      if (typeof apiData?.status === "string" && apiData.status.trim()) {
+        return apiData.status.trim().toUpperCase();
+      }
+      if (detail.outward) {
+        return String(detail.outward).trim().toUpperCase();
+      }
+      return "AVAILABLE";
+    }
 
-  const actualStatus = rawStatus && rawStatus.trim() ? rawStatus.toUpperCase() : "AVAILABLE";
+    // 2. If stone record was already passed from table row selection
+    if (skuData?.id || skuData?.polish_carat || skuData?.carat) {
+      if (skuData?.hold === 1 || skuData?.hold === "1" || skuData?.hold === true) {
+        return "ON HOLD";
+      }
+      if (skuData?.outward) {
+        return String(skuData.outward).trim().toUpperCase();
+      }
+      if (skuData?.status) {
+        return String(skuData.status).trim().toUpperCase();
+      }
+      return "AVAILABLE";
+    }
 
-  const getStatusTagColor = (status) => {
-    const s = String(status || "").toUpperCase();
-    if (s === "AVAILABLE") return "green";
-    if (s === "MEMO") return "orange";
-    if (s === "SALE" || s === "EXPORT") return "red";
-    if (s === "CONSIGN" || s === "CONSIGNMENT") return "purple";
-    if (s === "LAB") return "cyan";
-    if (s === "HOLD") return "volcano";
-    return "blue";
-  };
+    // 3. While still loading
+    if (loading) {
+      return "CHECKING...";
+    }
 
-  const carat =
-    detail?.polish_carat ??
-    detail?.carat ??
-    skuData?.polish_carat ??
-    skuData?.carat ??
-    skuData?.polishCarat ??
-    skuData?.Pcarat ??
-    "—";
+    // 4. Non-existent stone in backend / system
+    return "NOT FOUND";
+  })();
 
-  const color =
-    detail?.main_color ??
-    detail?.color ??
-    skuData?.main_color ??
-    skuData?.color ??
-    skuData?.mainColor ??
-    "—";
+  const statusClass = statusPillClass(actualStatus);
 
-  const fluro =
-    detail?.f_intensity ??
-    detail?.fluro ??
-    detail?.fluor_intensity ??
-    detail?.fluorescence ??
-    skuData?.f_intensity ??
-    skuData?.fluro ??
-    skuData?.fluor_intensity ??
-    skuData?.fluorescence ??
-    skuData?.fluro_intensity ??
-    "—";
+  const d = detail;
+  const s = skuData;
 
-  const clarity = detail?.clarity ?? skuData?.clarity ?? "—";
+  const rawPrice = pickDetail(d?.price, s?.price);
+  const formattedPrice = formatPrice(rawPrice);
 
-  const lab = detail?.lab ?? skuData?.lab ?? "—";
+  const detailRows = [
+    {
+      label: "Carat",
+      value: pickDetail(
+        d?.polish_carat,
+        d?.carat,
+        s?.polish_carat,
+        s?.carat,
+        s?.polishCarat,
+      ),
+      highlight: true,
+    },
+    {
+      label: "Color",
+      value: pickDetail(d?.main_color, d?.color, s?.main_color, s?.color, s?.mainColor),
+    },
+    {
+      label: "Clarity",
+      value: pickDetail(d?.clarity, s?.clarity),
+    },
+    {
+      label: "Fluro",
+      value: pickDetail(
+        d?.f_intensity,
+        d?.fluro,
+        d?.fluor_intensity,
+        d?.fluorescence,
+        s?.f_intensity,
+        s?.fluro,
+        s?.fluorescence,
+      ),
+    },
+    {
+      label: "Lab",
+      value: pickDetail(d?.lab, s?.lab),
+    },
+    {
+      label: "Price",
+      value: formattedPrice ?? rawPrice,
+      highlight: true,
+    },
+    {
+      label: "Cut",
+      value: pickDetail(d?.cut, s?.cut),
+    },
+    {
+      label: "Polish",
+      value: pickDetail(d?.polish, s?.polish),
+    },
+    {
+      label: "Symmetry",
+      value: pickDetail(d?.symmentry, d?.symmetry, s?.symmentry, s?.symmetry),
+    },
+    {
+      label: "Shape",
+      value: pickDetail(d?.shape, s?.shape),
+    },
+    {
+      label: "Overtone",
+      value: pickDetail(d?.overtone, s?.overtone),
+    },
+    {
+      label: "Intensity",
+      value: pickDetail(d?.intensity, s?.intensity),
+    },
+    {
+      label: "Location",
+      value: pickDetail(d?.location, d?.loc, s?.location, s?.loc),
+      isLocation: true,
+      fullWidth: true,
+    },
+  ];
 
   const actionCards = [
     {
       key: "inventory",
       label: "Inventory",
-      icon: <DatabaseOutlined />,
+      Icon: Package,
+      accent: "indigo",
       redirect: "/inventory/my-inventory",
     },
-    { key: "history", label: "History", icon: <HistoryOutlined /> },
+    { key: "history", label: "History", Icon: History, accent: "amber" },
     {
       key: "update",
       label: "Update Stock",
-      icon: <EditOutlined />,
+      Icon: PenSquare,
+      accent: "emerald",
       redirect: "/transaction/stone-update",
     },
-    { key: "transfer", label: "Inter Transfer", icon: <SwapOutlined /> },
+    {
+      key: "transfer",
+      label: "Inter Transfer",
+      Icon: ArrowLeftRight,
+      accent: "violet",
+    },
   ];
 
   const handleCardClick = (item) => {
@@ -164,7 +273,7 @@ export const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
       onClose();
       const separator = item.redirect.includes("?") ? "&" : "?";
       navigate(
-        `${item.redirect}${separator}skuupdate=${encodeURIComponent(skuData.sku)}`
+        `${item.redirect}${separator}skuupdate=${encodeURIComponent(skuData.sku)}`,
       );
       return;
     }
@@ -173,8 +282,8 @@ export const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
       navigate(
         buildStoneHistoryUrl(
           skuData.sku,
-          skuData.company ?? skuData.company_id ?? skuData.companyId
-        )
+          skuData.company ?? skuData.company_id ?? skuData.companyId,
+        ),
       );
       return;
     }
@@ -186,112 +295,146 @@ export const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
     onAction?.(item.key, skuData);
   };
 
+  const isEmptyValue = (value) => value == null || value === "";
+
+  const renderFieldValue = (row) => {
+    if (isEmptyValue(row.value)) {
+      return <span className="sku-detail-value--muted">—</span>;
+    }
+    if (row.isLocation) {
+      return renderLocationWithFlag(row.value);
+    }
+    return row.value;
+  };
+
+  const highlightRows = detailRows.filter((r) => r.highlight && !r.fullWidth);
+  const gridRows = detailRows.filter(
+    (r) => !r.fullWidth && !r.highlight && !isEmptyValue(r.value),
+  );
+  const locationRow = detailRows.find((r) => r.label === "Location");
+  const hasLocation = locationRow && !isEmptyValue(locationRow.value);
+
   return (
     <Modal
       open={visible}
       onCancel={onClose}
       footer={null}
       centered
-      width={505}
+      width={560}
       closable={false}
+      maskClosable={false}
+      mask={{ closable: false }}
+      keyboard
       className="sku-action-modal"
+      wrapClassName="sku-action-modal-wrap"
       destroyOnClose
       transitionName=""
       maskTransitionName=""
     >
-      <div className="sku-action-modal__header">
-        <Text
-          type="secondary"
-          style={{ fontSize: "12px", display: "block", marginBottom: "2px" }}
-        >
-          What you want to do with
-        </Text>
-
-        <div className="sku-title" style={{ margin: "0" }}>
-          {skuData.sku}
-        </div>
-
-        <Tag
-          color={getStatusTagColor(actualStatus)}
-          style={{ borderRadius: "4px", fontWeight: "bold", marginTop: "6px" }}
-        >
-          {loading ? <Spin size="small" /> : actualStatus}
-        </Tag>
-      </div>
-
-      <div className="sku-action-modal__body">
-        <div className="sku-details-grid">
-          <div className="sku-detail-item">
-            <span className="sku-detail-label">Carat</span>
-            <span className="sku-detail-value">
-              {loading ? <Spin size="small" /> : carat}
-            </span>
-          </div>
-          <div className="sku-detail-item">
-            <span className="sku-detail-label">Color</span>
-            <span className="sku-detail-value">
-              {loading ? <Spin size="small" /> : color}
-            </span>
-          </div>
-          <div className="sku-detail-item">
-            <span className="sku-detail-label">Fluro</span>
-            <span className="sku-detail-value">
-              {loading ? <Spin size="small" /> : fluro}
-            </span>
-          </div>
-          <div className="sku-detail-item">
-            <span className="sku-detail-label">Status</span>
-            <span className="sku-detail-value">
-              {loading ? (
-                <Spin size="small" />
-              ) : (
-                <Tag
-                  color={getStatusTagColor(actualStatus)}
-                  style={{ margin: 0, fontWeight: 600 }}
-                >
-                  {actualStatus}
-                </Tag>
-              )}
-            </span>
-          </div>
-          <div className="sku-detail-item">
-            <span className="sku-detail-label">Clarity</span>
-            <span className="sku-detail-value">
-              {loading ? <Spin size="small" /> : clarity}
-            </span>
-          </div>
-          <div className="sku-detail-item">
-            <span className="sku-detail-label">Lab</span>
-            <span className="sku-detail-value">
-              {loading ? <Spin size="small" /> : lab}
-            </span>
-          </div>
-        </div>
-
-        <div className="sku-action-modal__grid">
-          {actionCards.map((item) => (
-            <div
-              key={item.key}
-              className="sku-action-modal__card"
-              onClick={() => handleCardClick(item)}
-            >
-              <div className="icon-wrapper">{item.icon}</div>
-              <span>{item.label}</span>
+      <div className="sku-action-modal__shell">
+        <header className="sku-action-modal__header">
+          <div className="sku-action-modal__identity">
+            <div className="sku-action-modal__titleRow">
+              <h2 className="sku-title">{skuData.sku}</h2>
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+        </header>
 
-      <div className="sku-action-modal__footer">
-        <Button
-          type="text"
-          icon={<CloseOutlined />}
-          className="cancel-btn"
-          onClick={onClose}
-          style={{ background: "red", color: "white" }}
-        >
-          Cancel & Return
-        </Button>
+        <div className="sku-action-modal__body">
+          {loading ? (
+            <div className="sku-action-modal__loader" aria-busy="true" aria-live="polite">
+              <Spin size="large" />
+            </div>
+          ) : (
+            <>
+              {highlightRows.length > 0 && (
+                <section className="sku-action-modal__metrics" aria-label="Key metrics">
+                  {highlightRows.map((row) => (
+                    <div key={`metric-${row.label}`} className="sku-metric">
+                      <span className="sku-metric__label">{row.label}</span>
+                      <span className="sku-metric__value">{renderFieldValue(row)}</span>
+                    </div>
+                  ))}
+                </section>
+              )}
+
+              <section className="sku-action-modal__detailsPanel" aria-label="Stone details">
+                <div className="sku-action-modal__detailsHead">
+                  <p className="sku-action-modal__sectionLabel">Specifications</p>
+                  <span className={`sku-status-badge sku-status-badge--${statusClass}`}>
+                    {actualStatus}
+                  </span>
+                </div>
+                {gridRows.length > 0 ? (
+                  <ul className="sku-spec-sheet">
+                    {gridRows.map((row) => (
+                      <li key={row.label} className="sku-spec-sheet__row">
+                        <span className="sku-spec-sheet__label">{row.label}</span>
+                        <span className="sku-spec-sheet__value">{renderFieldValue(row)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p
+                    className="sku-spec-sheet__empty"
+                    style={isNotFound ? { color: "#dc2626", fontWeight: 600 } : undefined}
+                  >
+                    {isNotFound ? "Stone not found in system" : "No graded specs available"}
+                  </p>
+                )}
+
+                {hasLocation && (
+                  <div className="sku-meta-strip sku-meta-strip--single">
+                    <div className="sku-meta-card">
+                      <span className="sku-meta-card__icon" aria-hidden>
+                        <MapPin size={15} strokeWidth={2.25} />
+                      </span>
+                      <div className="sku-meta-card__text">
+                        <span className="sku-meta-card__label">Location</span>
+                        <span className="sku-meta-card__value sku-meta-card__value--loc">
+                          {renderFieldValue(locationRow)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              <section className="sku-action-modal__actions" aria-label="Quick actions">
+                <p className="sku-action-modal__actionsLabel">Quick actions</p>
+                <div className="sku-action-modal__grid">
+                  {actionCards.map((item) => {
+                    const Icon = item.Icon;
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        className={`sku-action-modal__card sku-action-modal__card--${item.accent}`}
+                        onClick={() => handleCardClick(item)}
+                      >
+                        <span className={`sku-action-icon sku-action-icon--${item.accent}`}>
+                          <Icon size={18} strokeWidth={2.25} />
+                        </span>
+                        <span className="sku-action-modal__cardLabel">{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            </>
+          )}
+        </div>
+
+        <footer className="sku-action-modal__footer">
+          <Button
+            type="text"
+            icon={<CloseOutlined />}
+            className="sku-action-modal__cancelBtn"
+            onClick={onClose}
+          >
+            Close
+          </Button>
+        </footer>
       </div>
     </Modal>
   );
@@ -322,7 +465,7 @@ export const SkuModalProvider = ({ children }) => {
 
   const value = useMemo(
     () => ({ openSkuModal, closeSkuModal }),
-    [openSkuModal, closeSkuModal]
+    [openSkuModal, closeSkuModal],
   );
 
   return (

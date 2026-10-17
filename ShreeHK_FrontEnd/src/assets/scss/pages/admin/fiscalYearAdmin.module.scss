@@ -4,13 +4,13 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding: 24px;
+  gap: 10px;
   box-sizing: border-box;
   background: var(--color-page-bg);
 }
 
 .infoAlert {
-  margin-bottom: 12px;
+  margin: 4px;
   border-radius: 6px;
 
   :global(.ant-alert) {
@@ -23,6 +23,7 @@
   min-height: 0;
   overflow: hidden;
   align-items: stretch;
+  margin-top: 0;
 }
 
 .formCol,

@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useMemo, useRef } from "react";
-import { Tree, Input, Button, Card, Row, Col, Space, Typography, Tag } from "antd";
+import React, { useState, useCallback, useMemo } from "react";
+import { Input, Button, Card, Space, Typography } from "antd";
 import { toastWarning } from "../../utils/toastNotify";
 import { FolderOutlined, ReloadOutlined } from "@ant-design/icons";
 import {
@@ -9,7 +9,6 @@ import {
     Lock,
     Unlock,
     ChevronRight,
-    Info,
 } from "lucide-react";
 import { toastApiSuccess, toastApiError } from "../../utils/toastNotify";
 import { useFetchApi } from "../../api/ApiFunction";
@@ -18,56 +17,108 @@ import useInventoryList from "../../hooks/useInventoryList";
 import useInventoryHoldActions from "../../hooks/useInventoryHoldActions";
 import useInventoryExportActions from "../../hooks/useInventoryExportActions";
 import useInventoryLabelActions from "../../hooks/useInventoryLabelActions";
-import { assignProductCategory, fetchCategoryStats } from "../../api/services/productService";
+import { assignProductCategory } from "../../api/services/productService";
 import { cssVar } from "../../theme";
-import { renderLocationWithFlag } from "../../components/inventory/LocationWithFlag";
 import PageHeroHeader from "../../components/common/PageHeroHeader";
-import useTableBodyScrollHeight from "../../hooks/useTableBodyScrollHeight";
-import { SkuLink } from "../../hooks/useSkuModalAction";
 import { SkeletonTree, SkeletonAwareTable } from "../../components/common/skeleton";
+import { getCategorizeInventoryColumns } from "./categorizeInventoryColumns";
 import styles from "../../assets/scss/pages/inventory/categories.module.scss";
 
-const { DirectoryTree } = Tree;
 const { Text } = Typography;
 
-const listColumns = [
-    { title: "SKU", dataIndex: "sku", key: "sku", width: 100, render: (text, record) => <SkuLink sku={text} record={record} /> },
-    { title: "Lab", dataIndex: "lab", key: "lab", width: 70 },
-    { title: "Shape", dataIndex: "shape", key: "shape", width: 90 },
-    { title: "Carat", dataIndex: "polish_carat", key: "polish_carat", width: 80, align: "right" },
-    { title: "Price", dataIndex: "price", key: "price", width: 90, align: "right" },
-    { title: "Location", dataIndex: "location", key: "location", width: 110, render: (val, record) => renderLocationWithFlag(val || record.loc) },
-];
+function CategoryHierarchyNodes({
+    nodes,
+    depth,
+    selectedKey,
+    expandedKeys,
+    onCategoryClick,
+    onToggleExpand,
+    renderTable,
+}) {
+    if (!nodes?.length) return null;
+
+    return nodes.map((node) => {
+        const hasChildren = Boolean(node.children?.length);
+        const isExpanded = expandedKeys.includes(node.key);
+        const isSelected = selectedKey === node.key;
+
+        return (
+            <div key={node.key} className={styles.treeBranch}>
+                <div
+                    className={`${styles.treeNodeRow} ${isSelected ? styles.treeNodeRowSelected : ""}`}
+                    style={{ paddingLeft: 12 + depth * 18 }}
+                    onClick={() => onCategoryClick(node)}
+                >
+                    {hasChildren ? (
+                        <button
+                            type="button"
+                            className={`${styles.treeSwitcher} ${isExpanded ? styles.treeSwitcherOpen : ""}`}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleExpand(node.key);
+                            }}
+                            aria-label={isExpanded ? "Collapse" : "Expand"}
+                        >
+                            <ChevronRight size={14} />
+                        </button>
+                    ) : (
+                        <span className={styles.treeSwitcherSpacer} />
+                    )}
+                    <span className={styles.treeNodeTitle}>{node.title}</span>
+                </div>
+
+                {isSelected && renderTable(node)}
+
+                {hasChildren && isExpanded && (
+                    <CategoryHierarchyNodes
+                        nodes={node.children}
+                        depth={depth + 1}
+                        selectedKey={selectedKey}
+                        expandedKeys={expandedKeys}
+                        onCategoryClick={onCategoryClick}
+                        onToggleExpand={onToggleExpand}
+                        renderTable={renderTable}
+                    />
+                )}
+            </div>
+        );
+    });
+}
 
 const CategorizeInventory = () => {
     const [selectedKey, setSelectedKey] = useState(null);
     const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+    const [expandedKeys, setExpandedKeys] = useState([]);
     const [treeSearch, setTreeSearch] = useState("");
     const [assigning, setAssigning] = useState(false);
-    const tableRef = useRef(null);
+
+    const listColumns = useMemo(() => getCategorizeInventoryColumns(), []);
 
     const { data: treeResponse, isLoading: treeLoading } = useFetchApi(
         "CategorizeTree",
         ENDPOINTS.product.categorizeTree,
     );
 
-    const { data: statsResponse } = useFetchApi(
-        `CategoryStats_${selectedKey || "none"}`,
-        ENDPOINTS.product.categorizeStats,
-        { categoryId: selectedKey },
-        "GET",
-        { enabled: Boolean(selectedKey) },
-    );
+    const selectedCategoryIds = useMemo(() => {
+        if (!selectedKey) return [];
+        return String(selectedKey)
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+    }, [selectedKey]);
 
     const {
         tableData,
         isLoading: listLoading,
         refresh,
+        tableWrapRef,
+        tableScrollY,
+        totalItems,
     } = useInventoryList({
-        queryKey: `CategorizeInventory_${selectedKey || "all"}`,
-        baseFilters: selectedKey
-            ? { category: [selectedKey], available: "On Hand Stock" }
-            : { available: "On Hand Stock" },
+        queryKey: `CategorizeInventory_${selectedKey || "none"}`,
+        baseFilters: selectedCategoryIds.length
+            ? { category: selectedCategoryIds, available: "On Hand Stock" }
+            : { category: ["-1"], available: "On Hand Stock" },
     });
 
     const { handleHoldAction, holdLoading } = useInventoryHoldActions({ onSuccess: refresh });
@@ -91,13 +142,31 @@ const CategorizeInventory = () => {
         return filterNodes(data);
     }, [treeResponse, treeSearch]);
 
-    const stats = statsResponse?.Data || { total: 0, pcs: 0, carat: 0, amount: 0 };
-    const tableScrollY = useTableBodyScrollHeight(tableRef, [tableData.length, selectedKey]);
+    const onCategoryClick = useCallback((node) => {
+        setSelectedKey((prevSelected) => {
+            const closingSame = prevSelected === node.key;
+            if (closingSame) {
+                setSelectedRowKeys([]);
+                if (node.children?.length) {
+                    setExpandedKeys((prev) => prev.filter((k) => k !== node.key));
+                }
+                return null;
+            }
+            setSelectedRowKeys([]);
+            if (node.children?.length) {
+                setExpandedKeys((prev) =>
+                    prev.includes(node.key) ? prev : [...prev, node.key],
+                );
+            }
+            return node.key;
+        });
+    }, []);
 
-    const onSelect = (keys) => {
-        setSelectedKey(keys[0] || null);
-        setSelectedRowKeys([]);
-    };
+    const onToggleExpand = useCallback((key) => {
+        setExpandedKeys((prev) =>
+            prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+        );
+    }, []);
 
     const handleAssignCategory = async () => {
         if (!selectedKey || !selectedRowKeys.length) {
@@ -108,7 +177,7 @@ const CategorizeInventory = () => {
         try {
             const res = await assignProductCategory({
                 productIds: selectedRowKeys,
-                categoryId: selectedKey,
+                categoryId: selectedCategoryIds[0],
             });
             if (res?.ok) {
                 toastApiSuccess(res);
@@ -131,6 +200,43 @@ const CategorizeInventory = () => {
         }
         fn(selectedRowKeys);
     }, [selectedRowKeys]);
+
+    const renderInlineTable = useCallback(() => (
+        <div className={styles.inlineTableWrap}>
+            <div className={styles.inlineTableMeta}>
+                <Text type="secondary">
+                    {totalItems > 0
+                        ? `${tableData.length} of ${totalItems} stones`
+                        : "No stones in this category"}
+                </Text>
+            </div>
+            <div ref={tableWrapRef} className={`erp-table-container ${styles.inlineTable}`}>
+                <SkeletonAwareTable
+                    className={styles.modernTable}
+                    rowKey="id"
+                    size="small"
+                    columns={listColumns}
+                    dataSource={selectedKey ? tableData : []}
+                    loading={listLoading && Boolean(selectedKey)}
+                    pagination={false}
+                    rowSelection={{
+                        selectedRowKeys,
+                        onChange: setSelectedRowKeys,
+                    }}
+                    scroll={{ x: 3400, y: Math.min(tableScrollY || 280, 320) }}
+                />
+            </div>
+        </div>
+    ), [
+        listColumns,
+        listLoading,
+        selectedKey,
+        selectedRowKeys,
+        tableData,
+        tableScrollY,
+        tableWrapRef,
+        totalItems,
+    ]);
 
     return (
         <div className={styles.pageContainer}>
@@ -187,69 +293,39 @@ const CategorizeInventory = () => {
                 )}
             />
 
-            <Row gutter={16} className={styles.contentRow}>
-                <Col span={8} className={styles.treeCol}>
-                    <Card className={styles.treeCard} title={<Text strong style={{ fontSize: "14px" , fontWeight:"800"}}>Inventory Hierarchy</Text>}>
-                        <Input
-                            placeholder="Quick search folders..."
-                            prefix={<Search size={16} style={{ color: cssVar("color-text-muted") }} />}
-                            className={styles.folderSearch}
-                            allowClear
-                            value={treeSearch}
-                            onChange={(e) => setTreeSearch(e.target.value)}
-                        />
-                        {treeLoading ? (
-                            <div className={styles.treeLoading}>
-                                <SkeletonTree rows={10} />
-                            </div>
-                        ) : (
-                            <DirectoryTree
-                                multiple={false}
-                                selectedKeys={selectedKey ? [selectedKey] : []}
-                                onSelect={onSelect}
-                                treeData={treeData}
-                                expandAction="doubleClick"
-                                switcherIcon={<ChevronRight size={14} />}
-                                className={styles.inventoryTree}
-                            />
-                        )}
-                    </Card>
-                </Col>
+            <Card className={styles.hierarchyCard} bordered={false}>
+                <div className={styles.hierarchyHeader}>
+                    <Text strong className={styles.hierarchyTitle}>
+                        Inventory Hierarchy
+                    </Text>
+                    <Input
+                        placeholder="Quick search folders..."
+                        prefix={<Search size={16} style={{ color: cssVar("color-text-muted") }} />}
+                        className={styles.hierarchySearch}
+                        allowClear
+                        value={treeSearch}
+                        onChange={(e) => setTreeSearch(e.target.value)}
+                    />
+                </div>
 
-                <Col span={16} className={styles.detailCol}>
-                    <Card
-                        className={styles.detailsCard}
-                        title={
-                            <Space>
-                                <Info size={18} />
-                                <span>Category: {selectedKey || "All on-hand"}</span>
-                            </Space>
-                        }
-                        extra={
-                            <Tag color="blue" className={styles.statsTag}>
-                                Items: {stats.total ?? tableData.length} | {Number(stats.carat || 0).toFixed(2)} ct
-                            </Tag>
-                        }
-                    >
-                        <div ref={tableRef} className="erp-table-container" style={{ flex: 1, minHeight: 0 }}>
-                        <SkeletonAwareTable
-                            className={styles.modernTable}
-                            rowKey="id"
-                            size="small"
-                            columns={listColumns}
-                            dataSource={tableData}
-                            loading={listLoading}
-                            pagination={{ pageSize: 20 }}
-                            rowSelection={{
-                                selectedRowKeys,
-                                onChange: setSelectedRowKeys,
-                            }}
-                            scroll={{ y: tableScrollY }}
-                        />
+                <div className={styles.hierarchyBody}>
+                    {treeLoading ? (
+                        <div className={styles.treeLoading}>
+                            <SkeletonTree rows={10} />
                         </div>
-                    </Card>
-                </Col>
-            </Row>
+                    ) : (
+                        <CategoryHierarchyNodes
+                            nodes={treeData}
+                            depth={0}
+                            selectedKey={selectedKey}
+                            expandedKeys={expandedKeys}
+                            onCategoryClick={onCategoryClick}
+                            onToggleExpand={onToggleExpand}
+                            renderTable={renderInlineTable}
+                        />
+                    )}
+                </div>
+            </Card>
         </div>
     );
 };

@@ -234,6 +234,9 @@ const InventoryCompareModal = ({ open, rows = [], onClose }) => {
       width="min(1080px, calc(100vw - 24px))"
       centered
       destroyOnClose
+      closable={false}
+      maskClosable={false}
+      mask={{ closable: false }}
       footer={(
         <Button danger className={styles.footerBtn} onClick={onClose}>
           Close

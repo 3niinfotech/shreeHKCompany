@@ -82,6 +82,7 @@ const InventoryBulkActionModal = ({
       closable={false}
       destroyOnClose
       maskClosable={false}
+      mask={{ closable: false }}
       styles={{
         header: {
           background: theme.bg,

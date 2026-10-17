@@ -21,6 +21,8 @@ import { BaseModal } from '../../../components/common/modals';
 import styles from '../../../assets/scss/pages/transaction/inwardpurchase.module.scss';
 import { SkuLink } from '../../../hooks/useSkuModalAction';
 import { loadXlsx } from '../../../utils/loadXlsx';
+import useBranchCompanies from '../../../hooks/useBranchCompanies';
+import { formatOutwardEntryNo, formatOutwardInvoiceNo } from '../../../utils/outwardInvoiceNo';
 
 const CONFIRM_TABLE_COLUMNS = [
   { title: 'No.', width: 50, render: (_, __, i) => i + 1 },
@@ -51,6 +53,14 @@ const CONFIRM_TABLE_COLUMNS = [
     render: (v) => (Number(v) || 0).toFixed(2),
   },
 ];
+
+const OUTWARD_TYPE_LABELS = {
+  lab: 'GIA',
+  memo: 'MEMO',
+  sale: 'SALE',
+  export: 'EXPORT',
+  consign: 'CONSIGN',
+};
 
 const OUTWARD_TYPE_CONFIG = {
   lab: {
@@ -260,6 +270,10 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
   const partyId = Form.useWatch('party', form);
 
   const { data: companyData, isLoading: isCompanyLoading } = useFetchApi('GetCompany', ENDPOINTS.company.options);
+  const {
+    options: branchCompanyOptions,
+    isLoading: isBranchCompanyLoading,
+  } = useBranchCompanies();
   const { data: incrementData } = useFetchApi('getIncrement', ENDPOINTS.common.increment);
 
   const companyOptions = useMemo(() => {
@@ -268,17 +282,27 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
   }, [companyData]);
 
   useEffect(() => {
+    form.setFieldsValue({
+      type: OUTWARD_TYPE_LABELS[config.type] || String(config.type || '').toUpperCase(),
+    });
+  }, [form, config.type]);
+
+  useEffect(() => {
     if (incrementData?.Data) {
       const d = incrementData.Data;
+      let prefix = d.invoice_prefix;
+      if (config.type === 'lab') prefix = d.lab_prefix;
+      else if (config.type === 'memo' || config.type === 'consign') prefix = d.memo_prefix || d.invoice_prefix;
+
       form.setFieldsValue({
-        entryno: d.outward,
-        invoiceno: d.invoice != null ? String(d.invoice) : '',
+        entryno: formatOutwardEntryNo(config.type, d.outward),
+        invoiceno: formatOutwardInvoiceNo(config.type, d.invoice, prefix),
         party: d.company,
         date: dayjs(),
         invoicedate: dayjs(),
         terms: config.showSaleFields ? 30 : undefined,
         duedate: config.showSaleFields ? dayjs().add(30, 'day') : undefined,
-        type: config.type,
+        type: OUTWARD_TYPE_LABELS[config.type] || String(config.type || '').toUpperCase(),
       });
     }
   }, [incrementData, form, config]);
@@ -294,29 +318,67 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
   };
 
   const headerFields = useMemo(() => {
+    const companyField = {
+      name: 'operating_company_id',
+      label: 'Company',
+      span: 6,
+      type: 'select',
+      required: true,
+      loading: isBranchCompanyLoading,
+      options: branchCompanyOptions,
+      placeholder: 'Select Company (e.g. ShreeHK / KG)',
+      allowClear: false,
+    };
+    const partyField = {
+      name: 'party',
+      label: 'Party',
+      span: 6,
+      type: 'select',
+      required: true,
+      loading: isCompanyLoading,
+      options: companyOptions,
+    };
+    const otherPartyField = {
+      name: 'other_party',
+      label: 'Other Party',
+      span: 6,
+      type: 'select',
+      options: companyOptions,
+    };
+    const invoiceDateField = {
+      name: 'invoicedate',
+      label: 'Invoice Date',
+      span: 6,
+      type: 'date',
+    };
+    const dateField = {
+      name: 'date',
+      label: 'Date',
+      span: 6,
+      type: 'date',
+      required: true,
+    };
     const base = [
       { name: 'entryno', label: 'Outward No', span: 6, disabled: true },
-      { name: 'type', label: 'Type', span: 6, type: 'select', disabled: true, options: [{ value: config.type, label: config.type.toUpperCase() }] },
+      {
+        name: 'type',
+        label: 'Type',
+        span: 6,
+        disabled: true,
+        placeholder: OUTWARD_TYPE_LABELS[config.type] || String(config.type || '').toUpperCase(),
+      },
       { name: 'reference', label: 'Reference', span: 6 },
       { name: 'invoiceno', label: 'Invoice No', span: 6 },
-      { name: 'party', label: 'Party', span: 6, type: 'select', required: true, loading: isCompanyLoading, options: companyOptions },
-      { name: 'date', label: 'Date', span: 6, type: 'date', required: true },
-      { name: 'invoicedate', label: 'Invoice Date', span: 6, type: 'date' },
-      { name: 'other_party', label: 'Other Party', span: 6, type: 'select', options: companyOptions },
     ];
 
-    const excelUploadField = {
-      name: 'excel_upload',
-      type: 'custom',
-      noFormItem: true,
-      span: 8,
-      render: () => (
-        <div className={styles.excelUploadPanel} style={{ margin: '0 0 10px 0', height: 'calc(100% - 10px)', display: 'flex', alignItems: 'center' }}>
-          <div className={styles.excelUploadCompact} style={{ width: '100%' }}>
+    const excelAlignedRender = () => (
+      <div className={styles.excelUploadFieldAlign}>
+        <span className={styles.excelUploadFieldLabel}>Excel Import</span>
+        <div className={`${styles.excelUploadPanel} ${styles.excelUploadPanelInline}`}>
+          <div className={styles.excelUploadCompact}>
             <div className={styles.excelUploadMeta}>
               <FileSpreadsheet size={18} className={styles.excelUploadIcon} />
               <div className={styles.excelUploadCopy}>
-                <span className={styles.excelUploadTitle}>Outward Excel Import</span>
                 <span className={styles.excelUploadHint}>Upload .xlsx to auto-load stones</span>
               </div>
             </div>
@@ -340,27 +402,55 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
             </div>
           </div>
         </div>
-      ),
-    };
+      </div>
+    );
 
     if (config.showSaleFields) {
+      // 16 fields → 4 rows × 4 (span 6 each)
+      // 1: Outward No | Type | Reference | Invoice No
+      // 2: Party | Other Party | Company | Invoice Date
+      // 3: Date | Terms | Due Date | Other Less %
+      // 4: Extra Charge | Less % | Excel | Narration
       base.push(
+        partyField,
+        otherPartyField,
+        { ...companyField, span: 6 },
+        invoiceDateField,
+        dateField,
         { name: 'terms', label: 'Terms (Days)', span: 6, type: 'number' },
         { name: 'duedate', label: 'Due Date', span: 6, type: 'date' },
-        { name: 'lessPercent', label: 'Less %', span: 6, type: 'number' },
         { name: 'otherLessPercent', label: 'Other Less %', span: 6, type: 'number' },
         { name: 'extraCharge', label: 'Extra Charge', span: 6, type: 'number' },
-        excelUploadField,
-        { name: 'narration', label: 'Narration', span: 10, type: 'text' },
+        { name: 'lessPercent', label: 'Less %', span: 6, type: 'number' },
+        {
+          name: 'excel_upload',
+          type: 'custom',
+          noFormItem: true,
+          span: 6,
+          render: excelAlignedRender,
+        },
+        { name: 'narration', label: 'Narration', span: 6, type: 'text' },
       );
       return base;
     }
+    // Company → Excel (1 field / date width) → Narration (2 fields)
     base.push(
-      excelUploadField,
-      { name: 'narration', label: 'Narration', span: 16, type: 'textarea', rows: 2 },
+      partyField,
+      dateField,
+      { ...companyField, span: 6 },
+      {
+        name: 'excel_upload',
+        type: 'custom',
+        noFormItem: true,
+        span: 6,
+        render: excelAlignedRender,
+      },
+      { name: 'narration', label: 'Narration', span: 12, type: 'text' },
+      otherPartyField,
+      invoiceDateField,
     );
     return base;
-  }, [config, companyOptions, isCompanyLoading, excelFileName, excelLoading, handleExcelUpload]);
+  }, [config, companyOptions, isCompanyLoading, branchCompanyOptions, isBranchCompanyLoading, excelFileName, excelLoading, handleExcelUpload]);
 
   const lookupSku = useCallback(async (sku, rowKey) => {
     const trimmed = String(sku || '').trim();
@@ -430,8 +520,8 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
     if (incrementData?.Data) {
       const d = incrementData.Data;
       form.setFieldsValue({
-        entryno: d.outward,
-        invoiceno: d.invoice != null ? String(d.invoice) : '',
+        entryno: formatOutwardEntryNo(config.type, d.outward),
+        invoiceno: formatOutwardInvoiceNo(config.type, d.invoice),
         party: d.company,
         date: dayjs(),
         invoicedate: dayjs(),
@@ -455,6 +545,7 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
     return {
       type: config.type,
       status: config.status,
+      operating_company_id: values.operating_company_id,
       party: values.party,
       other_party: values.other_party,
       entryno: values.entryno,

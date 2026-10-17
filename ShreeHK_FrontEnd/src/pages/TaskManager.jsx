@@ -415,12 +415,12 @@ export default function TaskManager() {
     const renderPriorityTag = (p) => {
         switch (p?.toLowerCase()) {
             case 'high':
-                return <Tag color="red" style={{ fontWeight: 600, borderRadius: 6, margin: 0 }}>High</Tag>;
+                return <Tag color="red" style={{ fontWeight: 600, margin: 0 }}>High</Tag>;
             case 'medium':
-                return <Tag color="gold" style={{ fontWeight: 600, borderRadius: 6, margin: 0 }}>Medium</Tag>;
+                return <Tag color="gold" style={{ fontWeight: 600, margin: 0 }}>Medium</Tag>;
             case 'low':
             default:
-                return <Tag color="green" style={{ fontWeight: 600, borderRadius: 6, margin: 0 }}>Low</Tag>;
+                return <Tag color="green" style={{ fontWeight: 600, margin: 0 }}>Low</Tag>;
         }
     };
 
@@ -434,7 +434,7 @@ export default function TaskManager() {
 
         if (tDate < todayStr) {
             return (
-                <Tag color="volcano" style={{ borderRadius: 6, fontWeight: 600, margin: 0 }}>
+                <Tag color="volcano" style={{ fontWeight: 600, margin: 0 }}>
                     Overdue ({dayjs(tDate).format('DD MMM')})
                 </Tag>
             );
@@ -442,7 +442,7 @@ export default function TaskManager() {
 
         if (tDate === todayStr) {
             return (
-                <Tag color="cyan" style={{ borderRadius: 6, fontWeight: 600, margin: 0 }}>
+                <Tag color="cyan" style={{ fontWeight: 600, margin: 0 }}>
                     Today
                 </Tag>
             );
@@ -493,7 +493,7 @@ export default function TaskManager() {
                 width: 140,
                 align: 'center',
                 render: (name, record) => (
-                    <Tag color="purple" style={{ borderRadius: 6, fontWeight: 500, margin: 0 }}>
+                    <Tag color="purple" style={{ fontWeight: 500, margin: 0 }}>
                         {name?.trim() || record.assigned_to_name || 'Self'}
                     </Tag>
                 ),
@@ -542,7 +542,7 @@ export default function TaskManager() {
                 const doneTime = record.completed_at ? dayjs(record.completed_at).format('DD MMM YYYY, hh:mm A') : null;
                 return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <Tag color="green" style={{ borderRadius: 6, fontWeight: 600, margin: 0, width: 'fit-content', fontSize: '0.74rem' }}>
+                        <Tag color="green" style={{ fontWeight: 600, margin: 0, width: 'fit-content', fontSize: '0.74rem' }}>
                             Done by: {doneBy}
                         </Tag>
                         {doneTime && (
@@ -858,7 +858,7 @@ export default function TaskManager() {
                                     title={
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                             <span style={{ color: col.color, fontWeight: 700, fontSize: '0.9rem' }}>{col.title}</span>
-                                            <Tag color={col.color} style={{ borderRadius: 10, fontWeight: 700 }}>{col.items.length}</Tag>
+                                            <Tag color={col.color} style={{ fontWeight: 700 }}>{col.items.length}</Tag>
                                         </div>
                                     }
                                     style={{
@@ -893,7 +893,7 @@ export default function TaskManager() {
                                                             <Space size={4}>
                                                                 {renderPriorityTag(task.priority)}
                                                                 {isSuperAdmin && task.assigned_to_name && (
-                                                                    <Tag color="purple" style={{ borderRadius: 6, fontWeight: 500, margin: 0, fontSize: '0.72rem' }}>
+                                                                    <Tag color="purple" style={{ fontWeight: 500, margin: 0, fontSize: '0.72rem' }}>
                                                                         Assign To : {task.assigned_to_name}
                                                                     </Tag>
                                                                 )}
@@ -974,6 +974,9 @@ export default function TaskManager() {
                     okText={editingTask ? "Update Task" : "Create Task"}
                     centered
                     destroyOnClose
+                    closable={false}
+                    maskClosable={false}
+                    mask={{ closable: false }}
                 >
                     <Form
                         form={form}

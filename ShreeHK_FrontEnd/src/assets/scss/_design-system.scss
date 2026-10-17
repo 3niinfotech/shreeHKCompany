@@ -162,7 +162,7 @@ textarea:disabled {
   border-color: var(--color-border) !important;
 
   input[disabled],
-  .ant-picker-input > input,
+  .ant-picker-input>input,
   .ant-picker-suffix {
     background: transparent !important;
     background-color: transparent !important;
@@ -415,22 +415,45 @@ textarea.ant-input:not([disabled]):not(.ant-input-disabled),
   background: var(--color-card-bg) !important;
 }
 
-.ant-input:focus,
-.ant-input-affix-wrapper-focused,
-.ant-input-number-focused,
-.ant-select-focused .ant-select-selector,
-.ant-picker-focused {
-  border-color: var(--color-input-focus-border) !important;
-  box-shadow: 0 0 0 3px var(--color-input-focus-ring) !important;
+// Focus = theme border color only (no shadow). Must beat base `border: ... !important`.
+input.ant-input:not(.ant-input-affix-wrapper input):not([disabled]):not(.ant-input-disabled):focus,
+input.ant-input:not(.ant-input-affix-wrapper input):not([disabled]):not(.ant-input-disabled).ant-input-focused,
+textarea.ant-input:not([disabled]):not(.ant-input-disabled):focus,
+textarea.ant-input:not([disabled]):not(.ant-input-disabled).ant-input-focused,
+.ant-input-affix-wrapper-focused:not(.ant-input-affix-wrapper-disabled),
+.ant-input-number-focused:not(.ant-input-number-disabled):not([disabled]),
+.ant-select-focused:not(.ant-select-disabled) .ant-select-selector,
+.ant-select-open:not(.ant-select-disabled) .ant-select-selector,
+.ant-picker-focused:not(.ant-picker-disabled) {
+  border: 0.5px solid var(--color-input-focus-border, var(--color-primary)) !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
-// Validation error — red border on all field types
+// Validation error — red border (Form.Item + status="error" outside Form.Item).
+// Must match/beat the base `border: 0.5px solid var(--color-border) !important` above.
+input.ant-input.ant-input-status-error:not(.ant-input-affix-wrapper input):not([disabled]):not(.ant-input-disabled),
+textarea.ant-input.ant-input-status-error:not([disabled]):not(.ant-input-disabled),
+.ant-input-affix-wrapper-status-error:not(.ant-input-affix-wrapper-disabled),
+.ant-input-number-status-error:not(.ant-input-number-disabled):not([disabled]),
 .ant-form-item-has-error .ant-input,
 .ant-form-item-has-error .ant-input-affix-wrapper,
 .ant-form-item-has-error .ant-input-number,
 .ant-form-item-has-error .ant-select:not(.ant-select-disabled) .ant-select-selector,
 .ant-form-item-has-error .ant-picker {
-  border-color: var(--color-error) !important;
+  border: 0.5px solid var(--color-error) !important;
+  box-shadow: none !important;
+}
+
+input.ant-input.ant-input-status-error:not(.ant-input-affix-wrapper input):not([disabled]):not(.ant-input-disabled):focus,
+input.ant-input.ant-input-status-error:not(.ant-input-affix-wrapper input):not([disabled]):not(.ant-input-disabled).ant-input-focused,
+textarea.ant-input.ant-input-status-error:not([disabled]):not(.ant-input-disabled):focus,
+textarea.ant-input.ant-input-status-error:not([disabled]):not(.ant-input-disabled).ant-input-focused,
+.ant-input-affix-wrapper-status-error.ant-input-affix-wrapper-focused:not(.ant-input-affix-wrapper-disabled),
+.ant-input-number-status-error.ant-input-number-focused:not(.ant-input-number-disabled):not([disabled]) {
+  border: 0.5px solid var(--color-error) !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 // Remove inner input border & background when nested inside a wrapper (prevents double border & white boxes)
@@ -477,31 +500,271 @@ textarea.ant-input:not([disabled]):not(.ant-input-disabled),
 }
 
 // ---------------------------------------------------------------------------
-// Tags / status badges
+// Uniform Square Badge & Tag Design System (Tables, Modals, and Pages)
 // ---------------------------------------------------------------------------
-.ant-tag-success {
-  color: var(--color-badge-success-text) !important;
-  background: var(--color-badge-success-bg) !important;
-  border-color: var(--color-badge-success-border) !important;
+span.ant-tag,
+.ant-tag,
+.statusBadge,
+.sku-status-badge,
+.inventory-lab-tag,
+.activeBadge,
+.linkedTag,
+.memoStatusTag,
+.memoStatusTagSm,
+.inwardAddTag,
+.actionMainTag,
+.headerStatusTag,
+.statusPillAvailable,
+.statusPillSale,
+.statusPillMemo,
+.statusPillDefault,
+.labTag,
+span[class*="statusBadge"],
+span[class*="activeBadge"],
+span[class*="statusPill"],
+span[class*="memoStatusTag"] {
+  border-radius: 3px !important; // Uniform modern square badge
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  line-height: 18px !important;
+  min-height: 20px !important;
+  height: auto !important;
+  padding: 1px 7px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  letter-spacing: 0.25px !important;
+  text-transform: uppercase !important;
+  white-space: nowrap !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+  box-sizing: border-box !important;
+  transition: all 0.15s ease-in-out !important;
+
+  .anticon,
+  svg {
+    font-size: 11px !important;
+    width: 12px !important;
+    height: 12px !important;
+    margin-inline-end: 4px !important;
+  }
 }
 
-.ant-tag-warning {
-  color: var(--color-badge-warning-text) !important;
-  background: var(--color-badge-warning-bg) !important;
-  border-color: var(--color-badge-warning-border) !important;
+.ant-table .ant-tag,
+.ant-modal .ant-tag {
+  margin-inline-end: 4px !important;
+  vertical-align: middle !important;
 }
 
-.ant-tag-error {
-  color: var(--color-badge-error-text) !important;
-  background: var(--color-badge-error-bg) !important;
-  border-color: var(--color-badge-error-border) !important;
+// ── Soft Tinted 1px Border Badge Colors (Light Theme) ──
+// Green / Success / Available / Active / Sale (inward)
+.ant-tag-success,
+.ant-tag-green,
+.status_available,
+.sku-status-badge--available,
+.statusPillAvailable,
+.activeBadge {
+  color: #15803d !important;
+  background: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
 }
 
+// Amber / Warning / Memo / On Memo / Medium
+.ant-tag-warning,
+.ant-tag-orange,
+.ant-tag-gold,
+.status_memo,
+.sku-status-badge--memo,
+.statusPillMemo,
+.memoStatusTag,
+.memoStatusTagSm {
+  color: #b45309 !important;
+  background: #fffbeb !important;
+  border-color: #fde68a !important;
+}
+
+// Volcano / Orange-Red / Hold / On Hold
+.ant-tag-volcano,
+.sku-status-badge--hold {
+  color: #c2410c !important;
+  background: #fff7ed !important;
+  border-color: #fed7aa !important;
+}
+
+// Red / Error / Danger / High / Closed / Sold
+.ant-tag-error,
+.ant-tag-red,
+.status_sale,
+.sku-status-badge--sale,
+.sku-status-badge--export,
+.statusPillSale {
+  color: #b91c1c !important;
+  background: #fef2f2 !important;
+  border-color: #fecaca !important;
+}
+
+// Blue / Processing / GIA / Export
 .ant-tag-processing,
-.ant-tag-blue {
-  color: var(--color-badge-info-text) !important;
-  background: var(--color-badge-info-bg) !important;
-  border-color: var(--color-badge-info-border) !important;
+.ant-tag-blue,
+.status_lab,
+.sku-status-badge--lab,
+.headerStatusTag {
+  color: #1d4ed8 !important;
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+}
+
+// Cyan / Import / In Import / Inward
+.ant-tag-cyan {
+  color: #0e7490 !important;
+  background: #ecfeff !important;
+  border-color: #a5f3fc !important;
+}
+
+// Purple / Purchase / Inward Purchase / AGT
+.ant-tag-purple {
+  color: #7e22ce !important;
+  background: #faf5ff !important;
+  border-color: #e9d5ff !important;
+}
+
+// Magenta / Consign / Consignment
+.ant-tag-magenta,
+.status_consign,
+.sku-status-badge--consign,
+.sku-status-badge--consignment {
+  color: #be185d !important;
+  background: #fdf2f8 !important;
+  border-color: #fbcfe8 !important;
+}
+
+// Geekblue / Transfer / Inter-Transfer
+.ant-tag-geekblue,
+.inwardAddTag {
+  color: #1d39c4 !important;
+  background: #f0f5ff !important;
+  border-color: #adc6ff !important;
+}
+
+// Lime
+.ant-tag-lime {
+  color: #4d7c0f !important;
+  background: #f7fee7 !important;
+  border-color: #d9f99d !important;
+}
+
+// Neutral / Default / Inactive / Other
+.ant-tag-default,
+.ant-tag:not([class*="ant-tag-"]):not(.status_available):not(.status_memo):not(.status_sale):not(.status_lab):not(.status_consign),
+.status_other,
+.sku-status-badge--default,
+.statusPillDefault,
+.typeTagMuted,
+.inventory-lab-tag:not([class*="ant-tag-"]) {
+  color: #475569 !important;
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+// ── Soft Tinted Badge Colors (Dark Theme) ──
+[data-theme="dark"] {
+  .ant-tag-success,
+  .ant-tag-green,
+  .status_available,
+  .sku-status-badge--available,
+  .statusPillAvailable,
+  .activeBadge {
+    color: #4ade80 !important;
+    background: rgba(34, 197, 94, 0.16) !important;
+    border-color: rgba(34, 197, 94, 0.35) !important;
+  }
+
+  .ant-tag-warning,
+  .ant-tag-orange,
+  .ant-tag-gold,
+  .status_memo,
+  .sku-status-badge--memo,
+  .statusPillMemo,
+  .memoStatusTag,
+  .memoStatusTagSm {
+    color: #fbbf24 !important;
+    background: rgba(245, 158, 11, 0.16) !important;
+    border-color: rgba(245, 158, 11, 0.35) !important;
+  }
+
+  .ant-tag-volcano,
+  .sku-status-badge--hold {
+    color: #fb923c !important;
+    background: rgba(234, 88, 12, 0.16) !important;
+    border-color: rgba(234, 88, 12, 0.35) !important;
+  }
+
+  .ant-tag-error,
+  .ant-tag-red,
+  .status_sale,
+  .sku-status-badge--sale,
+  .sku-status-badge--export,
+  .statusPillSale {
+    color: #f87171 !important;
+    background: rgba(239, 68, 68, 0.16) !important;
+    border-color: rgba(239, 68, 68, 0.35) !important;
+  }
+
+  .ant-tag-processing,
+  .ant-tag-blue,
+  .status_lab,
+  .sku-status-badge--lab,
+  .headerStatusTag {
+    color: #60a5fa !important;
+    background: rgba(59, 130, 246, 0.16) !important;
+    border-color: rgba(59, 130, 246, 0.35) !important;
+  }
+
+  .ant-tag-cyan {
+    color: #22d3ee !important;
+    background: rgba(6, 182, 212, 0.16) !important;
+    border-color: rgba(6, 182, 212, 0.35) !important;
+  }
+
+  .ant-tag-purple {
+    color: #c084fc !important;
+    background: rgba(168, 85, 247, 0.16) !important;
+    border-color: rgba(168, 85, 247, 0.35) !important;
+  }
+
+  .ant-tag-magenta,
+  .status_consign,
+  .sku-status-badge--consign,
+  .sku-status-badge--consignment {
+    color: #f472b6 !important;
+    background: rgba(236, 72, 153, 0.16) !important;
+    border-color: rgba(236, 72, 153, 0.35) !important;
+  }
+
+  .ant-tag-geekblue,
+  .inwardAddTag {
+    color: #85a5ff !important;
+    background: rgba(47, 84, 235, 0.16) !important;
+    border-color: rgba(47, 84, 235, 0.35) !important;
+  }
+
+  .ant-tag-lime {
+    color: #a3e635 !important;
+    background: rgba(132, 204, 22, 0.16) !important;
+    border-color: rgba(132, 204, 22, 0.35) !important;
+  }
+
+  .ant-tag-default,
+  .ant-tag:not([class*="ant-tag-"]):not(.status_available):not(.status_memo):not(.status_sale):not(.status_lab):not(.status_consign),
+  .status_other,
+  .sku-status-badge--default,
+  .statusPillDefault,
+  .typeTagMuted,
+  .inventory-lab-tag:not([class*="ant-tag-"]) {
+    color: #94a3b8 !important;
+    background: rgba(148, 163, 184, 0.14) !important;
+    border-color: rgba(148, 163, 184, 0.30) !important;
+  }
 }
 
 // ---------------------------------------------------------------------------

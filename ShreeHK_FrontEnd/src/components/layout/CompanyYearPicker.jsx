@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Modal, Typography, Empty } from "antd";
+import React, { useEffect, useMemo, useState } from "react";
+import { Modal, Typography, Empty, Button } from "antd";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   CalendarOutlined,
@@ -9,6 +9,7 @@ import {
   TeamOutlined,
   CheckCircleFilled,
   SafetyOutlined,
+  ApartmentOutlined,
 } from "@ant-design/icons";
 import { api } from "../../api/client/axiosInstance";
 import { ENDPOINTS } from "../../api/endpoints";
@@ -51,7 +52,28 @@ const getYearMeta = (item) => {
 
   const today = new Date();
   const currentFiscalStart = today.getMonth() >= 3 ? today.getFullYear() : today.getFullYear() - 1;
-  const isCurrent = startYear === currentFiscalStart;
+
+  // Prefer DB date range (YYYY-MM-DD as local dates — avoid UTC shift)
+  const parseLocalDate = (value) => {
+    if (!value) return null;
+    const s = String(value).trim();
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 0, 0, 0, 0);
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
+
+  let isCurrent = false;
+  const from = parseLocalDate(item?.fromDate);
+  const to = parseLocalDate(item?.toDate);
+  if (from && to) {
+    const endOfTo = new Date(to);
+    endOfTo.setHours(23, 59, 59, 999);
+    isCurrent = today >= from && today <= endOfTo;
+  }
+  if (!isCurrent && startYear != null) {
+    isCurrent = startYear === currentFiscalStart;
+  }
 
   return {
     rangeLabel: fromLabel && toLabel ? `${fromLabel} - ${toLabel}` : fromLabel || toLabel || "",
@@ -162,30 +184,95 @@ const useTypewriter = (text, speed = 25, enabled = true) => {
   return { displayedText, isTyping };
 };
 
+const normalizeBranchId = (value) => {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+
 const CompanyYearPicker = ({ open, onClose, force = false }) => {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [selectingKey, setSelectingKey] = useState(null);
   const [options, setOptions] = useState([]);
+  const [branchOptions, setBranchOptions] = useState([]);
   const setSessionContext = useAuthStore((s) => s.setSessionContext);
   const setShowContextPicker = useAuthStore((s) => s.setShowContextPicker);
+  const [selectedBranch, setSelectedBranch] = useState(null);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [companyOptions, setCompanyOptions] = useState([]);
-  const yearOptions = selectedCompany
-    ? options.filter(
-      (x) => x.companyId === selectedCompany.companyId
-    )
-    : [];
+  const [yearCatalog, setYearCatalog] = useState([]);
+  /** branchId → yearId[] ; if set, that branch only sees those years (new branch = current only) */
+  const [branchYearMap, setBranchYearMap] = useState({});
   const login = useAuthStore((s) => s.login);
   const user = useAuthStore((s) => s.user);
   const activeCompanyId = useAuthStore((s) => s.companyId);
+  const activeBranchId = useAuthStore((s) => s.branchId);
+  const activeCompanyName = useAuthStore((s) => s.companyName);
   const activeYearId = useAuthStore((s) => s.yearId);
   const reducedMotion = usePrefersReducedMotion();
 
-  const titleTextTarget = selectedCompany ? "Select Financial Year" : "Select Company";
-  const titleSubtextTarget = selectedCompany
-    ? `Company : ${selectedCompany.companyName}`
-    : "Choose your company to continue";
+  // Login + profile switch: Branch → Year only (no Select Company step)
+  const step = !selectedBranch ? "branch" : "year";
+
+  const companiesForBranch = useMemo(() => {
+    if (!selectedBranch) return [];
+    return companyOptions.filter(
+      (c) => normalizeBranchId(c.branchId) === normalizeBranchId(selectedBranch.branchId)
+    );
+  }, [companyOptions, selectedBranch]);
+
+  const yearOptions = useMemo(() => {
+    if (!selectedBranch) return [];
+
+    const sortCurrentYearFirst = (list) =>
+      [...list].sort((a, b) => {
+        const aCurrent = getYearMeta(a).isCurrent ? 0 : 1;
+        const bCurrent = getYearMeta(b).isCurrent ? 0 : 1;
+        if (aCurrent !== bCurrent) return aCurrent - bCurrent;
+        return Number(b.yearId) - Number(a.yearId);
+      });
+
+    const dedupe = (list) => {
+      const seenYear = new Set();
+      return list.filter((y) => {
+        const key = String(y.yearLabel || y.yearId).trim().toLowerCase();
+        if (!key || seenYear.has(key)) return false;
+        seenYear.add(key);
+        return true;
+      });
+    };
+
+    let fromCatalog = dedupe(yearCatalog || []);
+
+    // New branches: only years linked at create (current FY) — not every other company's years
+    const bid = normalizeBranchId(selectedBranch.branchId);
+    const linkedIds = bid != null ? branchYearMap?.[bid] || branchYearMap?.[String(bid)] : null;
+    if (Array.isArray(linkedIds) && linkedIds.length > 0) {
+      const allow = new Set(linkedIds.map((id) => String(id)));
+      fromCatalog = fromCatalog.filter((y) => allow.has(String(y.yearId)));
+    }
+
+    if (fromCatalog.length) {
+      return sortCurrentYearFirst(fromCatalog);
+    }
+
+    // Legacy fallback (no branch_year rows): unique years from combos
+    return sortCurrentYearFirst(dedupe(options));
+  }, [selectedBranch, yearCatalog, branchYearMap, options]);
+
+  const branchCompaniesLabel = companiesForBranch
+    .map((c) => c.companyName)
+    .filter(Boolean)
+    .join(" + ");
+
+  const titleTextTarget = step === "year" ? "Select Financial Year" : "Select Branch";
+  const titleSubtextTarget =
+    step === "year"
+      ? `${selectedBranch?.branchName ? `Branch : ${selectedBranch.branchName}` : ""}${
+          branchCompaniesLabel ? ` · ${branchCompaniesLabel}` : ""
+        }`
+      : "First choose Branch — then Year";
 
   const { displayedText: titleText, isTyping: titleTyping } = useTypewriter(
     titleTextTarget,
@@ -198,69 +285,59 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
     open && !loading && !reducedMotion
   );
 
-  useEffect(() => {
-    if (!open) return;
-    setLoading(true);
-    api.get(ENDPOINTS.portal.companyYears)
-      .then((res) => {
-        const rows = res.data?.Data || [];
-
-        setOptions(rows);
-
-        const companies = [];
-        const seen = new Set();
-
-        rows.forEach((item) => {
-          if (!seen.has(item.companyId)) {
-            seen.add(item.companyId);
-
-            companies.push({
-              companyId: item.companyId,
-              companyName: item.companyName,
-              companyShortcutName: item.companyShortcutName,
-              companyAddress: item.companyAddress,
-              companyNumber: item.companyNumber,
-            });
-          }
-        });
-
-        setCompanyOptions(companies);
-
-        if (rows.length === 0) {
-          toastApiError({ response: { data: res.data } });
-          setShowContextPicker(false);
-          onClose?.();
-        } else if (rows.length === 1) {
-          selectContext(rows[0]);
-        }
-      })
-      .catch((err) => toastApiError(err))
-      .finally(() => setLoading(false));
-  }, [open, onClose, setShowContextPicker]);
-
-  const handleCompanySelect = (company) => {
-    const years = options.filter(
-      (x) => x.companyId === company.companyId
+  const resolveYearItemForBranch = (item) => {
+    // Branch→Year: prefer ShreeHK International (or first ShreeHK) so stock/default company is correct
+    if (!companiesForBranch.length) return item;
+    const preferred =
+      companiesForBranch.find((c) => /international/i.test(String(c.companyName || ""))) ||
+      companiesForBranch.find((c) => /shree\s*hk/i.test(String(c.companyName || ""))) ||
+      companiesForBranch[0];
+    if (!preferred) return item;
+    const match = options.find(
+      (o) =>
+        String(o.companyId) === String(preferred.companyId) &&
+        (String(o.yearId) === String(item.yearId) ||
+          String(o.yearLabel || "").toLowerCase() === String(item.yearLabel || "").toLowerCase())
     );
+    return match || { ...item, companyId: preferred.companyId };
+  };
 
-    if (years.length === 1) {
-      selectContext(years[0]);
+  const selectContext = async (rawItem) => {
+    if (!rawItem?.yearId) {
+      toastApiError({ response: { data: { message: "Invalid year selection." } } });
       return;
     }
 
-    setSelectedCompany(company);
-  };
+    // No company under branch yet → enter with Branch + Year; user adds company inside
+    const branchOnly =
+      !companiesForBranch.length &&
+      selectedBranch?.branchId != null &&
+      rawItem?.yearId != null;
 
-  const selectContext = async (item) => {
-    const itemKey = `${item.companyId}-${item.yearId}`;
+    const item = branchOnly ? rawItem : resolveYearItemForBranch(rawItem);
+    if (!branchOnly && (!item?.companyId || !item?.yearId)) {
+      toastApiError({ response: { data: { message: "Invalid company/year selection." } } });
+      return;
+    }
+
+    const itemKey = branchOnly
+      ? `branch-${selectedBranch.branchId}-${rawItem.yearId}`
+      : `${item.companyId}-${item.yearId}`;
     if (selectingKey) return;
 
     setSelectingKey(itemKey);
     try {
-      const res = await api.post(ENDPOINTS.session.context, {
-        companyId: item.companyId,
-        yearId: item.yearId,
-      });
+      const payload = branchOnly
+        ? {
+            branchId: selectedBranch.branchId,
+            yearId: rawItem.yearId,
+            companyId: 0,
+          }
+        : {
+            companyId: item.companyId,
+            yearId: item.yearId,
+          };
+      const res = await api.post(ENDPOINTS.session.context, payload);
       const { token: newToken, Data } = res.data || {};
       if (newToken) {
         login(user, newToken, {
@@ -289,16 +366,122 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
     }
   };
 
+  const resolveCompanyForBranch = (branch, companies) => {
+    const inBranch = (companies || []).filter(
+      (c) => normalizeBranchId(c.branchId) === normalizeBranchId(branch.branchId)
+    );
+    if (!inBranch.length) return null;
+    const sessionMatch = inBranch.find(
+      (c) => activeCompanyId != null && String(c.companyId) === String(activeCompanyId)
+    );
+    if (sessionMatch) return sessionMatch;
+    if (inBranch.length === 1) return inBranch[0];
+    return null;
+  };
+
+  const handleCompanySelect = (company) => {
+    setSelectedCompany(company);
+  };
+
+  const handleBranchSelect = (branch) => {
+    setSelectedBranch(branch);
+    // Always Branch → Year (no Select Company)
+    setSelectedCompany(null);
+  };
+
   useEffect(() => {
-    if (open) {
-      setSelectedCompany(null);
-    }
-  }, [open]);
+    if (!open) return;
+    setSelectedBranch(null);
+    setSelectedCompany(null);
+    setLoading(true);
+    api.get(ENDPOINTS.portal.companyYears)
+      .then((res) => {
+        const rows = res.data?.Data || [];
+        const apiBranches = res.data?.Branches || [];
+        const apiYears = res.data?.Years || [];
+        const apiBranchYears = res.data?.BranchYears || {};
+
+        setOptions(rows);
+        setYearCatalog(Array.isArray(apiYears) ? apiYears : []);
+        setBranchYearMap(
+          apiBranchYears && typeof apiBranchYears === "object" ? apiBranchYears : {}
+        );
+
+        const companies = [];
+        const seenCompanies = new Set();
+        rows.forEach((item) => {
+          if (!seenCompanies.has(item.companyId)) {
+            seenCompanies.add(item.companyId);
+            companies.push({
+              branchId: normalizeBranchId(item.branchId),
+              branchName: item.branchName || null,
+              companyId: item.companyId,
+              companyName: item.companyName,
+              companyShortcutName: item.companyShortcutName,
+              companyAddress: item.companyAddress,
+              companyNumber: item.companyNumber,
+            });
+          }
+        });
+        setCompanyOptions(companies);
+
+        // Branch step = ONLY master branches (HK / Dubai / Surat). Never company names.
+        const branches = (apiBranches || [])
+          .map((b) => {
+            const id = Number(b.branchId);
+            if (!Number.isFinite(id) || id <= 0) return null;
+            return {
+              branchId: id,
+              branchName: b.branchName,
+              branchShortcutName: b.branchShortcutName || null,
+              branchAddress: b.branchAddress || null,
+              branchNumber: b.branchNumber || null,
+            };
+          })
+          .filter(Boolean)
+          .sort((a, b) => String(a.branchName || "").localeCompare(String(b.branchName || "")));
+
+        setBranchOptions(branches);
+
+        if (rows.length === 0) {
+          toastApiError({ response: { data: res.data } });
+          setShowContextPicker(false);
+          onClose?.();
+          return;
+        }
+
+        // Profile switch: land on Financial Year for current branch (no company step)
+        if (!force && activeCompanyId != null) {
+          const currentCompany = companies.find((c) => String(c.companyId) === String(activeCompanyId));
+          const branchFromCompany = currentCompany
+            ? branches.find(
+              (b) => normalizeBranchId(b.branchId) === normalizeBranchId(currentCompany.branchId)
+            )
+            : null;
+          const branchFromSession = branches.find(
+            (b) => normalizeBranchId(b.branchId) === normalizeBranchId(activeBranchId)
+          );
+          const branch = branchFromCompany || branchFromSession || (branches.length === 1 ? branches[0] : null);
+          if (branch) {
+            setSelectedBranch(branch);
+            setSelectedCompany(null);
+          }
+        }
+      })
+      .catch((err) => toastApiError(err))
+      .finally(() => setLoading(false));
+  }, [open, onClose, setShowContextPicker, force, activeCompanyId, activeBranchId, activeCompanyName]);
 
   const modalTitle = (
     <div className={styles.modalTitle}>
       <div className={styles.titleIcon}>
-        {selectedCompany ? <CalendarOutlined /> : <BankOutlined />}
+        {step === "year" ? (
+          <CalendarOutlined />
+        ) : step === "company" ? (
+          <BankOutlined />
+        ) : (
+          <ApartmentOutlined />
+        )}
       </div>
       <div className={styles.titleTextWrap}>
         <div className={styles.titleText}>
@@ -309,7 +492,7 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
           {titleSubtext}
         </Text>
       </div>
-      {selectedCompany ? <YearHeaderArt /> : <CompanyHeaderArt />}
+      {step === "year" ? <YearHeaderArt /> : <CompanyHeaderArt />}
     </div>
   );
 
@@ -318,11 +501,22 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
       title={modalTitle}
       open={open}
       onCancel={force ? undefined : onClose}
-      footer={null}
-      closable={!force}
-      mask={{ closable: !force }}
+      footer={
+        force
+          ? null
+          : [
+              <Button key="close" danger onClick={onClose}>
+                Close
+              </Button>,
+            ]
+      }
+      closable={false}
+      maskClosable={false}
+      mask={{ closable: false }}
       centered
       className={styles.companyYearModal}
+      classNames={{ mask: styles.companyYearMask }}
+      styles={{ mask: { background: "rgb(235 235 235 / 45%)" } }}
       width="min(1080px, calc(100vw - 32px))"
       destroyOnHidden
     >
@@ -336,60 +530,125 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
         <Empty description="No company/year mapping found" className={styles.emptyState} />
       ) : (
         <div className={styles.modalBodyContent}>
-          {!selectedCompany && (
-            <div className={styles.companyGrid} key="company-grid">
-              {companyOptions.map((item, index) => {
-                const isActive = activeCompanyId != null
-                  && String(item.companyId) === String(activeCompanyId);
+          {step === "branch" && (
+            <div className={styles.companyGrid} key="branch-grid">
+              {branchOptions.map((item, index) => (
+                <button
+                  key={item.branchId}
+                  type="button"
+                  style={{ "--card-index": Math.min(index, 6) }}
+                  className={styles.companyCard}
+                  onClick={() => handleBranchSelect(item)}
+                  aria-label={`Select branch ${item.branchName}`}
+                >
+                  <span className={styles.companyIcon}>
+                    <ApartmentOutlined />
+                  </span>
 
-                return (
-                  <button
-                    key={item.companyId}
-                    type="button"
-                    style={{ "--card-index": Math.min(index, 6) }}
-                    className={`${styles.companyCard} ${isActive ? styles.companyCardActive : ""}`}
-                    onClick={() => handleCompanySelect(item)}
-                    aria-label={`Select ${item.companyName}`}
-                  >
-                    <span className={styles.companyIcon}>
-                      <BankOutlined />
+                  <span className={styles.companyBody}>
+                    <Title level={5} className={styles.companyName} title={item.branchName}>
+                      {item.branchName}
+                    </Title>
+
+                    <span className={styles.companyTag}>
+                      <IdcardOutlined />
+                      <span>{item.branchShortcutName || "Branch"}</span>
                     </span>
 
-                    <span className={styles.companyBody}>
-                      <Title level={5} className={styles.companyName} title={item.companyName}>
-                        {item.companyName}
-                      </Title>
-
-                      <span className={styles.companyTag}>
-                        <IdcardOutlined />
-                        <span>{item.companyShortcutName || "Company"}</span>
-                      </span>
-
-                      <span className={styles.companyMeta}>
-                        <TeamOutlined />
-                        <span>{item.companyAddress || item.companyNumber || "Workspace access"}</span>
-                      </span>
+                    <span className={styles.companyMeta}>
+                      <TeamOutlined />
+                      <span>{item.branchAddress || item.branchNumber || "Select to view companies"}</span>
                     </span>
+                  </span>
 
-                    <span className={styles.companyArrow}>
-                      <RightOutlined />
-                    </span>
-                  </button>
-                );
-              })}
+                  <span className={styles.companyArrow}>
+                    <RightOutlined />
+                  </span>
+                </button>
+              ))}
             </div>
           )}
 
-          {selectedCompany && (
-            <div className={styles.yearViewWrapper} key={`year-view-${selectedCompany.companyId}`}>
+          {step === "company" && (
+            <div className={styles.yearViewWrapper} key={`company-view-${selectedBranch.branchId}`}>
               <div className={styles.backWrapper}>
                 <button
                   type="button"
                   className={styles.backButton}
-                  onClick={() => setSelectedCompany(null)}
+                  onClick={() => {
+                    setSelectedBranch(null);
+                    setSelectedCompany(null);
+                  }}
                 >
                   <ArrowLeftOutlined />
-                  <span>Back to Companies</span>
+                  <span>Back to Branches</span>
+                </button>
+              </div>
+
+              {companiesForBranch.length === 0 ? (
+                <Empty description="No company mapped under this branch" className={styles.emptyState} />
+              ) : (
+                <div className={styles.companyGrid}>
+                  {companiesForBranch.map((item, index) => {
+                    const isActive = activeCompanyId != null
+                      && String(item.companyId) === String(activeCompanyId);
+
+                    return (
+                      <button
+                        key={item.companyId}
+                        type="button"
+                        style={{ "--card-index": Math.min(index, 6) }}
+                        className={`${styles.companyCard} ${isActive ? styles.companyCardActive : ""}`}
+                        onClick={() => handleCompanySelect(item)}
+                        aria-label={`Select ${item.companyName}`}
+                      >
+                        <span className={styles.companyIcon}>
+                          <BankOutlined />
+                        </span>
+
+                        <span className={styles.companyBody}>
+                          <Title level={5} className={styles.companyName} title={item.companyName}>
+                            {item.companyName}
+                          </Title>
+
+                          <span className={styles.companyTag}>
+                            <IdcardOutlined />
+                            <span>{item.companyShortcutName || "Company"}</span>
+                          </span>
+
+                          <span className={styles.companyMeta}>
+                            <TeamOutlined />
+                            <span>{item.companyAddress || item.companyNumber || "Workspace access"}</span>
+                          </span>
+                        </span>
+
+                        <span className={styles.companyArrow}>
+                          <RightOutlined />
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {step === "year" && (
+            <div
+              className={styles.yearViewWrapper}
+              key={`year-view-${selectedCompany?.companyId || selectedBranch?.branchId || "branch"}`}
+            >
+              <div className={styles.backWrapper}>
+                <button
+                  type="button"
+                  className={styles.backButton}
+                  onClick={() => {
+                    setSelectedCompany(null);
+                    setSelectedBranch(null);
+                  }}
+                >
+                  <ArrowLeftOutlined />
+                  <span>Back to Branches</span>
                 </button>
               </div>
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Modal, Spin, Typography } from "antd";
+import { Modal, Spin, Typography, Button } from "antd";
 import { toastError } from "../../utils/toastNotify";
 import { fetchCustomerInsight } from "../../api/services/aiService";
 import { pickApiMessage } from "../../utils/toastNotify";
@@ -41,7 +41,14 @@ const AICustomerSuggestModal = ({ open, onClose, customerId, customerName }) => 
       title={`AI Suggest — ${customerName || "Customer"}`}
       open={open}
       onCancel={onClose}
-      footer={null}
+      footer={[
+        <Button key="close" onClick={onClose}>
+          Close
+        </Button>,
+      ]}
+      closable={false}
+      maskClosable={false}
+      mask={{ closable: false }}
       width={640}
       destroyOnHidden
     >

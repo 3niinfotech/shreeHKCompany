@@ -18,7 +18,7 @@
       color: var(--color-primary);
     }
 
-    [class*="brandBadge"] {
+    [class*="brandBadge"]:not([class*="brandBadgeShort"]) {
       background: var(--color-primary-light);
       color: var(--color-primary);
     }

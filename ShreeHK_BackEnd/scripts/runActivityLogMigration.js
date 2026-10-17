@@ -19,7 +19,7 @@ const dbConfig = {
   multipleStatements: true,
 };
 
-const database = process.argv[2] || process.env.DB_NAME || "shreehkweb_snj2024";
+const database = process.argv[2] || process.env.DB_NAME || "shreehkweb_snj2024_test";
 const sqlPath = path.join(__dirname, "..", "migrations", "create_dai_activity_log.sql");
 const sql = fs.readFileSync(sqlPath, "utf8");
 

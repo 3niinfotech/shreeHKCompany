@@ -61,6 +61,7 @@ const routeImporters = {
   "/report/stone-transfer-history": () => import("../pages/reports/TransferHistory"),
   "/report/sale-stock": () => import("../pages/reports/SaleStoneReport"),
   "/report/stone-info": () => import("../pages/reports/StoneInfoReport"),
+  "/admin/branch": () => import("../pages/admin/BranchList"),
   "/admin/tenant-company": () => import("../pages/admin/TenantCompanyList"),
   "/admin/manage-user": () => import("../pages/admin/ManageUser"),
   "/admin/roll": () => import("../pages/admin/AdvancedRollPage"),
@@ -70,6 +71,11 @@ const routeImporters = {
   "/my-account": () => import("../pages/myAccount/MyAccount"),
   "/settings": () => import("../pages/myAccount/Setting"),
   "/forbidden": () => import("../pages/errors/Forbidden"),
+  "/inter-transfer/purchase": () => import("../pages/interTransfer/InterTransferPurchaseStock"),
+  "/inter-transfer/sale": () => import("../pages/interTransfer/InterTransferSaleStock"),
+  "/inter-transfer/in-memo": () => import("../pages/interTransfer/InterTransferInMemoStock"),
+  "/inter-transfer/out-memo": () => import("../pages/interTransfer/InterTransferOutMemoStock"),
+  "/inter-transfer/company-transfer": () => import("../pages/transaction/CompanyTransferList"),
 };
 
 export const prefetchRoute = (path) => {

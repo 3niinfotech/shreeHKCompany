@@ -115,6 +115,9 @@ const PairManagementModal = ({ open, selectedRows = [], onClose, onSuccess }) =>
       footer={null}
       centered
       width={selectedRows.length === 1 ? 760 : 540}
+      closable={false}
+      maskClosable={false}
+      mask={{ closable: false }}
       destroyOnClose
     >
       {selectedRows.length === 0 ? (
@@ -286,7 +289,11 @@ const PairManagementModal = ({ open, selectedRows = [], onClose, onSuccess }) =>
             Unpair Selected ({selectedRows.length})
           </Button>
         </div>
-      ) : null}
+      ) : (
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
+          <Button onClick={onClose}>Close</Button>
+        </div>
+      )}
     </Modal>
   );
 };

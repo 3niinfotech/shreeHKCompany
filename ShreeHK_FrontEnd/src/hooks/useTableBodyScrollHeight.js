@@ -7,6 +7,15 @@ const VIEWPORT_BOTTOM_GAP = 8;
 /** Minimum space for full pagination (total + size changer + jumper). */
 export const PAGINATION_MIN_RESERVE = 56;
 
+/** Minimum space so ant-table / sibling footers are never clipped. */
+export const FOOTER_MIN_RESERVE = 40;
+
+function isFooterSibling(el) {
+  if (!(el instanceof HTMLElement)) return false;
+  const cls = typeof el.className === "string" ? el.className : String(el.className || "");
+  return cls.includes("totalItemsFooter") || cls.includes("TotalItemsFooter");
+}
+
 /** Scroll body height from a flex table container (fills remaining viewport). */
 export function measureTableBodyScrollHeight(containerEl, options = {}) {
   if (!containerEl) return TABLE_BODY_MIN_HEIGHT;
@@ -21,13 +30,13 @@ export function measureTableBodyScrollHeight(containerEl, options = {}) {
   // A container that is not height-bounded by its parent grows with the body
   // height we set, which would feed back into the next measurement. Cap it at
   // the space left below the container inside the viewport.
+  // Only expand when the container is essentially unbounded (near min height).
+  // Expanding a flex-sized container past its real height clips table footers.
   const viewportHeight = window.innerHeight || 0;
   if (viewportHeight > 0) {
     const available = viewportHeight - rect.top - VIEWPORT_BOTTOM_GAP;
-    // Prefer remaining viewport so report tables fill to the bottom (no white gap).
-    // Cap with measured height when flex already sized the container correctly.
     if (available > TABLE_BODY_MIN_HEIGHT) {
-      if (containerHeight <= TABLE_BODY_MIN_HEIGHT + 20 || containerHeight < available - 24) {
+      if (containerHeight <= TABLE_BODY_MIN_HEIGHT + 20) {
         containerHeight = available;
       } else if (containerHeight > available) {
         containerHeight = available;
@@ -35,15 +44,19 @@ export function measureTableBodyScrollHeight(containerEl, options = {}) {
     }
   }
 
-  // Pagination rendered as sibling below the table container
+  // Pagination / external "Total Items" footers rendered as siblings below the table
   const parentEl = containerEl.parentElement;
   if (parentEl) {
-    const siblingPag = Array.from(parentEl.children).find(
-      (el) => el !== containerEl && el.querySelector?.(".ant-pagination")
-    );
-    if (siblingPag instanceof HTMLElement) {
-      containerHeight -= siblingPag.offsetHeight;
-    }
+    Array.from(parentEl.children).forEach((el) => {
+      if (el === containerEl || !(el instanceof HTMLElement)) return;
+      if (el.querySelector?.(".ant-pagination")) {
+        containerHeight -= el.offsetHeight;
+        return;
+      }
+      if (isFooterSibling(el)) {
+        containerHeight -= Math.max(el.offsetHeight, FOOTER_MIN_RESERVE);
+      }
+    });
   }
 
   const tableHeader = containerEl.querySelector(".ant-table-header");
@@ -53,7 +66,9 @@ export function measureTableBodyScrollHeight(containerEl, options = {}) {
 
   let reserved = 0;
   if (tableHeader instanceof HTMLElement) reserved += tableHeader.offsetHeight;
-  if (tableFooter instanceof HTMLElement) reserved += tableFooter.offsetHeight;
+  if (tableFooter instanceof HTMLElement) {
+    reserved += Math.max(tableFooter.offsetHeight, FOOTER_MIN_RESERVE);
+  }
   if (stickyScroll instanceof HTMLElement) reserved += stickyScroll.offsetHeight;
 
   // Fixed Table.Summary sits below the scroll body — must shrink scroll.y or it clips.

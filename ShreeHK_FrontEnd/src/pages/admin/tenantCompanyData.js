@@ -1,6 +1,15 @@
-export const tenantCompanyFields = [
-  { type: "input", label: "Company Name", name: "name", span: 18, required: true },
-  { type: "input", label: "Shortcut Name", name: "shortcutName", span: 6 },
+export const tenantCompanyFields = (branchOptions = []) => [
+  {
+    type: "select",
+    label: "Branch",
+    name: "branch_id",
+    span: 12,
+    required: true,
+    options: branchOptions,
+    placeholder: "Select Branch (HK / Dubai / Surat)",
+  },
+  { type: "input", label: "Company Name", name: "name", span: 12, required: true },
+  { type: "input", label: "Shortcut Name", name: "shortcutName", span: 12 },
   { type: "input", label: "Type", name: "type", span: 12 },
   { type: "input", label: "Phone Number", name: "number", span: 12, required: true },
   { type: "textarea", label: "Name of Partner", name: "partner", span: 24 },
@@ -22,4 +31,8 @@ export const tenantCompanyFields = [
   { type: "date", label: "Book Start Date", name: "startdate", span: 12 },
   { type: "date", label: "Book End Date", name: "enddate", span: 12 },
   { type: "input", label: "RapNet ID", name: "rapnet_id", span: 12 },
+  { type: "input", label: "Sale / Export Invoice Prefix", name: "invoice_prefix", span: 12, placeholder: "e.g. HK-INV- or INV-" },
+  { type: "input", label: "Out-Memo Prefix", name: "memo_prefix", span: 12, placeholder: "e.g. HK-MEMO- or MEMO-" },
+  { type: "input", label: "Purchase Note Prefix", name: "purchase_prefix", span: 12, placeholder: "e.g. HK-PUR- or PUR-" },
+  { type: "input", label: "GIA / Lab Prefix", name: "lab_prefix", span: 12, placeholder: "e.g. HK-LAB- or LAB-" },
 ];

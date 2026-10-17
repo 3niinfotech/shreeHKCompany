@@ -56,6 +56,8 @@ const BaseModal = ({
             width={width}
             centered
             destroyOnHidden
+            closable={false}
+            maskClosable={false}
             mask={{ closable: false }}
             className={modalCls || undefined}
             rootClassName={rootCls || undefined}

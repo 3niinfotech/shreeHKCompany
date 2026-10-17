@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import dayjs from "dayjs";
-import { Modal, Tag, Table } from "antd";
+import { Modal, Tag, Table, Button } from "antd";
 import { SkeletonDetail, SkeletonList } from "../common/skeleton";
 import { DollarCircleOutlined, ExperimentOutlined, InfoCircleOutlined, HistoryOutlined } from "@ant-design/icons";
 import { useFetchApi } from "../../api/ApiFunction";
@@ -88,11 +88,21 @@ const InventoryStoneDetailModal = ({ open, onClose, stone }) => {
     }
 
     if (stone.outward) {
-      tags.push({ label: toDisplay(stone.outward), color: "blue" });
+      const out = String(stone.outward || "").trim().toLowerCase();
+      let outColor = "blue";
+      if (out.includes("memo")) outColor = "orange";
+      else if (out.includes("sale")) outColor = "green";
+      else if (out.includes("export")) outColor = "blue";
+      else if (out.includes("consign")) outColor = "magenta";
+      else if (out.includes("import")) outColor = "cyan";
+      else if (out.includes("purchase")) outColor = "purple";
+      tags.push({ label: toDisplay(stone.outward), color: outColor });
     }
 
     if (stone.lab) {
-      tags.push({ label: toDisplay(stone.lab), color: "purple" });
+      const l = String(stone.lab || "").trim().toUpperCase();
+      const labColor = l === "GIA" ? "blue" : l === "IGI" ? "green" : l === "CGL" ? "orange" : l === "AGT" ? "purple" : "blue";
+      tags.push({ label: toDisplay(stone.lab), color: labColor });
     }
 
     return tags;
@@ -153,11 +163,17 @@ const InventoryStoneDetailModal = ({ open, onClose, stone }) => {
       className={styles.modal}
       open={open}
       onCancel={onClose}
-      footer={null}
+      footer={[
+        <Button key="close" danger onClick={onClose}>
+          Close
+        </Button>,
+      ]}
       centered
       width={820}
       destroyOnClose={false}
-      maskClosable
+      closable={false}
+      maskClosable={false}
+      mask={{ closable: false }}
       title={
         <div className={styles.header}>
           <div className={styles.headerMain}>

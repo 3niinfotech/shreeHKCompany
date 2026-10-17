@@ -1,6 +1,5 @@
 const helper = require("../../helper.js");
-
-const BASE_WHERE = `p.company = ? AND p.visibility = 1`;
+const { getBranchCompanyIds } = require("../../tenantHelper.js");
 
 const getInventorySuggestions = async (q, limit = 12, companyId = 1) => {
   const trimmed = String(q ?? "").trim();
@@ -8,7 +7,10 @@ const getInventorySuggestions = async (q, limit = 12, companyId = 1) => {
 
   const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 12, 1), 20);
   const like = `%${trimmed}%`;
-  const cid = Number(companyId) || 1;
+  const sessionCid = Number(companyId) || 1;
+  const companyIds = await getBranchCompanyIds(sessionCid);
+  const companyIdList = companyIds.length ? companyIds : [sessionCid];
+  const companyPlaceholders = companyIdList.map(() => "?").join(",");
 
   const rows = await helper.query(
     `SELECT
@@ -21,7 +23,7 @@ const getInventorySuggestions = async (q, limit = 12, companyId = 1) => {
       p.polish_carat
     FROM dai_product p
     JOIN dai_product_value pv ON p.id = pv.product_id
-    WHERE p.company = ? AND p.visibility = 1
+    WHERE p.company IN (${companyPlaceholders}) AND p.visibility = 1
       AND (
         p.sku LIKE ?
         OR p.mfg_code LIKE ?
@@ -33,7 +35,7 @@ const getInventorySuggestions = async (q, limit = 12, companyId = 1) => {
       )
     ORDER BY p.sku ASC
     LIMIT ?`,
-    [cid, like, like, like, like, like, like, like, safeLimit * 4],
+    [...companyIdList, like, like, like, like, like, like, like, safeLimit * 4],
   );
 
   const suggestions = [];

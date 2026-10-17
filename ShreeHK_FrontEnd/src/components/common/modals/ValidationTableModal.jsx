@@ -77,7 +77,7 @@ const ValidationTableModal = ({
         ? "Existing products found"
         : "No existing products found";
     const defaultSubtitle = hasDuplicates
-        ? "Some SKUs already exist in stock. Duplicate SKUs will get a suffix."
+        ? "These SKUs already exist — qty will be added to the same stock id (no duplicate row)."
         : "The following items are safe to proceed. You can save this inward entry.";
 
     return (

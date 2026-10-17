@@ -6,6 +6,7 @@ const InwordImport = () => (
   <InwardTransactionForm
     title="Inward - Import Transaction"
     showRPcs={false}
+    showMfgCode={false}
     defaultInwardType="import"
     typeOptions={[
       { value: 'import', label: 'Import' },
@@ -16,8 +17,8 @@ const InwordImport = () => (
     useModernLayout
     stylesModule={modernStyles}
     showExcelUpload
+    skipExistCheck
     initialLineCount={1}
-    visibleRowCount={4}
     scrollableTable
   />
 );

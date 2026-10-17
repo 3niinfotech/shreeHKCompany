@@ -315,6 +315,7 @@ import {
 } from 'lucide-react';
 import useAuthStore from '../../store/Auth.Store';
 import { api } from '../../api/client/axiosInstance';
+import { ENDPOINTS } from '../../api/endpoints';
 import { Link, useNavigate } from 'react-router-dom';
 import { resolveUploadUrl } from '../../utils/uploadBaseUrl';
 import { formatLastActive } from '../../utils/relativeTime';
@@ -352,9 +353,9 @@ const preventDropdownClose = (event) => {
 
 const ProfileMenuPanel = ({
   userDisplayName,
-  displayCompany,
+  displayBranch,
+  displayYear,
   roleLabel,
-  yearId,
   userInitial,
   profileImage,
   lastActiveLabel,
@@ -395,14 +396,17 @@ const ProfileMenuPanel = ({
           </span>
           <h3 className={styles.heroTitle}>{userDisplayName}</h3>
           <p className={styles.heroMeta}>
-            {displayCompany ? (
-              <span className={styles.companyChip} title={displayCompany}>
+            {displayBranch ? (
+              <span className={styles.companyChip} title={displayBranch}>
                 <Building2 size={12} strokeWidth={2} className={styles.chipIcon} />
-                {displayCompany}
+                {displayBranch}
               </span>
             ) : null}
-            {/* <span className={styles.roleChip}>{roleLabel}</span> */}
-            {/* {yearId ? <span className={styles.yearChip}>FY {yearId}</span> : null} */}
+            {displayYear ? (
+              <span className={styles.yearChip} title={`FY ${displayYear}`}>
+                FY {displayYear}
+              </span>
+            ) : null}
           </p>
         </div>
       </div>
@@ -448,7 +452,7 @@ const ProfileMenuPanel = ({
           <Building2 size={17} strokeWidth={2} />
         </span>
         <span className={styles.menuCopy}>
-          <span className={styles.menuLabel}>Switch Company / Year</span>
+          <span className={styles.menuLabel}>Switch Branch / Year</span>
           <span className={styles.menuHint}>Change active session</span>
         </span>
         <ChevronRight size={16} className={styles.menuArrow} />
@@ -485,21 +489,23 @@ const ProfileDropdown = () => {
   const user = useAuthStore((state) => state.user);
   const companyId = useAuthStore((state) => state.companyId);
   const companyName = useAuthStore((state) => state.companyName);
+  const branchId = useAuthStore((state) => state.branchId);
+  const branchName = useAuthStore((state) => state.branchName);
   const setSessionContext = useAuthStore((state) => state.setSessionContext);
   const setShowContextPicker = useAuthStore((state) => state.setShowContextPicker);
   const logout = useAuthStore((state) => state.logout);
   const yearId = useAuthStore((state) => state.yearId);
   const [lastActiveLabel, setLastActiveLabel] = useState(null);
+  const [resolvedBranchName, setResolvedBranchName] = useState(null);
+  const [resolvedYearLabel, setResolvedYearLabel] = useState(null);
   const userDisplayName = getUserDisplayName(user);
-  const displayCompany = getCompanyLabel(user, companyName);
+  // Profile chip = branch only (never company name)
+  const displayBranch = branchName || resolvedBranchName || null;
+  const displayYear = resolvedYearLabel || null;
   const userInitial = user?.first_name
     ? user.first_name.charAt(0).toUpperCase()
     : (user?.user_name || userDisplayName).charAt(0).toUpperCase();
   const roleLabel = getRoleLabel(user);
-
-  // const profileSubtitle = [displayCompany, roleLabel, yearId ? `FY ${yearId}` : null]
-  //   .filter(Boolean)
-  //   .join(" · ");
 
   const profileSubtitle = "";
 
@@ -531,6 +537,91 @@ const ProfileDropdown = () => {
       cancelled = true;
     };
   }, [companyId, companyName, setSessionContext]);
+
+  // Resolve branch name for profile badge (session may only have companyName)
+  useEffect(() => {
+    if (branchName) {
+      setResolvedBranchName(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const resolveBranch = async () => {
+      try {
+        if (companyId && Number(companyId) > 0) {
+          const res = await api.get(ENDPOINTS.portal.branchCompanies);
+          const name = res.data?.branchName;
+          const bid = res.data?.branchId;
+          if (cancelled || !name) return;
+          setResolvedBranchName(name);
+          setSessionContext({
+            branchName: name,
+            ...(bid != null ? { branchId: bid } : {}),
+          });
+          return;
+        }
+
+        const res = await api.get(ENDPOINTS.portal.companyYears);
+        const branches = res.data?.Branches || res.data?.branches || [];
+        const combos = res.data?.Data || [];
+        let name = null;
+        let bid = branchId || null;
+        if (bid != null) {
+          const b = branches.find((x) => String(x.branchId) === String(bid));
+          name = b?.branchName || null;
+        }
+        if (!name && companyId != null) {
+          const c = combos.find((x) => String(x.companyId) === String(companyId));
+          name = c?.branchName || null;
+          bid = c?.branchId ?? bid;
+        }
+        if (!name && branches.length === 1) {
+          name = branches[0]?.branchName || null;
+          bid = branches[0]?.branchId ?? bid;
+        }
+        if (cancelled || !name) return;
+        setResolvedBranchName(name);
+        setSessionContext({
+          branchName: name,
+          ...(bid != null ? { branchId: bid } : {}),
+        });
+      } catch {
+        // keep chip empty if branch cannot be resolved
+      }
+    };
+
+    resolveBranch();
+    return () => {
+      cancelled = true;
+    };
+  }, [branchName, branchId, companyId, setSessionContext]);
+
+  // Resolve fiscal year label for profile badge (session stores numeric yearId)
+  useEffect(() => {
+    if (yearId == null || yearId === "") {
+      setResolvedYearLabel(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const resolveYear = async () => {
+      try {
+        const res = await api.get(ENDPOINTS.portal.companyYears);
+        const years = res.data?.Years || res.data?.years || [];
+        const match = years.find((y) => String(y.yearId) === String(yearId));
+        const label = match?.yearLabel || match?.year || null;
+        if (!cancelled) setResolvedYearLabel(label || String(yearId));
+      } catch {
+        if (!cancelled) setResolvedYearLabel(String(yearId));
+      }
+    };
+
+    resolveYear();
+    return () => {
+      cancelled = true;
+    };
+  }, [yearId]);
 
   const handleLogout = () => {
     setOpen(false);
@@ -580,9 +671,9 @@ const ProfileDropdown = () => {
       popupRender={() => (
         <ProfileMenuPanel
           userDisplayName={userDisplayName}
-          displayCompany={displayCompany}
+          displayBranch={displayBranch}
+          displayYear={displayYear}
           roleLabel={roleLabel}
-          yearId={yearId}
           userInitial={userInitial}
           profileImage={user?.profile_image}
           lastActiveLabel={lastActiveLabel}

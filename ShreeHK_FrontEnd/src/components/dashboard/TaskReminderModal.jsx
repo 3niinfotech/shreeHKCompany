@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Tag, Button, ConfigProvider } from 'antd';
-import { BellRing, CheckCircle2, ArrowRight, X } from 'lucide-react';
+import { BellRing, CheckCircle2, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { api } from '../../api/client/axiosInstance';
@@ -77,12 +77,12 @@ export default function TaskReminderModal() {
     const getPriorityTag = (priority) => {
         switch (priority?.toLowerCase()) {
             case 'high':
-                return <Tag color="red" style={{ fontWeight: 600, borderRadius: 6, margin: 0 }}>HIGH</Tag>;
+                return <Tag color="red" style={{ fontWeight: 600, margin: 0 }}>HIGH</Tag>;
             case 'medium':
-                return <Tag color="gold" style={{ fontWeight: 600, borderRadius: 6, margin: 0 }}>MEDIUM</Tag>;
+                return <Tag color="gold" style={{ fontWeight: 600, margin: 0 }}>MEDIUM</Tag>;
             case 'low':
             default:
-                return <Tag color="green" style={{ fontWeight: 600, borderRadius: 6, margin: 0 }}>LOW</Tag>;
+                return <Tag color="green" style={{ fontWeight: 600, margin: 0 }}>LOW</Tag>;
         }
     };
 
@@ -90,6 +90,10 @@ export default function TaskReminderModal() {
 
     return (
         <ConfigProvider
+            modal={{
+                closable: false,
+                mask: { closable: false },
+            }}
             theme={{
                 components: {
                     Modal: {
@@ -106,7 +110,9 @@ export default function TaskReminderModal() {
                 centered
                 width={540}
                 className="task-reminder-modal"
-                closeIcon={<X size={18} />}
+                closable={false}
+                maskClosable={false}
+                mask={{ closable: false }}
             >
                 <div className="task-reminder-content">
                     <div className="reminder-header">
@@ -131,15 +137,15 @@ export default function TaskReminderModal() {
                                         <div className="task-card-tags">
                                             {getPriorityTag(task.priority)}
                                             {isOverdue ? (
-                                                <Tag color="volcano" style={{ borderRadius: 6, fontWeight: 600, margin: 0 }}>
+                                                <Tag color="volcano" style={{ fontWeight: 600, margin: 0 }}>
                                                     Overdue ({dayjs(task.target_date).format('DD MMM')})
                                                 </Tag>
                                             ) : isToday ? (
-                                                <Tag color="cyan" style={{ borderRadius: 6, fontWeight: 600, margin: 0 }}>
+                                                <Tag color="cyan" style={{ fontWeight: 600, margin: 0 }}>
                                                     Due Today
                                                 </Tag>
                                             ) : (
-                                                <Tag color="blue" style={{ borderRadius: 6, fontWeight: 600, margin: 0 }}>
+                                                <Tag color="blue" style={{ fontWeight: 600, margin: 0 }}>
                                                     {dayjs(task.target_date).format('DD MMM YYYY')}
                                                 </Tag>
                                             )}

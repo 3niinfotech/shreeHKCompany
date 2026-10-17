@@ -15,7 +15,7 @@ import {
   ImportOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { toastApiSuccess, toastApiError } from '../../../utils/toastNotify';
+import { toastApiSuccess, toastApiError, toastWarning, toastInfo } from '../../../utils/toastNotify';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useFetchApi, useDeleteApiRequest, usePostApiRequest } from '../../../api/ApiFunction';
@@ -25,11 +25,13 @@ import { ConfirmDeleteModal, BaseModal } from '../../../components/common/modals
 import DynamicForm from '../../../components/common/ui/DynamicFormField';
 import GiaReturnModal from '../../../components/transaction/stock/GiaReturnModal';
 import MemoConvertModal from '../../../components/transaction/stock/MemoConvertModal';
+import ConvertToExportModal from '../../../components/transaction/stock/ConvertToExportModal';
 import TransactionInvoicePreviewModal from '../../../components/transaction/invoice/TransactionInvoicePreviewModal';
 import AdvancedFilterPanel, { FilterField, filterPanelStyles } from '../../../components/common/filters/AdvancedFilterPanel';
 import PageHeroHeader from '../../../components/common/PageHeroHeader';
 import { FileTextOutlined } from '@ant-design/icons';
 import useAuthStore from '../../../store/Auth.Store';
+import useBranchCompanies from '../../../hooks/useBranchCompanies';
 import useTableBodyScrollHeight from '../../../hooks/useTableBodyScrollHeight';
 import useTableSkeleton from '../../../components/common/skeleton/useTableSkeleton';
 import { SkeletonForm } from '../../../components/common/skeleton';
@@ -67,6 +69,23 @@ const typeColors = {
   lab: 'blue',
   purchase: 'purple',
   import: 'cyan',
+  inter_transfer: 'geekblue',
+  inter_memo: 'volcano',
+  transfer: 'geekblue',
+};
+
+const getTypeColor = (type) => {
+  const t = String(type || '').trim().toLowerCase();
+  if (t.includes('import')) return 'cyan';
+  if (t.includes('purchase')) return 'purple';
+  if (t.includes('sale')) return 'success';
+  if (t.includes('inter_memo')) return 'volcano';
+  if (t.includes('memo')) return 'warning';
+  if (t.includes('consign')) return 'magenta';
+  if (t.includes('export')) return 'processing';
+  if (t.includes('lab')) return 'blue';
+  if (t.includes('transfer')) return 'geekblue';
+  return typeColors[t] || 'default';
 };
 
 const skuMatchesProduct = (product, sku) => {
@@ -96,6 +115,15 @@ const TransactionStockTemplate = ({
   const [searchParams] = useSearchParams();
   const companyName = useAuthStore((s) => s.companyName);
   const companyLogo = useAuthStore((s) => s.companyLogo);
+  const { options: branchCompanies } = useBranchCompanies();
+  const companyMap = useMemo(() => {
+    const map = new Map();
+    (branchCompanies || []).forEach((c) => {
+      map.set(Number(c.value), c.name || c.label);
+    });
+    return map;
+  }, [branchCompanies]);
+  const [selectedCompany, setSelectedCompany] = useState('');
   const [party, setParty] = useState('');
   const [invoice, setInvoice] = useState(() => (searchParams.get('invoice') || '').trim());
   const [filterType, setFilterType] = useState(() => (searchParams.get('type') || '').trim());
@@ -108,6 +136,7 @@ const TransactionStockTemplate = ({
   const [allGroups, setAllGroups] = useState([]);
   const [hasMore, setHasMore] = useState(true);
   const [scrollFetching, setScrollFetching] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState({});
   const [expandedRowKeys, setExpandedRowKeys] = useState([]);
   const [deleteModal, setDeleteModal] = useState({ open: false, record: null });
@@ -120,6 +149,12 @@ const TransactionStockTemplate = ({
     productIds: [],
   });
   const [memoConvertLoading, setMemoConvertLoading] = useState(false);
+  const [toExportModal, setToExportModal] = useState({
+    open: false,
+    record: null,
+    convertType: 'export',
+  });
+  const [toExportLoading, setToExportLoading] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editId, setEditId] = useState(null);
   const [editingRecord, setEditingRecord] = useState(null);
@@ -128,10 +163,31 @@ const TransactionStockTemplate = ({
   const [editForm] = Form.useForm();
   const tableRef = useRef(null);
 
+  const branchCompanyOptions = useMemo(() => {
+    const list = (branchCompanies || []).map((c) => ({
+      label: c.label || c.name,
+      value: isNaN(Number(c.value)) ? c.value : Number(c.value),
+    }));
+    const rawComp = editingRecord?.company;
+    const currentCompId =
+      rawComp != null && rawComp !== ''
+        ? (isNaN(Number(rawComp)) ? rawComp : Number(rawComp))
+        : null;
+    if (currentCompId != null && !list.some((o) => String(o.value) === String(currentCompId))) {
+      const fallbackName =
+        editingRecord?.company_name ||
+        companyMap.get(Number(currentCompId)) ||
+        `Company #${currentCompId}`;
+      list.unshift({ label: fallbackName, value: currentCompId });
+    }
+    return list;
+  }, [branchCompanies, editingRecord, companyMap]);
+
   const listLimit = infiniteScroll ? SCROLL_LIMIT : pageSize;
   const listStart = infiniteScroll ? offset : (page - 1) * pageSize;
 
   const payload = useMemo(() => ({
+    company: selectedCompany || '',
     party: party || '',
     invoice: invoice || '',
     invoiceno: invoice || '',
@@ -144,7 +200,7 @@ const TransactionStockTemplate = ({
     ...(showSkuFilter && skuSearch.trim() ? { sku: skuSearch.trim() } : {}),
     ...(fromDate ? { fromDate: dayjs(fromDate).format('YYYY-MM-DD') } : {}),
     ...(toDate ? { toDate: dayjs(toDate).format('YYYY-MM-DD') } : {}),
-  }), [party, invoice, page, listLimit, listStart, listPayload, stockType, infiniteScroll, filterType, showSkuFilter, skuSearch, fromDate, toDate]);
+  }), [selectedCompany, party, invoice, page, listLimit, listStart, listPayload, stockType, infiniteScroll, filterType, showSkuFilter, skuSearch, fromDate, toDate]);
 
   const queryClient = useQueryClient();
   const [actionLoading, setActionLoading] = useState(false);
@@ -160,7 +216,10 @@ const TransactionStockTemplate = ({
 
   const { mutate: deleteRecord, isPending: isDeleting } = useDeleteApiRequest(deleteEndpoint, deleteQueryKey || queryKey, { queryParam: 'deleteId' });
 
-  const editSaveEndpoint = actions.editSaveEndpoint || ENDPOINTS.outward.update;
+  const isOutwardRecord = !String(actions.editGetEndpoint || "").includes("inward");
+  const editSaveEndpoint =
+    actions.editSaveEndpoint ||
+    (isOutwardRecord ? ENDPOINTS.outward.update : ENDPOINTS.inward.update);
   const { mutate: updateOutwardRecord, isPending: isUpdating } = usePostApiRequest(
     editSaveEndpoint,
     queryKey,
@@ -212,8 +271,24 @@ const TransactionStockTemplate = ({
       color: p.color ?? p.main_color ?? "",
     }));
 
+    const rawCompany = details.company != null && details.company !== ''
+      ? details.company
+      : (editingRecord?.company != null && editingRecord?.company !== '' ? editingRecord.company : undefined);
+    const compId =
+      rawCompany != null && rawCompany !== '' && !isNaN(Number(rawCompany))
+        ? Number(rawCompany)
+        : null;
+    const resolvedCompanyText =
+      details.company_name ||
+      editingRecord?.company_name ||
+      (compId ? companyMap.get(compId) : '') ||
+      (typeof rawCompany === 'string' && isNaN(Number(rawCompany)) ? rawCompany : '') ||
+      companyName ||
+      '';
+
     editForm.setFieldsValue({
       ...details,
+      company: resolvedCompanyText,
       type: details.type || details.inward_type || '',
       entryno: details.entryno ?? details.id,
       date: details.date ? dayjs(details.date) : null,
@@ -248,7 +323,7 @@ const TransactionStockTemplate = ({
       ? details.products
       : normalizedProducts.map((p) => p.id).filter(Boolean).join(',');
     setOriginalSproducts(csvIds || '');
-  }, [editForm]);
+  }, [editForm, editingRecord, companyMap, companyName]);
 
   useEffect(() => {
     if (!editDetailData || editDetailData.status === false) return;
@@ -270,8 +345,9 @@ const TransactionStockTemplate = ({
       queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey?.[0];
-          if (Array.isArray(key)) return key[0] === queryKey;
-          return key === queryKey;
+          const queryFirst = Array.isArray(key) ? key[0] : key;
+          const targetFirst = Array.isArray(queryKey) ? queryKey[0] : queryKey;
+          return queryFirst === targetFirst;
         },
       });
       queryClient.invalidateQueries({ queryKey: ['GetProductData'] });
@@ -302,8 +378,16 @@ const TransactionStockTemplate = ({
 
   const partyOptions = useMemo(() => {
     const d = companyData?.Data || companyData?.data;
-    return Array.isArray(d) ? d.map((item) => ({ label: item.name, value: String(item.id) })) : [];
-  }, [companyData]);
+    const baseParties = Array.isArray(d) ? d.map((item) => ({ label: item.name, value: String(item.id) })) : [];
+    if (stockType === 'inter_transfer' || stockType === 'inter_memo') {
+      const compOptions = (branchCompanies || []).map((c) => ({
+        label: c.label || c.name,
+        value: c.label || c.name,
+      }));
+      return [...compOptions, ...baseParties];
+    }
+    return baseParties;
+  }, [companyData, branchCompanies, stockType]);
 
   // Venya sale edit (sform.php): sale / export / consign share this modal layout
   const isVenyaSaleEdit =
@@ -343,39 +427,144 @@ const TransactionStockTemplate = ({
     }));
   }, [originMasterData]);
 
+  const editModalTitle = useMemo(() => {
+    const recType = editingRecord?.type || editingRecord?.inward_type;
+    const formatType = (t) => {
+      const s = String(t || '').trim().toLowerCase();
+      if (s === 'memo') return 'Memo';
+      if (s === 'sale') return 'Sale';
+      if (s === 'purchase') return 'Purchase';
+      if (s === 'import') return 'Import';
+      if (s === 'export') return 'Export';
+      if (s === 'consign') return 'Consignment';
+      if (s === 'lab' || s === 'gia') return 'GIA Lab';
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    };
+
+    if (recType) {
+      const formattedType = formatType(recType);
+      if (title) {
+        const cleanTitle = title.trim();
+        if (cleanTitle.toLowerCase().includes(formattedType.toLowerCase())) {
+          return cleanTitle.toLowerCase().startsWith('edit') ? cleanTitle : `Edit ${cleanTitle}`;
+        }
+        return `Edit ${cleanTitle} (${formattedType})`;
+      }
+      return `Edit ${formattedType}`;
+    }
+
+    if (title) {
+      const cleanTitle = title.trim();
+      return cleanTitle.toLowerCase().startsWith('edit') ? cleanTitle : `Edit ${cleanTitle}`;
+    }
+    return 'Edit Transaction';
+  }, [title, editingRecord]);
+
+  const editModalSubtitle = useMemo(() => {
+    const idText =
+      editingRecord?.invoiceno ||
+      (editingRecord?.entryno ? `#${editingRecord.entryno}` : (editingRecord?.id ? `#${editingRecord.id}` : ''));
+    const compId =
+      editingRecord?.company != null && editingRecord?.company !== ''
+        ? Number(editingRecord.company)
+        : null;
+    const compName =
+      editingRecord?.company_name ||
+      (compId ? companyMap.get(compId) : '') ||
+      '';
+    if (idText && compName) {
+      return `${idText} • ${compName}`;
+    }
+    return idText || compName || '';
+  }, [editingRecord, companyMap]);
+
+  const resolvedEditCompanyName = useMemo(() => {
+    const rawComp = editingRecord?.company;
+    const compId =
+      rawComp != null && rawComp !== '' && !isNaN(Number(rawComp))
+        ? Number(rawComp)
+        : null;
+    return (
+      editingRecord?.company_name ||
+      (compId ? companyMap.get(compId) : '') ||
+      (typeof rawComp === 'string' && isNaN(Number(rawComp)) ? rawComp : '') ||
+      companyName ||
+      ''
+    );
+  }, [editingRecord, companyMap, companyName]);
+
+  useEffect(() => {
+    if (!isEditModalOpen) return;
+    const currentVal = editForm.getFieldValue('company');
+    if (!currentVal && resolvedEditCompanyName) {
+      editForm.setFieldsValue({ company: resolvedEditCompanyName });
+    }
+  }, [isEditModalOpen, resolvedEditCompanyName, editForm]);
+
   const editMainFields = useMemo(() => {
+    // 5 fields per row (account for Row gutter)
+    const c5 = '1 1 calc(20% - 13px)';
     if (isVenyaSaleEdit) {
       // Match Venya sform.php header (no Type field — type is hidden)
       return [
-        { name: 'entryno', label: 'Entry', type: 'text', required: true, span: 6, disabled: true },
-        { name: 'place', label: 'Sale @', type: 'text', span: 6 },
-        { name: 'date', label: 'Date', type: 'date', required: true, span: 6 },
-        { name: 'reference', label: 'Reference', type: 'text', span: 6 },
-        { name: 'invoiceno', label: 'Invoice No.', type: 'text', required: true, span: 6, disabled: true },
-        { name: 'invoicedate', label: 'Invoice Date', type: 'date', span: 6 },
-        { name: 'terms', label: 'Terms', type: 'text', span: 6 },
-        { name: 'duedate', label: 'Due Date', type: 'date', span: 6 },
-        { name: 'party', label: 'Party Name', type: 'select', options: partyOptions, required: true, span: 12 },
-        { name: 'paid_amount', label: 'Paid Amount', type: 'number', span: 6 },
-        { name: 'due_amount', label: 'Due Amount', type: 'number', span: 6 },
-        { name: 'other_party', label: 'Other Party', type: 'select', options: partyOptions, span: 12 },
+        { name: 'entryno', label: 'Entry', type: 'text', required: true, flex: c5, disabled: true },
+        { name: 'company', label: 'Company', type: 'text', flex: c5, disabled: true },
+        { name: 'place', label: 'Sale @', type: 'text', flex: c5 },
+        { name: 'date', label: 'Date', type: 'date', required: true, flex: c5 },
+        { name: 'reference', label: 'Reference', type: 'text', flex: c5 },
+        { name: 'invoiceno', label: 'Invoice No.', type: 'text', required: true, flex: c5, disabled: true },
+        { name: 'invoicedate', label: 'Invoice Date', type: 'date', flex: c5 },
+        { name: 'terms', label: 'Terms', type: 'text', flex: c5 },
+        { name: 'duedate', label: 'Due Date', type: 'date', flex: c5 },
+        { name: 'paid_amount', label: 'Paid Amount', type: 'number', flex: c5 },
+        { name: 'due_amount', label: 'Due Amount', type: 'number', flex: c5 },
+        { name: 'party', label: 'Party Name', type: 'select', options: partyOptions, required: true, flex: c5 },
+        { name: 'other_party', label: 'Other Party', type: 'select', options: partyOptions, flex: c5 },
       ];
     }
     return [
-      { name: 'entryno', label: 'Entry', type: 'text', required: true, span: 6, disabled: true },
-      { name: 'type', label: 'Type', type: 'text', required: true, span: 6, disabled: true },
-      { name: 'place', label: 'Place', type: 'text', span: 6 },
-      { name: 'date', label: 'Date', type: 'date', required: true, span: 6 },
-      { name: 'reference', label: 'Reference', type: 'text', span: 6 },
-      { name: 'invoiceno', label: 'Invoice No', type: 'text', required: true, span: 6, disabled: true },
-      { name: 'invoicedate', label: 'Invoice Date', type: 'date', span: 6 },
-      { name: 'terms', label: 'Terms', type: 'text', span: 6 },
-      { name: 'duedate', label: 'Due Date', type: 'date', span: 6 },
-      { name: 'party', label: 'Party Name', type: 'select', options: partyOptions, required: true, span: 6 },
-      { name: 'other_party', label: 'Other Party', type: 'select', options: partyOptions, span: 6 },
-      { name: 'paid_amount', label: 'Paid Amount', type: 'number', span: 6 },
+      { name: 'entryno', label: 'Entry', type: 'text', required: true, flex: c5, disabled: true },
+      { name: 'company', label: 'Company', type: 'text', flex: c5, disabled: true },
+      { name: 'type', label: 'Type', type: 'text', required: true, flex: c5, disabled: true },
+      { name: 'place', label: 'Place', type: 'text', flex: c5 },
+      { name: 'date', label: 'Date', type: 'date', required: true, flex: c5 },
+      { name: 'reference', label: 'Reference', type: 'text', flex: c5 },
+      { name: 'invoiceno', label: 'Invoice No', type: 'text', required: true, flex: c5, disabled: true },
+      { name: 'invoicedate', label: 'Invoice Date', type: 'date', flex: c5 },
+      { name: 'terms', label: 'Terms', type: 'text', flex: c5 },
+      { name: 'duedate', label: 'Due Date', type: 'date', flex: c5 },
+      { name: 'paid_amount', label: 'Paid Amount', type: 'number', flex: c5 },
+      { name: 'party', label: 'Party Name', type: 'select', options: partyOptions, required: true, flex: c5 },
+      { name: 'other_party', label: 'Other Party', type: 'select', options: partyOptions, flex: c5 },
+      { name: 'due_amount', label: 'Due Amount', type: 'number', flex: c5 },
+      {
+        type: 'custom',
+        noFormItem: true,
+        flex: c5,
+        render: () => (
+          <Form.Item
+            label={<span className={styles.stockEditBankLabel}>Bank</span>}
+            colon={false}
+          >
+            <div className={styles.stockEditBankSlot}>
+              <Form.Item name="boc" valuePropName="checked" noStyle>
+                <Checkbox>BOC</Checkbox>
+              </Form.Item>
+              <Form.Item name="citi" valuePropName="checked" noStyle>
+                <Checkbox>CITI</Checkbox>
+              </Form.Item>
+              <Form.Item name="dbs" valuePropName="checked" noStyle>
+                <Checkbox>DBS</Checkbox>
+              </Form.Item>
+              <Form.Item name="sc" valuePropName="checked" noStyle>
+                <Checkbox>SC</Checkbox>
+              </Form.Item>
+            </div>
+          </Form.Item>
+        ),
+      },
     ];
-  }, [partyOptions, isVenyaSaleEdit]);
+  }, [partyOptions, isVenyaSaleEdit, branchCompanyOptions]);
 
   const watchInvoiceDate = Form.useWatch('invoicedate', editForm);
   const watchTerms = Form.useWatch('terms', editForm);
@@ -474,29 +663,27 @@ const TransactionStockTemplate = ({
   }, [infiniteScroll, scrollFetching, isFetching, hasMore]);
 
   const refreshList = useCallback(async () => {
+    setIsRefreshing(true);
     setExpandedRowKeys([]);
+    setSelectedProducts({});
+    setHasMore(true);
+    setScrollFetching(false);
+    setOffset(0);
+    setPage(1);
 
-    const invalidateStockQueries = () => {
-      queryClient.invalidateQueries({
+    const invalidateStockQueries = async () => {
+      await queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey?.[0];
-          if (Array.isArray(key)) return key[0] === queryKey;
-          return key === queryKey;
+          const queryFirst = Array.isArray(key) ? key[0] : key;
+          const targetFirst = Array.isArray(queryKey) ? queryKey[0] : queryKey;
+          return queryFirst === targetFirst;
         },
       });
     };
 
-    if (infiniteScroll) {
-      setHasMore(true);
-      setScrollFetching(false);
-      // Clearing allGroups before a same-key refetch can stick on empty when
-      // React Query structural-shares identical data and useEffect never re-runs.
-      if (offset !== 0) {
-        setOffset(0);
-        setAllGroups([]);
-        invalidateStockQueries();
-        return;
-      }
+    try {
+      await invalidateStockQueries();
       const result = await refetch();
       const d = result?.data?.Data || result?.data?.data;
       const newRecords = Array.isArray(d) ? d : [];
@@ -507,16 +694,14 @@ const TransactionStockTemplate = ({
       } else {
         setHasMore(true);
       }
-      return;
+      toastInfo('Data refreshed');
+    } catch (err) {
+      console.error('Refresh error:', err);
+      toastApiError(err);
+    } finally {
+      setIsRefreshing(false);
     }
-
-    if (page !== 1) {
-      setPage(1);
-      invalidateStockQueries();
-      return;
-    }
-    await refetch();
-  }, [infiniteScroll, offset, page, refetch, listLimit, queryClient, queryKey]);
+  }, [queryClient, queryKey, refetch, listLimit]);
 
   const pageStats = useMemo(() => groups.reduce((acc, group) => {
     (group.products || []).forEach((p) => {
@@ -704,36 +889,36 @@ const TransactionStockTemplate = ({
       },
       ...(isVenyaSaleEditGrid
         ? [
-            textCol("SKU", "sku", 120, { fixed: "left", placeholder: "SKU" }),
-            textCol("P.Pcs", "polish_pcs", 80, { type: "number", placeholder: "0" }),
-            textCol("P.Carat", "polish_carat", 90, { type: "number", placeholder: "0.00" }),
-            textCol("Cost", "cost", 90, { type: "number", placeholder: "0.00" }),
-            textCol("Price", "sell_price", 90, { type: "number", placeholder: "0.00" }),
-            textCol("Amount", "sell_amount", 100, { type: "number", placeholder: "0.00" }),
-            textCol("LOC", "location", 90, { placeholder: "LOC" }),
-            textCol("Remark", "remark", 120, { placeholder: "Remark" }),
-            textCol("Lab", "lab", 80, { placeholder: "Lab" }),
-          ]
+          textCol("SKU", "sku", 120, { fixed: "left", placeholder: "SKU" }),
+          textCol("P.Pcs", "polish_pcs", 80, { type: "number", placeholder: "0" }),
+          textCol("P.Carat", "polish_carat", 90, { type: "number", placeholder: "0.00" }),
+          textCol("Cost", "cost", 90, { type: "number", placeholder: "0.00" }),
+          textCol("Price", "sell_price", 90, { type: "number", placeholder: "0.00" }),
+          textCol("Amount", "sell_amount", 100, { type: "number", placeholder: "0.00" }),
+          textCol("LOC", "location", 90, { placeholder: "LOC" }),
+          textCol("Remark", "remark", 120, { placeholder: "Remark" }),
+          textCol("Lab", "lab", 80, { placeholder: "Lab" }),
+        ]
         : [
-            textCol("Mfg. code", "mfg_code", 100, { fixed: "left", placeholder: "Mfg" }),
-            textCol("D. No.", "diamond_no", 90, { fixed: "left", placeholder: "D.No" }),
-            textCol("SKU", "sku", 120, { fixed: "left", placeholder: "SKU" }),
-            textCol("Pcs", "polish_pcs", 80, { type: "number", placeholder: "0" }),
-            textCol("Carat", "polish_carat", 90, { type: "number", placeholder: "0.00" }),
-            textCol("Cost", "cost", 90, { type: "number", placeholder: "0.00" }),
-            textCol("Price", "sell_price", 90, { type: "number", placeholder: "0.00" }),
-            textCol("Amount", "sell_amount", 100, { type: "number", placeholder: "0.00" }),
-            textCol("LOC", "location", 90, { placeholder: "LOC" }),
-            textCol("Remark", "remark", 120, { placeholder: "Remark" }),
-            textCol("Lab", "lab", 80, { placeholder: "Lab" }),
-            textCol("Group Type", "group_type", 100, { placeholder: "Group" }),
-            textCol("Report No.", "report_no", 110, { placeholder: "Report" }),
-            textCol("Shape", "shape", 90, { placeholder: "Shape" }),
-            textCol("Clarity", "clarity", 90, { placeholder: "Clarity" }),
-            textCol("Intensity", "intensity", 90, { placeholder: "Intensity" }),
-            textCol("Overtone", "overtone", 90, { placeholder: "Overtone" }),
-            textCol("Color", "color", 80, { placeholder: "Color" }),
-          ]),
+          textCol("Mfg. code", "mfg_code", 100, { fixed: "left", placeholder: "Mfg" }),
+          textCol("D. No.", "diamond_no", 90, { fixed: "left", placeholder: "D.No" }),
+          textCol("SKU", "sku", 120, { fixed: "left", placeholder: "SKU" }),
+          textCol("Pcs", "polish_pcs", 80, { type: "number", placeholder: "0" }),
+          textCol("Carat", "polish_carat", 90, { type: "number", placeholder: "0.00" }),
+          textCol("Cost", "cost", 90, { type: "number", placeholder: "0.00" }),
+          textCol("Price", "sell_price", 90, { type: "number", placeholder: "0.00" }),
+          textCol("Amount", "sell_amount", 100, { type: "number", placeholder: "0.00" }),
+          textCol("LOC", "location", 90, { placeholder: "LOC" }),
+          textCol("Remark", "remark", 120, { placeholder: "Remark" }),
+          textCol("Lab", "lab", 80, { placeholder: "Lab" }),
+          textCol("Group Type", "group_type", 100, { placeholder: "Group" }),
+          textCol("Report No.", "report_no", 110, { placeholder: "Report" }),
+          textCol("Shape", "shape", 90, { placeholder: "Shape" }),
+          textCol("Clarity", "clarity", 90, { placeholder: "Clarity" }),
+          textCol("Intensity", "intensity", 90, { placeholder: "Intensity" }),
+          textCol("Overtone", "overtone", 90, { placeholder: "Overtone" }),
+          textCol("Color", "color", 80, { placeholder: "Color" }),
+        ]),
     ];
 
     if (allowAddProductInEdit) {
@@ -782,11 +967,18 @@ const TransactionStockTemplate = ({
       const values = await editForm.validateFields();
       const originalIds = originalSproducts
         || (editingRecord?.products || []).map((p) => (typeof p === 'object' ? p.id : p)).filter(Boolean).join(',');
+
+      const originalCompanyId =
+        editingRecord?.company != null && editingRecord?.company !== ''
+          ? (isNaN(Number(editingRecord.company)) ? editingRecord.company : Number(editingRecord.company))
+          : undefined;
+
       const payload = {
         id: editingRecord.id,
         type: editingRecord.type,
         sproducts: originalIds,
         ...values,
+        ...(originalCompanyId != null ? { company: originalCompanyId } : {}),
         boc: values.boc ? 1 : 0,
         citi: values.citi ? 1 : 0,
         dbs: values.dbs ? 1 : 0,
@@ -816,9 +1008,21 @@ const TransactionStockTemplate = ({
     }
   };
 
+  const resolveReturnProductIds = (record) => {
+    const selected = getSelected(record.id);
+    if (selected.length) return selected;
+    // Unique ids — JOIN duplicates must not sell/return the same stone multiple times
+    return [...new Set(
+      (record.products || []).map((p) => p.id).filter((id) => id != null).map(String),
+    )];
+  };
+
   const handleReturn = (record) => {
-    const products = getSelected(record.id);
-    if (!products.length) return;
+    const products = resolveReturnProductIds(record);
+    if (!products.length) {
+      toastWarning('No stones available to return');
+      return;
+    }
     if (actions.giaReturn) {
       setGiaReturnModal({ open: true, record, productIds: products });
       return;
@@ -827,8 +1031,11 @@ const TransactionStockTemplate = ({
   };
 
   const handleMemoToSale = (record) => {
-    const products = getSelected(record.id);
-    if (!products.length) return;
+    const products = resolveReturnProductIds(record);
+    if (!products.length) {
+      toastWarning('No stones available to convert to sale');
+      return;
+    }
     setMemoConvertModal({ open: true, mode: 'sale', record, productIds: products });
   };
 
@@ -839,19 +1046,24 @@ const TransactionStockTemplate = ({
 
   const handleMemoConvertConfirm = async (payload) => {
     const endpoint =
-      memoConvertModal.mode === 'sale' ? actions.memoToSaleEndpoint : actions.returnEndpoint;
+      memoConvertModal.mode === 'sale'
+        ? actions.memoToSaleEndpoint
+        : memoConvertModal.mode === 'purchase'
+          ? actions.memoToPurchaseEndpoint
+          : actions.returnEndpoint;
     if (!endpoint) return;
     setMemoConvertLoading(true);
     try {
       const body =
-        memoConvertModal.mode === 'sale'
-          ? payload
-          : {
-              id: payload.id,
-              outid: payload.id,
-              products: payload.products,
-              record: payload.record,
-            };
+        memoConvertModal.mode === 'return'
+          ? {
+            id: payload.id,
+            outid: payload.id,
+            products: payload.products,
+            record: payload.record,
+            narretion: payload.narretion,
+          }
+          : payload;
       const ok = await postAction(endpoint, body);
       if (ok) {
         setSelectedProducts((prev) => ({ ...prev, [payload.id]: [] }));
@@ -859,15 +1071,18 @@ const TransactionStockTemplate = ({
       } else {
         setMemoConvertLoading(false);
       }
-    } catch (e) {
+    } catch {
       setMemoConvertLoading(false);
     }
   };
 
   const handleMemoToPurchase = (record) => {
-    const products = getSelected(record.id);
-    if (!products.length) return;
-    postAction(actions.memoToPurchaseEndpoint, { memo_id: record.id, id: record.id, products, party: record.party });
+    const products = resolveReturnProductIds(record);
+    if (!products.length) {
+      toastWarning('No stones available to purchase');
+      return;
+    }
+    setMemoConvertModal({ open: true, mode: 'purchase', record, productIds: products });
   };
 
   const handleToggle = (record, inwardType) => {
@@ -875,7 +1090,28 @@ const TransactionStockTemplate = ({
   };
 
   const handleToExport = (record, type) => {
+    if (type === 'export' || type === 'consign') {
+      setToExportModal({ open: true, record, convertType: type });
+      return;
+    }
     postAction(actions.toExportEndpoint, { id: record.id, type });
+  };
+
+  const closeToExportModal = () => {
+    setToExportModal({ open: false, record: null, convertType: 'export' });
+    setToExportLoading(false);
+  };
+
+  const handleToExportConfirm = async (payload) => {
+    if (!actions.toExportEndpoint) return;
+    setToExportLoading(true);
+    try {
+      const ok = await postAction(actions.toExportEndpoint, payload);
+      if (ok) closeToExportModal();
+      else setToExportLoading(false);
+    } catch {
+      setToExportLoading(false);
+    }
   };
 
   const handleDelete = () => {
@@ -889,8 +1125,9 @@ const TransactionStockTemplate = ({
         queryClient.invalidateQueries({
           predicate: (query) => {
             const key = query.queryKey?.[0];
-            if (Array.isArray(key)) return key[0] === queryKey;
-            return key === queryKey;
+            const queryFirst = Array.isArray(key) ? key[0] : key;
+            const targetFirst = Array.isArray(queryKey) ? queryKey[0] : queryKey;
+            return queryFirst === targetFirst;
           },
         });
         queryClient.invalidateQueries({ queryKey: ['GetProductData'] });
@@ -930,6 +1167,32 @@ const TransactionStockTemplate = ({
     },
     ...productColumns,
   ], [productColumns, selectedProducts]);
+
+  const toggleMainRowExpand = useCallback((record) => {
+    const key = record?.id;
+    if (key == null) return;
+    setExpandedRowKeys((prev) =>
+      (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]),
+    );
+  }, []);
+
+  const getMainRowProps = useCallback(
+    (record) => ({
+      onClick: (event) => {
+        const target = event.target;
+        if (
+          target.closest(
+            'a, button, .ant-btn, .anticon, .actionIcons, .actionBtn, .ant-table-row-expand-icon-cell, .ant-table-row-expand-icon, input, textarea, select, .ant-checkbox-wrapper, .ant-select, .ant-dropdown, .ant-picker, [data-no-row-expand]',
+          )
+        ) {
+          return;
+        }
+        toggleMainRowExpand(record);
+      },
+      style: { cursor: 'pointer' },
+    }),
+    [toggleMainRowExpand],
+  );
 
   const renderExpandedRow = (group) => {
     const products = (group.products || []).filter((product) => skuMatchesProduct(product, skuSearch));
@@ -1004,17 +1267,35 @@ const TransactionStockTemplate = ({
       title: 'Entry No',
       dataIndex: 'entryno',
       key: 'entryno',
-      width: 110,
-      render: (val) => <Text strong>#{val}</Text>,
+      width: actions.entryWidth || 110,
+      render: (val, record) => {
+        const entry = String(val ?? record?.id ?? '').trim();
+        return <Text strong style={{ whiteSpace: 'nowrap' }}>{entry ? `#${entry}` : '—'}</Text>;
+      },
+    },
+    {
+      title: 'Company',
+      key: 'company',
+      width: 220,
+      ellipsis: true,
+      render: (_, record) => {
+        const compId = record.company != null ? Number(record.company) : null;
+        const compName = record.company_name || companyMap.get(compId) || (compId ? `Company #${compId}` : '—');
+        return (
+          <Tag color="blue" style={{ fontWeight: 600 }}>
+            {compName}
+          </Tag>
+        );
+      },
     },
     {
       title: 'Type',
       key: 'type',
-      width: 100,
+      width: actions.typeWidth || 100,
       render: (_, record) => {
         const displayType = record.type || record.inward_type;
         return (
-          <Tag color={typeColors[displayType] || 'default'} style={{ textTransform: 'uppercase', fontWeight: 600 }}>
+          <Tag color={getTypeColor(displayType)} style={{ textTransform: 'uppercase', fontWeight: 600, whiteSpace: 'nowrap' }}>
             {String(displayType || '-')}
           </Tag>
         );
@@ -1023,22 +1304,31 @@ const TransactionStockTemplate = ({
     {
       title: 'Party',
       key: 'party',
-      width: 180,
+      width: actions.partyWidth || 180,
       ellipsis: true,
-      render: (_, record) => record.party_name || record.party || '-',
+      render: (_, record) => {
+        if (record.party_name) return record.party_name;
+        if (stockType === 'inter_transfer' || stockType === 'inter_memo') {
+          const compId = Number(record.party);
+          if (compId && companyMap.has(compId)) {
+            return companyMap.get(compId);
+          }
+        }
+        return record.party || '-';
+      },
     },
     {
       title: 'Invoice',
       dataIndex: 'invoiceno',
       key: 'invoiceno',
-      width: 130,
+      width: actions.invoiceWidth || 130,
       ellipsis: true,
     },
     {
       title: 'Reference',
       dataIndex: 'reference',
       key: 'reference',
-      width: 120,
+      width: actions.referenceWidth || 140,
       ellipsis: true,
       render: (v) => v || '-',
     },
@@ -1046,20 +1336,24 @@ const TransactionStockTemplate = ({
       title: 'Date',
       dataIndex: 'date',
       key: 'date',
-      width: 110,
-      render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')),
+      width: actions.dateWidth || 100,
+      render: (v) => (
+        <span style={{ whiteSpace: 'nowrap' }}>
+          {v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')}
+        </span>
+      ),
     },
     {
       title: 'Stones',
       key: 'stoneCount',
-      width: 80,
+      width: 60,
       align: 'center',
       render: (_, record) => (record.products || []).length,
     },
     {
       title: 'Pcs',
       key: 'totalPcs',
-      width: 70,
+      width: 55,
       align: 'center',
       render: (_, record) => (record.products || []).reduce(
         (sum, p) => sum + Number(p.polish_pcs || 0),
@@ -1100,37 +1394,63 @@ const TransactionStockTemplate = ({
           (sum, p) => sum + Number(p.sell_amount || p.amount || 0),
           0
         );
-        return <Text strong>${Number(amount || 0).toLocaleString()}</Text>;
+        return <Text strong style={{ whiteSpace: 'nowrap' }}>${Number(amount || 0).toLocaleString()}</Text>;
       },
     },
     ...(actions.showReturn || actions.showMemoToSale || actions.showMemoToPurchase || actions.showToConsign || actions.showToExport || actions.showToPurchase || actions.showToImport
       ? [{
         title: 'Operations',
         key: 'buttons',
-        width: 260,
+        width: actions.operationsWidth || (() => {
+          const count = [
+            actions.showReturn,
+            actions.showMemoToSale,
+            actions.showMemoToPurchase,
+            actions.showToConsign,
+            actions.showToExport,
+            actions.showToPurchase,
+            actions.showToImport,
+          ].filter(Boolean).length;
+          if (count <= 1) return 115;
+          if (count === 2) return 165;
+          return 230;
+        })(),
         align: 'center',
         render: (_, record) => {
-          const selectedCount = getSelected(record.id).length;
           const displayType = record.type || record.inward_type;
-          const needsSelectionDisabled = !selectedCount || actionLoading;
+          const groupProductCount = (record.products || []).length;
+          const isAlreadyReturned =
+            record.status === 'returned' ||
+            record.status === 'close_sale' ||
+            record.status === 'close_memo' ||
+            record.status === 'close_export';
+          const returnDisabled = actionLoading || groupProductCount === 0 || isAlreadyReturned;
 
           return (
             <div className={styles.actionButtons}>
               {actions.showReturn && (
                 <button
                   type="button"
-                  className={`${styles.actionBtn} ${styles.actionReturn} ${needsSelectionDisabled ? styles.actionDisabled : ''}`}
-                  onClick={() => { if (!needsSelectionDisabled) handleReturn(record); }}
+                  className={`${styles.actionBtn} ${styles.actionReturn} ${returnDisabled ? styles.actionDisabled : ''}`}
+                  disabled={returnDisabled}
+                  title={isAlreadyReturned ? 'Already returned' : ''}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!returnDisabled) handleReturn(record);
+                  }}
                 >
                   <RollbackOutlined />
-                  Return
+                  {actions.returnBtnText || 'Return'}
                 </button>
               )}
               {actions.showMemoToSale && (
                 <button
                   type="button"
-                  className={`${styles.actionBtn} ${styles.actionSale} ${needsSelectionDisabled ? styles.actionDisabled : ''}`}
-                  onClick={() => { if (!needsSelectionDisabled) handleMemoToSale(record); }}
+                  className={`${styles.actionBtn} ${styles.actionSale} ${returnDisabled ? styles.actionDisabled : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!returnDisabled) handleMemoToSale(record);
+                  }}
                 >
                   <DollarOutlined />
                   Sale
@@ -1139,8 +1459,11 @@ const TransactionStockTemplate = ({
               {actions.showMemoToPurchase && (
                 <button
                   type="button"
-                  className={`${styles.actionBtn} ${styles.actionPurchase} ${needsSelectionDisabled ? styles.actionDisabled : ''}`}
-                  onClick={() => { if (!needsSelectionDisabled) handleMemoToPurchase(record); }}
+                  className={`${styles.actionBtn} ${styles.actionPurchase} ${returnDisabled ? styles.actionDisabled : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!returnDisabled) handleMemoToPurchase(record);
+                  }}
                 >
                   <ShoppingCartOutlined />
                   Purchase
@@ -1150,17 +1473,23 @@ const TransactionStockTemplate = ({
                 <button
                   type="button"
                   className={`${styles.actionBtn} ${styles.actionConsign} ${actionLoading ? styles.actionDisabled : ''}`}
-                  onClick={() => { if (!actionLoading) handleToExport(record, 'consign'); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!actionLoading) handleToExport(record, 'consign');
+                  }}
                 >
                   <SwapOutlined />
-                  To Consign
+                  Consign
                 </button>
               )}
               {actions.showToExport && displayType === 'sale' && (
                 <button
                   type="button"
                   className={`${styles.actionBtn} ${styles.actionExport} ${actionLoading ? styles.actionDisabled : ''}`}
-                  onClick={() => { if (!actionLoading) handleToExport(record, 'export'); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!actionLoading) handleToExport(record, 'export');
+                  }}
                 >
                   <ExportOutlined />
                   To Export
@@ -1268,8 +1597,9 @@ const TransactionStockTemplate = ({
       <AdvancedFilterPanel
         title={`${title}`}
         // subtitle="Filter records by company and invoice number."
-        activeCount={[party, invoice, filterType, skuSearch, fromDate, toDate].filter(Boolean).length}
+        activeCount={[selectedCompany, party, invoice, filterType, skuSearch, fromDate, toDate].filter(Boolean).length}
         onClear={() => {
+          setSelectedCompany('');
           setParty('');
           setInvoice('');
           setFilterType('');
@@ -1278,7 +1608,7 @@ const TransactionStockTemplate = ({
           setToDate(null);
           resetList();
         }}
-        clearDisabled={!party && !invoice && !filterType && !skuSearch && !fromDate && !toDate}
+        clearDisabled={!selectedCompany && !party && !invoice && !filterType && !skuSearch && !fromDate && !toDate}
         showSearch={false}
         extraActions={
           <Space>
@@ -1295,7 +1625,7 @@ const TransactionStockTemplate = ({
             <Button
               type="primary"
               icon={<ReloadOutlined />}
-              loading={isFetching && (!infiniteScroll || offset === 0)}
+              loading={isRefreshing || (isFetching && (!infiniteScroll || offset === 0))}
               onClick={refreshList}
             >
               Refresh
@@ -1303,6 +1633,19 @@ const TransactionStockTemplate = ({
           </Space>
         }
       >
+        <FilterField>
+          <Select
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            placeholder="All Company"
+            className={filterPanelStyles.filterControl}
+            value={selectedCompany || undefined}
+            onChange={(v) => { setSelectedCompany(v || ''); resetList(); }}
+            options={branchCompanies}
+            style={{ minWidth: 150, borderRadius: 8 }}
+          />
+        </FilterField>
         {showSkuFilter && (
           <FilterField>
             <Input
@@ -1315,13 +1658,12 @@ const TransactionStockTemplate = ({
             />
           </FilterField>
         )}
-        {/* <FilterField label="Company" icon={<TeamOutlined />}> */}
         <FilterField>
           <Select
             allowClear
             showSearch
             optionFilterProp="label"
-            placeholder="All Company Name"
+            placeholder="All Party Name"
             className={filterPanelStyles.filterControl}
             value={party || undefined}
             onChange={(v) => { setParty(v || ''); resetList(); }}
@@ -1389,7 +1731,7 @@ const TransactionStockTemplate = ({
             columns={skeletonAwareColumns}
             dataSource={skeletonAwareGroups}
             rowKey={showSkeleton ? '_skeletonKey' : 'id'}
-            loading={tableLoading}
+            loading={tableLoading || isRefreshing}
             className={styles.tableWrapper}
             size="small"
             bordered
@@ -1404,6 +1746,7 @@ const TransactionStockTemplate = ({
                 />
               ),
             }}
+            onRow={showSkeleton ? undefined : getMainRowProps}
             expandable={showSkeleton ? undefined : {
               expandedRowRender: renderExpandedRow,
               expandedRowClassName: () => styles.expandedRow,
@@ -1486,12 +1829,27 @@ const TransactionStockTemplate = ({
       <MemoConvertModal
         open={memoConvertModal.open}
         mode={memoConvertModal.mode}
+        returnVariant={
+          actions.returnVariant ||
+          (actions.returnEndpoint?.includes('/inward-stock/return')
+            ? 'purchase'
+            : (stockType === 'sale' || stockType === 'inter_transfer' ? 'sale' : 'memo'))
+        }
         record={memoConvertModal.record}
         productIds={memoConvertModal.productIds}
         products={memoConvertModal.record?.products || []}
         loading={memoConvertLoading || actionLoading}
         onClose={closeMemoConvertModal}
         onConfirm={handleMemoConvertConfirm}
+      />
+
+      <ConvertToExportModal
+        open={toExportModal.open}
+        record={toExportModal.record}
+        convertType={toExportModal.convertType || 'export'}
+        loading={toExportLoading || actionLoading}
+        onClose={closeToExportModal}
+        onConfirm={handleToExportConfirm}
       />
 
       <TransactionInvoicePreviewModal
@@ -1510,8 +1868,8 @@ const TransactionStockTemplate = ({
 
       {actions.showEdit && (
         <BaseModal
-          title="Edit"
-          subtitle={editingRecord?.invoiceno || ''}
+          title={editModalTitle}
+          subtitle={editModalSubtitle}
           variant="edit"
           headerIcon={<Pencil size={16} strokeWidth={2} />}
           saveIcon={<CircleCheck size={15} strokeWidth={2.25} />}
@@ -1531,9 +1889,20 @@ const TransactionStockTemplate = ({
                 .edit-modal-form-readable .ant-picker-disabled input,
                 .edit-modal-form-readable .ant-picker-input > input[disabled],
                 .edit-modal-form-readable textarea.ant-input-disabled {
-                  color: #000 !important;
-                  -webkit-text-fill-color: #000 !important;
+                  color: var(--color-text, #0f172a) !important;
+                  -webkit-text-fill-color: var(--color-text, #0f172a) !important;
                   opacity: 1 !important;
+                }
+                [data-theme='dark'] .edit-modal-form-readable .ant-input-disabled,
+                [data-theme='dark'] .edit-modal-form-readable .ant-input[disabled],
+                [data-theme='dark'] .edit-modal-form-readable .ant-input-number-disabled .ant-input-number-input,
+                [data-theme='dark'] .edit-modal-form-readable .ant-input-number-disabled input,
+                [data-theme='dark'] .edit-modal-form-readable .ant-select-disabled .ant-select-selection-item,
+                [data-theme='dark'] .edit-modal-form-readable .ant-picker-disabled input,
+                [data-theme='dark'] .edit-modal-form-readable .ant-picker-input > input[disabled],
+                [data-theme='dark'] .edit-modal-form-readable textarea.ant-input-disabled {
+                  color: #e2e8f0 !important;
+                  -webkit-text-fill-color: #e2e8f0 !important;
                 }
               `}</style>
               <Form form={editForm} layout="vertical" className={`edit-modal-form-readable ${styles.stockEditForm}`}>
@@ -1572,36 +1941,7 @@ const TransactionStockTemplate = ({
                           </Form.Item>
                         </Col>
                       </Row>
-                    ) : (
-                      <Row gutter={[16, 0]} className={styles.stockEditPayRow}>
-                        <Col span={8}>
-                          <Form.Item name="due_amount" label="Due Amount">
-                            <InputNumber min={0} placeholder="0.00" style={{ width: '100%', height: 40 }} />
-                          </Form.Item>
-                        </Col>
-                        <Col span={16}>
-                          <Form.Item
-                            label={<span className={styles.stockEditBankLabel}>Bank</span>}
-                            colon={false}
-                          >
-                            <div className={styles.stockEditBankSlot}>
-                              <Form.Item name="boc" valuePropName="checked" noStyle>
-                                <Checkbox>BOC</Checkbox>
-                              </Form.Item>
-                              <Form.Item name="citi" valuePropName="checked" noStyle>
-                                <Checkbox>CITI</Checkbox>
-                              </Form.Item>
-                              <Form.Item name="dbs" valuePropName="checked" noStyle>
-                                <Checkbox>DBS</Checkbox>
-                              </Form.Item>
-                              <Form.Item name="sc" valuePropName="checked" noStyle>
-                                <Checkbox>SC</Checkbox>
-                              </Form.Item>
-                            </div>
-                          </Form.Item>
-                        </Col>
-                      </Row>
-                    )}
+                    ) : null}
                   </>
                 )}
                 <div className={styles.stockEditProductsHead}>
@@ -1627,7 +1967,7 @@ const TransactionStockTemplate = ({
                     rowKey={(r) => r.id ?? r._tempId}
                     pagination={false}
                     size="small"
-                    scroll={{ x: isVenyaSaleEditGrid ? 980 : 1900, y: 220 }}
+                    scroll={{ x: isVenyaSaleEditGrid ? 980 : 1900, y: 180 }}
                     locale={
                       allowAddProductInEdit
                         ? { emptyText: 'No products — click Add New Data' }
@@ -1635,7 +1975,7 @@ const TransactionStockTemplate = ({
                     }
                   />
                   {!isEditLoading && fetchedProducts.length > 0 ? (
-                    <div className={styles.stockEditTotalsBar}>
+                    <div className={`${styles.stockEditTotalsBar} ${styles.stockEditTotalsBarCompact}`}>
                       <div className={styles.stockEditTotalsMetrics}>
                         <span>Pcs : <b>{editProductTotals.pcs}</b></span>
                         <span>Carats : <b>{editProductTotals.carat.toFixed(3)}</b></span>
@@ -1643,8 +1983,13 @@ const TransactionStockTemplate = ({
                         <span>Amount : <b>{editProductTotals.amount.toFixed(2)}</b></span>
                       </div>
                       {!isVenyaSaleEdit ? (
-                        <Form.Item name="narretion" label="Narration" className={styles.stockEditTotalsNarration}>
-                          <Input placeholder="Narration..." />
+                        <Form.Item
+                          name="narretion"
+                          label="Narration"
+                          colon={false}
+                          className={styles.stockEditTotalsNarration}
+                        >
+                          <Input placeholder="Enter Narration" allowClear />
                         </Form.Item>
                       ) : null}
                     </div>

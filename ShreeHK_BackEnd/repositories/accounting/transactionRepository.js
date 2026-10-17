@@ -20,17 +20,26 @@ function queryAsync(sql, values = []) {
  */
 async function getTransactionsFromDb(filters = {}, companyId) {
   let sql = `SELECT t.id, t.date, t.cheque, t.description, t.party, t.type, t.amount, t.book, t.other_party,
+    t.sale_id, t.purchase_id, t.under_subgroup,
     p1.name AS party_name,
-    p2.name AS other_party_name
+    p2.name AS other_party_name,
+    sg.name AS account_name,
+    COALESCE(NULLIF(TRIM(bk.book), ''), t.book) AS book_name
     FROM acc_transaction t
     LEFT JOIN dai_party p1 ON (t.party = CAST(p1.id AS CHAR) OR t.party = p1.name) AND p1.company = ?
     LEFT JOIN dai_party p2 ON (t.other_party = CAST(p2.id AS CHAR) OR t.other_party = p2.name) AND p2.company = ?
+    LEFT JOIN acc_subgroup sg ON t.under_subgroup = sg.id AND (sg.company = ? OR sg.company IS NULL)
+    LEFT JOIN dai_book bk ON (
+      t.book = CAST(bk.id AS CHAR)
+      OR t.book = bk.book
+      OR (t.book REGEXP '^[0-9]+$' AND bk.id = CAST(t.book AS UNSIGNED))
+    ) AND (bk.company = ? OR bk.company IS NULL)
     WHERE (t.deleted = 0 OR t.deleted IS NULL) AND t.company = ?`;
-  const values = [companyId, companyId, companyId];
+  const values = [companyId, companyId, companyId, companyId, companyId];
 
   if (filters.book) {
-    sql += " AND t.book = ?";
-    values.push(filters.book);
+    sql += " AND (t.book = ? OR bk.book = ? OR CAST(bk.id AS CHAR) = ?)";
+    values.push(filters.book, filters.book, filters.book);
   }
   if (filters.party || filters.partyId) {
     const partyVal = filters.party || filters.partyId;

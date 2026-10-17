@@ -34,13 +34,8 @@ const Integrations = React.lazy(() => import("../pages/master/Integrations"));
 
 // --- 3. INVENTORY DROPDOWN PAGE ---
 const DiamondInventoryTable = React.lazy(() => import("../pages/inventory/DiamondInventoryTable"));
-const SingleToBox = React.lazy(() => import("../pages/inventory/SingleToBox"));
-const SingleToParcel = React.lazy(() => import("../pages/inventory/SingleToParcel"));
 const OnHandStock = React.lazy(() => import("../pages/inventory/OnHandStock"));
 const Barcode = React.lazy(() => import("../pages/inventory/Barcode"));
-const Box = React.lazy(() => import("../pages/inventory/Box"));
-const Parcel = React.lazy(() => import("../pages/inventory/Parcel"));
-const Pair = React.lazy(() => import("../pages/inventory/Pair"));
 const CycleCount = React.lazy(() => import("../pages/inventory/CycleCount"));
 const Categories = React.lazy(() => import("../pages/inventory/Category"));
 
@@ -62,6 +57,11 @@ const SaleEntry = React.lazy(() => import("../pages/transaction/stock/SaleEntry"
 const GIAEntry = React.lazy(() => import("../pages/transaction/stock/GIAEntry"));
 const ExportEntry = React.lazy(() => import("../pages/transaction/stock/ExportEntry"));
 const ConsignEntry = React.lazy(() => import("../pages/transaction/stock/ConsignEntry"));
+const CompanyTransferList = React.lazy(() => import("../pages/transaction/CompanyTransferList"));
+const InterTransferPurchaseStock = React.lazy(() => import("../pages/interTransfer/InterTransferPurchaseStock"));
+const InterTransferSaleStock = React.lazy(() => import("../pages/interTransfer/InterTransferSaleStock"));
+const InterTransferInMemoStock = React.lazy(() => import("../pages/interTransfer/InterTransferInMemoStock"));
+const InterTransferOutMemoStock = React.lazy(() => import("../pages/interTransfer/InterTransferOutMemoStock"));
 
 // --- 5. ACCOUNTING DROPDOWN PAGE ---
 const Expanse = React.lazy(() => import("../pages/accounting/Expanse"));
@@ -93,6 +93,7 @@ const FiscalYearAdmin = React.lazy(() => import("../pages/admin/FiscalYearAdmin"
 const ActivityHistory = React.lazy(() => import("../pages/admin/ActivityHistory"));
 const LegacyAppsScope = React.lazy(() => import("../pages/admin/LegacyAppsScope"));
 const TenantCompanyList = React.lazy(() => import("../pages/admin/TenantCompanyList"));
+const BranchList = React.lazy(() => import("../pages/admin/BranchList"));
 
 // --- 8. OUTWARD DROPDOWN PAGE ---
 const Outward = React.lazy(() => import("../pages/outword/OutWord"));
@@ -123,7 +124,7 @@ export const allProtectedRoutes = [
     path: "/master",
     icon: "Settings",
     children: [
-      { path: "/master/company-details", name: "Company", element: <Company />, permissionKey: "master.company" },
+      { path: "/master/company-details", name: "Party", element: <Company />, permissionKey: "master.company" },
       { path: "/master/shipping-details", name: "Shipping", element: <Shipping />, permissionKey: "master.shipping" },
       { path: "/master/origin", name: "Origin", element: <Origin />, permissionKey: "master.origin" },
       { path: "/master/lab", name: "Lab", element: <Lab />, permissionKey: "master.lab" },
@@ -139,24 +140,13 @@ export const allProtectedRoutes = [
   {
     name: "Inventory",
     path: "/inventory",
-    icon: "Package",
+    icon: "Boxes",
     children: [
       { path: "/inventory/my-inventory", name: "My Inventory", element: <DiamondInventoryTable />, permissionKey: "inventory.my_inventory" },
       { path: "/inventory/categorize-inventory", name: "Categorize", element: <Categories />, permissionKey: "inventory.categorize" },
-      {
-        name: "Single/Two",
-        path: "/inventory/singal-two",
-        children: [
-          { path: "/inventory/box", name: "Box To", element: <SingleToBox />, permissionKey: "inventory.single_to_box" },
-          { path: "/inventory/parcel", name: "Parcel To", element: <SingleToParcel />, permissionKey: "inventory.single_to_parcel" }
-        ]
-      },
       { path: "/inventory/on-hand-stock", name: "On Hand Stock", element: <OnHandStock />, permissionKey: "inventory.on_hand_stock" },
       { path: "/inventory/barcode", name: "Barcode", element: <Barcode />, permissionKey: "inventory.barcode" },
       { path: "/inventory/cycle-count", name: "Cycle Count", element: <CycleCount />, permissionKey: "inventory.on_hand_stock" },
-      { path: "/inventory/box-to", name: "Box", element: <Box />, permissionKey: "inventory.box" },
-      { path: "/inventory/parcel-to", name: "Parcel", element: <Parcel />, permissionKey: "inventory.parcel" },
-      { path: "/inventory/pair", name: "Pair", element: <Pair />, permissionKey: "inventory.pair" },
     ]
   },
   {
@@ -247,6 +237,12 @@ export const allProtectedRoutes = [
         permissionKey: "transaction.purchase_stock",
         hideFromNav: true
       },
+      {
+        path: "/transaction/company-transfer",
+        element: <CompanyTransferList />,
+        permissionKey: "transaction.company_transfer",
+        hideFromNav: true
+      },
     ]
   },
   {
@@ -318,6 +314,7 @@ export const allProtectedRoutes = [
     path: "/admin",
     icon: "User",
     children: [
+      { path: "/admin/branch", name: "Branch", element: <BranchList />, requiredRole: ROLE_ACCESS.SUPER_ADMIN, permissionKey: "admin.branch" },
       { path: "/admin/tenant-company", name: "Company", element: <TenantCompanyList />, requiredRole: ROLE_ACCESS.SUPER_ADMIN, permissionKey: "admin.tenant_company" },
       { path: "/admin/manage-user", name: "Manage User", element: <ManageUser />, requiredRole: ROLE_ACCESS.SUPER_ADMIN, permissionKey: "admin.manage_user" },
       { path: "/admin/roll", name: "Roll", element: <AdvancedRollPage />, requiredRole: ROLE_ACCESS.SUPER_ADMIN, permissionKey: "admin.role" },
@@ -327,6 +324,43 @@ export const allProtectedRoutes = [
     ]
   },
   { path: "/outward", name: "Outward", icon: "ExternalLink", element: <Outward />, permissionKey: "outward.main" },
+  {
+    name: "Inter Transfer",
+    path: "/inter-transfer",
+    icon: "ArrowLeftRight",
+    children: [
+      {
+        path: "/inter-transfer/purchase",
+        name: "Purchase",
+        element: <InterTransferPurchaseStock />,
+        permissionKey: "transaction.company_transfer"
+      },
+      {
+        path: "/inter-transfer/sale",
+        name: "Sale",
+        element: <InterTransferSaleStock />,
+        permissionKey: "transaction.company_transfer"
+      },
+      {
+        path: "/inter-transfer/in-memo",
+        name: "In Memo",
+        element: <InterTransferInMemoStock />,
+        permissionKey: "transaction.company_transfer"
+      },
+      {
+        path: "/inter-transfer/out-memo",
+        name: "Out Memo",
+        element: <InterTransferOutMemoStock />,
+        permissionKey: "transaction.company_transfer"
+      },
+      {
+        path: "/inter-transfer/company-transfer",
+        name: "Transfer History",
+        element: <CompanyTransferList />,
+        permissionKey: "transaction.company_transfer"
+      },
+    ]
+  },
   { path: "/task-manager", name: "Task Manager", icon: "NotebookPen", element: <TaskManager />, permissionKey: "core.task_manager" },
   { path: "/my-account", name: "My Account", element: <MyAccount />, alwaysAllow: true, hideFromNav: true },
   { path: "/settings", name: "Settings", element: <Setting />, alwaysAllow: true, hideFromNav: true },

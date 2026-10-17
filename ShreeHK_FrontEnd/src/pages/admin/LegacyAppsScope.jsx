@@ -44,8 +44,8 @@ const LegacyAppsScope = () => {
   ];
 
   return (
-    <div style={{ padding: 24 }}>
-      <Space style={{ width: "100%", justifyContent: "space-between", marginBottom: 8 }} wrap>
+    <div className="page-shell" style={{ gap: 10 }}>
+      <Space style={{ width: "100%", justifyContent: "space-between", marginBottom: 0 }} wrap>
         <Title level={3} style={{ margin: 0 }}>Legacy Apps — Migration Scope</Title>
         <Button icon={<ReloadOutlined />} onClick={loadLegacyApps} loading={loading}>
           Refresh

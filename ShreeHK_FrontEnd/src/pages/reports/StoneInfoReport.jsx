@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
 import dayjs from 'dayjs';
-import { Card, Form, Input, Tag, Typography, Button, Tabs, Badge, Space, Switch, Row, Col, Divider, Tooltip } from 'antd';
+import { Card, Form, Input, Tag, Typography, Button, Tabs, Space } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
-import { Gem, FileText, MapPin, Calendar, DollarSign, Layers, Activity, Sparkles, AlertCircle, CheckCircle } from 'lucide-react';
+import { Layers, Activity, RefreshCw } from 'lucide-react';
 import { api } from '../../api/client/axiosInstance';
 import { ENDPOINTS } from '../../api/endpoints';
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
-import styles from '../../assets/scss/pages/report/stoneHistory.module.scss';
+import styles from '../../assets/scss/pages/report/stoneInfo.module.scss';
 import { toastApiError } from '../../utils/toastNotify';
 import { toastSuccess, toastWarning } from '../../utils/toastNotify';
 import { SkeletonDetail, SkeletonAwareTable } from '../../components/common/skeleton';
 import ExportExcelButton from '../../components/common/ExportExcelButton';
 import { exportReportToExcel } from '../../utils/reportExcelExport';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
+
+const formatActionLabel = (text) => String(text || '').replace(/_/g, ' ').toUpperCase().trim();
 
 const historyColumns = [
     { title: 'Sr.', key: 'srNo', width: 50, align: 'center', render: (_, __, index) => index + 1 },
@@ -28,8 +30,12 @@ const historyColumns = [
             if (act.includes('memo')) color = 'orange';
             else if (act.includes('sale')) color = 'green';
             else if (act.includes('export')) color = 'blue';
-            else if (act.includes('consign')) color = 'purple';
-            return <Tag color={color} style={{ fontWeight: 600 }}>{(text || '').toUpperCase()}</Tag>;
+            else if (act.includes('consign')) color = 'magenta';
+            else if (act.includes('purchase')) color = 'purple';
+            else if (act.includes('import') || act.includes('inward')) color = 'cyan';
+            else if (act.includes('transfer')) color = 'geekblue';
+            else if (act.includes('lab')) color = 'blue';
+            return <Tag color={color} style={{ fontWeight: 600 }}>{formatActionLabel(text)}</Tag>;
         }
     },
     { title: 'Date', dataIndex: 'date', key: 'date', width: 110, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
@@ -37,8 +43,22 @@ const historyColumns = [
     { title: 'Description', dataIndex: 'description', key: 'description', ellipsis: true },
     { title: 'Pcs', dataIndex: 'pcs', key: 'pcs', width: 70, align: 'right' },
     { title: 'Carat', dataIndex: 'carat', key: 'carat', width: 80, align: 'right' },
-    { title: 'Price / Rate', dataIndex: 'price', key: 'price', width: 110, align: 'right', render: (v) => (v != null ? `$${Number(v).toLocaleString()}` : '-') },
-    { title: 'Amount', dataIndex: 'amount', key: 'amount', width: 120, align: 'right', render: (v) => (v != null ? `$${Number(v).toLocaleString()}` : '-') },
+    {
+        title: 'Price / Rate',
+        dataIndex: 'price',
+        key: 'price',
+        width: 110,
+        align: 'right',
+        render: (v) => (v != null ? <span style={{ color: 'var(--color-success-dark)' }}>${Number(v).toLocaleString()}</span> : '-'),
+    },
+    {
+        title: 'Amount',
+        dataIndex: 'amount',
+        key: 'amount',
+        width: 120,
+        align: 'right',
+        render: (v) => (v != null ? <span style={{ color: 'var(--color-primary-dark)' }}>${Number(v).toLocaleString()}</span> : '-'),
+    },
 ];
 
 const generalColumns = [
@@ -48,7 +68,7 @@ const generalColumns = [
         dataIndex: 'action',
         key: 'action',
         width: 120,
-        render: (text) => <Tag color="cyan" style={{ fontWeight: 600 }}>{(text || '').toUpperCase()}</Tag>
+        render: (text) => <Tag color="cyan" style={{ fontWeight: 600 }}>{formatActionLabel(text)}</Tag>
     },
     { title: 'Date', dataIndex: 'date', key: 'date', width: 110, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
     { title: 'Invoice', dataIndex: 'invoice', key: 'invoice', width: 110 },
@@ -56,8 +76,22 @@ const generalColumns = [
     { title: 'Description', dataIndex: 'description', key: 'description', ellipsis: true },
     { title: 'Pcs', dataIndex: 'pcs', key: 'pcs', width: 70, align: 'right' },
     { title: 'Carat', dataIndex: 'carat', key: 'carat', width: 80, align: 'right' },
-    { title: 'Price', dataIndex: 'price', key: 'price', width: 100, align: 'right', render: (v) => (v != null ? `$${Number(v).toLocaleString()}` : '-') },
-    { title: 'Amount', dataIndex: 'amount', key: 'amount', width: 110, align: 'right', render: (v) => (v != null ? `$${Number(v).toLocaleString()}` : '-') },
+    {
+        title: 'Price',
+        dataIndex: 'price',
+        key: 'price',
+        width: 100,
+        align: 'right',
+        render: (v) => (v != null ? <span style={{ color: 'var(--color-success-dark)' }}>${Number(v).toLocaleString()}</span> : '-'),
+    },
+    {
+        title: 'Amount',
+        dataIndex: 'amount',
+        key: 'amount',
+        width: 110,
+        align: 'right',
+        render: (v) => (v != null ? <span style={{ color: 'var(--color-primary-dark)' }}>${Number(v).toLocaleString()}</span> : '-'),
+    },
 ];
 
 const StoneInfoReport = () => {
@@ -171,6 +205,10 @@ const StoneInfoReport = () => {
         return styles.status_available;
     };
 
+    const activePartyBlocks = (byParty || []).filter(
+        (block) => (block.memoHistory?.length > 0) || (block.saleHistory?.length > 0)
+    );
+
     return (
         <div className={styles.pageContainer}>
             <AdvancedFilterPanel
@@ -214,7 +252,7 @@ const StoneInfoReport = () => {
             </AdvancedFilterPanel>
 
             {loading && !detail && (
-                <Card className={styles.detailsCard}>
+                <Card className={styles.loadingCard}>
                     <div style={{ padding: 8 }}>
                         <SkeletonDetail fields={6} />
                         <div style={{ marginTop: 16 }}>
@@ -233,271 +271,342 @@ const StoneInfoReport = () => {
             )}
 
             {detail && (
-                <Card className={styles.detailsCard}>
-                    <div className={styles.extraWrap}>
-                        {/* Side Status & Flag Badges */}
-                        <div className={styles.extraSide}>
-                            <div className={`${styles.statusBadge} ${getStatusClass(status)}`}>
-                                <Gem size={16} />
-                                <span>{(status || 'AVAILABLE').toUpperCase()}</span>
+                <Card className={styles.dossier}>
+                    <div className={styles.attrGrid}>
+                        <div className={styles.attrCol}>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Status</span>
+                                <span className={styles.attrValue}>
+                                    <span className={`${styles.statusBadge} ${getStatusClass(status)}`}>
+                                        {String(status || 'Available')
+                                          .toLowerCase()
+                                          .replace(/\b\w/g, (c) => c.toUpperCase())}
+                                    </span>
+                                </span>
                             </div>
-
-                            {detail.pair && (
-                                <button className={styles.pairBtn} onClick={() => { form.setFieldsValue({ searchSku: detail.pair }); handleSearch(); }}>
-                                    <Sparkles size={14} />
-                                    <span>Pair: {detail.pair}</span>
-                                </button>
-                            )}
-
-                            {detail.hold > 0 && (
-                                <div className={styles.holdAlert}>
-                                    <div className={styles.holdAlertTitle}>
-                                        <AlertCircle size={14} />
-                                        <span>On Hold ({detail.hold})</span>
-                                    </div>
-                                    <p>Stone is currently held.</p>
-                                </div>
-                            )}
-
-                            <div className={styles.flagRow} style={{ gridTemplateColumns: '1fr' }}>
-                                <div className={`${styles.flagTile} ${detail.site_upload ? styles.flagTileOn : ''}`}>
-                                    <span>Site Upload</span>
-                                    <CheckCircle size={14} color={detail.site_upload ? 'var(--color-primary)' : '#8c8c8c'} />
-                                </div>
-                                <div className={`${styles.flagTile} ${detail.rapnet_upload ? styles.flagTileOn : ''}`}>
-                                    <span>Rapnet Upload</span>
-                                    <CheckCircle size={14} color={detail.rapnet_upload ? 'var(--color-primary)' : '#8c8c8c'} />
-                                </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Lab</span>
+                                <span className={styles.attrValue}>{(detail.lab || '').toString().toUpperCase() || '-'}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Pcs</span>
+                                <span className={styles.attrValue}>{detail.polish_pcs ?? 0}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Argyle Color</span>
+                                <span className={styles.attrValue}>{detail.argyle_color || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Rap</span>
+                                <span className={`${styles.attrValue} ${styles.attrValueRap}`}>
+                                    {Number(detail.rap_price || 0).toFixed(2)}
+                                </span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Amount</span>
+                                <span className={`${styles.attrValue} ${styles.attrValueAmount}`}>
+                                    {Number(detail.amount || 0).toFixed(2)}
+                                </span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Cut</span>
+                                <span className={styles.attrValue}>{detail.cut || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Table</span>
+                                <span className={styles.attrValue}>{detail.table_pc || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Girdle</span>
+                                <span className={styles.attrValue}>{detail.gridle || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Intensity</span>
+                                <span className={styles.attrValue}>{detail.intensity || ''}</span>
                             </div>
                         </div>
 
-                        {/* Main Specs & Metrics */}
-                        <div className={styles.extraMain}>
-                            <div className={styles.labLine}>
-                                <div className={styles.labBadge}>
-                                    <FileText size={14} />
-                                    <span>Lab: {detail.lab || 'NONE'}</span>
-                                </div>
-                                {detail.report_no && (
-                                    <span className={styles.labCert}>
-                                        Report #: {detail.report_no}
+                        <div className={styles.attrCol}>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>SKU</span>
+                                <span className={styles.attrValue}>
+                                    <span className={styles.skuBadge}>{detail.sku || '-'}</span>
+                                </span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Certificate</span>
+                                <span className={styles.attrValue}>{detail.report_no || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Carat</span>
+                                <span className={styles.attrValue}>{detail.polish_carat ?? 0}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>In House Cla</span>
+                                <span className={styles.attrValue}>{detail.in_house_clarity || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Cost</span>
+                                <span className={`${styles.attrValue} ${styles.attrValueCost}`}>
+                                    {Number(detail.cost || 0).toFixed(2)}
+                                </span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Size</span>
+                                <span className={styles.attrValue}>{detail.size || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Polish</span>
+                                <span className={styles.attrValue}>{detail.polish || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Depth</span>
+                                <span className={styles.attrValue}>{detail.depth_pc || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Mining</span>
+                                <span className={styles.attrValue}>{detail.mining || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Overtone</span>
+                                <span className={styles.attrValue}>{detail.overtone || ''}</span>
+                            </div>
+                        </div>
+
+                        <div className={styles.attrCol}>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Type</span>
+                                <span className={styles.attrValue}>{detail.group_type || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Shape</span>
+                                <span className={styles.attrValue}>{detail.shape || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Full Color</span>
+                                <span className={styles.attrValue}>{detail.main_color || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Clarity</span>
+                                <span className={styles.attrValue}>{detail.clarity || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Price</span>
+                                <span className={`${styles.attrValue} ${styles.attrValueGreen}`}>
+                                    {Number(detail.price || 0).toFixed(2)}
+                                </span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Fluorescence</span>
+                                <span className={styles.attrValue}>{detail.f_intensity || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Symm</span>
+                                <span className={styles.attrValue}>{detail.symmentry || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Measurement</span>
+                                <span className={styles.attrValue}>{detail.mesurment || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Origin</span>
+                                <span className={styles.attrValue}>{detail.origin || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Color</span>
+                                <span className={styles.attrValue}>{detail.color || ''}</span>
+                            </div>
+                        </div>
+
+                        <div className={styles.attrCol}>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>LOC</span>
+                                <span className={styles.attrValue}>{detail.location || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Eye Clean</span>
+                                <span className={styles.attrValue}>{detail.eyeclean || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Remark</span>
+                                <span className={styles.attrValue}>{detail.remark || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Package</span>
+                                <span className={styles.attrValue}>{detail.package || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Group</span>
+                                <span className={styles.attrValue}>{detail.main_group || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>BGM</span>
+                                <span className={styles.attrValue}>{detail.bgm || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Sub Group</span>
+                                <span className={styles.attrValue}>{detail.sub_group || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Site Upload</span>
+                                <span className={styles.attrValue}>
+                                    <span className={`${styles.uploadValueBadge} ${detail.site_upload ? styles.uploadValueOn : styles.uploadValueOff}`}>
+                                        {detail.site_upload ? 'Yes' : 'No'}
                                     </span>
-                                )}
-                                <Tag color="blue" style={{ fontWeight: 600 }}>
-                                    SKU: {detail.sku}
-                                </Tag>
-                                {detail.location && (
-                                    <Tag icon={<MapPin size={12} />} color="geekblue">
-                                        <span style={{  marginLeft: "5px" }}>{detail.location}</span>
-                                    </Tag>
-                                )}
-                                {detail.group_type && (
-                                    <Tag color="purple">Type: {detail.group_type}</Tag>
-                                )}
+                                </span>
                             </div>
-
-                            <div className={styles.metricRow}>
-                                {/* Current Stock Metrics */}
-                                <div className={`${styles.metricGroup} ${styles.metricGroupCurrent}`}>
-                                    <div className={styles.metricGroupTitle}>Current Stock Metrics</div>
-                                    <div className={styles.metricGrid}>
-                                        <div className={styles.metric}>
-                                            <span className={styles.metricValue}>{detail.polish_pcs ?? 0}</span>
-                                            <span className={styles.metricLabel}>Pcs</span>
-                                        </div>
-                                        <div className={styles.metric}>
-                                            <span className={styles.metricValue}>{detail.polish_carat ?? 0}</span>
-                                            <span className={styles.metricLabel}>Carat</span>
-                                        </div>
-                                        <div className={styles.metric}>
-                                            <span className={styles.metricValue}>${Number(detail.price || 0).toLocaleString()}</span>
-                                            <span className={styles.metricLabel}>Price / Crt</span>
-                                        </div>
-                                        <div className={styles.metric}>
-                                            <span className={styles.metricValue}>${Number(detail.amount || 0).toLocaleString()}</span>
-                                            <span className={styles.metricLabel}>Total Amount</span>
-                                        </div>
-                                        <div className={styles.metric}>
-                                            <span className={styles.metricValue}>${Number(detail.cost || 0).toLocaleString()}</span>
-                                            <span className={styles.metricLabel}>Cost</span>
-                                        </div>
-                                        <div className={styles.metric}>
-                                            <span className={styles.metricValue}>{detail.location || 'HK'}</span>
-                                            <span className={styles.metricLabel}>Location</span>
-                                        </div>
-                                    </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Rapnet Upload</span>
+                                <span className={styles.attrValue}>
+                                    <span className={`${styles.uploadValueBadge} ${detail.rapnet_upload ? styles.uploadValueOn : styles.uploadValueOff}`}>
+                                        {detail.rapnet_upload ? 'Yes' : 'No'}
+                                    </span>
+                                </span>
+                            </div>
+                            {detail.pair ? (
+                                <div className={styles.attrRow}>
+                                    <span className={styles.attrLabel}>Pair</span>
+                                    <span className={styles.attrValue}>
+                                        <button
+                                            type="button"
+                                            className={styles.pairLink}
+                                            onClick={() => {
+                                                form.setFieldsValue({ searchSku: detail.pair });
+                                                handleSearch();
+                                            }}
+                                        >
+                                            {detail.pair}
+                                        </button>
+                                    </span>
                                 </div>
-
-                                {/* Purchase Metrics */}
-                                <div className={`${styles.metricGroup} ${styles.metricGroupPurchase}`}>
-                                    <div className={styles.metricGroupTitle}>Purchase Metrics</div>
-                                    <div className={styles.metricGrid}>
-                                        <div className={styles.metric}>
-                                            <span className={styles.metricValue}>{detail.purchase_pcs ?? 0}</span>
-                                            <span className={styles.metricLabel}>P. Pcs</span>
-                                        </div>
-                                        <div className={styles.metric}>
-                                            <span className={styles.metricValue}>{detail.purchase_carat ?? 0}</span>
-                                            <span className={styles.metricLabel}>P. Carat</span>
-                                        </div>
-                                        <div className={styles.metric}>
-                                            <span className={styles.metricValue}>${Number(detail.purchase_price || 0).toLocaleString()}</span>
-                                            <span className={styles.metricLabel}>P. Rate</span>
-                                        </div>
-                                        <div className={styles.metric} style={{ gridColumn: 'span 3' }}>
-                                            <span className={styles.metricValue}>${Number(detail.purchase_amount || 0).toLocaleString()}</span>
-                                            <span className={styles.metricLabel}>Purchase Amount</span>
-                                        </div>
-                                    </div>
+                            ) : null}
+                            {detail.hold > 0 ? (
+                                <div className={styles.attrRow}>
+                                    <span className={styles.attrLabel}>Hold</span>
+                                    <span className={styles.attrValue}>Yes ({detail.hold})</span>
                                 </div>
-                            </div>
-
-                            {/* Additional Attributes Highlights */}
-                            <div className={styles.shapeLine}>
-                                <span><b>Shape:</b> {detail.shape || '-'}</span>
-                                <Divider type="vertical" />
-                                <span><b>Color:</b> {detail.main_color || '-'}</span>
-                                <Divider type="vertical" />
-                                <span><b>Measurement:</b> {detail.mesurment || '-'}</span>
-                                {detail.last_updated_display && (
-                                    <>
-                                        <Divider type="vertical" />
-                                        <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                                            Updated: {detail.last_updated_display}
-                                        </span>
-                                    </>
-                                )}
-                            </div>
+                            ) : null}
                         </div>
                     </div>
 
-                    <Divider className={styles.formDivider} style={{ margin: '16px 0 8px' }} />
+                    <div className={styles.historySection}>
+                        <Tabs
+                            className={styles.detailTabs}
+                            defaultActiveKey={activePartyBlocks.length > 0 ? 'partyHistory' : 'allHistory'}
+                            items={[
+                                {
+                                    key: 'partyHistory',
+                                    label: (
+                                        <span className={styles.tabLabel}>
+                                            <Layers size={15} />
+                                            Party-Wise History ({activePartyBlocks.length})
+                                        </span>
+                                    ),
+                                    children: (
+                                        <div className={styles.historyTabContent}>
+                                            {activePartyBlocks.length === 0 ? (
+                                                <div className={styles.emptyHistory}>
+                                                    No party-wise memo or sale history records found for this stone.
+                                                </div>
+                                            ) : (
+                                                activePartyBlocks.map((block) => {
+                                                    const hasMemo = block.memoHistory && block.memoHistory.length > 0;
+                                                    const hasSale = block.saleHistory && block.saleHistory.length > 0;
 
-                    {/* Transaction & Party History Tabs */}
-                    {(() => {
-                        const activePartyBlocks = (byParty || []).filter(
-                            (block) => (block.memoHistory?.length > 0) || (block.saleHistory?.length > 0)
-                        );
-
-                        return (
-                            <Tabs
-                                className={styles.detailTabs}
-                                defaultActiveKey={activePartyBlocks.length > 0 ? "partyHistory" : "allHistory"}
-                                items={[
-                                    {
-                                        key: 'partyHistory',
-                                        label: (
-                                            <span className={styles.tabLabel}>
-                                                <Layers size={15} />
-                                                Party-Wise History ({activePartyBlocks.length})
-                                            </span>
-                                        ),
-                                        children: (
-                                            <div className={styles.historyTabContent}>
-                                                {activePartyBlocks.length === 0 ? (
-                                                    <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--color-text-muted)' }}>
-                                                        No party-wise memo or sale history records found for this stone.
-                                                    </div>
-                                                ) : (
-                                                    activePartyBlocks.map((block) => {
-                                                        const hasMemo = block.memoHistory && block.memoHistory.length > 0;
-                                                        const hasSale = block.saleHistory && block.saleHistory.length > 0;
-
-                                                        return (
-                                                            <div key={block.party_id} className={styles.oldHistoryBlock}>
-                                                                <div className={styles.tabSectionTitle}>
-                                                                    <Activity size={16} />
-                                                                    <span>Party: {block.party_name || `Party ID: ${block.party_id}`}</span>
-                                                                </div>
-
-                                                                {hasMemo && (
-                                                                    <div style={{ marginBottom: 12 }}>
-                                                                        <Text strong style={{ color: 'var(--color-warning)', fontSize: 12, marginBottom: 6, display: 'inline-block' }}>
-                                                                            Memo / Consign History
-                                                                        </Text>
-                                                                        <SkeletonAwareTable
-                                                                            size="small"
-                                                                            columns={historyColumns}
-                                                                            dataSource={block.memoHistory.map((r, i) => ({ ...r, key: `memo-${i}` }))}
-                                                                            loading={loading}
-                                                                            pagination={false}
-                                                                            bordered
-                                                                            rowKey="key"
-                                                                        />
-                                                                    </div>
-                                                                )}
-
-                                                                {hasSale && (
-                                                                    <div>
-                                                                        <Text strong style={{ color: 'var(--color-success)', fontSize: 12, marginBottom: 6, display: 'inline-block' }}>
-                                                                            Sale / Export History
-                                                                        </Text>
-                                                                        <SkeletonAwareTable
-                                                                            size="small"
-                                                                            columns={historyColumns}
-                                                                            dataSource={block.saleHistory.map((r, i) => ({ ...r, key: `sale-${i}` }))}
-                                                                            loading={loading}
-                                                                            pagination={false}
-                                                                            bordered
-                                                                            rowKey="key"
-                                                                        />
-                                                                    </div>
-                                                                )}
+                                                    return (
+                                                        <div key={block.party_id} className={styles.partyBlock}>
+                                                            <div className={styles.partyBlockTitle}>
+                                                                <Activity size={16} />
+                                                                <span>Party: {block.party_name || `Party ID: ${block.party_id}`}</span>
                                                             </div>
-                                                        );
-                                                    })
-                                                )}
-                                            </div>
-                                        )
-                                    },
-                                    {
-                                        key: 'allHistory',
-                                        label: (
-                                            <span className={styles.tabLabel}>
-                                                <Activity size={15} />
-                                                All History ({history.length})
-                                            </span>
-                                        ),
-                                        children: (
-                                            <div className={styles.historyTabContent}>
-                                                <SkeletonAwareTable
-                                                    size="small"
-                                                    columns={generalColumns}
-                                                    dataSource={history.map((r, i) => ({ ...r, key: `his-${i}` }))}
-                                                    loading={loading}
-                                                    pagination={false}
-                                                    bordered
-                                                    rowKey="key"
-                                                />
-                                            </div>
-                                        )
-                                    },
-                                    ...(transfer.length > 0 ? [{
-                                        key: 'transferHistory',
-                                        label: (
-                                            <span className={styles.tabLabel}>
-                                                <RefreshCw size={15} />
-                                                Transfer History ({transfer.length})
-                                            </span>
-                                        ),
-                                        children: (
-                                            <div className={styles.historyTabContent}>
-                                                <SkeletonAwareTable
-                                                    size="small"
-                                                    columns={generalColumns}
-                                                    dataSource={transfer.map((r, i) => ({ ...r, key: `trf-${i}` }))}
-                                                    loading={loading}
-                                                    pagination={false}
-                                                    bordered
-                                                    rowKey="key"
-                                                />
-                                            </div>
-                                        )
-                                    }] : [])
-                                ]}
-                            />
-                        );
-                    })()}
+
+                                                            {hasMemo ? (
+                                                                <div style={{ marginBottom: 12 }}>
+                                                                    <span className={`${styles.historySubTitle} ${styles.historySubTitleMemo}`}>
+                                                                        Memo / Consign History
+                                                                    </span>
+                                                                    <SkeletonAwareTable
+                                                                        size="small"
+                                                                        columns={historyColumns}
+                                                                        dataSource={block.memoHistory.map((r, i) => ({ ...r, key: `memo-${i}` }))}
+                                                                        loading={loading}
+                                                                        pagination={false}
+                                                                        bordered
+                                                                        rowKey="key"
+                                                                    />
+                                                                </div>
+                                                            ) : null}
+
+                                                            {hasSale ? (
+                                                                <div>
+                                                                    <span className={`${styles.historySubTitle} ${styles.historySubTitleSale}`}>
+                                                                        Sale / Export History
+                                                                    </span>
+                                                                    <SkeletonAwareTable
+                                                                        size="small"
+                                                                        columns={historyColumns}
+                                                                        dataSource={block.saleHistory.map((r, i) => ({ ...r, key: `sale-${i}` }))}
+                                                                        loading={loading}
+                                                                        pagination={false}
+                                                                        bordered
+                                                                        rowKey="key"
+                                                                    />
+                                                                </div>
+                                                            ) : null}
+                                                        </div>
+                                                    );
+                                                })
+                                            )}
+                                        </div>
+                                    ),
+                                },
+                                {
+                                    key: 'allHistory',
+                                    label: (
+                                        <span className={styles.tabLabel}>
+                                            <Activity size={15} />
+                                            All History ({history.length})
+                                        </span>
+                                    ),
+                                    children: (
+                                        <div className={styles.historyTabContent}>
+                                            <SkeletonAwareTable
+                                                size="small"
+                                                columns={generalColumns}
+                                                dataSource={history.map((r, i) => ({ ...r, key: `his-${i}` }))}
+                                                loading={loading}
+                                                pagination={false}
+                                                bordered
+                                                rowKey="key"
+                                            />
+                                        </div>
+                                    ),
+                                },
+                                ...(transfer.length > 0 ? [{
+                                    key: 'transferHistory',
+                                    label: (
+                                        <span className={styles.tabLabel}>
+                                            <RefreshCw size={15} />
+                                            Transfer History ({transfer.length})
+                                        </span>
+                                    ),
+                                    children: (
+                                        <div className={styles.historyTabContent}>
+                                            <SkeletonAwareTable
+                                                size="small"
+                                                columns={generalColumns}
+                                                dataSource={transfer.map((r, i) => ({ ...r, key: `trf-${i}` }))}
+                                                loading={loading}
+                                                pagination={false}
+                                                bordered
+                                                rowKey="key"
+                                            />
+                                        </div>
+                                    ),
+                                }] : []),
+                            ]}
+                        />
+                    </div>
                 </Card>
             )}
         </div>

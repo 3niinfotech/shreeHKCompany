@@ -68,6 +68,8 @@ export default function AIAgentCommandBar({ open, onClose, onExecutePrompt }) {
         onCancel={onClose}
         footer={null}
         closable={false}
+        maskClosable={false}
+        mask={{ closable: false }}
         width={560}
         style={{ top: '15%' }}
         styles={{ body: { padding: '16px' } }}
@@ -117,6 +119,9 @@ export default function AIAgentCommandBar({ open, onClose, onExecutePrompt }) {
         open={Boolean(pendingCommand)}
         onCancel={() => setPendingCommand(null)}
         footer={null}
+        closable={false}
+        maskClosable={false}
+        mask={{ closable: false }}
         width={420}
         title={
           <Space>

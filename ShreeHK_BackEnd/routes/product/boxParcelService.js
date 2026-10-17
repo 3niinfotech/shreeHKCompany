@@ -261,6 +261,60 @@ async function addSinglesToParcel(body, userContext = {}) {
   };
 }
 
+const IMPORT_DATE_CATEGORY_NAME = /^\d{2}-\d{2}-\d{4}$/;
+
+function isImportDateCategoryName(name) {
+  return IMPORT_DATE_CATEGORY_NAME.test(String(name || "").trim());
+}
+
+function categoryStoneCount(cat, countMap) {
+  const byId = Number(countMap[String(cat.id)]) || 0;
+  const byName = Number(countMap[String(cat.name)]) || 0;
+  return byId + byName;
+}
+
+function countStonesForCategoryGroup(ids, name, countMap) {
+  let total = Number(countMap[String(name)]) || 0;
+  for (const id of ids) {
+    total += Number(countMap[String(id)]) || 0;
+  }
+  return total;
+}
+
+function mergeTreeNodesByName(nodes, countMap) {
+  if (!nodes?.length) return [];
+  const grouped = new Map();
+  for (const node of nodes) {
+    const nameKey = String(node.name || "").trim().toLowerCase();
+    if (!grouped.has(nameKey)) {
+      grouped.set(nameKey, {
+        name: node.name,
+        categoryIds: [...node.categoryIds],
+        children: [...(node.children || [])],
+      });
+      continue;
+    }
+    const existing = grouped.get(nameKey);
+    existing.categoryIds.push(...node.categoryIds);
+    existing.children.push(...(node.children || []));
+  }
+  return [...grouped.values()]
+    .map((group) => {
+      const categoryIds = [...new Set(group.categoryIds.map(String))];
+      const mergedChildren = mergeTreeNodesByName(group.children, countMap);
+      const stoneCount = countStonesForCategoryGroup(categoryIds, group.name, countMap);
+      if (isImportDateCategoryName(group.name) && stoneCount === 0 && !mergedChildren.length) {
+        return null;
+      }
+      return {
+        title: `${group.name} (${stoneCount})`,
+        key: categoryIds.join(","),
+        children: mergedChildren,
+      };
+    })
+    .filter(Boolean);
+}
+
 async function getCategorizeTree() {
   const categories = await helper.query(
     `SELECT id, name, parent FROM category ORDER BY name`,
@@ -272,18 +326,29 @@ async function getCategorizeTree() {
     (counts || []).map((r) => [String(r.category), Number(r.cnt) || 0]),
   );
 
+  const visibleCategories = (categories || []).filter((c) => {
+    if (isImportDateCategoryName(c.name) && categoryStoneCount(c, countMap) === 0) {
+      return false;
+    }
+    return true;
+  });
+
   const buildNode = (cat) => ({
-    title: `${cat.name} (${countMap[String(cat.id)] || 0})`,
-    key: String(cat.id),
-    children: (categories || [])
-      .filter((ch) => ch.parent === cat.name)
+    name: cat.name,
+    categoryIds: [String(cat.id)],
+    children: visibleCategories
+      .filter((ch) => Number(ch.parent) === Number(cat.id))
       .map(buildNode),
   });
 
-  const rootCats = (categories || []).filter(
-    (c) => !c.parent || c.parent === "" || !(categories || []).some((x) => x.name === c.parent),
-  );
-  return rootCats.map(buildNode);
+  const rootCats = visibleCategories.filter((c) => {
+    const parentId = Number(c.parent);
+    if (!c.parent || parentId === 0) return true;
+    return !visibleCategories.some((x) => Number(x.id) === parentId);
+  });
+
+  const rawTree = rootCats.map(buildNode);
+  return mergeTreeNodesByName(rawTree, countMap);
 }
 
 async function assignCategory(productIds, categoryId) {
@@ -384,10 +449,24 @@ async function assignCategory(productIds, categoryId) {
 }
 
 async function getCategoryStats(categoryId) {
+  const ids = String(categoryId || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!ids.length) {
+    return { total: 0, pcs: 0, carat: 0, amount: 0 };
+  }
+  const idPlaceholders = ids.map(() => "?").join(",");
+  const nameRows = await helper.query(
+    `SELECT DISTINCT name FROM category WHERE id IN (${idPlaceholders})`,
+    ids,
+  );
+  const keys = [...new Set([...ids, ...(nameRows || []).map((r) => String(r.name)).filter(Boolean)])];
+  const placeholders = keys.map(() => "?").join(",");
   const rows = await helper.query(
     `SELECT COUNT(*) AS total, SUM(polish_pcs) AS pcs, SUM(polish_carat) AS carat, SUM(amount) AS amount
-     FROM dai_product WHERE visibility = 1 AND category = ?`,
-    [String(categoryId)],
+     FROM dai_product WHERE visibility = 1 AND category IN (${placeholders})`,
+    keys,
   );
   return rows[0] || { total: 0, pcs: 0, carat: 0, amount: 0 };
 }
@@ -529,6 +608,412 @@ async function findPairCandidates(productId, options = {}) {
   };
 }
 
+/**
+ * Fetch child stones belonging to a Box or Parcel container.
+ */
+async function getContainerChildren(containerId, userContext = {}) {
+  const cid = Number(containerId);
+  if (!cid) {
+    const err = new Error("Invalid container ID");
+    err.statusCode = 400;
+    throw err;
+  }
+  const companyId = helper.resolveCompanyId(userContext.companyId);
+  const container = await getStoneById(cid);
+  if (!container) {
+    const err = new Error("Container not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const childIdSet = new Set(
+    String(container.box_products || container.parcel_products || "")
+      .split(",")
+      .map((s) => Number(s.trim()))
+      .filter((n) => Number.isFinite(n) && n > 0 && n !== cid)
+  );
+
+  let query = `
+    SELECT 
+      p.id, p.sku, p.group_type, p.polish_pcs, p.polish_carat, p.price, p.amount,
+      p.cost, p.location, p.mfg_code, p.lab, p.visibility,
+      pv.shape, pv.color, pv.clarity, pv.cut, pv.polish, pv.symmentry, pv.report_no
+    FROM dai_product p
+    LEFT JOIN dai_product_value pv ON p.id = pv.product_id
+    WHERE p.company = ? AND (p.parent_id = ? OR p.box_id = ? OR p.parcel_id = ?) AND p.id <> ?
+  `;
+  const params = [companyId, cid, cid, cid, cid];
+  if (childIdSet.size > 0) {
+    query += ` OR (p.company = ? AND p.id IN (${[...childIdSet].map(() => "?").join(",")}))`;
+    params.push(companyId, ...childIdSet);
+  }
+  query += ` ORDER BY p.id ASC LIMIT 500`;
+
+  const rows = await helper.query(query, params);
+  return {
+    ok: true,
+    container: {
+      id: container.id,
+      sku: container.sku,
+      group_type: container.group_type,
+      polish_pcs: container.polish_pcs,
+      polish_carat: container.polish_carat,
+      price: container.price,
+      amount: container.amount,
+    },
+    children: (rows || []).map((r) => ({
+      id: r.id,
+      sku: r.sku,
+      mfgCode: r.mfg_code,
+      groupType: r.group_type || "single",
+      pcs: Number(r.polish_pcs) || 1,
+      carat: Number(r.polish_carat) || 0,
+      price: Number(r.price) || 0,
+      amount: Number(r.amount) || 0,
+      location: r.location || "",
+      lab: r.lab || "",
+      shape: r.shape || "",
+      color: r.color || "",
+      clarity: r.clarity || "",
+      cut: r.cut || "",
+      reportNo: r.report_no || "",
+    })),
+  };
+}
+
+/**
+ * Unbox / Release single stones from a Box or Parcel container back to standalone inventory.
+ */
+async function unboxStonesFromContainer({ containerId, stoneIds }, userContext = {}) {
+  const cid = Number(containerId);
+  if (!cid) {
+    const err = new Error("Invalid container ID");
+    err.statusCode = 400;
+    throw err;
+  }
+  const rawIds = (stoneIds || []).map(Number).filter(Boolean);
+  if (!rawIds.length) {
+    const err = new Error("Please select at least one stone to unbox");
+    err.statusCode = 400;
+    throw err;
+  }
+  const companyId = helper.resolveCompanyId(userContext.companyId);
+  const container = await getStoneById(cid);
+  if (!container) {
+    const err = new Error("Container not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const isParcel = container.group_type === "parcel";
+  const productsField = isParcel ? "parcel_products" : "box_products";
+  const containerField = isParcel ? "parcel_id" : "box_id";
+  const existingList = String(container[productsField] || "").split(",").filter(Boolean);
+
+  let deductPcs = 0;
+  let deductCarat = 0;
+  let deductAmount = 0;
+  const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+  const unboxedSkus = [];
+
+  for (const stoneId of rawIds) {
+    const stone = await getStoneById(stoneId);
+    if (!stone) continue;
+
+    deductPcs += Number(stone.polish_pcs || 1);
+    deductCarat += Number(stone.polish_carat || 0);
+    deductAmount += Number(stone.amount || 0);
+    unboxedSkus.push(stone.sku);
+
+    // Restore stone to active inventory and detach from container
+    await helper.query(
+      `UPDATE dai_product SET visibility = 1, parent_id = 0, ${containerField} = NULL, rapnet_upload = 0 WHERE id = ? AND company = ?`,
+      [stoneId, companyId]
+    );
+
+    await addHistoryAudited({
+      product_id: stone.id,
+      action: isParcel ? "from_parcel" : "from_box",
+      date: now,
+      description: `Unboxed from ${container.group_type} ${container.sku}`,
+      sku: stone.sku,
+      pcs: stone.polish_pcs,
+      carat: stone.polish_carat,
+      amount: stone.amount,
+      balance_pcs: stone.polish_pcs,
+      balance_carat: stone.polish_carat,
+    });
+  }
+
+  // Update container totals
+  const updatedProductList = existingList.filter((idStr) => !rawIds.includes(Number(idStr)));
+  const newPcs = Math.max(0, Number(container.polish_pcs || 0) - deductPcs);
+  const newCarat = Math.max(0, Number((Number(container.polish_carat || 0) - deductCarat).toFixed(3)));
+  const newAmount = Math.max(0, Number((Number(container.amount || 0) - deductAmount).toFixed(2)));
+  const newPrice = newCarat > 0 ? Number((newAmount / newCarat).toFixed(2)) : container.price;
+
+  await helper.query(
+    `UPDATE dai_product SET polish_pcs = ?, polish_carat = ?, amount = ?, price = ?, child_count = ?, ${productsField} = ? WHERE id = ? AND company = ?`,
+    [newPcs, newCarat, newAmount, newPrice, updatedProductList.length, updatedProductList.join(","), cid, companyId]
+  );
+
+  await addHistoryAudited({
+    product_id: container.id,
+    action: "unboxing",
+    date: now,
+    description: `Unboxed ${rawIds.length} stone(s) (${unboxedSkus.join(", ")})`,
+    sku: container.sku,
+    pcs: deductPcs,
+    carat: deductCarat,
+    amount: deductAmount,
+    balance_pcs: newPcs,
+    balance_carat: newCarat,
+  });
+
+  return {
+    ok: true,
+    message: `Successfully unboxed ${rawIds.length} stone(s) from ${container.sku}`,
+    unboxedCount: rawIds.length,
+    remainingCarat: newCarat,
+    remainingPcs: newPcs,
+  };
+}
+
+/**
+ * Separate / Breakdown carats from a Box or Parcel into new single diamond(s).
+ */
+async function separateContainerStones({ containerId, records }, userContext = {}) {
+  const cid = Number(containerId);
+  if (!cid) {
+    const err = new Error("Invalid container ID");
+    err.statusCode = 400;
+    throw err;
+  }
+  const rows = (records || []).filter((r) => Number(r.polish_carat) > 0);
+  if (!rows.length) {
+    const err = new Error("Please specify at least one valid stone row with carat > 0");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const companyId = helper.resolveCompanyId(userContext.companyId);
+  const container = await getStoneById(cid);
+  if (!container) {
+    const err = new Error("Container not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  let totalSepCarat = 0;
+  let totalSepPcs = 0;
+  for (const r of rows) {
+    totalSepCarat += Number(r.polish_carat || 0);
+    totalSepPcs += Number(r.polish_pcs || 1);
+  }
+
+  if (totalSepCarat > Number(container.polish_carat || 0) + 0.001) {
+    const err = new Error(`Cannot separate ${totalSepCarat.toFixed(2)} ct: Exceeds container stock carat (${container.polish_carat} ct)`);
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+  const createdStones = [];
+  let totalSepAmount = 0;
+
+  for (let idx = 0; idx < rows.length; idx++) {
+    const row = rows[idx];
+    const pcs = Number(row.polish_pcs || 1);
+    const carat = Number(row.polish_carat || 0);
+    const price = Number(row.price || container.price || 0);
+    const amount = Number(row.amount || (carat * price).toFixed(2));
+    totalSepAmount += amount;
+
+    const sku = String(row.sku || "").trim() || `${container.sku}-S${idx + 1}-${Date.now().toString().slice(-4)}`;
+
+    const newProd = {
+      sku,
+      mfg_code: row.mfg_code || container.mfg_code || "",
+      date: now,
+      company: companyId,
+      user: userContext.userId || helper.DEFAULT_USER_ID,
+      polish_pcs: pcs,
+      polish_carat: carat,
+      price,
+      amount,
+      cost: Number(row.cost || container.cost || 0),
+      group_type: pcs > 1 ? "box" : (pcs === 0 ? "parcel" : "single"),
+      visibility: 1,
+      parent_id: container.id,
+      location: row.location || container.location || "",
+      lab: row.lab || container.lab || "",
+      remark: row.remark || `Separated from ${container.group_type} ${container.sku} on ${now.slice(0, 10)}`,
+      main_color: row.color || container.color || "",
+    };
+
+    const [cols, vals] = helper.insertString(newProd);
+    const insertRes = await helper.query(`INSERT INTO dai_product (${cols}) VALUES (${vals})`);
+    const newId = insertRes.insertId;
+
+    const newAttr = {
+      product_id: newId,
+      shape: row.shape || container.shape || "",
+      color: row.color || container.color || "",
+      clarity: row.clarity || container.clarity || "",
+      cut: row.cut || container.cut || "",
+      polish: row.polish || container.polish || "",
+      symmentry: row.symmetry || row.symmentry || container.symmentry || "",
+      report_no: row.report_no || "",
+    };
+    const [aCols, aVals] = helper.insertString(newAttr);
+    await helper.query(`INSERT INTO dai_product_value (${aCols}) VALUES (${aVals})`);
+
+    await addHistoryAudited({
+      product_id: newId,
+      action: container.group_type === "parcel" ? "from_parcel" : "from_box",
+      date: now,
+      description: `Separated from ${container.group_type} ${container.sku}`,
+      sku,
+      pcs,
+      carat,
+      amount,
+      price,
+      balance_pcs: pcs,
+      balance_carat: carat,
+    });
+
+    createdStones.push({ id: newId, sku, carat, pcs, amount });
+  }
+
+  // Deduct from container
+  const newPcs = Math.max(0, Number(container.polish_pcs || 0) - totalSepPcs);
+  const newCarat = Math.max(0, Number((Number(container.polish_carat || 0) - totalSepCarat).toFixed(3)));
+  const newAmount = Math.max(0, Number((Number(container.amount || 0) - totalSepAmount).toFixed(2)));
+  const newPrice = newCarat > 0 ? Number((newAmount / newCarat).toFixed(2)) : container.price;
+
+  await helper.query(
+    `UPDATE dai_product SET polish_pcs = ?, polish_carat = ?, amount = ?, price = ? WHERE id = ? AND company = ?`,
+    [newPcs, newCarat, newAmount, newPrice, cid, companyId]
+  );
+
+  await addHistoryAudited({
+    product_id: container.id,
+    action: "unboxing",
+    date: now,
+    description: `Separated ${createdStones.length} stone(s) (${createdStones.map((s) => s.sku).join(", ")})`,
+    sku: container.sku,
+    pcs: totalSepPcs,
+    carat: totalSepCarat,
+    amount: totalSepAmount,
+    balance_pcs: newPcs,
+    balance_carat: newCarat,
+  });
+
+  return {
+    ok: true,
+    message: `Successfully separated ${createdStones.length} stone(s) from ${container.sku}`,
+    createdStones,
+    remainingCarat: newCarat,
+    remainingPcs: newPcs,
+  };
+}
+
+/**
+ * Transfer stones or carats between containers (Box to Box, Box to Parcel, Parcel to Box, Parcel to Parcel).
+ */
+async function transferBetweenContainers(
+  { sourceContainerId, targetContainerId, mode, newContainerSku, newContainerType, stoneIds, carat, pcs },
+  userContext = {}
+) {
+  const srcId = Number(sourceContainerId);
+  if (!srcId) {
+    const err = new Error("Invalid source container ID");
+    err.statusCode = 400;
+    throw err;
+  }
+  const companyId = helper.resolveCompanyId(userContext.companyId);
+  const source = await getStoneById(srcId);
+  if (!source) {
+    const err = new Error("Source container not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  // Case A: Transferring specific child stones
+  if (Array.isArray(stoneIds) && stoneIds.length > 0) {
+    // 1. Unbox from source
+    await unboxStonesFromContainer({ containerId: srcId, stoneIds }, userContext);
+
+    // 2. Add to target container
+    const targetType = newContainerType || "box";
+    if (mode === "new" || !targetContainerId) {
+      if (targetType === "parcel") {
+        return addSinglesToParcel(
+          { mode: "new", newParcelSku: newContainerSku, stoneIds, remark: `Transferred from ${source.sku}` },
+          userContext
+        );
+      }
+      return addSinglesToBox(
+        { mode: "new", newBoxSku: newContainerSku, stoneIds, remark: `Transferred from ${source.sku}` },
+        userContext
+      );
+    }
+
+    if (targetType === "parcel") {
+      return addSinglesToParcel({ mode: "existing", parcelId: targetContainerId, stoneIds }, userContext);
+    }
+    return addSinglesToBox({ mode: "existing", boxId: targetContainerId, stoneIds }, userContext);
+  }
+
+  // Case B: Transferring bulk carat weight
+  const transferCarat = Number(carat || 0);
+  const transferPcs = Number(pcs || 1);
+  if (transferCarat <= 0 || transferCarat > Number(source.polish_carat || 0)) {
+    const err = new Error("Invalid transfer carat amount");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  // Separate virtual lot from source
+  const sepResult = await separateContainerStones(
+    {
+      containerId: srcId,
+      records: [
+        {
+          sku: `TRF-${Date.now().toString().slice(-6)}`,
+          polish_pcs: transferPcs,
+          polish_carat: transferCarat,
+          price: source.price,
+          amount: Number((transferCarat * (source.price || 0)).toFixed(2)),
+          group_type: "single",
+        },
+      ],
+    },
+    userContext
+  );
+
+  const newStoneId = sepResult.createdStones[0].id;
+  const targetType = newContainerType || "box";
+
+  if (mode === "new" || !targetContainerId) {
+    if (targetType === "parcel") {
+      return addSinglesToParcel(
+        { mode: "new", newParcelSku: newContainerSku, stoneIds: [newStoneId], remark: `Transferred from ${source.sku}` },
+        userContext
+      );
+    }
+    return addSinglesToBox(
+      { mode: "new", newBoxSku: newContainerSku, stoneIds: [newStoneId], remark: `Transferred from ${source.sku}` },
+      userContext
+    );
+  }
+
+  if (targetType === "parcel") {
+    return addSinglesToParcel({ mode: "existing", parcelId: targetContainerId, stoneIds: [newStoneId] }, userContext);
+  }
+  return addSinglesToBox({ mode: "existing", boxId: targetContainerId, stoneIds: [newStoneId] }, userContext);
+}
+
 module.exports = {
   addSinglesToBox,
   addSinglesToParcel,
@@ -538,4 +1023,9 @@ module.exports = {
   assignPair,
   unpairProducts,
   findPairCandidates,
+  getContainerChildren,
+  unboxStonesFromContainer,
+  separateContainerStones,
+  transferBetweenContainers,
 };
+

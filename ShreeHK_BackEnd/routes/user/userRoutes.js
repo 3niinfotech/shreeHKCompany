@@ -134,7 +134,7 @@ userRouter.post('/user/login', async (req, res) => {
         yearId: null,
       },
       SECRET_KEY,
-      { expiresIn: '8h' }
+      { expiresIn: '2h' }
     );
 
     const loginAt = new Date();

@@ -360,6 +360,7 @@ const AdvanceAssignedInvoiceModal = ({
       onCancel={onClose}
       closable={false}
       maskClosable={false}
+      mask={{ closable: false }}
       keyboard={false}
       width={1600}
       rootClassName="advance-assigned-invoice-modal"

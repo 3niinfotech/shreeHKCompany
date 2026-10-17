@@ -82,23 +82,25 @@ const getIncrementEntry = (of, companyId = DEFAULT_COMPANY_ID) => {
 };
 
 const addHistory = (post) => {
-
-  if (post.description) {
-    post.description = post.description.toUpperCase();
+  const history = { ...post };
+  if (history.description) {
+    history.description = String(history.description).toUpperCase();
+  }
+  // Stone History Updated By — never leave user blank
+  if (history.user == null || history.user === "" || history.user === 0) {
+    history.user = DEFAULT_USER_ID;
   }
 
   return new Promise((resolve, reject) => {
     try {
-
-      const data = insertString(post);
+      const data = insertString(history);
       const query = `INSERT INTO dai_history (${data[0]}) VALUES (${data[1]})`;
 
       connection.query(query, (error, data) => {
         if (error) {
           return reject({ error: "Error occurred while adding history data" });
         }
-        resolve(data); // Return the first record
-
+        resolve(data);
       });
     } catch (error) {
       reject(error);
@@ -480,6 +482,72 @@ const getMemoItemsMap = async (parentIds = []) => {
   }, {});
 };
 
+/**
+ * New stock flow: memo qty lives on same product (memo_carat) + dai_outward_item lines.
+ * Used for inventory red CRT badge when no legacy outward_parent children exist.
+ */
+const getLedgerMemoItemsMap = async (productIds = []) => {
+  const ids = [...new Set(productIds.map((id) => Number(id)).filter((id) => id > 0))];
+  if (!ids.length) return {};
+
+  try {
+    const placeholders = ids.map(() => "?").join(",");
+    const rows = await query(
+      `SELECT
+         oi.id,
+         oi.product_id,
+         oi.sku,
+         oi.carat AS polish_carat,
+         oi.pcs AS polish_pcs,
+         oi.outward_type AS outward,
+         oi.price,
+         oi.amount,
+         oi.outward_id,
+         o.entryno,
+         o.invoiceno,
+         o.reference,
+         o.date AS memo_date,
+         pt.name AS party_name
+       FROM dai_outward_item oi
+       INNER JOIN dai_outward o ON o.id = oi.outward_id
+       LEFT JOIN dai_party pt ON pt.id = o.party
+       WHERE oi.product_id IN (${placeholders})
+         AND oi.outward_type IN ('memo', 'consign')
+         AND (oi.status IS NULL OR oi.status NOT IN ('returned', 'cancelled'))
+         AND o.type IN ('memo', 'consign')
+         AND o.status IN ('on_memo', 'on_consign')
+       ORDER BY oi.product_id, oi.id DESC`,
+      ids
+    );
+
+    return (rows || []).reduce((acc, row) => {
+      const pid = Number(row.product_id);
+      if (!acc[pid]) acc[pid] = [];
+      acc[pid].push({
+        id: row.id,
+        sku: row.sku,
+        polish_carat: Number(row.polish_carat) || 0,
+        polish_pcs: Number(row.polish_pcs) || 0,
+        outward: row.outward || "memo",
+        price: Number(row.price) || 0,
+        amount: Number(row.amount) || 0,
+        entryno: row.entryno || "",
+        invoiceno: row.invoiceno || "",
+        reference: row.reference || "",
+        memo_date: row.memo_date || "",
+        outward_id: row.outward_id || null,
+        party_name: row.party_name || "",
+      });
+      return acc;
+    }, {});
+  } catch (err) {
+    // Table may not exist yet on older DBs
+    if (String(err?.code || "").includes("ER_NO_SUCH_TABLE")) return {};
+    console.error("getLedgerMemoItemsMap:", err?.message || err);
+    return {};
+  }
+};
+
 /** Memo / unboxing history for parent box/parcel and its memo child stones. */
 const getMemoHistoryMap = async (parentIds = [], memoItemsMap = {}) => {
   const parents = [...new Set(parentIds.map((id) => Number(id)).filter((id) => id > 0))];
@@ -561,24 +629,52 @@ const getMemoHistoryMap = async (parentIds = [], memoItemsMap = {}) => {
 const attachMemoCaratToProducts = async (products = []) => {
   if (!Array.isArray(products) || !products.length) return products;
 
+  const allIds = products.map((row) => Number(row.id)).filter((id) => id > 0);
   const parentIds = products
     .filter((row) => row.group_type && row.group_type !== "single")
     .map((row) => row.id);
 
-  const [memoCaratMap, memoItemsMap] = await Promise.all([
+  const [legacyCaratMap, legacyItemsMap, ledgerItemsMap] = await Promise.all([
     getMemoCaratMap(parentIds),
     getMemoItemsMap(parentIds),
+    getLedgerMemoItemsMap(allIds),
   ]);
 
-  const memoHistoryMap = await getMemoHistoryMap(parentIds, memoItemsMap);
+  // Merge legacy child lines + new-flow outward_item lines per product
+  const mergedItemsMap = {};
+  allIds.forEach((id) => {
+    const legacy = legacyItemsMap[id] || [];
+    const ledger = ledgerItemsMap[id] || [];
+    if (legacy.length || ledger.length) {
+      mergedItemsMap[id] = [...ledger, ...legacy];
+    }
+  });
+
+  const memoHistoryMap = await getMemoHistoryMap(allIds, mergedItemsMap);
 
   return products.map((row) => {
-    if (!row.group_type || row.group_type === "single") return row;
+    const id = Number(row.id);
+    const ledgerCarat = Number(row.memo_carat) || 0;
+    const legacyCarat = Number(legacyCaratMap[id]) || 0;
+    // Prefer balance-column memo (new flow); fall back to legacy child sum
+    const memoCarat = ledgerCarat > 0.0001 ? ledgerCarat : legacyCarat;
+    const memoItems = mergedItemsMap[id] || [];
+    const memoHistory = memoHistoryMap[id] || [];
+
+    if (memoCarat <= 0.0001 && !memoItems.length && !memoHistory.length) {
+      return {
+        ...row,
+        memo_carat: 0,
+        memo_items: [],
+        memo_history: [],
+      };
+    }
+
     return {
       ...row,
-      memo_carat: memoCaratMap[row.id] || 0,
-      memo_items: memoItemsMap[row.id] || [],
-      memo_history: memoHistoryMap[row.id] || [],
+      memo_carat: memoCarat,
+      memo_items: memoItems,
+      memo_history: memoHistory,
     };
   });
 };
@@ -645,6 +741,7 @@ module.exports = {
   getGiaReport,
   getMemoCaratMap,
   getMemoItemsMap,
+  getLedgerMemoItemsMap,
   getMemoHistoryMap,
   attachMemoCaratToProducts,
   runInTransaction,

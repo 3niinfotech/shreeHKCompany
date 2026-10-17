@@ -16,19 +16,45 @@ function queryAsync(sql, params = []) {
 }
 
 /**
- * Fetch advance payments for a tenant company with party join
+ * Count advance payments for a tenant company
  * @param {number} companyId
  */
-async function getAdvancePaymentsByCompany(companyId) {
+async function countAdvancePaymentsByCompany(companyId) {
+  const sql = `
+    SELECT COUNT(*) AS total
+    FROM acc_advance a
+    WHERE (a.deleted = 0 OR a.deleted IS NULL) AND a.company = ?
+  `;
+  const rows = await queryAsync(sql, [companyId]);
+  return Number(rows?.[0]?.total) || 0;
+}
+
+/**
+ * Fetch advance payments for a tenant company with party name lookup
+ * @param {number} companyId
+ * @param {number} [limit]
+ * @param {number} [offset]
+ */
+async function getAdvancePaymentsByCompany(companyId, limit = null, offset = 0) {
+  // Scalar subquery avoids JOIN row multiplication that breaks LIMIT/OFFSET pages
   const sql = `
     SELECT a.id, a.party, a.date, a.type, a.book, a.cheque, a.amount, a.use_amount, a.balance_amount, a.invoice, a.invoice_id, a.assign_date, a.description, a.company, a.user,
-           p.name AS party_name
+           (
+             SELECT p.name
+             FROM dai_party p
+             WHERE (a.party = CAST(p.id AS CHAR) OR a.party = p.name)
+               AND (p.company = ? OR p.company IS NULL)
+             LIMIT 1
+           ) AS party_name
     FROM acc_advance a
-    LEFT JOIN dai_party p ON (a.party = CAST(p.id AS CHAR) OR a.party = p.name) AND (p.company = ? OR p.company IS NULL)
     WHERE (a.deleted = 0 OR a.deleted IS NULL) AND a.company = ?
     ORDER BY a.id DESC
+    ${limit != null ? "LIMIT ? OFFSET ?" : ""}
   `;
-  return queryAsync(sql, [companyId, companyId]);
+  const params = limit != null
+    ? [companyId, companyId, Number(limit), Number(offset) || 0]
+    : [companyId, companyId];
+  return queryAsync(sql, params);
 }
 
 /**
@@ -199,6 +225,7 @@ async function getAssignedInvoiceDetails(invoiceId, type = "outward", companyId)
 
 module.exports = {
   queryAsync,
+  countAdvancePaymentsByCompany,
   getAdvancePaymentsByCompany,
   getAdvancePaymentByIdAndCompany,
   getAdvancePaymentFullByIdAndCompany,
