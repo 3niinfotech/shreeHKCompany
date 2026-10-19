@@ -59,7 +59,7 @@ const useUIStore = create(
                 })),
 
             soundEnabled: true,
-            setSoundEnabled: (soundEnabled) => set({ soundEnabled }),
+            setSoundEnabled: (  ) => set({ soundEnabled }),
             toggleSound: () => set((state) => ({ soundEnabled: !state.soundEnabled })),
 
             quickScanShortcut: true,

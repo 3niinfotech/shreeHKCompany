@@ -1637,7 +1637,7 @@ async function outwardMemoToSale(post, userContext = {}) {
         action: type,
         party: post.party || mdata.party,
         date: moment().format("YYYY-MM-DD HH:mm:ss"),
-        description: `Stone ${type} FROM MEMO — SKU ${pdata.sku}`,
+        description: `Stone ${type} FROM MEMO${mdata.invoiceno ? ` #${mdata.invoiceno}` : ''} — SKU ${pdata.sku}`,
         pcs: sellPcs,
         carat: sellCarat,
         balance_pcs: bal.onhand_pcs,

@@ -29,12 +29,12 @@ const StoneUpdate = () => {
     const [form] = Form.useForm();
     const { resetAll } = useFormHandleChange(initialFormData);
     const queryClient = useQueryClient();
-    const [searchValue, setSearchValue] = useState("");
-    const [showForm, setShowForm] = useState(false);
-
     const location = useLocation();
-    const searchParams = new URLSearchParams(location.search);
-    const skuFromUpdate = searchParams.get('skuupdate') || searchParams.get('sku');
+    const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+    const skuFromUpdate = (searchParams.get('skuupdate') || searchParams.get('sku') || '').trim();
+
+    const [searchValue, setSearchValue] = useState(skuFromUpdate);
+    const [showForm, setShowForm] = useState(false);
 
     const categories = useMemo(() => [
         { id: 1, name: "Natural Diamond" },
@@ -47,7 +47,7 @@ const StoneUpdate = () => {
         ENDPOINTS.product.detail,
         { by: 'p.sku', id: searchValue },
         'GET',
-        { enabled: false, retry: false, staleTime: 0 }
+        { enabled: Boolean(skuFromUpdate), retry: false, staleTime: 0 }
     );
 
     const saveMutation = usePostApiRequest(ENDPOINTS.product.save, 'productDetails');
@@ -184,7 +184,21 @@ const StoneUpdate = () => {
 
             {isSearching && !showForm ? renderLoader() :
                 showForm ? (
-                    <Form form={form} layout="vertical" onFinish={onFinish} className={styles.mainCard}>
+                    <Form
+                        form={form}
+                        layout="vertical"
+                        onFinish={onFinish}
+                        className={styles.mainCard}
+                        onValuesChange={(changedValues, allValues) => {
+                            if ('polish_carat' in changedValues) {
+                                const carat = Number(changedValues.polish_carat || 0);
+                                const price = Number(allValues.price || 0);
+                                if (carat > 0 && price > 0) {
+                                    form.setFieldsValue({ amount: Number((carat * price).toFixed(2)) });
+                                }
+                            }
+                        }}
+                    >
                         <Form.Item name="id" hidden>
                             <Input type="hidden" />
                         </Form.Item>

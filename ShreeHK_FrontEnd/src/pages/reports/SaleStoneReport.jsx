@@ -77,7 +77,7 @@ const SaleStoneReport = () => {
 
     const columns = [
         { title: 'No', dataIndex: 'no', width: 50, align: 'center' },
-        { title: 'SKU', dataIndex: 'sku', width: 100, render: (text, record) => <SkuLink sku={text} record={record} /> },
+        { title: 'SKU', dataIndex: 'sku', width: 140, render: (text, record) => <SkuLink sku={text} record={record} /> },
         {
             title: 'Lab',
             dataIndex: 'lab',
@@ -125,9 +125,9 @@ const SaleStoneReport = () => {
         { title: 'Clarity', dataIndex: 'clarity', width: 60, align: 'center' },
         { title: 'Party', dataIndex: 'party', width: 200 },
         { title: 'Invoice', dataIndex: 'invoiceno', width: 90, align: 'center' },
-        { title: 'Date', dataIndex: 'out_date', width: 80, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')), align: 'center' },
+        { title: 'Date', dataIndex: 'out_date', width: 140, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')), align: 'center' },
         { title: 'Terms', dataIndex: 'terms', width: 25, align: 'center' },
-        { title: 'Due Date', dataIndex: 'due_date', width: 80, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')), align: 'center' },
+        { title: 'Due Date', dataIndex: 'due_date', width: 140, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')), align: 'center' },
         { title: 'Paid', dataIndex: 'paid_amount', width: 90, align: 'center' },
     ];
 

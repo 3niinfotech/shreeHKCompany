@@ -142,10 +142,13 @@ const STONE_ACTION_LABELS = {
   hold: "Hold",
   unhold: "Unhold",
   price_change: "Price Changed",
-  unboxing: "Unboxing",
+  unboxing: "Box → Single",
   boxing: "Boxing",
-  to_box: "To Box",
-  from_box: "From Box",
+  to_box: "Single → Box",
+  box_add: "Single → Box",
+  from_box: "Box → Single",
+  parcel_add: "Single → Parcel",
+  from_parcel: "Parcel → Single",
   export: "Export",
   export_close: "Export Close",
   consign: "Consignment",
@@ -155,6 +158,8 @@ const STONE_ACTION_LABELS = {
   sku_change: "Sku Change",
   purchase_delete: "Purchase Delete",
   close_sale: "Sale Close",
+  stone_update: "Stone Update",
+  remark_change: "Remark Changed",
 };
 
 function queryPool(pool, sql, values = []) {
@@ -252,7 +257,7 @@ async function backfillHistoryUsers(history) {
   return patched;
 }
 
-function mapStoneHistoryRows(history, partyMap, userMap = {}) {
+function mapStoneHistoryRows(history, partyMap, userMap = {}, isContainer = false) {
   let runningPcs = 0;
   let runningCarat = 0;
 
@@ -261,28 +266,52 @@ function mapStoneHistoryRows(history, partyMap, userMap = {}) {
     const carat = Math.abs(Number(h.carat) || 0);
     const act = String(h.action || "").toLowerCase().trim();
     const type = String(h.type || "").toLowerCase().trim();
-    const isCredit =
-      [
-        "import",
-        "in_import",
-        "purchase",
-        "in_memo",
-        "in_consign",
-        "memo_return",
-        "sale_return",
-        "lab_return",
-        "consign_return",
-        "hold",
-        "unhold",
-        "price_change",
-        "unboxing",
-        "boxing",
-        "to_box",
-        "from_box",
-        "sku_change",
-      ].includes(act) ||
-      (act === "inter_transfer" && type === "cr") ||
-      type === "cr";
+    const isCredit = isContainer
+      ? [
+          "import",
+          "in_import",
+          "purchase",
+          "in_memo",
+          "in_consign",
+          "memo_return",
+          "sale_return",
+          "lab_return",
+          "consign_return",
+          "hold",
+          "unhold",
+          "price_change",
+          "boxing",
+          "box_add",
+          "to_box",
+          "parcel_add",
+          "sku_change",
+          "stone_update",
+          "remark_change",
+        ].includes(act) ||
+        (act === "inter_transfer" && type === "cr") ||
+        type === "cr"
+      : [
+          "import",
+          "in_import",
+          "purchase",
+          "in_memo",
+          "in_consign",
+          "memo_return",
+          "sale_return",
+          "lab_return",
+          "consign_return",
+          "hold",
+          "unhold",
+          "price_change",
+          "unboxing",
+          "from_box",
+          "from_parcel",
+          "sku_change",
+          "stone_update",
+          "remark_change",
+        ].includes(act) ||
+        (act === "inter_transfer" && type === "cr") ||
+        type === "cr";
 
     let balPcs = h.balance_pcs;
     let balCarat = h.balance_carat;
@@ -303,6 +332,11 @@ function mapStoneHistoryRows(history, partyMap, userMap = {}) {
       balCarat = runningCarat;
     }
 
+    let diffList = h.diff_list;
+    if (!diffList || !diffList.length) {
+      diffList = extractDiffsFromDesc(h.description);
+    }
+
     return {
       ...h,
       balance_pcs: balPcs,
@@ -310,25 +344,54 @@ function mapStoneHistoryRows(history, partyMap, userMap = {}) {
       party_name: partyMap[h.party] || h.party || "",
       action_label: STONE_ACTION_LABELS[h.action] || h.action,
       updated_by: resolveHistoryUserName(h, userMap),
+      diff_list: diffList && diffList.length ? diffList : undefined,
     };
   });
 }
 
 /**
- * Enrich memo/consign return rows so Stone History can show
- * "returned X of memo Y" even for older generic descriptions.
+ * Flexible memo lookup helper that matches exact invoice, stripped prefix, or numeric key.
+ */
+function findMemoInLedger(memoLedger, memoRef) {
+  if (!memoRef || !memoLedger) return null;
+  const rawKey = String(memoRef).trim().toLowerCase();
+  if (memoLedger.has(rawKey)) return memoLedger.get(rawKey);
+
+  const cleanKey = rawKey.replace(/^memo\s*#?\s*/i, "").trim();
+  if (memoLedger.has(cleanKey)) return memoLedger.get(cleanKey);
+
+  for (const [k, entry] of memoLedger.entries()) {
+    if (k === cleanKey) return entry;
+    const strippedK = k.replace(/^[a-z0-9]+-/i, "");
+    const strippedClean = cleanKey.replace(/^[a-z0-9]+-/i, "");
+    if (strippedK && strippedClean && strippedK === strippedClean) return entry;
+  }
+
+  const numMatch = cleanKey.match(/\d+$/);
+  if (numMatch) {
+    const num = numMatch[0];
+    for (const [k, entry] of memoLedger.entries()) {
+      const entryNum = k.match(/\d+$/);
+      if (entryNum && entryNum[0] === num) return entry;
+    }
+  }
+
+  return null;
+}
+
 /**
  * Comprehensive Memo Lifecycle & Stock Movement Enrichment.
  * Tracks every memo invoice: issued carat/pcs, returned, sold from memo, and remaining pending balance.
  * Enriches Memo rows with their full resolution, and Return/Sale rows with direct parent links.
  * Distinguishes initial purchase vs subsequent inward additions to the same SKU.
  */
-function enrichMemoReturnContext(history) {
+function enrichMemoReturnContext(history, memoRefMap = {}) {
   const rows = Array.isArray(history) ? history : [];
 
   // Pass 1: Build the complete ledger for every memo invoice
   const memoLedger = new Map();
 
+  // First pass: register all outward memo records
   rows.forEach((h, idx) => {
     const act = String(h.action || "").toLowerCase().trim();
     const inv = String(h.invoice || "").trim();
@@ -338,25 +401,25 @@ function enrichMemoReturnContext(history) {
 
     if (!key) return;
 
-    if (!memoLedger.has(key)) {
-      memoLedger.set(key, {
-        invoice: inv,
-        party_name: h.party_name || h.party || "",
-        memo_rows: [],
-        return_rows: [],
-        sale_rows: [],
-        total_memo_pcs: 0,
-        total_memo_carat: 0,
-        total_return_pcs: 0,
-        total_return_carat: 0,
-        total_sale_pcs: 0,
-        total_sale_carat: 0,
-      });
-    }
-
-    const entry = memoLedger.get(key);
-
     if (act === "memo" || act === "consign" || act === "in_memo" || act === "in_consign") {
+      if (!memoLedger.has(key)) {
+        memoLedger.set(key, {
+          invoice: inv,
+          party_name: h.party_name || h.party || "",
+          party: h.party,
+          memo_rows: [],
+          return_rows: [],
+          sale_rows: [],
+          total_memo_pcs: 0,
+          total_memo_carat: 0,
+          total_return_pcs: 0,
+          total_return_carat: 0,
+          total_sale_pcs: 0,
+          total_sale_carat: 0,
+        });
+      }
+
+      const entry = memoLedger.get(key);
       entry.memo_rows.push({
         id: h.id,
         row_index: idx,
@@ -369,17 +432,55 @@ function enrichMemoReturnContext(history) {
       entry.total_memo_pcs += pcs;
       entry.total_memo_carat = Number((entry.total_memo_carat + carat).toFixed(3));
       if (h.party_name) entry.party_name = h.party_name;
-    } else if (act === "memo_return" || act === "consign_return") {
-      entry.return_rows.push({
-        id: h.id,
-        row_index: idx,
-        pcs,
-        carat,
-        date: h.date,
-        invoice: inv,
-      });
-      entry.total_return_pcs += pcs;
-      entry.total_return_carat = Number((entry.total_return_carat + carat).toFixed(3));
+    }
+  });
+
+  // Second pass: track returns and sales linked to their parent memos
+  rows.forEach((h, idx) => {
+    const act = String(h.action || "").toLowerCase().trim();
+    const inv = String(h.invoice || "").trim();
+    const pcs = Math.abs(Number(h.pcs) || 0);
+    const carat = Math.abs(Number(h.carat) || 0);
+    const key = inv ? inv.toLowerCase() : "";
+
+    if (act === "memo_return" || act === "consign_return") {
+      let targetEntry = key ? findMemoInLedger(memoLedger, key) : null;
+      if (!targetEntry) {
+        const descMatch = String(h.description || "").match(/(?:from|against|of)?\s*Memo\s*#?\s*([A-Za-z0-9_-]+)/i);
+        if (descMatch) {
+          targetEntry = findMemoInLedger(memoLedger, descMatch[1]);
+        }
+      }
+      if (!targetEntry) {
+        const partyStr = String(h.party_name || h.party || "").trim().toLowerCase();
+        const precedingPartyMemos = [];
+        for (const [, entry] of memoLedger.entries()) {
+          const entryParty = String(entry.party_name || entry.party || "").trim().toLowerCase();
+          const occurredBefore = entry.memo_rows.some((mr) => mr.row_index < idx || mr.id < h.id);
+          if (occurredBefore && partyStr && (partyStr === entryParty || entryParty.includes(partyStr) || partyStr.includes(entryParty))) {
+            precedingPartyMemos.push(entry);
+          }
+        }
+        if (precedingPartyMemos.length > 0) {
+          const withBalance = precedingPartyMemos.filter(
+            (e) => (e.total_memo_carat - e.total_return_carat - e.total_sale_carat) > 0.0001
+          );
+          targetEntry = withBalance.length > 0 ? withBalance[withBalance.length - 1] : precedingPartyMemos[precedingPartyMemos.length - 1];
+        }
+      }
+      if (targetEntry) {
+        targetEntry.return_rows.push({
+          id: h.id,
+          row_index: idx,
+          pcs,
+          carat,
+          date: h.date,
+          invoice: inv,
+        });
+        targetEntry.total_return_pcs += pcs;
+        targetEntry.total_return_carat = Number((targetEntry.total_return_carat + carat).toFixed(3));
+        h._parent_memo_invoice = targetEntry.invoice;
+      }
     } else if (
       act === "sale" ||
       act === "export" ||
@@ -388,24 +489,89 @@ function enrichMemoReturnContext(history) {
       act === "memo_to_sale"
     ) {
       const descLower = String(h.description || "").toLowerCase();
+      const mappedMemoInv = memoRefMap && (memoRefMap[inv] || memoRefMap[key]);
       const isExplicitMemoSale =
         descLower.includes("from memo") ||
         descLower.includes("memo to sale") ||
         act === "memo_to_sale" ||
         String(h.narretion || "").toLowerCase().includes("from memo") ||
-        entry.memo_rows.length > 0;
+        Boolean(mappedMemoInv);
 
       if (isExplicitMemoSale) {
-        entry.sale_rows.push({
-          id: h.id,
-          row_index: idx,
-          pcs,
-          carat,
-          date: h.date,
-          invoice: inv,
-        });
-        entry.total_sale_pcs += pcs;
-        entry.total_sale_carat = Number((entry.total_sale_carat + carat).toFixed(3));
+        let parentEntry = null;
+        // 0. Exact database reference map from dai_outward / dai_outward_item
+        if (mappedMemoInv) {
+          parentEntry = findMemoInLedger(memoLedger, mappedMemoInv);
+        }
+
+        // 1. Check if description has an explicit memo invoice that exists in memoLedger (and is NOT this sale's invoice)
+        if (!parentEntry) {
+          const descMemoMatch = String(h.description || "").match(/(?:from|against|of)?\s*Memo\s*#?\s*([A-Za-z0-9_-]+)/i);
+          if (descMemoMatch && descMemoMatch[1].toLowerCase() !== key) {
+            parentEntry = findMemoInLedger(memoLedger, descMemoMatch[1]);
+          }
+        }
+
+        // 2. If inv matches a real memo in memoLedger that occurred before this sale
+        if (!parentEntry && key) {
+          const directMemo = memoLedger.get(key);
+          if (directMemo && directMemo.memo_rows.some((mr) => mr.row_index < idx || mr.id < h.id)) {
+            parentEntry = directMemo;
+          }
+        }
+
+        // 3. Match memo for the same party that occurred before this sale
+        // When stone had multiple memos: prioritize the most recent preceding memo that still had open balance!
+        if (!parentEntry) {
+          const partyStr = String(h.party_name || h.party || "").trim().toLowerCase();
+          const precedingPartyMemos = [];
+          for (const [, entry] of memoLedger.entries()) {
+            const entryParty = String(entry.party_name || entry.party || "").trim().toLowerCase();
+            const occurredBefore = entry.memo_rows.some((mr) => mr.row_index < idx || mr.id < h.id);
+            if (occurredBefore && partyStr && (partyStr === entryParty || entryParty.includes(partyStr) || partyStr.includes(entryParty))) {
+              precedingPartyMemos.push(entry);
+            }
+          }
+          if (precedingPartyMemos.length > 0) {
+            const withBalance = precedingPartyMemos.filter(
+              (e) => (e.total_memo_carat - e.total_return_carat - e.total_sale_carat) > 0.0001
+            );
+            parentEntry = withBalance.length > 0 ? withBalance[withBalance.length - 1] : precedingPartyMemos[precedingPartyMemos.length - 1];
+          }
+        }
+
+        // 4. Fallback: if multiple memos exist before this sale, pick the latest open memo
+        if (!parentEntry) {
+          const precedingMemos = Array.from(memoLedger.values()).filter((e) =>
+            e.memo_rows.some((mr) => mr.row_index < idx || mr.id < h.id)
+          );
+          if (precedingMemos.length === 1) {
+            parentEntry = precedingMemos[0];
+          } else if (precedingMemos.length > 1) {
+            const withBalance = precedingMemos.filter(
+              (e) => (e.total_memo_carat - e.total_return_carat - e.total_sale_carat) > 0.0001
+            );
+            if (withBalance.length > 0) {
+              parentEntry = withBalance[withBalance.length - 1];
+            } else {
+              parentEntry = precedingMemos[precedingMemos.length - 1];
+            }
+          }
+        }
+
+        if (parentEntry) {
+          parentEntry.sale_rows.push({
+            id: h.id,
+            row_index: idx,
+            pcs,
+            carat,
+            date: h.date,
+            invoice: inv,
+          });
+          parentEntry.total_sale_pcs += pcs;
+          parentEntry.total_sale_carat = Number((parentEntry.total_sale_carat + carat).toFixed(3));
+          h._parent_memo_invoice = parentEntry.invoice;
+        }
       }
     }
   });
@@ -496,20 +662,23 @@ function enrichMemoReturnContext(history) {
     if (action === "memo_return" || action === "consign_return") {
       let linked_memo = null;
       let desc = existingDesc;
+      const parentInv = h._parent_memo_invoice || (memoInfo && memoInfo.memo_rows.length > 0 ? invoice : null);
+      const retMemo = parentInv ? findMemoInLedger(memoLedger, parentInv) : memoInfo;
 
-      if (memoInfo) {
+      if (retMemo) {
+        const memoInv = retMemo.invoice;
         linked_memo = {
-          invoice,
-          parent_row_id: memoInfo.memo_rows[0]?.id || null,
-          total_memo_carat: memoInfo.total_memo_carat,
-          total_memo_pcs: memoInfo.total_memo_pcs,
-          pending_carat: memoInfo.pending_carat,
-          status: memoInfo.status,
-          is_settled: memoInfo.is_settled,
+          invoice: memoInv,
+          parent_row_id: retMemo.memo_rows[0]?.id || null,
+          total_memo_carat: retMemo.total_memo_carat,
+          total_memo_pcs: retMemo.total_memo_pcs,
+          pending_carat: retMemo.pending_carat,
+          status: retMemo.status,
+          is_settled: retMemo.is_settled,
         };
 
-        if (!existingDesc.includes("of Memo #")) {
-          desc = `Memo Return ${pcs}pcs / ${carat.toFixed(3)}ct against Memo #${invoice} (Original: ${memoInfo.total_memo_carat.toFixed(3)}ct) — [Memo Left: ${memoInfo.pending_carat.toFixed(3)}ct]`;
+        if (!existingDesc.includes("of Memo #") && !existingDesc.includes(`against Memo #${memoInv}`)) {
+          desc = `Memo Return ${pcs}pcs / ${carat.toFixed(3)}ct against Memo #${memoInv} (Original: ${retMemo.total_memo_carat.toFixed(3)}ct) — [Memo Left: ${retMemo.pending_carat.toFixed(3)}ct]`;
         }
       }
 
@@ -517,9 +686,9 @@ function enrichMemoReturnContext(history) {
         ...h,
         description: desc,
         linked_memo,
-        memo_of_pcs: memoInfo ? memoInfo.total_memo_pcs : null,
-        memo_of_carat: memoInfo ? memoInfo.total_memo_carat : null,
-        is_partial_memo_return: memoInfo ? memoInfo.pending_carat > 0.0001 : false,
+        memo_of_pcs: retMemo ? retMemo.total_memo_pcs : null,
+        memo_of_carat: retMemo ? retMemo.total_memo_carat : null,
+        is_partial_memo_return: retMemo ? retMemo.pending_carat > 0.0001 : false,
         impacts_onhand_stock: true,
       };
     }
@@ -538,12 +707,16 @@ function enrichMemoReturnContext(history) {
         descLower.includes("memo to sale") ||
         action === "memo_to_sale" ||
         String(h.narretion || "").toLowerCase().includes("from memo") ||
-        (memoInfo && memoInfo.memo_rows.length > 0);
+        Boolean(h._parent_memo_invoice);
 
-      if (isExplicitMemoSale && memoInfo) {
+      const parentInv = h._parent_memo_invoice || (memoInfo && memoInfo.memo_rows.length > 0 ? invoice : null);
+      const parentMemo = parentInv ? findMemoInLedger(memoLedger, parentInv) : null;
+
+      if (isExplicitMemoSale && parentMemo) {
+        const memoInv = parentMemo.invoice;
         let desc = existingDesc;
-        if (!existingDesc.includes("Sold from Memo #")) {
-          desc = `Sold ${pcs}pcs / ${carat.toFixed(3)}ct from Memo #${invoice} (Original: ${memoInfo.total_memo_carat.toFixed(3)}ct) — [Memo Left: ${memoInfo.pending_carat.toFixed(3)}ct]`;
+        if (!existingDesc.includes(`from Memo #${memoInv}`) || existingDesc.includes(`from Memo #${invoice}`)) {
+          desc = `Sold ${pcs}pcs / ${carat.toFixed(3)}ct from Memo #${memoInv} (Original: ${parentMemo.total_memo_carat.toFixed(3)}ct) — [Memo Left: ${parentMemo.pending_carat.toFixed(3)}ct]`;
         }
 
         return {
@@ -551,18 +724,18 @@ function enrichMemoReturnContext(history) {
           description: desc,
           is_from_memo: true,
           linked_memo: {
-            invoice,
-            parent_row_id: memoInfo.memo_rows[0]?.id || null,
-            total_memo_carat: memoInfo.total_memo_carat,
-            total_memo_pcs: memoInfo.total_memo_pcs,
-            pending_carat: memoInfo.pending_carat,
-            status: memoInfo.status,
-            is_settled: memoInfo.is_settled,
+            invoice: memoInv,
+            parent_row_id: parentMemo.memo_rows[0]?.id || null,
+            total_memo_carat: parentMemo.total_memo_carat,
+            total_memo_pcs: parentMemo.total_memo_pcs,
+            pending_carat: parentMemo.pending_carat,
+            status: parentMemo.status,
+            is_settled: parentMemo.is_settled,
           },
           impacts_onhand_stock: false,
-          memo_invoice: invoice,
+          memo_invoice: memoInv,
           action_label: "Sale (From Memo)",
-          balance_note: `Sold from Memo #${invoice}. This carat was already debited from on-hand stock when Memo was issued, so B.Carat does not deduct again.`,
+          balance_note: `Sold from Memo #${memoInv}. This carat was already debited from on-hand stock when Memo was issued, so B.Carat does not deduct again.`,
         };
       }
 
@@ -1107,15 +1280,87 @@ function formatStoneDateTime(value) {
   return m.format("DD-MM-YYYY HH:mm:ss");
 }
 
+function parseActivityDiffList(log) {
+  const diffs = [];
+  let oldObj = {};
+  let newObj = {};
+  try {
+    if (typeof log.old_value === "string") oldObj = JSON.parse(log.old_value);
+    else if (typeof log.old_value === "object" && log.old_value) oldObj = log.old_value;
+  } catch (_) {}
+  try {
+    if (typeof log.new_value === "string") newObj = JSON.parse(log.new_value);
+    else if (typeof log.new_value === "object" && log.new_value) newObj = log.new_value;
+  } catch (_) {}
+
+  let fields = [];
+  try {
+    if (typeof log.changed_fields === "string") fields = JSON.parse(log.changed_fields);
+    else if (Array.isArray(log.changed_fields)) fields = log.changed_fields;
+  } catch (_) {}
+
+  if (!fields.length) {
+    const keys = new Set([...Object.keys(oldObj), ...Object.keys(newObj)]);
+    fields = Array.from(keys);
+  }
+
+  const ignoreKeys = new Set([
+    "requestPath", "requestMethod", "pageContext", "statusCode",
+    "queryParams", "record", "id", "product_id", "company_id", "created_at", "updated_at"
+  ]);
+
+  fields.forEach((f) => {
+    if (ignoreKeys.has(f)) return;
+    const oldV = oldObj[f] != null ? oldObj[f] : "";
+    const newV = newObj[f] != null ? newObj[f] : "";
+    if (String(oldV) !== String(newV)) {
+      diffs.push({
+        field: f,
+        old: oldV !== "" ? oldV : "—",
+        new: newV !== "" ? newV : "—",
+      });
+    }
+  });
+
+  return diffs;
+}
+
+function extractDiffsFromDesc(desc) {
+  if (!desc) return [];
+  const text = String(desc).trim();
+  const diffs = [];
+
+  const priceMatch = text.match(/old price\s*:\s*([\d.]+)\s*,\s*new price\s*:\s*([\d.]+)/i);
+  if (priceMatch) {
+    diffs.push({ field: "Price", old: priceMatch[1], new: priceMatch[2] });
+    return diffs;
+  }
+
+  const remarkMatch = text.match(/remark changed:\s*"([^"]*)"\s*→\s*"([^"]*)"/i);
+  if (remarkMatch) {
+    diffs.push({ field: "Remark", old: remarkMatch[1] || "—", new: remarkMatch[2] || "—" });
+    return diffs;
+  }
+
+  const cleanText = text.replace(/^stone detail updated:\s*/i, "");
+  const fieldRegex = /([A-Za-z0-9_ ]+):\s*([^→;]+)\s*→\s*([^;]+)/g;
+  let m;
+  while ((m = fieldRegex.exec(cleanText)) !== null) {
+    diffs.push({ field: m[1].trim(), old: m[2].trim(), new: m[3].trim() });
+  }
+
+  return diffs;
+}
+
 async function getActivityLogForStone(sku, productId, companyId) {
   try {
     return await auditQuery(
-      `SELECT id, action_type, module_name, description, user_name, user_role,
+      `SELECT id, company_id, action_type, module_name, description, user_name, user_role,
               changed_fields, old_value, new_value, created_at
        FROM dai_activity_log
-       WHERE company_id = ? AND (record_reference = ? OR record_id = ?)
+       WHERE record_reference = ? OR record_id = ?
        ORDER BY created_at ASC, id ASC`,
-      [companyId, sku, String(productId)]
+      [sku, String(productId)]
     );
   } catch {
     return [];
@@ -1567,16 +1812,39 @@ async function getStoneDetail(sku, companyId, userId) {
   const detail = await resolveStoneDetail(sku, companyId);
   if (!detail || !detail.id) return null;
 
+  const isContainer = detail.group_type === "box" || detail.group_type === "parcel";
+
+  const childIds = String(detail.box_products || detail.parcel_products || "")
+    .split(",")
+    .map((s) => Number(s.trim()))
+    .filter((n) => Number.isFinite(n) && n > 0 && n !== detail.id);
+
   let historySql = "SELECT * FROM dai_history WHERE product_id = ?";
   const historyValues = [detail.id];
+
+  if (isContainer) {
+    historySql = `
+      SELECT * FROM dai_history 
+      WHERE product_id = ? 
+         OR (
+           action IN ('box_add', 'to_box', 'parcel_add') 
+           AND (
+             description LIKE ? 
+             ${childIds.length > 0 ? `OR product_id IN (${childIds.map(() => "?").join(",")})` : ""}
+           )
+         )
+    `;
+    historyValues.push(`%${detail.sku}%`, ...childIds);
+  }
+
   if (hideUser16(userId)) {
     historySql += HISTORY_HIDE_USER16_SQL;
   }
-  historySql += " ORDER BY id";
-  // perf: history, box transfer, party map, and activity logs are independent
+  historySql += " ORDER BY id ASC";
   const activityCompanyId = detail.company != null ? detail.company : companyId;
   const stockCompanyId = Number(detail.company) || Number(companyId) || 0;
-  const [history, transfer, partyMap, userMap, activityLogs, companyRows] = await Promise.all([
+  const allProductIds = [detail.id, ...childIds];
+  const [rawHistory, transfer, partyMap, userMap, activityLogs, companyRows, outwardRefRows, outwardItemRows] = await Promise.all([
     queryAsync(historySql, historyValues),
     getBoxHistoryByProductId(detail.id),
     getPartyMap(),
@@ -1588,17 +1856,149 @@ async function getStoneDetail(sku, companyId, userId) {
           [stockCompanyId]
         ).catch(() => [])
       : Promise.resolve([]),
+    queryAsync(
+      `SELECT invoiceno, type, reference, products FROM dai_outward
+       WHERE (
+         FIND_IN_SET(?, products) OR FIND_IN_SET(?, return_products) OR FIND_IN_SET(?, out_product)
+         ${childIds.length > 0 ? `OR ${childIds.map(() => "FIND_IN_SET(?, products)").join(" OR ")}` : ""}
+       )
+       AND reference IS NOT NULL AND reference != ''`,
+      [detail.id, detail.id, detail.id, ...childIds]
+    ).catch(() => []),
+    queryAsync(
+      `SELECT invoice_no, reference, outward_type, product_id FROM dai_outward_item
+       WHERE product_id IN (${allProductIds.map(() => "?").join(",")})
+         AND reference IS NOT NULL AND reference != ''`,
+      allProductIds
+    ).catch(() => []),
   ]);
-  const historyWithUsers = await backfillHistoryUsers(history);
-  const mappedHistory = mapStoneHistoryRows(historyWithUsers, partyMap, userMap);
-  const withMemoContext = enrichMemoReturnContext(mappedHistory);
-  const enrichedHistory = enrichHistoryDates(withMemoContext, activityLogs);
+
+  const memoRefMap = {};
+  (outwardRefRows || []).forEach((r) => {
+    const inv = String(r.invoiceno || "").trim();
+    const ref = String(r.reference || "").trim();
+    const memoInv = ref.replace(/^memo\s*#?\s*/i, "").trim();
+    if (inv && memoInv) {
+      memoRefMap[inv] = memoInv;
+      memoRefMap[inv.toLowerCase()] = memoInv;
+    }
+  });
+  (outwardItemRows || []).forEach((r) => {
+    const inv = String(r.invoice_no || "").trim();
+    const ref = String(r.reference || "").trim();
+    const memoInv = ref.replace(/^memo\s*#?\s*/i, "").trim();
+    if (inv && memoInv) {
+      memoRefMap[inv] = memoInv;
+      memoRefMap[inv.toLowerCase()] = memoInv;
+    }
+  });
+
+  let normalizedHistory = rawHistory || [];
+  if (isContainer) {
+    const seen = new Set();
+    normalizedHistory = [];
+    (rawHistory || []).forEach((h) => {
+      const isChildAdd = h.product_id !== detail.id;
+      const key = `${h.action}_${moment(h.date).format("YYYY-MM-DD HH:mm")}_${Math.abs(Number(h.pcs) || 0)}_${Math.abs(Number(h.carat) || 0)}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+
+      if (isChildAdd) {
+        const stoneSku = h.sku || "";
+        normalizedHistory.push({
+          ...h,
+          product_id: detail.id,
+          sku: detail.sku,
+          description: h.description && h.description.includes(stoneSku)
+            ? h.description
+            : `Added 1 stone(s) (${stoneSku})`,
+        });
+      } else {
+        normalizedHistory.push(h);
+      }
+    });
+  }
+
+  const enrichedActivityLogs = (activityLogs || []).map((log) => {
+    const diffList = parseActivityDiffList(log);
+    return {
+      ...log,
+      diff_list: diffList,
+      created_at_display: formatStoneDateTime(log.created_at),
+    };
+  });
+
+  // Synthesize property change events from activity logs into normalizedHistory if not already in dai_history
+  const existingUpdateDates = new Set(
+    (normalizedHistory || [])
+      .filter((h) => h.action === "stone_update" || h.action === "remark_change")
+      .map((h) => moment(h.date).format("YYYY-MM-DD HH:mm"))
+  );
+
+  enrichedActivityLogs.forEach((log) => {
+    if (log.action_type !== "UPDATE") return;
+    const mod = String(log.module_name || "").toLowerCase();
+    const isStonePropUpdate =
+      mod === "stone update" ||
+      mod === "inventory remark" ||
+      mod === "stone detail" ||
+      (log.diff_list && log.diff_list.some((d) => ["lab", "shape", "color", "clarity", "price", "cut", "polish", "symm", "remark"].includes(d.field.toLowerCase())));
+
+    if (!isStonePropUpdate) return;
+
+    const logMinute = moment(log.created_at).format("YYYY-MM-DD HH:mm");
+    if (existingUpdateDates.has(logMinute)) return;
+
+    const diffSummary = (log.diff_list || [])
+      .map((d) => `${d.field.toUpperCase()}: ${d.old} → ${d.new}`)
+      .join("; ");
+    const desc = diffSummary
+      ? `Stone Detail Updated: ${diffSummary}`
+      : (log.description || "Stone Detail Updated");
+
+    normalizedHistory.push({
+      id: `audit-${log.id}`,
+      product_id: detail.id,
+      sku: detail.sku,
+      action: mod === "inventory remark" ? "remark_change" : "stone_update",
+      action_label: mod === "inventory remark" ? "Remark Changed" : "Stone Update",
+      date: log.created_at,
+      updated_at: log.created_at,
+      date_display: formatStoneDateTime(log.created_at),
+      updated_by: log.user_name || "—",
+      user: log.user_name,
+      description: desc,
+      diff_list: log.diff_list,
+      pcs: null,
+      carat: null,
+      type: "cr",
+      invoice: "—",
+      party: "—",
+      party_name: "—",
+      is_audit_change: true,
+    });
+  });
+
+  // Sort normalizedHistory chronologically so updates sit at exact timeline position
+  normalizedHistory.sort((a, b) => {
+    const timeA = new Date(a.date || a.created_at || 0).getTime();
+    const timeB = new Date(b.date || b.created_at || 0).getTime();
+    if (timeA !== timeB) return timeA - timeB;
+    const idA = typeof a.id === "number" ? a.id : 99999999;
+    const idB = typeof b.id === "number" ? b.id : 99999999;
+    return idA - idB;
+  });
+
+  const historyWithUsers = await backfillHistoryUsers(normalizedHistory);
+  const mappedHistory = mapStoneHistoryRows(historyWithUsers, partyMap, userMap, isContainer);
+  const withMemoContext = enrichMemoReturnContext(mappedHistory, memoRefMap);
+  const enrichedHistory = enrichHistoryDates(withMemoContext, enrichedActivityLogs);
   const lineageTree = await getStoneLineageTree(detail, enrichedHistory, stockCompanyId);
   const stockSummary = computeStockSummary(detail, enrichedHistory);
 
   const lastUpdatedAt =
-    activityLogs.length > 0
-      ? activityLogs[activityLogs.length - 1].created_at
+    enrichedActivityLogs.length > 0
+      ? enrichedActivityLogs[enrichedActivityLogs.length - 1].created_at
       : detail.date;
 
   const companyMeta = companyRows?.[0] || null;
@@ -1608,6 +2008,7 @@ async function getStoneDetail(sku, companyId, userId) {
   return {
     detail: {
       ...detail,
+      is_container: isContainer,
       company_name: companyName,
       company_code: companyCode,
       last_updated_at: lastUpdatedAt,
@@ -1620,7 +2021,7 @@ async function getStoneDetail(sku, companyId, userId) {
     status: !detail.outward ? "AVAILABLE" : String(detail.outward).toUpperCase(),
     stock_summary: stockSummary,
     lineage: lineageTree,
-    activity_logs: activityLogs,
+    activity_logs: enrichedActivityLogs,
   };
 }
 

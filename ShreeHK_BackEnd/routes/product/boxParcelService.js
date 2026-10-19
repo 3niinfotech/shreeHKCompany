@@ -129,6 +129,20 @@ async function attachStonesToContainer({ stones, container, containerField, acti
     [newPcs, newCarat, newAmount, newPrice, productList.length, productList.join(","), container.id],
   );
 
+  const stoneSkus = stones.map((s) => s.sku).filter(Boolean);
+  await addHistoryAudited({
+    product_id: container.id,
+    action: actionLabel,
+    date: now,
+    description: `Added ${stones.length} stone(s) (${stoneSkus.join(", ")})`,
+    sku: container.sku,
+    pcs: addPcs,
+    carat: addCarat,
+    amount: addAmount,
+    balance_pcs: newPcs,
+    balance_carat: newCarat,
+  });
+
   return { containerId: container.id, containerSku: container.sku };
 }
 
@@ -185,6 +199,20 @@ async function createContainerFromStones(stones, { groupType, sku, category, rem
       amount: stone.amount,
     });
   }
+
+  const stoneSkus = stones.map((s) => s.sku).filter(Boolean);
+  await addHistoryAudited({
+    product_id: containerId,
+    action: groupType === "parcel" ? "parcel_add" : "boxing",
+    date: now,
+    description: `Created ${groupType} with ${stones.length} stone(s) (${stoneSkus.join(", ")})`,
+    sku: row.sku,
+    pcs: totals.pcs,
+    carat: totals.carat,
+    amount: totals.amount,
+    balance_pcs: totals.pcs,
+    balance_carat: totals.carat,
+  });
 
   return container;
 }

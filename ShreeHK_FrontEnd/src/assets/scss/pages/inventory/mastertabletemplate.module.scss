@@ -43,6 +43,29 @@
   }
 }
 
+.heroHeader {
+  margin: 12px 0;
+  flex-shrink: 0;
+}
+
+.summaryRow {
+  background: var(--color-bg-card, #ffffff);
+}
+
+.summaryCell {
+  padding: 8px 12px !important;
+  background: var(--color-bg-card, #ffffff) !important;
+  border-top: 1px solid var(--color-border, #e2e8f0) !important;
+}
+
+.summaryCellContent {
+  position: sticky;
+  left: 12px;
+  width: fit-content;
+  display: flex;
+  align-items: center;
+}
+
 .headerSection {
   flex-shrink: 0;
   margin-bottom: 16px;

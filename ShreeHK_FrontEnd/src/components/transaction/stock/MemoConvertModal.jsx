@@ -504,7 +504,7 @@ const MemoConvertModal = ({
       },
       { title: "Mfg. code", dataIndex: "mfg_code", key: "mfg_code", width: 100 },
       { title: "D. No.", dataIndex: "diamond_no", key: "diamond_no", width: 90 },
-      { title: "SKU", dataIndex: "sku", key: "sku", width: 120, fixed: "left" },
+      { title: "SKU", dataIndex: "sku", key: "sku", width: 240, fixed: "left" },
       {
         title: "Pcs",
         dataIndex: "polish_pcs",
@@ -603,7 +603,7 @@ const MemoConvertModal = ({
     return cols;
   }, [isSale, isPurchase, isSaleReturn]);
 
-  const scrollX = 48 + 100 + 90 + 120 + 80 + 90 + 90 + 90 + 100 + 90
+  const scrollX = 48 + 100 + 90 + 240 + 80 + 90 + 90 + 90 + 100 + 90
     + ATTR_COLS.reduce((s, c) => s + c.width, 0);
 
   const titleNode = (

@@ -745,6 +745,7 @@ productRouter.post("/product/save", authenticateToken, async (req, res) => {
       const oldSnap = buildFullProductAuditSnapshot({ ...oldRow, record: oldValRow });
       const newSnap = buildFullProductAuditSnapshot({ ...newRows[0], record: newValRows[0] });
 
+      const changed = diffFields(oldSnap, newSnap);
       await logAuditInTx(q, {
         actionType: "UPDATE",
         moduleName: "Stone Update",
@@ -752,8 +753,30 @@ productRouter.post("/product/save", authenticateToken, async (req, res) => {
         recordReference: newRows[0]?.sku || String(id),
         oldValue: oldSnap,
         newValue: newSnap,
-        changedFields: diffFields(oldSnap, newSnap),
+        changedFields: changed,
       });
+
+      if (changed && changed.length > 0) {
+        try {
+          const diffSummary = changed.map((f) => {
+            const oldV = oldSnap[f] != null && oldSnap[f] !== "" ? oldSnap[f] : "—";
+            const newV = newSnap[f] != null && newSnap[f] !== "" ? newSnap[f] : "—";
+            return `${f.toUpperCase()}: ${oldV} → ${newV}`;
+          });
+          const desc = `Stone Detail Updated: ${diffSummary.join("; ")}`;
+          const histData = helper.insertString({
+            product_id: id,
+            sku: newRows[0]?.sku || oldRow?.sku || "",
+            action: "stone_update",
+            date: new Date(),
+            description: desc.toUpperCase(),
+            user: req.user?.user_id || 1,
+          });
+          await q(`INSERT INTO dai_history (${histData[0]}) VALUES (${histData[1]})`);
+        } catch (histErr) {
+          console.error("[product/save] dai_history insert warning:", histErr.message);
+        }
+      }
     });
 
     res.status(201).json({ message: message });
@@ -786,6 +809,7 @@ productRouter.post("/product/update-remark", authenticateToken, async (req, res)
         const { diffFields } = require("../../services/auditService.js");
         const oldSnap = { remark: oldRemark };
         const newSnap = { remark };
+        const changed = diffFields(oldSnap, newSnap);
         await logAuditInTx(q, {
           actionType: "UPDATE",
           moduleName: "Inventory Remark",
@@ -793,8 +817,25 @@ productRouter.post("/product/update-remark", authenticateToken, async (req, res)
           recordReference: rows[0]?.sku || String(id),
           oldValue: oldSnap,
           newValue: newSnap,
-          changedFields: diffFields(oldSnap, newSnap),
+          changedFields: changed,
         });
+
+        if (oldRemark !== remark) {
+          try {
+            const desc = `Remark Changed: "${oldRemark || "—"}" → "${remark || "—"}"`;
+            const histData = helper.insertString({
+              product_id: id,
+              sku: rows[0]?.sku || "",
+              action: "remark_change",
+              date: new Date(),
+              description: desc.toUpperCase(),
+              user: req.user?.user_id || 1,
+            });
+            await q(`INSERT INTO dai_history (${histData[0]}) VALUES (${histData[1]})`);
+          } catch (histErr) {
+            console.error("[update-remark] dai_history insert warning:", histErr.message);
+          }
+        }
       } catch (_) {
         // Audit must not block remark save
       }

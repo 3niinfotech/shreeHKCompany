@@ -160,20 +160,23 @@ const MasterTableTemplate = ({
     const tableFooterSummary =
         typeof renderFooterTotals === "function" && renderFooterTotalsInTable
             ? () => (
-                <Table.Summary>
-                    <Table.Summary.Row>
+                <Table.Summary fixed="bottom">
+                    <Table.Summary.Row className={styles.summaryRow}>
                         <Table.Summary.Cell
                             index={0}
                             colSpan={finalColumns.length + (enableRowSelectionFooter ? 1 : 0)}
+                            className={styles.summaryCell}
                         >
-                            {renderFooterTotals({
-                                totals,
-                                selectedTotals,
-                                avgPrice,
-                                selectedAvgPrice,
-                                selectedRowKeys,
-                                totalCount: dataSource.length,
-                            })}
+                            <div className={styles.summaryCellContent}>
+                                {renderFooterTotals({
+                                    totals,
+                                    selectedTotals,
+                                    avgPrice,
+                                    selectedAvgPrice,
+                                    selectedRowKeys,
+                                    totalCount: dataSource.length,
+                                })}
+                            </div>
                         </Table.Summary.Cell>
                     </Table.Summary.Row>
                 </Table.Summary>
@@ -187,6 +190,7 @@ const MasterTableTemplate = ({
                     breadcrumb="INVENTORY"
                     title={`${title} Details`}
                     icon={<DatabaseOutlined />}
+                    className={styles.heroHeader}
                     actions={(
                         <Space wrap>
                             <Input

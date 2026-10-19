@@ -391,22 +391,23 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  margin-bottom: 24px;
+  margin-bottom: 6px;
 }
 
 .excelUploadFieldLabel {
   display: block;
-  height: 22px;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 22px;
-  color: rgba(0, 0, 0, 0.88);
+  height: auto;
+  padding-bottom: 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary, #5f7383);
 }
 
 .excelUploadPanelInline {
   margin: 0;
   width: 100%;
-  min-height: 40px;
+  min-height: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   box-sizing: border-box;

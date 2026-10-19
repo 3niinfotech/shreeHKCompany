@@ -21,6 +21,7 @@ import styles from '../../assets/scss/pages/report/stoneHistory.module.scss';
 import { toastApiError } from '../../utils/toastNotify';
 import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
 import LineageTreePanel from '../../components/report/LineageTreePanel';
+import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
 
 const formatHistoryDateTime = (row) => {
     if (row?.date_display) return row.date_display;
@@ -58,23 +59,30 @@ const HISTORY_DEBIT_ACTIONS = new Set([
 const HISTORY_CREDIT_ACTIONS = new Set([
     'import', 'in_import', 'purchase', 'in_memo', 'in_consign',
     'memo_return', 'sale_return', 'lab_return', 'consign_return',
-    'hold', 'unhold', 'price_change', 'unboxing', 'boxing',
-    'to_box', 'from_box', 'sku_change',
+    'hold', 'unhold', 'price_change', 'boxing', 'sku_change',
+    'stone_update', 'remark_change',
 ]);
 
-const isHistoryCredit = (row) => {
+const isHistoryCredit = (row, isContainer = false) => {
     const action = String(row?.action || '').toLowerCase().trim();
+    if (isContainer) {
+        if (action === 'unboxing' || action === 'from_box' || action === 'from_parcel') return false;
+        if (action === 'box_add' || action === 'to_box' || action === 'boxing' || action === 'parcel_add') return true;
+    } else {
+        if (action === 'unboxing' || action === 'from_box' || action === 'from_parcel') return true;
+        if (action === 'box_add' || action === 'to_box' || action === 'boxing' || action === 'parcel_add') return false;
+    }
     if (HISTORY_DEBIT_ACTIONS.has(action)) return false;
     if (HISTORY_CREDIT_ACTIONS.has(action)) return true;
     return String(row?.type || '').toLowerCase().trim() === 'cr';
 };
 
 /** History stores absolute pcs/carat + type cr|dr; UI shows signed movement. */
-const signedQty = (row, field) => {
+const signedQty = (row, field, isContainer = false) => {
     const n = Number(row?.[field]);
     if (!Number.isFinite(n)) return 0;
     const abs = Math.abs(n);
-    return isHistoryCredit(row) ? abs : -abs;
+    return isHistoryCredit(row, isContainer) ? abs : -abs;
 };
 
 const formatQtyCell = (value) => {
@@ -136,7 +144,7 @@ const renderInvoiceCell = (invoice, row, allRows, onJump) => {
         (r) =>
             String(r.invoice || '').trim().toLowerCase() === value.toLowerCase() &&
             r.key !== row?.key
-    );
+    ) || Boolean(row?.linked_memo);
 
     if (hasRelatedRow && onJump) {
         return (
@@ -147,9 +155,11 @@ const renderInvoiceCell = (invoice, row, allRows, onJump) => {
                     style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}
                     onClick={(e) => {
                         e.stopPropagation();
-                        onJump(value, 'memo', row);
+                        const directId = row?.linked_memo?.parent_row_id ? `h-${row.linked_memo.parent_row_id}` : null;
+                        const targetInv = row?.linked_memo?.invoice || value;
+                        onJump(targetInv, 'memo', row, directId);
                     }}
-                    title={`Jump to related history entry for ${value}`}
+                    title={row?.linked_memo ? `Jump to parent Memo #${row.linked_memo.invoice}` : `Jump to related history entry for ${value}`}
                 >
                     {value}
                 </button>
@@ -256,6 +266,16 @@ const renderParsedDescriptionText = (text, row, knownInvoices, onJump) => {
         const isValidInvoice = isRealInvoiceIdentifier(invCandidate, fullMatch, knownInvoices);
 
         if (isValidInvoice && invCandidate && onJump) {
+            const isMemoRef = /memo/i.test(fullMatch);
+            const directTargetId =
+                isMemoRef && row?.linked_memo?.parent_row_id
+                    ? `h-${row.linked_memo.parent_row_id}`
+                    : null;
+            const targetInv =
+                isMemoRef && row?.linked_memo?.invoice
+                    ? row.linked_memo.invoice
+                    : invCandidate;
+
             parts.push(
                 <button
                     key={`jump-${matchStart}`}
@@ -263,9 +283,9 @@ const renderParsedDescriptionText = (text, row, knownInvoices, onJump) => {
                     className={styles.historyJumpPill}
                     onClick={(e) => {
                         e.stopPropagation();
-                        onJump(invCandidate, 'memo', row);
+                        onJump(targetInv, 'memo', row, directTargetId);
                     }}
-                    title={`Jump to history entry for ${invCandidate}`}
+                    title={`Jump to history entry for ${targetInv}`}
                 >
                     <span>{fullMatch}</span>
                     <CornerDownRight size={11} className={styles.historyJumpIcon} />
@@ -285,7 +305,33 @@ const renderParsedDescriptionText = (text, row, knownInvoices, onJump) => {
     return parts.length ? parts : text;
 };
 
-const renderDescriptionCell = (value, row, historyRows, oldHistoryRows, onJump) => {
+const extractDiffsFromText = (text) => {
+    if (!text) return [];
+    const t = String(text).trim();
+    const diffs = [];
+
+    const priceMatch = t.match(/old price\s*:\s*([\d.]+)\s*,\s*new price\s*:\s*([\d.]+)/i);
+    if (priceMatch) {
+        diffs.push({ field: 'Price', old: priceMatch[1], new: priceMatch[2] });
+        return diffs;
+    }
+
+    const remarkMatch = t.match(/remark changed:\s*"([^"]*)"\s*→\s*"([^"]*)"/i);
+    if (remarkMatch) {
+        diffs.push({ field: 'Remark', old: remarkMatch[1] || '—', new: remarkMatch[2] || '—' });
+        return diffs;
+    }
+
+    const clean = t.replace(/^stone detail updated:\s*/i, '');
+    const regex = /([A-Za-z0-9_ ]+):\s*([^→;]+)\s*→\s*([^;]+)/g;
+    let m;
+    while ((m = regex.exec(clean)) !== null) {
+        diffs.push({ field: m[1].trim(), old: m[2].trim(), new: m[3].trim() });
+    }
+    return diffs;
+};
+
+const renderDescriptionCell = (value, row, historyRows, oldHistoryRows, onJump, onSearchSku, currentSku) => {
     const text = String(value || '').trim();
     const a = String(row?.action || '').toLowerCase().trim();
     const isReturn = a === 'memo_return' || a === 'consign_return';
@@ -300,9 +346,25 @@ const renderDescriptionCell = (value, row, historyRows, oldHistoryRows, onJump) 
     const isInwardAdd = row?.is_inward_addition;
     const textHasSettlement = text.includes('[✓ Memo Settled') || text.includes('[⏳ Active Memo');
     const textHasParentMemo = lm && (text.includes(`Memo #${lm.invoice}`) || text.includes(`against Memo #${lm.invoice}`) || text.includes(`from Memo #${lm.invoice}`));
+    const isParentMemoJumpable = Boolean(lm && onJump);
+
+    const diffsToRender = (row?.diff_list && row.diff_list.length > 0)
+        ? row.diff_list
+        : extractDiffsFromText(text);
+
+    const handleJumpToParentMemo = (e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
+        if (lm && onJump) {
+            onJump(lm.invoice, 'memo', row, lm.parent_row_id ? `h-${lm.parent_row_id}` : null);
+        }
+    };
 
     return (
-        <div className={styles.descCellWrap} title={text}>
+        <div
+            className={`${styles.descCellWrap} ${isParentMemoJumpable ? styles.clickableDescCell : ''}`}
+            title={isParentMemoJumpable ? `Click to jump to parent Memo #${lm.invoice}` : text}
+            onClick={isParentMemoJumpable ? handleJumpToParentMemo : undefined}
+        >
             <span className={`${styles.descText} ${isReturn ? styles.memoReturnDesc : ''}`}>
                 {isInwardAdd && (
                     <Tag color="geekblue" className={styles.inwardAddTag}>
@@ -311,6 +373,26 @@ const renderDescriptionCell = (value, row, historyRows, oldHistoryRows, onJump) 
                 )}
                 {renderParsedDescriptionText(text, row, knownInvoices, onJump)}
             </span>
+
+            {/* Old vs New visual diff badges if attributes changed */}
+            {diffsToRender.length > 0 && (
+                <span className={styles.diffBadgesWrap}>
+                    {diffsToRender.map((d, dIdx) => (
+                        <span key={dIdx} className={styles.diffItem}>
+                            <strong style={{ fontSize: 10, color: '#334155', textTransform: 'uppercase' }}>
+                                {String(d.field || '').toUpperCase()}:
+                            </strong>
+                            <Tag color="error" style={{ textDecoration: 'line-through', margin: 0, padding: '0 4px', fontSize: 10, lineHeight: '16px' }}>
+                                {String(d.old != null && d.old !== '' ? d.old : '—')}
+                            </Tag>
+                            <span style={{ color: '#64748b', fontSize: 10, fontWeight: 'bold' }}>→</span>
+                            <Tag color="success" style={{ margin: 0, padding: '0 4px', fontSize: 10, fontWeight: 700, lineHeight: '16px' }}>
+                                {String(d.new != null && d.new !== '' ? d.new : '—')}
+                            </Tag>
+                        </span>
+                    ))}
+                </span>
+            )}
 
             {/* If this is a Memo row, show linked return/sale jump pills cleanly without duplicate settlement tag */}
             {ml && (
@@ -367,11 +449,8 @@ const renderDescriptionCell = (value, row, historyRows, oldHistoryRows, onJump) 
                     <button
                         type="button"
                         className={styles.historyJumpPill}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onJump(lm.invoice, 'memo', row, lm.parent_row_id ? `h-${lm.parent_row_id}` : null);
-                        }}
-                        title={`Jump to Memo #${lm.invoice} (Original: ${lm.total_memo_carat} ct)`}
+                        onClick={handleJumpToParentMemo}
+                        title={`Jump to parent Memo #${lm.invoice} (Original: ${lm.total_memo_carat} ct)`}
                     >
                         <span>↰ Memo #{lm.invoice} ({lm.total_memo_carat} ct)</span>
                         <CornerDownRight size={10} className={styles.historyJumpIcon} />
@@ -387,6 +466,49 @@ const renderDescriptionCell = (value, row, historyRows, oldHistoryRows, onJump) 
                     )}
                 </span>
             )}
+
+            {/* Box / Container movement pill */}
+            {(() => {
+                if (!onSearchSku) return null;
+                const isBoxAction = ['unboxing', 'boxing', 'to_box', 'from_box', 'box_add', 'parcel_add', 'from_parcel'].includes(a);
+                if (!isBoxAction) return null;
+
+                let targetSku = '';
+                let label = '';
+                const parensMatch = text.match(/\(([A-Za-z0-9_-]{3,})\)/);
+                const fromToMatch = text.match(/(?:from|to)\s+(?:box|parcel)\s+([A-Za-z0-9_-]+)/i);
+
+                if (parensMatch && parensMatch[1] && parensMatch[1] !== currentSku) {
+                    targetSku = parensMatch[1];
+                    label = `↰ View Stone ${targetSku}`;
+                } else if (fromToMatch && fromToMatch[1] && fromToMatch[1] !== currentSku) {
+                    targetSku = fromToMatch[1];
+                    label = `↰ View Container ${targetSku}`;
+                } else if (row?.sku && row.sku !== currentSku) {
+                    targetSku = row.sku;
+                    label = `↰ View SKU ${targetSku}`;
+                }
+
+                if (!targetSku) return null;
+
+                return (
+                    <span className={styles.memoLifecycleWrap}>
+                        <button
+                            type="button"
+                            className={styles.historyJumpPill}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onSearchSku(targetSku);
+                            }}
+                            title={`Search & view history for ${targetSku}`}
+                            style={{ borderColor: '#93c5fd', color: '#1d4ed8', background: '#eff6ff' }}
+                        >
+                            <span>{label}</span>
+                            <CornerDownRight size={10} className={styles.historyJumpIcon} />
+                        </button>
+                    </span>
+                );
+            })()}
         </div>
     );
 };
@@ -595,10 +717,183 @@ const stoneVideoExternalUrl = (sku) => {
     return `https://www.shreehk.com/media/v360video/Vision360.html?d=${encodeSkuPath(safe)}`;
 };
 
+const ChangeHistoryPanel = ({ logs, currentSku, loading }) => {
+    const relevantLogs = (logs || []).filter(
+        (l) => l.action_type !== 'API_READ' && l.action_type !== 'LOGIN'
+    );
+
+    const changeColumns = [
+        {
+            title: '#',
+            key: 'idx',
+            width: 45,
+            align: 'center',
+            render: (_, __, index) => index + 1,
+        },
+        {
+            title: 'Date & Time',
+            dataIndex: 'created_at',
+            key: 'created_at',
+            width: 170,
+            render: (val, row) => (
+                <span style={{ whiteSpace: 'nowrap', fontWeight: 500 }}>
+                    {row.created_at_display || formatHistoryDateTime({ date: val })}
+                </span>
+            ),
+        },
+        {
+            title: 'Action / Module',
+            key: 'action_module',
+            width: 160,
+            render: (_, row) => {
+                const mod = String(row.module_name || row.action || '').trim();
+                let color = 'default';
+                const lower = mod.toLowerCase();
+                if (lower.includes('update') || lower === 'stone_update') color = 'cyan';
+                else if (lower.includes('price')) color = 'gold';
+                else if (lower.includes('hold')) color = lower.includes('unhold') ? 'green' : 'volcano';
+                else if (lower.includes('remark')) color = 'purple';
+                else if (lower.includes('box') || lower.includes('parcel')) color = 'geekblue';
+                else if (lower.includes('stock')) color = 'blue';
+
+                return (
+                    <Tag color={color} style={{ fontWeight: 600, padding: '2px 8px', borderRadius: 4 }}>
+                        {mod || row.action_type || 'Update'}
+                    </Tag>
+                );
+            },
+        },
+        {
+            title: 'Changed By',
+            key: 'changed_by',
+            width: 150,
+            render: (_, row) => (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontWeight: 600, color: '#1e293b' }}>
+                        {row.user_name || 'superadmin'}
+                    </span>
+                    {row.user_role && (
+                        <Tag color="geekblue" style={{ fontSize: 10, margin: 0, lineHeight: '16px' }}>
+                            {row.user_role}
+                        </Tag>
+                    )}
+                </div>
+            ),
+        },
+        {
+            title: 'Field(s) Changed',
+            key: 'fields_changed',
+            width: 160,
+            render: (_, row) => {
+                if (row.diff_list && row.diff_list.length > 0) {
+                    return (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                            {row.diff_list.map((d, i) => (
+                                <Tag key={i} color="blue" style={{ fontSize: 10, margin: 0, textTransform: 'uppercase', fontWeight: 600 }}>
+                                    {d.field}
+                                </Tag>
+                            ))}
+                        </div>
+                    );
+                }
+                const rawFields = row.changed_fields;
+                if (Array.isArray(rawFields) && rawFields.length > 0) {
+                    return (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                            {rawFields.map((f, i) => (
+                                <Tag key={i} color="blue" style={{ fontSize: 10, margin: 0, textTransform: 'uppercase', fontWeight: 600 }}>
+                                    {f}
+                                </Tag>
+                            ))}
+                        </div>
+                    );
+                }
+                return <span style={{ color: '#94a3b8' }}>—</span>;
+            },
+        },
+        {
+            title: 'Old Value vs New Value (Changes)',
+            key: 'changes_diff',
+            width: 340,
+            render: (_, row) => {
+                const diffs = row.diff_list || [];
+                if (diffs.length > 0) {
+                    return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {diffs.map((d, i) => (
+                                <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f8fafc', padding: '2px 8px', borderRadius: 4, border: '1px solid #e2e8f0' }}>
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', minWidth: 65, textTransform: 'uppercase' }}>
+                                        {d.field}:
+                                    </span>
+                                    <Tag color="error" style={{ textDecoration: 'line-through', margin: 0, fontSize: 11, padding: '0 6px' }}>
+                                        {String(d.old != null && d.old !== '' ? d.old : '—')}
+                                    </Tag>
+                                    <span style={{ color: '#64748b', fontWeight: 'bold' }}>→</span>
+                                    <Tag color="success" style={{ margin: 0, fontSize: 11, fontWeight: 700, padding: '0 6px' }}>
+                                        {String(d.new != null && d.new !== '' ? d.new : '—')}
+                                    </Tag>
+                                </div>
+                            ))}
+                        </div>
+                    );
+                }
+                return (
+                    <span style={{ color: '#64748b', fontSize: 12 }}>
+                        {row.description || 'Action recorded'}
+                    </span>
+                );
+            },
+        },
+        {
+            title: 'Activity Description & Notes',
+            dataIndex: 'description',
+            key: 'description',
+            ellipsis: true,
+            render: (val) => (
+                <span style={{ color: '#334155', fontSize: 12 }}>
+                    {val || '—'}
+                </span>
+            ),
+        },
+    ];
+
+    if (!relevantLogs.length) {
+        return (
+            <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
+                <History size={32} style={{ marginBottom: 8, opacity: 0.5 }} />
+                <div style={{ fontWeight: 600, fontSize: 14 }}>No specification or property changes recorded yet.</div>
+                <div style={{ fontSize: 12, marginTop: 4 }}>Any stone specification edit, price change, hold, or unboxing will appear here with full Old vs New audit details.</div>
+            </div>
+        );
+    }
+
+    return (
+        <div className={styles.changeHistorySection}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f1f5f9', padding: '8px 14px', borderRadius: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
+                    Complete Change & Specification Audit History ({relevantLogs.length} record{relevantLogs.length > 1 ? 's' : ''})
+                </span>
+                <span style={{ fontSize: 12, color: '#64748b' }}>
+                    Showing all attribute updates, unboxing, boxing, price edits, and status changes for <strong>{currentSku}</strong>
+                </span>
+            </div>
+            <SkeletonAwareTable
+                loading={loading}
+                columns={changeColumns}
+                dataSource={relevantLogs.map((l, i) => ({ ...l, key: l.id ? `change-${l.id}` : `change-${i}` }))}
+                rowKey="key"
+                pagination={{ pageSize: 15, showSizeChanger: true, pageSizeOptions: ['10', '15', '25', '50'] }}
+                size="middle"
+                scroll={{ x: 'max-content' }}
+            />
+        </div>
+    );
+};
+
 const StoneHistory = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const [showForm, setShowForm] = useState(false);
+    const [showForm, setShowForm] = useState(true);
     const [activeTab, setActiveTab] = useState('history');
     const [historyRows, setHistoryRows] = useState([]);
     const [oldHistoryRows, setOldHistoryRows] = useState([]);
@@ -617,6 +912,13 @@ const StoneHistory = () => {
     const [oldLoading, setOldLoading] = useState(false);
     const [searchForm] = Form.useForm();
     const { form, resetAll } = useFormHandleChange();
+    const tableRef = React.useRef(null);
+    const tableScrollY = useTableBodyScrollHeight(tableRef, [
+        historyRows.length,
+        loading,
+        stockSummary,
+        activeTab,
+    ]);
 
     const applyDetailResponse = async (res) => {
         const { detail, history, status: st, stock_summary, lineage: lin, activity_logs } = res.data || {};
@@ -702,6 +1004,13 @@ const StoneHistory = () => {
         if (a === 'export') return 'blue';
         if (a === 'lab') return 'blue';
         if (a.includes('transfer')) return 'geekblue';
+        if (a === 'unboxing' || a === 'from_box' || a === 'from_parcel') return 'volcano';
+        if (a === 'boxing' || a === 'to_box' || a === 'box_add' || a === 'parcel_add') return 'geekblue';
+        if (a === 'stone_update') return 'cyan';
+        if (a === 'remark_change') return 'purple';
+        if (a === 'price_change') return 'gold';
+        if (a === 'hold') return 'volcano';
+        if (a === 'unhold') return 'green';
         return 'default';
     };
 
@@ -716,7 +1025,7 @@ const StoneHistory = () => {
         }
         highlightTimerRef.current = setTimeout(() => {
             setHighlightedRowKey(null);
-        }, 3200);
+        }, 3800);
 
         requestAnimationFrame(() => {
             setTimeout(() => {
@@ -724,7 +1033,13 @@ const StoneHistory = () => {
                     document.querySelector(`[data-history-row-key="${targetKey}"]`) ||
                     document.getElementById(`stone-history-row-${targetKey}`);
                 if (el) {
-                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+                    const tableBody = el.closest('.ant-table-body') || document.querySelector('.ant-table-body');
+                    if (tableBody) {
+                        const rowTop = el.offsetTop;
+                        const targetScroll = Math.max(0, rowTop - (tableBody.clientHeight / 2) + (el.clientHeight / 2));
+                        tableBody.scrollTo({ top: targetScroll, behavior: 'smooth' });
+                    }
                 }
             }, 60);
         });
@@ -732,13 +1047,29 @@ const StoneHistory = () => {
 
     const findTargetRow = (invoice, preferredAction, sourceRow) => {
         const inv = String(invoice || '').trim();
-        if (!inv) return null;
-
         const allRows = [...(historyRows || []), ...(oldHistoryRows || [])];
         if (!allRows.length) return null;
 
+        // Direct parent memo check if sourceRow has linked_memo
+        if (sourceRow?.linked_memo) {
+            if (sourceRow.linked_memo.parent_row_id) {
+                const directKey = `h-${sourceRow.linked_memo.parent_row_id}`;
+                const m = allRows.find((r) => r.key === directKey);
+                if (m) return m;
+            }
+            if (sourceRow.linked_memo.invoice) {
+                const memoInv = String(sourceRow.linked_memo.invoice).trim().toLowerCase();
+                const m = allRows.find(
+                    (r) =>
+                        String(r.invoice || '').trim().toLowerCase() === memoInv &&
+                        ['memo', 'consign', 'in_memo', 'in_consign'].includes(String(r.action || '').toLowerCase().trim())
+                );
+                if (m) return m;
+            }
+        }
+
         // 1. If preferredAction is specified (e.g. 'memo'), look for that first
-        if (preferredAction) {
+        if (preferredAction && inv) {
             const prefMatch = allRows.find(
                 (r) =>
                     String(r.invoice || '').trim().toLowerCase() === inv.toLowerCase() &&
@@ -758,15 +1089,29 @@ const StoneHistory = () => {
             sourceAction === 'close_memo' ||
             sourceAction === 'memo_close'
         ) {
-            const memoMatch = allRows.find(
-                (r) =>
-                    String(r.invoice || '').trim().toLowerCase() === inv.toLowerCase() &&
-                    ['memo', 'consign', 'in_memo', 'in_consign'].includes(
-                        String(r.action || '').toLowerCase().trim()
-                    ) &&
-                    r.key !== sourceRow?.key
-            );
-            if (memoMatch) return memoMatch;
+            if (inv) {
+                const memoMatch = allRows.find(
+                    (r) =>
+                        String(r.invoice || '').trim().toLowerCase() === inv.toLowerCase() &&
+                        ['memo', 'consign', 'in_memo', 'in_consign'].includes(
+                            String(r.action || '').toLowerCase().trim()
+                        ) &&
+                        r.key !== sourceRow?.key
+                );
+                if (memoMatch) return memoMatch;
+            }
+
+            // Fallback for sale from memo: match memo row for the same party
+            const party = String(sourceRow?.party_name || sourceRow?.party || '').trim().toLowerCase();
+            if (party) {
+                const partyMemo = allRows.find(
+                    (r) =>
+                        String(r.party_name || r.party || '').trim().toLowerCase() === party &&
+                        ['memo', 'consign', 'in_memo', 'in_consign'].includes(String(r.action || '').toLowerCase().trim()) &&
+                        r.key !== sourceRow?.key
+                );
+                if (partyMemo) return partyMemo;
+            }
         }
 
         // 3. If source row is a lab_return, prefer the parent lab
@@ -854,6 +1199,15 @@ const StoneHistory = () => {
         return classes.join(' ');
     };
 
+    const isContainer = stoneDetail?.group_type === 'box' || stoneDetail?.group_type === 'parcel' || Boolean(stoneDetail?.is_container);
+
+    const handleSearchSku = (targetSku) => {
+        if (!targetSku) return;
+        searchForm.setFieldsValue({ searchSku: targetSku });
+        const companyId = (searchParams.get('companyId') || '').trim();
+        navigate(`/report/stone-history?sku=${encodeURIComponent(targetSku)}${companyId ? `&companyId=${encodeURIComponent(companyId)}` : ''}`);
+    };
+
     const historyColumns = [
         {
             title: 'Action',
@@ -900,7 +1254,7 @@ const StoneHistory = () => {
             title: 'Invoice',
             dataIndex: 'invoice',
             key: 'invoice',
-            width: 90,
+            width: 140,
             render: (value, row) =>
                 renderInvoiceCell(
                     value,
@@ -920,7 +1274,9 @@ const StoneHistory = () => {
                     row,
                     historyRows,
                     oldHistoryRows,
-                    handleJumpToInvoice
+                    handleJumpToInvoice,
+                    handleSearchSku,
+                    stoneDetail?.sku
                 ),
         },
         {
@@ -929,7 +1285,7 @@ const StoneHistory = () => {
             key: 'pcs',
             width: 70,
             align: 'right',
-            render: (_, row) => formatQtyCell(signedQty(row, 'pcs')),
+            render: (_, row) => formatQtyCell(signedQty(row, 'pcs', isContainer)),
         },
         {
             title: 'Carat',
@@ -938,7 +1294,7 @@ const StoneHistory = () => {
             width: 95,
             align: 'right',
             render: (_, row) => {
-                const val = formatQtyCell(signedQty(row, 'carat'));
+                const val = formatQtyCell(signedQty(row, 'carat', isContainer));
                 if (row?.is_from_memo) {
                     return (
                         <div className={styles.memoQtyWrap}>
@@ -1076,8 +1432,8 @@ const StoneHistory = () => {
                     ...row,
                     date: formatHistoryDate(row),
                     date_display: formatHistoryDateTime(row),
-                    pcs: signedQty(row, 'pcs'),
-                    carat: signedQty(row, 'carat'),
+                    pcs: signedQty(row, 'pcs', isContainer),
+                    carat: signedQty(row, 'carat', isContainer),
                 })),
                 fileName: 'stone_history',
                 sheetName: 'History',
@@ -1157,7 +1513,7 @@ const StoneHistory = () => {
         setHoldInfo(null);
         setHiddenImages({});
         setActiveTab('history');
-        setShowForm(false);
+        setShowForm(true);
     };
 
     const searchSku = Form.useWatch('searchSku', searchForm);
@@ -1243,6 +1599,12 @@ const StoneHistory = () => {
                                         <span className={styles.tabLabel}>
                                             <History size={14} />
                                             History
+                                            {historyRows.length > 0 && (
+                                                <Badge
+                                                    count={historyRows.length}
+                                                    style={{ backgroundColor: '#0284c7', marginLeft: 4 }}
+                                                />
+                                            )}
                                         </span>
                                     ),
                                     children: (
@@ -1325,52 +1687,9 @@ const StoneHistory = () => {
                                                             </div>
                                                         </div>
                                                     </div>
-
-                                                    {stockSummary.memo_ledger?.length > 0 && (
-                                                        <div className={styles.memoLedgerSection}>
-                                                            <div className={styles.memoLedgerHeader}>
-                                                                <span>Memo Tracking & Audit Ledger ({stockSummary.memo_ledger.length} memo{stockSummary.memo_ledger.length > 1 ? 's' : ''})</span>
-                                                                <span style={{ fontSize: 11, fontWeight: 500, color: '#64748b' }}>Click memo to jump directly to history row</span>
-                                                            </div>
-                                                            <div className={styles.memoLedgerGrid}>
-                                                                {stockSummary.memo_ledger.map((m) => (
-                                                                    <div
-                                                                        key={m.invoice}
-                                                                        className={`${styles.memoLedgerRow} ${m.status === 'OPEN' ? styles.memoLedgerRowOpen : ''}`}
-                                                                    >
-                                                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                                                                            <button
-                                                                                type="button"
-                                                                                className={styles.memoLedgerInvBtn}
-                                                                                onClick={() => handleJumpToInvoice(m.invoice, 'memo', null, m.row_id ? `h-${m.row_id}` : null)}
-                                                                                title="Click to jump to memo row in history table"
-                                                                            >
-                                                                                Memo #{m.invoice}
-                                                                                <CornerDownRight size={11} />
-                                                                            </button>
-                                                                            <span className={styles.memoLedgerParty}>{m.party_name}</span>
-                                                                        </div>
-                                                                        <div className={styles.memoLedgerStats}>
-                                                                            <span>Issued: <b>{formatQtyCell(m.memo_carat)} ct</b></span>
-                                                                            <span>Returned: <b>{formatQtyCell(m.return_carat)} ct</b></span>
-                                                                            <span>Sold: <b>{formatQtyCell(m.sold_carat)} ct</b></span>
-                                                                            <span style={{ color: m.pending_carat > 0 ? '#b45309' : '#16a34a' }}>
-                                                                                Pending: <b>{formatQtyCell(m.pending_carat)} ct</b>
-                                                                            </span>
-                                                                            {m.status === 'OPEN' ? (
-                                                                                <Tag color="warning" style={{ margin: 0 }}>Active</Tag>
-                                                                            ) : (
-                                                                                <Tag color="success" style={{ margin: 0 }}>Closed</Tag>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    )}
                                                 </div>
                                             )}
-                                            <div className={styles.historyTableScroll}>
+                                            <div ref={tableRef} className={styles.historyTableScroll}>
                                                 <SkeletonAwareTable
                                                     columns={historyColumns}
                                                     dataSource={historyRows}
@@ -1379,7 +1698,7 @@ const StoneHistory = () => {
                                                     bordered
                                                     pagination={false}
                                                     tableLayout="fixed"
-                                                    scroll={{ x: historyTableScrollX }}
+                                                    scroll={{ x: historyTableScrollX, y: tableScrollY }}
                                                     rowClassName={historyRowClassName}
                                                     rowKey="key"
                                                     onRow={(record) => ({
@@ -1417,6 +1736,28 @@ const StoneHistory = () => {
                                                 </div>
                                             ) : null}
                                         </div>
+                                    ),
+                                },
+                                {
+                                    key: 'change_history',
+                                    label: (
+                                        <span className={styles.tabLabel}>
+                                            <History size={14} />
+                                            Change History (Old vs New)
+                                            {(activityLogs || []).filter((l) => l.action_type !== 'API_READ' && l.action_type !== 'LOGIN').length > 0 && (
+                                                <Badge
+                                                    count={(activityLogs || []).filter((l) => l.action_type !== 'API_READ' && l.action_type !== 'LOGIN').length}
+                                                    style={{ backgroundColor: '#0284c7', marginLeft: 4 }}
+                                                />
+                                            )}
+                                        </span>
+                                    ),
+                                    children: (
+                                        <ChangeHistoryPanel
+                                            logs={activityLogs}
+                                            currentSku={stoneDetail?.sku}
+                                            loading={loading}
+                                        />
                                     ),
                                 },
                                 {

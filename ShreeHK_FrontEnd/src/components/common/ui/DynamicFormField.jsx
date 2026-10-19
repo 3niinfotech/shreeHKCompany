@@ -9,7 +9,7 @@ const DynamicForm = ({ fields, forceFullWidth, layout = 'grid' }) => {
 
     const renderInput = (field) => {
         const inputStyle = {
-            height: field.type === 'textarea' ? 'auto' : (isStack ? '32px' : '40px'),
+            height: field.type === 'textarea' ? 'auto' : (isStack ? '32px' : '36px'),
             width: isStack ? '100%' : (field.width || '100%'),
         };
 
@@ -79,7 +79,7 @@ const DynamicForm = ({ fields, forceFullWidth, layout = 'grid' }) => {
     };
 
     return (
-        <Row gutter={isStack ? [0, 8] : [16, 0]} className={isStack ? 'dynamic-form--stack' : undefined}>
+        <Row gutter={isStack ? [0, 8] : [16, 8]} className={isStack ? 'dynamic-form--stack' : 'dynamic-form--grid'}>
             {fields.map((field, index) => {
                 const columnSpan = isStack || forceFullWidth ? 24 : (field.span || 12);
                 const colFlex = !isStack && !forceFullWidth ? field.flex : undefined;

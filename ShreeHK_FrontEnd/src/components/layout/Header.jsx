@@ -7,7 +7,7 @@ import TaskHeaderButton from "../sub_component/TaskHeaderButton";
 import NavBar from "./NavBar";
 import SkuActionModal from "../../hooks/useSkuModalAction";
 import styles from "../../assets/scss/layout/header.module.scss";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Gem, Menu, Wifi, WifiOff, RefreshCw, CheckCircle2, Database, Boxes, FileCheck, Send, ShoppingCart, ShoppingBag, Package, FlaskConical, ArrowLeftRight } from "lucide-react";
 import useAuthStore from "../../store/Auth.Store";
 import logo from "../../assets/loader/softWare_Header_white.svg";
@@ -149,8 +149,14 @@ const Header = ({
   const previousOnlineRef = useRef(navigator.onLine);
   const offlineTimerRef = useRef(null);
   const reconnectTimerRef = useRef(null);
+  const location = useLocation();
   const authCompanyName = useAuthStore((s) => s.companyName);
-  const companyName = useMemo(() => {
+
+  const displayFullName = useMemo(() => {
+    return (authCompanyName && String(authCompanyName).trim()) || "ShreeHK International";
+  }, [authCompanyName]);
+
+  const displayShortName = useMemo(() => {
     const name = authCompanyName && String(authCompanyName).trim();
     if (!name) return "SI";
     const cleanWithoutSuffix = name
@@ -168,6 +174,10 @@ const Header = ({
     }
     return "SI";
   }, [authCompanyName]);
+
+  // Shortcut only in dashboard; in web view, do not show company name
+  const isDashboard = location.pathname === "/dashboard" || location.pathname === "/";
+  const companyName = isDashboard ? displayShortName : null;
 
   const checkServerHealth = async () => {
     if (!navigator.onLine) {
@@ -323,13 +333,12 @@ const Header = ({
           )}
 
           {!hideLogo && (
-            <Link to="/dashboard" className={styles.logoLink}>
+            <Link to="/dashboard" className={styles.logoLink} title={displayFullName}>
               <span className={styles.logoIcon}>
                 {/* <Gem size={20} strokeWidth={2.2} /> */}
                 <img src={logo} alt="logo" className={styles.logoImage} />
               </span>
-              {/* <span className={styles.logoText}>Smart DIA</span> */}
-              <span className={styles.logoText}>{companyName}</span>
+              {companyName ? <span className={styles.logoText}>{companyName}</span> : null}
             </Link>
           )}
 

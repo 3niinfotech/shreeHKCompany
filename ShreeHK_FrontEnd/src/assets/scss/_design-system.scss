@@ -890,3 +890,46 @@ $inv-not: ":not(.diamond-inventory-table):not(.custom-ant-table):not(.erp-table)
     border-color: var(--color-btn-cancel-hover) !important;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Dynamic Form grid standard styling
+// ---------------------------------------------------------------------------
+.dynamic-form--grid {
+  row-gap: 8px !important;
+
+  > .ant-col {
+    min-width: 0;
+  }
+
+  .ant-form-item {
+    margin-bottom: 8px !important;
+  }
+
+  .ant-form-item-label {
+    padding-bottom: 2px !important;
+
+    > label {
+      font-size: 12px !important;
+      font-weight: 600 !important;
+      color: var(--color-text-secondary, #5f7383) !important;
+      height: auto !important;
+    }
+  }
+
+  .ant-input,
+  .ant-input-number,
+  .ant-select-selector,
+  .ant-picker {
+    border-radius: 6px !important;
+    min-height: 36px !important;
+    height: 36px !important;
+    font-size: 13px !important;
+  }
+
+  .ant-select-selection-item,
+  .ant-select-selection-placeholder,
+  .ant-picker-input > input {
+    font-size: 13px !important;
+    line-height: 34px !important;
+  }
+}

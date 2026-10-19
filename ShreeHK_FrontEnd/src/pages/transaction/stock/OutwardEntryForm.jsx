@@ -46,7 +46,7 @@ const CONFIRM_TABLE_COLUMNS = [
     render: (v) => (Number(v) || 0).toFixed(2),
   },
   {
-    title: 'Amount',
+    title: 'AMOUNT',
     dataIndex: 'amount',
     width: 100,
     align: 'right',
@@ -668,7 +668,7 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
     { title: 'Color', width: 80, render: (_, r) => r.color || '-' },
     { title: 'Clarity', width: 80, render: (_, r) => r.clarity || '-' },
     { title: 'Price', width: 100, render: (_, r) => renderCell(r, 'price', '', 'number') },
-    { title: 'Amount', width: 110, align: 'right', render: (_, r) => (Number(r.amount) || 0).toFixed(2) },
+    { title: 'AMOUNT', width: 110, align: 'right', render: (_, r) => (Number(r.amount) || 0).toFixed(2) },
     {
       title: '',
       width: 50,

@@ -1214,6 +1214,7 @@ const DiamondInventoryTable = () => {
       ],
       onFilter: (value, record) => record.lab === value,
       render: (lab) => {
+        if (!lab || !String(lab).trim()) return "-";
         const colorMap = { GIA: "blue", gia: "blue", IGI: "green", CGL: "orange", AGT: "purple" };
         return <Tag color={colorMap[lab] || "default"} className="inventory-lab-tag">{lab}</Tag>;
       }

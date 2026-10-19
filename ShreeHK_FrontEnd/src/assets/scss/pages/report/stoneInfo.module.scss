@@ -59,18 +59,23 @@
   }
 }
 
-// ── 3-column attribute grid (legacy stone-info layout) ───────
+// ── 5-column attribute grid ───────
 .attrGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0 20px;
-  padding: 12px 20px 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0 16px;
+  padding: 10px 16px 6px;
   border-bottom: 1px solid var(--color-border);
   background: #fff;
 
-  @media (max-width: 1200px) {
+  @media (max-width: 1400px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0 16px;
+  }
+
+  @media (max-width: 900px) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0 20px;
+    gap: 0 14px;
   }
 
   @media (max-width: 640px) {
@@ -85,13 +90,13 @@
 
 .attrRow {
   display: grid;
-  grid-template-columns: 100px minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 6px;
   align-items: center;
-  padding: 7px 0;
+  padding: 5px 0;
   border-bottom: 1px solid #eceff3;
-  font-size: 13px;
-  line-height: 1.35;
+  font-size: 12.5px;
+  line-height: 1.3;
 
   &:last-child {
     border-bottom: none;
@@ -460,6 +465,34 @@
 
 .historyTabContent {
   min-height: 160px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding-right: 4px;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+
+    &:hover {
+      background: #94a3b8;
+    }
+  }
+}
+
+.allHistoryTabContent {
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
 }
 
 .emptyHistory {
@@ -481,11 +514,33 @@
   }
 }
 
+.partyHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+
+  .partyBlockTitle {
+    margin-bottom: 0;
+  }
+
+  .historySubTitle {
+    margin-bottom: 0;
+  }
+}
+
+.partyHeaderSep {
+  color: var(--color-text-muted, #94a3b8);
+  font-size: 13px;
+  user-select: none;
+}
+
 .partyBlockTitle {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   font-size: 13px;
   font-weight: 700;
   color: var(--color-text-heading);

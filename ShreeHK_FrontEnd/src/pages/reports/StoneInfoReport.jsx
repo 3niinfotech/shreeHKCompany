@@ -279,54 +279,11 @@ const StoneInfoReport = () => {
                                 <span className={styles.attrValue}>
                                     <span className={`${styles.statusBadge} ${getStatusClass(status)}`}>
                                         {String(status || 'Available')
-                                          .toLowerCase()
-                                          .replace(/\b\w/g, (c) => c.toUpperCase())}
+                                            .toLowerCase()
+                                            .replace(/\b\w/g, (c) => c.toUpperCase())}
                                     </span>
                                 </span>
                             </div>
-                            <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Lab</span>
-                                <span className={styles.attrValue}>{(detail.lab || '').toString().toUpperCase() || '-'}</span>
-                            </div>
-                            <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Pcs</span>
-                                <span className={styles.attrValue}>{detail.polish_pcs ?? 0}</span>
-                            </div>
-                            <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Argyle Color</span>
-                                <span className={styles.attrValue}>{detail.argyle_color || ''}</span>
-                            </div>
-                            <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Rap</span>
-                                <span className={`${styles.attrValue} ${styles.attrValueRap}`}>
-                                    {Number(detail.rap_price || 0).toFixed(2)}
-                                </span>
-                            </div>
-                            <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Amount</span>
-                                <span className={`${styles.attrValue} ${styles.attrValueAmount}`}>
-                                    {Number(detail.amount || 0).toFixed(2)}
-                                </span>
-                            </div>
-                            <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Cut</span>
-                                <span className={styles.attrValue}>{detail.cut || ''}</span>
-                            </div>
-                            <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Table</span>
-                                <span className={styles.attrValue}>{detail.table_pc || ''}</span>
-                            </div>
-                            <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Girdle</span>
-                                <span className={styles.attrValue}>{detail.gridle || ''}</span>
-                            </div>
-                            <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Intensity</span>
-                                <span className={styles.attrValue}>{detail.intensity || ''}</span>
-                            </div>
-                        </div>
-
-                        <div className={styles.attrCol}>
                             <div className={styles.attrRow}>
                                 <span className={styles.attrLabel}>SKU</span>
                                 <span className={styles.attrValue}>
@@ -338,42 +295,9 @@ const StoneInfoReport = () => {
                                 <span className={styles.attrValue}>{detail.report_no || ''}</span>
                             </div>
                             <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Carat</span>
-                                <span className={styles.attrValue}>{detail.polish_carat ?? 0}</span>
+                                <span className={styles.attrLabel}>Lab</span>
+                                <span className={styles.attrValue}>{(detail.lab || '').toString().toUpperCase() || '-'}</span>
                             </div>
-                            <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>In House Cla</span>
-                                <span className={styles.attrValue}>{detail.in_house_clarity || ''}</span>
-                            </div>
-                            <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Cost</span>
-                                <span className={`${styles.attrValue} ${styles.attrValueCost}`}>
-                                    {Number(detail.cost || 0).toFixed(2)}
-                                </span>
-                            </div>
-                            <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Size</span>
-                                <span className={styles.attrValue}>{detail.size || ''}</span>
-                            </div>
-                            <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Polish</span>
-                                <span className={styles.attrValue}>{detail.polish || ''}</span>
-                            </div>
-                            <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Depth</span>
-                                <span className={styles.attrValue}>{detail.depth_pc || ''}</span>
-                            </div>
-                            <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Mining</span>
-                                <span className={styles.attrValue}>{detail.mining || ''}</span>
-                            </div>
-                            <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Overtone</span>
-                                <span className={styles.attrValue}>{detail.overtone || ''}</span>
-                            </div>
-                        </div>
-
-                        <div className={styles.attrCol}>
                             <div className={styles.attrRow}>
                                 <span className={styles.attrLabel}>Type</span>
                                 <span className={styles.attrValue}>{detail.group_type || ''}</span>
@@ -383,12 +307,91 @@ const StoneInfoReport = () => {
                                 <span className={styles.attrValue}>{detail.shape || ''}</span>
                             </div>
                             <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Pcs</span>
+                                <span className={styles.attrValue}>{detail.polish_pcs ?? 0}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Carat</span>
+                                <span className={styles.attrValue}>{detail.polish_carat ?? 0}</span>
+                            </div>
+                        </div>
+
+                        <div className={styles.attrCol}>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Color</span>
+                                <span className={styles.attrValue}>{detail.color || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
                                 <span className={styles.attrLabel}>Full Color</span>
                                 <span className={styles.attrValue}>{detail.main_color || ''}</span>
                             </div>
                             <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Intensity</span>
+                                <span className={styles.attrValue}>{detail.intensity || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Overtone</span>
+                                <span className={styles.attrValue}>{detail.overtone || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
                                 <span className={styles.attrLabel}>Clarity</span>
                                 <span className={styles.attrValue}>{detail.clarity || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>In House Cla</span>
+                                <span className={styles.attrValue}>{detail.in_house_clarity || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Eye Clean</span>
+                                <span className={styles.attrValue}>{detail.eyeclean || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Argyle Color</span>
+                                <span className={styles.attrValue}>{detail.argyle_color || ''}</span>
+                            </div>
+                        </div>
+
+                        <div className={styles.attrCol}>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Cut</span>
+                                <span className={styles.attrValue}>{detail.cut || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Polish</span>
+                                <span className={styles.attrValue}>{detail.polish || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Symm</span>
+                                <span className={styles.attrValue}>{detail.symmentry || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Fluorescence</span>
+                                <span className={styles.attrValue}>{detail.f_intensity || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Table</span>
+                                <span className={styles.attrValue}>{detail.table_pc || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Depth</span>
+                                <span className={styles.attrValue}>{detail.depth_pc || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Measurement</span>
+                                <span className={styles.attrValue}>{detail.mesurment || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Girdle</span>
+                                <span className={styles.attrValue}>{detail.gridle || ''}</span>
+                            </div>
+                        </div>
+
+                        <div className={styles.attrCol}>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>Rap</span>
+                                <span className={`${styles.attrValue} ${styles.attrValueRap}`}>
+                                    {Number(detail.rap_price || 0).toFixed(2)}
+                                </span>
                             </div>
                             <div className={styles.attrRow}>
                                 <span className={styles.attrLabel}>Price</span>
@@ -397,24 +400,32 @@ const StoneInfoReport = () => {
                                 </span>
                             </div>
                             <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Fluorescence</span>
-                                <span className={styles.attrValue}>{detail.f_intensity || ''}</span>
+                                <span className={styles.attrLabel}>Cost</span>
+                                <span className={`${styles.attrValue} ${styles.attrValueCost}`}>
+                                    {Number(detail.cost || 0).toFixed(2)}
+                                </span>
                             </div>
                             <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Symm</span>
-                                <span className={styles.attrValue}>{detail.symmentry || ''}</span>
+                                <span className={styles.attrLabel}>Amount</span>
+                                <span className={`${styles.attrValue} ${styles.attrValueAmount}`}>
+                                    {Number(detail.amount || 0).toFixed(2)}
+                                </span>
                             </div>
                             <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Measurement</span>
-                                <span className={styles.attrValue}>{detail.mesurment || ''}</span>
+                                <span className={styles.attrLabel}>Size</span>
+                                <span className={styles.attrValue}>{detail.size || ''}</span>
                             </div>
                             <div className={styles.attrRow}>
                                 <span className={styles.attrLabel}>Origin</span>
                                 <span className={styles.attrValue}>{detail.origin || ''}</span>
                             </div>
                             <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Color</span>
-                                <span className={styles.attrValue}>{detail.color || ''}</span>
+                                <span className={styles.attrLabel}>Mining</span>
+                                <span className={styles.attrValue}>{detail.mining || ''}</span>
+                            </div>
+                            <div className={styles.attrRow}>
+                                <span className={styles.attrLabel}>BGM</span>
+                                <span className={styles.attrValue}>{detail.bgm || ''}</span>
                             </div>
                         </div>
 
@@ -424,28 +435,20 @@ const StoneInfoReport = () => {
                                 <span className={styles.attrValue}>{detail.location || ''}</span>
                             </div>
                             <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Eye Clean</span>
-                                <span className={styles.attrValue}>{detail.eyeclean || ''}</span>
+                                <span className={styles.attrLabel}>Group</span>
+                                <span className={styles.attrValue}>{detail.main_group || ''}</span>
                             </div>
                             <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Remark</span>
-                                <span className={styles.attrValue}>{detail.remark || ''}</span>
+                                <span className={styles.attrLabel}>Sub Group</span>
+                                <span className={styles.attrValue}>{detail.sub_group || ''}</span>
                             </div>
                             <div className={styles.attrRow}>
                                 <span className={styles.attrLabel}>Package</span>
                                 <span className={styles.attrValue}>{detail.package || ''}</span>
                             </div>
                             <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Group</span>
-                                <span className={styles.attrValue}>{detail.main_group || ''}</span>
-                            </div>
-                            <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>BGM</span>
-                                <span className={styles.attrValue}>{detail.bgm || ''}</span>
-                            </div>
-                            <div className={styles.attrRow}>
-                                <span className={styles.attrLabel}>Sub Group</span>
-                                <span className={styles.attrValue}>{detail.sub_group || ''}</span>
+                                <span className={styles.attrLabel}>Remark</span>
+                                <span className={styles.attrValue}>{detail.remark || ''}</span>
                             </div>
                             <div className={styles.attrRow}>
                                 <span className={styles.attrLabel}>Site Upload</span>
@@ -515,16 +518,18 @@ const StoneInfoReport = () => {
 
                                                     return (
                                                         <div key={block.party_id} className={styles.partyBlock}>
-                                                            <div className={styles.partyBlockTitle}>
-                                                                <Activity size={16} />
-                                                                <span>Party: {block.party_name || `Party ID: ${block.party_id}`}</span>
-                                                            </div>
-
                                                             {hasMemo ? (
-                                                                <div style={{ marginBottom: 12 }}>
-                                                                    <span className={`${styles.historySubTitle} ${styles.historySubTitleMemo}`}>
-                                                                        Memo / Consign History
-                                                                    </span>
+                                                                <div style={{ marginBottom: hasSale ? 12 : 0 }}>
+                                                                    <div className={styles.partyHeaderRow}>
+                                                                        <div className={styles.partyBlockTitle}>
+                                                                            <Activity size={16} />
+                                                                            <span>Party: {block.party_name || `Party ID: ${block.party_id}`}</span>
+                                                                        </div>
+                                                                        <span className={styles.partyHeaderSep}>•</span>
+                                                                        <span className={`${styles.historySubTitle} ${styles.historySubTitleMemo}`}>
+                                                                            Memo / Consign History
+                                                                        </span>
+                                                                    </div>
                                                                     <SkeletonAwareTable
                                                                         size="small"
                                                                         columns={historyColumns}
@@ -539,9 +544,20 @@ const StoneInfoReport = () => {
 
                                                             {hasSale ? (
                                                                 <div>
-                                                                    <span className={`${styles.historySubTitle} ${styles.historySubTitleSale}`}>
-                                                                        Sale / Export History
-                                                                    </span>
+                                                                    <div className={styles.partyHeaderRow}>
+                                                                        {!hasMemo ? (
+                                                                            <>
+                                                                                <div className={styles.partyBlockTitle}>
+                                                                                    <Activity size={16} />
+                                                                                    <span>Party: {block.party_name || `Party ID: ${block.party_id}`}</span>
+                                                                                </div>
+                                                                                <span className={styles.partyHeaderSep}>•</span>
+                                                                            </>
+                                                                        ) : null}
+                                                                        <span className={`${styles.historySubTitle} ${styles.historySubTitleSale}`}>
+                                                                            Sale / Export History
+                                                                        </span>
+                                                                    </div>
                                                                     <SkeletonAwareTable
                                                                         size="small"
                                                                         columns={historyColumns}
@@ -569,7 +585,7 @@ const StoneInfoReport = () => {
                                         </span>
                                     ),
                                     children: (
-                                        <div className={styles.historyTabContent}>
+                                        <div className={`${styles.historyTabContent} ${styles.allHistoryTabContent}`}>
                                             <SkeletonAwareTable
                                                 size="small"
                                                 columns={generalColumns}
@@ -578,6 +594,7 @@ const StoneInfoReport = () => {
                                                 pagination={false}
                                                 bordered
                                                 rowKey="key"
+                                                scroll={{ y: 240, x: 1130 }}
                                             />
                                         </div>
                                     ),
@@ -591,7 +608,7 @@ const StoneInfoReport = () => {
                                         </span>
                                     ),
                                     children: (
-                                        <div className={styles.historyTabContent}>
+                                        <div className={`${styles.historyTabContent} ${styles.allHistoryTabContent}`}>
                                             <SkeletonAwareTable
                                                 size="small"
                                                 columns={generalColumns}
@@ -600,6 +617,7 @@ const StoneInfoReport = () => {
                                                 pagination={false}
                                                 bordered
                                                 rowKey="key"
+                                                scroll={{ y: 240, x: 1130 }}
                                             />
                                         </div>
                                     ),
