@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback, useContext, Suspense, lazy } from "react";
+import { flushSync } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import { SelectionContext } from "./SelectionContext";
 import { SkuLink } from "../../hooks/useSkuModalAction";
 import { Button, ConfigProvider, Dropdown, Tag, Form, Input, Select, Space } from "antd";
-import { toastSuccess, toastWarning, toastInfo } from "../../utils/toastNotify";
+import { toastSuccess, toastWarning, toastInfo, toastApiSuccess, toastApiError } from "../../utils/toastNotify";
 import { DownOutlined, DownloadOutlined, ReloadOutlined } from "@ant-design/icons";
 import InventorySmartSearch from "../../components/inventory/InventorySmartSearch";
 import { useQueryClient } from "@tanstack/react-query";
@@ -11,9 +12,10 @@ import { useFetchApi } from "../../api/ApiFunction";
 import { ENDPOINTS } from "../../api/endpoints";
 import { api } from "../../api/client/axiosInstance";
 import { PAUSE_BACKGROUND_API } from "../../api/pauseBackgroundApi";
-import { sendToOutward } from "../../api/services/outwardService";
+import { sendToOutward, fetchOutwardById } from "../../api/services/outwardService";
 import { TRANSACTION_STOCK_KEYS } from "../../api/services/transactionStockService";
-import { toastApiSuccess, toastApiError } from "../../utils/toastNotify";
+import useAuthStore from "../../store/Auth.Store";
+import TransactionInvoicePreviewModal from "../../components/transaction/invoice/TransactionInvoicePreviewModal";
 import InventoryFilterPanel from "../../components/inventory/InventoryFilterPanel";
 import InventoryFilterGroups from "../../components/inventory/InventoryFilterGroups";
 import InventoryCompactFilterRow from "../../components/inventory/InventoryCompactFilterRow";
@@ -33,8 +35,11 @@ import { renderLocationWithFlag } from "../../components/inventory/LocationWithF
 import useAiStockAlert from "../../components/ai/useAiStockAlert";
 import InventoryCaratCell from "../../components/inventory/InventoryCaratCell";
 import { buildInventoryApiFilters } from "../../utils/inventoryApiFilters";
+import useBranchCompanies from "../../hooks/useBranchCompanies";
 import useTableSkeleton from "../../components/common/skeleton/useTableSkeleton";
 import { StoneActionSuccessModal } from "./components/ShopTopActionFilter";
+import CompanyTransferModal from "../../components/inventory/CompanyTransferModal";
+import { ArrowLeftRight } from "lucide-react";
 import InventoryTableSection from "./InventoryTableSection";
 import { InventoryFooterDataContext } from "./InventoryFooterDataContext";
 import {
@@ -51,6 +56,7 @@ import "../../assets/scss/pages/inventory/diamondInventoryTable.scss";
 const InventoryPageModals = lazy(() => import("./InventoryPageModals"));
 const AIResultPanel = lazy(() => import("../../components/ai/AIResultPanel"));
 const InventoryBulkActionModal = lazy(() => import("../../components/inventory/InventoryBulkActionModal"));
+const InventoryMixingModal = lazy(() => import("../../components/inventory/InventoryMixingModal"));
 
 const EMPTY_ARRAY = [];
 
@@ -80,15 +86,15 @@ const DOWNLOAD_EXCEL_PRESETS = {
 const DOWNLOAD_MENU_ITEMS = [
   { key: "export", label: "Export to Excel", icon: <DownloadOutlined /> },
   { key: "iExport", label: "I.Export Excel", icon: <DownloadOutlined /> },
-  { key: "sell", label: "Sell Diamond Excel", icon: <DownloadOutlined /> },
-  { key: "memo", label: "Memo Diamond Excel", icon: <DownloadOutlined /> },
-  { key: "consignment", label: "Consignment Excel", icon: <DownloadOutlined /> },
 ];
 
 const mapInventoryProductRow = (item, index, offset = 1, baseIndex = 0) => ({
   id: String(item.id),
   no: baseIndex + index + 1,
   mfgCode: item.mfg_code,
+  company: item.company != null ? Number(item.company) : undefined,
+  companyCode: item.company_code || item.companyCode || "",
+  companyName: item.company_name || item.companyName || "",
   groupType: item.group_type, sku: item.sku, lab: item.lab,
   outward: item.outward ?? "",
   hold: item.hold === 1 || item.hold === true || item.hold === "1",
@@ -262,6 +268,7 @@ const MemoizedInventoryRow = React.memo(function MemoizedInventoryRow(props) {
     ? `${props.className || ""} ant-table-row-selected inventory-row-selected`.trim()
     : props.className;
 
+  // Must forward style (transform/top) — required for virtual scroll without blank rows
   return <tr {...props} className={mergedClassName} />;
 });
 
@@ -333,6 +340,8 @@ const getInventoryRowClass = (record) => {
   let className = "";
   const outward = String(record?.outward ?? "").trim().toLowerCase();
   const lab = String(record?.lab ?? "").trim();
+  // New stock flow: partial memo keeps outward empty but memo_carat > 0
+  const hasMemoQty = Number(record?.memoCarat ?? record?.memo_carat ?? 0) > 0;
 
   if (outward === "lab") {
     className = "inventory-row-green";
@@ -340,7 +349,7 @@ const getInventoryRowClass = (record) => {
   if (lab !== "") {
     className = "inventory-row-blue";
   }
-  if (outward === "memo" || outward === "consign") {
+  if (outward === "memo" || outward === "consign" || hasMemoQty) {
     className = "inventory-row-red";
   }
   if (record?.hold) {
@@ -497,13 +506,18 @@ const DiamondInventoryTable = () => {
   } = useInventorySelection();
   const [offset, setOffset] = useState(1);
   const [pageLimit, setPageLimit] = useState(100);
+  const [limitDropdownOpen, setLimitDropdownOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
+  const [filterCompanyId, setFilterCompanyId] = useState(undefined);
+  const { options: branchCompanyOptions, isLoading: isBranchCompanyLoading } = useBranchCompanies();
   const [appliedFilters, setAppliedFilters] = useState(DEFAULT_APPLIED_FILTERS);
   const [tableData, setTableData] = useState([]);
   const [isFetching, setIsFetching] = useState(false);
   const [tableHeight, setTableHeight] = useState(600);
   const [, setStoneDetailModal] = useState({ open: false, data: null });
   const [bulkActionModal, setBulkActionModal] = useState({ open: false, actionKey: null });
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [mixingModalOpen, setMixingModalOpen] = useState(false);
   const pageModalsRef = useRef(null);
   const [filterForm] = Form.useForm();
   const [advancedFilterForm] = Form.useForm();
@@ -522,7 +536,15 @@ const DiamondInventoryTable = () => {
     actionType: "sale",
     stone: {},
     count: 0,
+    outwardId: null,
   });
+  const [invoiceModal, setInvoiceModal] = useState({
+    open: false,
+    record: null,
+    printType: "memo",
+  });
+  const companyName = useAuthStore((s) => s.companyName);
+  const companyLogo = useAuthStore((s) => s.companyLogo);
 
   useEffect(() => {
     const idleId = window.requestIdleCallback
@@ -547,16 +569,18 @@ const DiamondInventoryTable = () => {
     selectionStore.setVisibleIds(tableData.map((row) => row.id));
   }, [tableData, selectionStore]);
 
-  const showSuccessModal = (actionType, rows = []) => {
+  const showSuccessModal = (actionType, rows = [], meta = {}) => {
     const list = Array.isArray(rows) ? rows : (rows ? [rows] : []);
     const count = list.length;
     const first = list[0] || {};
+    const outwardId = meta.outwardId != null ? Number(meta.outwardId) || null : null;
 
     if (count === 1) {
       setSuccessModal({
         open: true,
         actionType,
         count: 1,
+        outwardId,
         stone: {
           sku: first.sku || first.SKU || first.name || first.diamond_no || "",
           name: first.sku || first.SKU || first.name || "",
@@ -577,6 +601,7 @@ const DiamondInventoryTable = () => {
         open: true,
         actionType,
         count,
+        outwardId,
         stone: {
           sku: `${count} Items`,
           name: `${count} Items`,
@@ -590,10 +615,45 @@ const DiamondInventoryTable = () => {
         open: true,
         actionType,
         count: 0,
+        outwardId,
         stone: {},
       });
     }
   };
+
+  const printTypeForAction = (actionType) => {
+    if (actionType === "sale") return "sale";
+    if (actionType === "export") return "export";
+    return "memo";
+  };
+
+  const handleSuccessPrint = useCallback(async () => {
+    const outwardId = successModal.outwardId;
+    if (!outwardId) {
+      toastWarning("No invoice available to print yet.");
+      return;
+    }
+    try {
+      const res = await fetchOutwardById(outwardId);
+      if (!res?.status) {
+        toastApiError(res);
+        return;
+      }
+      const row = res?.Data || res?.data || null;
+      if (!row) {
+        toastWarning("Invoice record not found.");
+        return;
+      }
+      const products = Array.isArray(res?.products) ? res.products : [];
+      setInvoiceModal({
+        open: true,
+        record: { ...row, products },
+        printType: printTypeForAction(successModal.actionType),
+      });
+    } catch (err) {
+      toastApiError(err);
+    }
+  }, [successModal.outwardId, successModal.actionType]);
 
   useEffect(() => {
     advancedFilterForm.setFieldsValue({ color: undefined });
@@ -606,17 +666,22 @@ const DiamondInventoryTable = () => {
     }
   }, [location.search, navigate]);
 
+  const companyFilterParams = useMemo(
+    () => (filterCompanyId ? { filterCompanyId } : {}),
+    [filterCompanyId],
+  );
+
   const { data: summaryRes } = useFetchApi(
     "myInventorySummary",
     ENDPOINTS.product.inventorySummary,
-    {},
+    companyFilterParams,
   );
   const summaryTotals = summaryRes?.Data?.totals;
 
   const limit = pageLimit === "all" ? INVENTORY_ALL_LIMIT : Number(pageLimit) || 100;
   const inventoryQueryParams = useMemo(
-    () => ({ limit, offset: 1, ...appliedFilters }),
-    [limit, appliedFilters],
+    () => ({ limit, offset: 1, ...appliedFilters, ...companyFilterParams }),
+    [limit, appliedFilters, companyFilterParams],
   );
 
   const queryClient = useQueryClient();
@@ -675,13 +740,41 @@ const DiamondInventoryTable = () => {
 
   const [cachedTotalSummary, setCachedTotalSummary] = useState(null);
 
-  const { data: productData, isLoading, isFetching: isInventoryFetching, refetch: refetchInventory } = useFetchApi(
+  const { data: productData, isLoading, isFetching: isInventoryFetching, isPlaceholderData, refetch: refetchInventory } = useFetchApi(
     "GetProductData",
     ENDPOINTS.product.inventory,
     inventoryQueryParams,
     'GET',
     { placeholderData: (prev) => prev, refetchOnMount: 'always' }
   );
+
+  const handlePageLimitChange = useCallback((value) => {
+    // Instant close — paint closed dropdown before heavy limit reload
+    flushSync(() => {
+      setLimitDropdownOpen(false);
+    });
+
+    const nextLimit = value === "all" ? INVENTORY_ALL_LIMIT : Number(value) || 100;
+    const nextParams = {
+      limit: nextLimit,
+      offset: 1,
+      ...appliedFilters,
+      ...(filterCompanyId ? { filterCompanyId } : {}),
+    };
+
+    // Defer fetch/state so close stays snappy
+    window.setTimeout(() => {
+      void queryClient.fetchQuery({
+        queryKey: ["GetProductData", ENDPOINTS.product.inventory, nextParams, "GET"],
+        queryFn: async () => {
+          const res = await api.get(ENDPOINTS.product.inventory, { params: nextParams });
+          return res.data;
+        },
+      });
+      setPageLimit(value);
+      setOffset(1);
+    }, 0);
+  }, [appliedFilters, filterCompanyId, queryClient]);
 
   useEffect(() => {
     if (productData?.TotalData?.TotalItems != null) {
@@ -833,7 +926,7 @@ const DiamondInventoryTable = () => {
     const affectedRows = (payload?._submittedRows && payload._submittedRows.length > 0)
       ? payload._submittedRows
       : selectedRows;
-    showSuccessModal("memo", affectedRows);
+    showSuccessModal("memo", affectedRows, { outwardId: result?.id });
     setSelectedRowKeys([]);
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.outMemo] });
@@ -853,7 +946,7 @@ const DiamondInventoryTable = () => {
     const affectedRows = (payload?._submittedRows && payload._submittedRows.length > 0)
       ? payload._submittedRows
       : selectedRows;
-    showSuccessModal("sale", affectedRows);
+    showSuccessModal("sale", affectedRows, { outwardId: result?.id });
     setSelectedRowKeys([]);
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.sale] });
@@ -873,7 +966,7 @@ const DiamondInventoryTable = () => {
     const affectedRows = (payload?._submittedRows && payload._submittedRows.length > 0)
       ? payload._submittedRows
       : selectedRows;
-    showSuccessModal("consign", affectedRows);
+    showSuccessModal("consign", affectedRows, { outwardId: result?.id });
     setSelectedRowKeys([]);
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.outMemo] });
@@ -893,7 +986,7 @@ const DiamondInventoryTable = () => {
     const affectedRows = (payload?._submittedRows && payload._submittedRows.length > 0)
       ? payload._submittedRows
       : selectedRows;
-    showSuccessModal("lab", affectedRows);
+    showSuccessModal("lab", affectedRows, { outwardId: result?.id });
     setSelectedRowKeys([]);
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.gia] });
@@ -913,7 +1006,7 @@ const DiamondInventoryTable = () => {
     const affectedRows = (payload?._submittedRows && payload._submittedRows.length > 0)
       ? payload._submittedRows
       : selectedRows;
-    showSuccessModal("export", affectedRows);
+    showSuccessModal("export", affectedRows, { outwardId: result?.id });
     setSelectedRowKeys([]);
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.outMemo] });
@@ -1002,15 +1095,49 @@ const DiamondInventoryTable = () => {
     }
   }, [productData, cachedTotalSummary]);
 
+  // Map in render (not startTransition/useEffect) so rows exist in the same paint as API data.
+  // Deferred mapping was ending the loader 2–3s before the table filled.
+  const companyMetaById = useMemo(() => {
+    const map = new Map();
+    for (const opt of branchCompanyOptions || []) {
+      map.set(Number(opt.value), {
+        code: opt.code || "",
+        name: opt.name || String(opt.label || "").replace(/\s*\([^)]*\)\s*$/, ""),
+      });
+    }
+    return map;
+  }, [branchCompanyOptions]);
+
+  const apiMappedRows = useMemo(() => {
+    if (isPlaceholderData) return null;
+    const rows = productData?.Data;
+    if (!Array.isArray(rows) || rows.length === 0) return null;
+    return rows.map((item, index) => {
+      const mapped = mapInventoryProductRow(item, index, 1, 0);
+      if ((!mapped.companyName || !mapped.companyCode) && mapped.company) {
+        const meta = companyMetaById.get(Number(mapped.company));
+        if (meta) {
+          mapped.companyCode = mapped.companyCode || meta.code || "";
+          mapped.companyName = mapped.companyName || meta.name || "";
+        }
+      }
+      return mapped;
+    });
+  }, [productData, isPlaceholderData, companyMetaById]);
+
   useEffect(() => {
-    if (productData?.Data?.length > 0) {
-      setTableData(productData.Data.map((item, index) => mapInventoryProductRow(item, index, 1, 0)));
+    if (isPlaceholderData) {
+      setIsFetching(false);
+      return;
+    }
+    if (apiMappedRows) {
+      setTableData(apiMappedRows);
     } else if (!isInventoryFetching && !isLoading) {
       setTableData([]);
     }
     setIsFetching(false);
     loadingNextPageRef.current = false;
-  }, [productData, isInventoryFetching, isLoading]);
+  }, [apiMappedRows, isInventoryFetching, isLoading, isPlaceholderData]);
 
   const handleRemarkSave = useCallback(async (productId, nextRemark) => {
     try {
@@ -1047,6 +1174,15 @@ const DiamondInventoryTable = () => {
     },
     { title: "No", key: "no", dataIndex: "no", width: 52, align: "center", fixed: "left" },
     {
+      title: "Company Code",
+      key: "companyCode",
+      dataIndex: "companyCode",
+      width: 104,
+      align: "center",
+      ellipsis: true,
+      render: (v) => v || "-",
+    },
+    {
       title: "Type",
       key: "groupType",
       dataIndex: "groupType",
@@ -1078,6 +1214,7 @@ const DiamondInventoryTable = () => {
       ],
       onFilter: (value, record) => record.lab === value,
       render: (lab) => {
+        if (!lab || !String(lab).trim()) return "-";
         const colorMap = { GIA: "blue", gia: "blue", IGI: "green", CGL: "orange", AGT: "purple" };
         return <Tag color={colorMap[lab] || "default"} className="inventory-lab-tag">{lab}</Tag>;
       }
@@ -1169,7 +1306,7 @@ const DiamondInventoryTable = () => {
       key: "price",
       dataIndex: "price",
       width: 92,
-      align: "center",
+      align: "right",
       className: "inventory-finance-col inventory-price-col",
       render: (v) => (
         <span className="inventory-finance-value inventory-price-value">${Number(v || 0).toLocaleString()}</span>
@@ -1352,8 +1489,24 @@ const DiamondInventoryTable = () => {
       pageModalsRef.current?.openStock("export");
       return;
     }
+    if (key === "transfer" || key === "companyTransfer") {
+      if (selectedRowKeys.length === 0) {
+        toastWarning("Please select at least one diamond to transfer");
+        return;
+      }
+      setTransferModalOpen(true);
+      return;
+    }
     if (key === "hold" || key === "unHold") {
       handleHoldAction(key, selectedRowKeys);
+      return;
+    }
+    if (key === "mixing" || mapped === "mixing") {
+      if (selectedRowKeys.length === 0) {
+        toastWarning("Please select at least one diamond for Mixing");
+        return;
+      }
+      setMixingModalOpen(true);
       return;
     }
     if (key === "addPackage") {
@@ -1557,6 +1710,7 @@ const DiamondInventoryTable = () => {
       setCaratTo("");
       setIsFetching(false);
       setAppliedFilters(DEFAULT_APPLIED_FILTERS);
+      setFilterCompanyId(undefined);
       setSelectedRowKeys([]);
     }
     setOffset(1);
@@ -1564,8 +1718,13 @@ const DiamondInventoryTable = () => {
     queryClient.invalidateQueries({ queryKey: ["myInventorySummary"] });
   };
 
-  const filteredTableData = tableData;
-  const initialListLoading = isLoading && filteredTableData.length === 0;
+  // Prefer live API-mapped rows; fall back to state (remark edits / placeholder keep)
+  const filteredTableData =
+    (!isPlaceholderData && apiMappedRows) ||
+    (tableData.length > 0 ? tableData : EMPTY_ARRAY);
+  const initialListLoading =
+    filteredTableData.length === 0 &&
+    (isLoading || isInventoryFetching || isFetching);
   const {
     columns: tableColumnsSk,
     dataSource: tableDataSk,
@@ -1759,10 +1918,59 @@ const DiamondInventoryTable = () => {
         <div ref={pageRef} className="inventory-page-wrapper page-shell">
           <div className="inventory-filter-wrapper">
             <InventoryFilterPanel
+              sectionTitle=""
               totalLabel={
                 <>
                   Total: <b>{totalItemsDisplay}</b>
                 </>
+              }
+              titleExtra={
+                <ConfigProvider
+                  theme={{
+                    components: {
+                      Select: {
+                        colorTextPlaceholder: "#000000",
+                        colorBorder: "#9fa2ae",
+                        hoverBorderColor: "#9fa2ae",
+                        activeBorderColor: "#9fa2ae",
+                      },
+                    },
+                    token: {
+                      colorTextPlaceholder: "#000000",
+                      colorBorder: "#9fa2ae",
+                    },
+                  }}
+                >
+                  <Select
+                    allowClear
+                    showSearch
+                    optionFilterProp="label"
+                    size="middle"
+                    placeholder="All Companies"
+                    value={filterCompanyId}
+                    loading={isBranchCompanyLoading}
+                    options={branchCompanyOptions}
+                    onChange={(value) => {
+                      setFilterCompanyId(value != null ? Number(value) : undefined);
+                      setOffset(1);
+                      setSelectedRowKeys([]);
+                    }}
+                    className="inventory-company-filter"
+                    styles={{
+                      root: {
+                        width: 220,
+                        "--ant-color-text-placeholder": "#000000",
+                        "--ant-color-text-quaternary": "#000000",
+                        "--ant-color-border": "#9fa2ae",
+                      },
+                      placeholder: {
+                        color: "#000000",
+                        WebkitTextFillColor: "#000000",
+                        opacity: 1,
+                      },
+                    }}
+                  />
+                </ConfigProvider>
               }
               searchSlot={searchSlot}
               compactFilters={compactFiltersSlot}
@@ -1787,11 +1995,9 @@ const DiamondInventoryTable = () => {
                   value={pageLimit}
                   options={INVENTORY_LIMIT_OPTIONS}
                   style={{ width: 90 }}
-                  onChange={(value) => {
-                    setPageLimit(value);
-                    setOffset(1);
-                    setTableData([]);
-                  }}
+                  open={limitDropdownOpen}
+                  onOpenChange={setLimitDropdownOpen}
+                  onChange={handlePageLimitChange}
                 />
                 <InventoryPrimaryActions onAction={stablePanelAction} />
               </Space>
@@ -1814,7 +2020,12 @@ const DiamondInventoryTable = () => {
             tableColumnsSk={tableColumnsSk}
             tableDataSk={tableDataSk}
             isTableSkeleton={isTableSkeleton}
-            overlayLoading={overlayLoading || isFetching || isInventoryFetching}
+            overlayLoading={
+              overlayLoading ||
+              isFetching ||
+              isInventoryFetching ||
+              initialListLoading
+            }
             tableScrollX="max-content"
             tableComponents={tableComponents}
             getInventoryRowClass={getInventoryRowClass}
@@ -1869,10 +2080,50 @@ const DiamondInventoryTable = () => {
 
           <StoneActionSuccessModal
             isOpen={successModal.open}
-            onClose={() => setSuccessModal((s) => ({ ...s, open: false }))}
+            onClose={() => setSuccessModal((s) => ({ ...s, open: false, outwardId: null }))}
             actionType={successModal.actionType}
             stone={successModal.stone}
             count={successModal.count}
+            onPrint={handleSuccessPrint}
+          />
+
+          <TransactionInvoicePreviewModal
+            open={invoiceModal.open}
+            onClose={() => setInvoiceModal({ open: false, record: null, printType: "memo" })}
+            record={invoiceModal.record}
+            invoiceTitle={
+              invoiceModal.printType === "sale"
+                ? "Sale Invoice"
+                : invoiceModal.printType === "export"
+                  ? "Export Invoice"
+                  : "Memo Invoice"
+            }
+            printType={invoiceModal.printType}
+            company={{ name: companyName || "", logo: companyLogo || "" }}
+          />
+
+          <CompanyTransferModal
+            open={transferModalOpen}
+            onClose={() => setTransferModalOpen(false)}
+            selectedStones={selectedRows}
+            onSuccess={async () => {
+              clearSelection();
+              queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
+              queryClient.invalidateQueries({ queryKey: ["myInventorySummary"] });
+              await refetchInventory();
+            }}
+          />
+
+          <InventoryMixingModal
+            open={mixingModalOpen}
+            onClose={() => setMixingModalOpen(false)}
+            selectedRows={selectedRows}
+            onSuccess={async () => {
+              clearSelection();
+              queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
+              queryClient.invalidateQueries({ queryKey: ["myInventorySummary"] });
+              await refetchInventory();
+            }}
           />
         </div>
       </InventoryFooterDataContext.Provider>

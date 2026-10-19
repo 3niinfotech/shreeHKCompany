@@ -7,15 +7,33 @@ const transactionRepository = require("../../repositories/accounting/transaction
  * @param {number} no
  * @param {number} balance
  */
+function extractInvoiceFromDescription(description) {
+  const text = String(description || "");
+  const match = text.match(/INVOICE\s*NO\s*[:.]?\s*([A-Za-z0-9_-]+)/i);
+  return match?.[1] || "";
+}
+
 function mapTxnRow(row, no, balance) {
   const amount = parseFloat(row.amount) || 0;
   const isCredit = String(row.type).toLowerCase() === "cr" || String(row.type).toLowerCase() === "credit";
   const credit = isCredit ? amount : 0;
   const debit = !isCredit ? amount : 0;
+  const saleId = row.sale_id != null && row.sale_id !== "" ? String(row.sale_id) : "";
+  const purchaseId = row.purchase_id != null && row.purchase_id !== "" ? String(row.purchase_id) : "";
+  const invoiceFromDesc = extractInvoiceFromDescription(row.description);
+  const invoiceId = saleId || purchaseId || invoiceFromDesc || "";
+  const invoiceType = saleId
+    ? "outward"
+    : purchaseId
+      ? "inward"
+      : isCredit
+        ? "outward"
+        : "inward";
   return {
     no,
     date: row.date ? moment(row.date).format("DD-MM-YYYY") : "",
-    account: row.book || "",
+    account: row.account_name || row.book || "",
+    book: row.book_name || row.book || "",
     party: row.party_name || row.party || "",
     otherParty: row.other_party_name || row.other_party || "",
     cheque: row.cheque || "",
@@ -23,6 +41,12 @@ function mapTxnRow(row, no, balance) {
     credit: credit.toFixed(2),
     debit: debit.toFixed(2),
     balance: balance.toFixed(2),
+    type: row.type || "",
+    sale_id: saleId || null,
+    purchase_id: purchaseId || null,
+    invoice_id: invoiceId || null,
+    invoice: invoiceId || null,
+    invoice_type: invoiceType,
   };
 }
 

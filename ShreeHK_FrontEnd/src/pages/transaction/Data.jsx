@@ -52,10 +52,10 @@ export const stoneUploadfields = [
   ] },
   { name: "polish_pcs", label: "Pcs", type: "number", span: 6 },
   { name: "polish_carat", label: "Carat", type: "number", span: 6 },
-  { name: "main_color", label: "Full Color", type: "text", span: 12 },
-  { name: "cost", label: "Cost Price", type: "number", span: 6 },
-  { name: "price", label: "Selling Price", type: "number", span: 6, disabled: true },
+  { name: "price", label: "Price", type: "number", span: 6, disabled: true },
   { name: "amount", label: "Amount", type: "number", span: 6, disabled: true },
+  { name: "cost", label: "Cost Price", type: "number", span: 6 },
+  { name: "main_color", label: "Full Color", type: "text", span: 6 },
   { name: "location", label: "Location", type: "text", span: 6 },
   { name: "remark", label: "Remark", type: "text", span: 12 },
 ];

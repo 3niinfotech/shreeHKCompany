@@ -4,7 +4,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  gap: 14px;
+  gap: 10px;
 
   .tableCard {
     flex: 1;
@@ -26,9 +26,9 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 24px;
+    margin-bottom: 0;
     background: var(--color-bg-card);
-    padding: 20px;
+    padding: 10px 14px;
     border-radius: 10px;
 
     .pageTitle {
@@ -82,6 +82,25 @@
       :global(.ant-table-tbody > tr:hover > td) {
         background: var(--table-row-hover) !important;
       }
+    }
+  }
+
+  .transferTableWrap {
+    :global(.ant-table-content),
+    :global(.ant-table-body) {
+      overflow-x: hidden !important;
+    }
+
+    :global(.ant-table-table) {
+      width: 100% !important;
+    }
+
+    // ~25% shorter row height vs ant-table-small default
+    :global(.ant-table.ant-table-small .ant-table-thead > tr > th),
+    :global(.ant-table.ant-table-small .ant-table-tbody > tr > td) {
+      padding-top: 4px !important;
+      padding-bottom: 4px !important;
+      line-height: 1.25 !important;
     }
   }
 

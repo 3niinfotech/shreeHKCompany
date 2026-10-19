@@ -397,7 +397,7 @@ const CompanyPage = () => {
     return (
         <>
             <MasterListTable
-                title="Company"
+                title="Party"
                 columns={columns}
                 dataSource={combinedData}
                 loading={isLoading && offset === 0}
@@ -409,6 +409,7 @@ const CompanyPage = () => {
                 totalItems={data?.TotalItems}
                 searchValue={search}
                 onSearchChange={handleSearchChange}
+                tableScrollY={662}
                 rowSelection={{
                     selectedRowKeys,
                     onChange: (keys) => setSelectedRowKeys(keys),
@@ -433,7 +434,7 @@ const CompanyPage = () => {
                 loading={modalLoading}
                 form={form}
                 formFields={companyFields}
-                title="Add Company"
+                title="Add Party"
                 width={800}
             />
 
@@ -445,13 +446,13 @@ const CompanyPage = () => {
                 form={form}
                 formFields={companyFields}
                 initialValues={editRecord}
-                title={`Edit Company: ${editingRecordName}`}
+                title={`Edit Party: ${editingRecordName}`}
                 width={800}
             />
 
             <ConfirmDeleteModal
                 open={deleteModal.open}
-                title="Delete Company"
+                title="Delete Party"
                 entityName={deleteTarget?.name}
                 loading={isDeleting}
                 onCancel={closeDelete}

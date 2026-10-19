@@ -64,6 +64,10 @@
       font-size: var(--font-size-2xl);
       font-weight: var(--font-weight-semibold);
       letter-spacing: var(--letter-spacing-wide);
+      max-width: 280px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .menuToggle {
@@ -198,7 +202,8 @@
     .saleBtn,
     .purchaseBtn,
     .consignBtn,
-    .labBtn {
+    .labBtn,
+    .transferBtn {
 
       &,
       &:hover:not(:disabled),

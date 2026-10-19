@@ -2,7 +2,12 @@ const express = require("express");
 const connection = require("../../connection.js");
 const { authenticateToken } = require("../../authMiddleware.js");
 const { isSuperAdminRoll } = require("../../permissionHelper.js");
-const { metaQuery, getRollCompanyIds, databaseExists } = require("../../tenantHelper.js");
+const {
+  metaQuery,
+  getRollCompanyIds,
+  databaseExists,
+  buildUserContext,
+} = require("../../tenantHelper.js");
 
 const requireSuperAdmin = (req, res, next) => {
   if (!isSuperAdminRoll(req.user?.roll)) {
@@ -24,11 +29,52 @@ portalRouter.use(express.json());
 
 portalRouter.get("/portal/company-years", authenticateToken, async (req, res) => {
   try {
+    const { ensureBranchSchema } = require("../../services/ensureBranchSchemaService.js");
+    const { ensureCurrentFiscalYear } = require("../../services/ensureCurrentFiscalYearService.js");
+    const {
+      ensureBranchYearSchema,
+      getBranchYearMap,
+    } = require("../../services/branchYearService.js");
+    await ensureBranchSchema();
+    try {
+      await ensureBranchYearSchema();
+      await ensureCurrentFiscalYear();
+    } catch (fyErr) {
+      console.error("ensureCurrentFiscalYear on company-years:", fyErr?.message || fyErr);
+    }
+
     const yearsRaw = await metaQuery(
       `SELECT id, year, fromDate, toDate, db_name FROM company_year ORDER BY id DESC`
     );
-    const companiesRaw = await metaQuery("SELECT id, name, shortcutName, address, number FROM company ORDER BY name ASC");
+    const companiesRaw = await metaQuery(
+      `SELECT c.id, c.name, c.shortcutName, c.address, c.number, c.branch_id,
+              b.name AS branch_name, b.shortcutName AS branch_shortcut, b.address AS branch_address
+       FROM company c
+       LEFT JOIN branch b ON b.id = c.branch_id
+       ORDER BY COALESCE(b.name, 'zzz'), c.name ASC`
+    );
+    // Login Branch step: only active branches (HK / Dubai / Surat). Never company rows.
+    const branchesRaw = await metaQuery(
+      `SELECT id, name, shortcutName, address, number
+       FROM branch
+       WHERE status = 1
+       ORDER BY FIELD(LOWER(name), 'dubai', 'hk', 'surat'), name ASC`
+    );
     const allowedIds = await getRollCompanyIds(req.user.roll);
+    const isAdmin = isSuperAdminRoll(req.user?.roll);
+    const sessionCompanyId = Number(buildUserContext(req).companyId) || 0;
+
+    // Non-admin after login: lock to session branch companies only (HK login → HK companies only)
+    let lockBranchId = null;
+    if (!isAdmin && sessionCompanyId) {
+      const sessionRows = await metaQuery(
+        `SELECT branch_id FROM company WHERE id = ? LIMIT 1`,
+        [sessionCompanyId]
+      );
+      if (sessionRows?.[0]?.branch_id != null) {
+        lockBranchId = Number(sessionRows[0].branch_id);
+      }
+    }
 
     // Remove duplicate fiscal-year labels (keep latest id due to ORDER BY id DESC)
     const yearSeen = new Set();
@@ -40,13 +86,13 @@ portalRouter.get("/portal/company-years", authenticateToken, async (req, res) =>
       return true;
     });
 
-    // Remove duplicate companies by normalized name (keeps first in sorted order)
+    // Keep every company id (same name under Surat/UAE/HK must each get years)
     const companySeen = new Set();
     const companies = (companiesRaw || []).filter((c) => {
-      const key = String(c.name || "").trim().toLowerCase();
-      if (!key) return false;
-      if (companySeen.has(key)) return false;
-      companySeen.add(key);
+      const id = Number(c.id);
+      if (!Number.isFinite(id) || id <= 0) return false;
+      if (companySeen.has(id)) return false;
+      companySeen.add(id);
       return true;
     });
 
@@ -54,14 +100,20 @@ portalRouter.get("/portal/company-years", authenticateToken, async (req, res) =>
     const comboSeen = new Set();
     companies.forEach((c) => {
       if (!allowedIds.includes(c.id)) return;
+      const branchId = c.branch_id != null ? Number(c.branch_id) : null;
+      if (lockBranchId != null && branchId !== lockBranchId) return;
       const yearRows = years.length
         ? years
-        : [{ id: new Date().getFullYear(), year: String(new Date().getFullYear()), db_name: null }];
+        : [{ id: new Date().getFullYear(), year: String(new Date().getFullYear()), fromDate: null, toDate: null, db_name: null }];
       yearRows.forEach((y) => {
-        const comboKey = `${String(c.name || "").trim().toLowerCase()}::${String(y.year || "").trim().toLowerCase()}`;
+        const comboKey = `${c.id}::${y.id}`;
         if (comboSeen.has(comboKey)) return;
         comboSeen.add(comboKey);
         combos.push({
+          branchId,
+          branchName: c.branch_name || (branchId ? null : "Other"),
+          branchShortcutName: c.branch_shortcut || null,
+          branchAddress: c.branch_address || null,
           companyId: c.id,
           companyName: c.name,
           companyShortcutName: c.shortcutName || null,
@@ -69,12 +121,163 @@ portalRouter.get("/portal/company-years", authenticateToken, async (req, res) =>
           companyNumber: c.number,
           yearId: y.id,
           yearLabel: y.year || String(new Date().getFullYear()),
+          fromDate: y.fromDate || null,
+          toDate: y.toDate || null,
           dbName: y.db_name || null,
         });
       });
     });
 
-    res.json({ status: true, Data: combos });
+    const branchesOut = (branchesRaw || [])
+      .filter((b) => (lockBranchId != null ? Number(b.id) === lockBranchId : true))
+      .map((b) => ({
+        branchId: b.id,
+        branchName: b.name,
+        branchShortcutName: b.shortcutName || null,
+        branchAddress: b.address || null,
+        branchNumber: b.number || null,
+      }));
+
+    // Global FY list — always includes ensureCurrentFiscalYear (dates as YYYY-MM-DD)
+    const toDateOnly = (value) => {
+      if (!value) return null;
+      if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        const y = value.getFullYear();
+        const m = String(value.getMonth() + 1).padStart(2, "0");
+        const d = String(value.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+      }
+      const s = String(value).trim();
+      const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+      return m ? m[1] : null;
+    };
+    const yearsOut = years.map((y) => ({
+      yearId: y.id,
+      yearLabel: y.year || String(new Date().getFullYear()),
+      fromDate: toDateOnly(y.fromDate),
+      toDate: toDateOnly(y.toDate),
+      dbName: y.db_name || null,
+    }));
+    // Also normalize combo dates so Current Year badge works on every branch
+    combos.forEach((c) => {
+      c.fromDate = toDateOnly(c.fromDate);
+      c.toDate = toDateOnly(c.toDate);
+    });
+
+    let branchYearMap = {};
+    try {
+      branchYearMap = await getBranchYearMap();
+    } catch (mapErr) {
+      console.error("getBranchYearMap:", mapErr?.message || mapErr);
+    }
+
+    res.json({
+      status: true,
+      Data: combos,
+      Years: yearsOut,
+      BranchYears: branchYearMap,
+      Branches: branchesOut,
+      lockedToBranchId: lockBranchId,
+    });
+  } catch (err) {
+    res.status(500).json({ status: false, message: err.message });
+  }
+});
+
+/**
+ * Companies under logged-in branch for compulsory Company dropdown
+ * (sale / memo / lab / purchase / inward).
+ * Example: HK branch → ShreeHK International + KG Infrastructure
+ */
+portalRouter.get("/portal/branch-companies", authenticateToken, async (req, res) => {
+  try {
+    const { ensureBranchSchema } = require("../../services/ensureBranchSchemaService.js");
+    await ensureBranchSchema();
+
+    const userContext = buildUserContext(req);
+    const sessionCompanyId = Number(userContext.companyId) || 0;
+    const sessionBranchId = Number(userContext.branchId) || 0;
+
+    const allowedIds = (await getRollCompanyIds(req.user.roll)).map(Number).filter(Boolean);
+
+    let branchId = null;
+    let branchName = null;
+
+    if (sessionCompanyId) {
+      const sessionRows = await metaQuery(
+        `SELECT c.id, c.name, c.branch_id, b.name AS branch_name
+         FROM company c
+         LEFT JOIN branch b ON b.id = c.branch_id
+         WHERE c.id = ? LIMIT 1`,
+        [sessionCompanyId]
+      );
+      if (!sessionRows.length) {
+        return res.status(404).json({ status: false, message: "Session company not found" });
+      }
+      branchId = sessionRows[0].branch_id != null ? Number(sessionRows[0].branch_id) : null;
+      branchName = sessionRows[0].branch_name || null;
+    } else if (sessionBranchId) {
+      const branchRows = await metaQuery(
+        `SELECT id, name FROM branch WHERE id = ? LIMIT 1`,
+        [sessionBranchId]
+      );
+      if (!branchRows.length) {
+        return res.status(404).json({ status: false, message: "Branch not found" });
+      }
+      branchId = Number(branchRows[0].id);
+      branchName = branchRows[0].name || null;
+    } else {
+      return res.status(400).json({ status: false, message: "Select company or branch context first" });
+    }
+
+    let rows;
+    if (branchId) {
+      // All tenant companies linked to this branch (HK → both companies)
+      rows = await metaQuery(
+        `SELECT c.id, c.name, c.shortcutName, c.branch_id, b.name AS branch_name
+         FROM company c
+         LEFT JOIN branch b ON b.id = c.branch_id
+         WHERE c.branch_id = ?
+         ORDER BY c.name ASC`,
+        [branchId]
+      );
+    } else {
+      rows = await metaQuery(
+        `SELECT c.id, c.name, c.shortcutName, c.branch_id, NULL AS branch_name
+         FROM company c
+         WHERE c.id = ?
+         ORDER BY c.name ASC`,
+        [sessionCompanyId]
+      );
+    }
+
+    const isAdmin = isSuperAdminRoll(req.user?.roll);
+    // Non-admin: only companies of this branch (and roll-allowed when roll list is set).
+    // Admin: all companies under the session branch.
+    const canUseSession = allowedIds.includes(sessionCompanyId);
+    const data = (rows || []).filter((c) => {
+      const id = Number(c.id);
+      const rowBranchId = c.branch_id != null ? Number(c.branch_id) : null;
+      if (branchId && rowBranchId && rowBranchId !== branchId) return false;
+      if (isAdmin) return true;
+      if (!allowedIds.length) return true;
+      if (canUseSession && branchId) return true;
+      return allowedIds.includes(id);
+    });
+
+    res.json({
+      status: true,
+      branchId,
+      branchName,
+      sessionCompanyId,
+      Data: data.map((c) => ({
+        id: Number(c.id),
+        name: c.name,
+        shortcutName: c.shortcutName || null,
+        branchId: c.branch_id != null ? Number(c.branch_id) : null,
+        branchName: c.branch_name || branchName,
+      })),
+    });
   } catch (err) {
     res.status(500).json({ status: false, message: err.message });
   }

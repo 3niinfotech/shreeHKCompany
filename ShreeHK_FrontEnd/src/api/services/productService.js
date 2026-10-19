@@ -67,6 +67,28 @@ export const addStonesToParcel = async (payload) => {
     return res.data;
 };
 
+export const fetchContainerChildren = async (containerId) => {
+    const res = await api.get(ENDPOINTS.product.mixingChildren, {
+        params: { containerId },
+    });
+    return res.data;
+};
+
+export const postMixingUnbox = async (payload) => {
+    const res = await api.post(ENDPOINTS.product.mixingUnbox, payload);
+    return res.data;
+};
+
+export const postMixingSeparate = async (payload) => {
+    const res = await api.post(ENDPOINTS.product.mixingSeparate, payload);
+    return res.data;
+};
+
+export const postMixingTransfer = async (payload) => {
+    const res = await api.post(ENDPOINTS.product.mixingTransfer, payload);
+    return res.data;
+};
+
 export const fetchCategorizeTree = async () => {
     const res = await api.get(ENDPOINTS.product.categorizeTree);
     return res.data;

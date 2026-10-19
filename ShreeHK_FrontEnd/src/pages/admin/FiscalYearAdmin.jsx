@@ -158,13 +158,13 @@ const FiscalYearAdmin = () => {
           </Button>
         )}
       />
-
+{/* 
       <Alert
         className={styles.infoAlert}
         type="info"
         showIcon
         message="Super admin only. Full database copy/transfer from legacy addYear must be run separately on the server."
-      />
+      /> */}
 
       <Row gutter={[16, 16]} className={styles.contentRow} align="stretch">
         <Col xs={24} xl={8} className={styles.formCol}>
@@ -245,6 +245,9 @@ const FiscalYearAdmin = () => {
         ]}
         destroyOnClose
         centered
+        closable={false}
+        maskClosable={false}
+        mask={{ closable: false }}
         className={styles.editModal}
       >
         <Form form={editForm} layout="vertical" onFinish={handleUpdate}>

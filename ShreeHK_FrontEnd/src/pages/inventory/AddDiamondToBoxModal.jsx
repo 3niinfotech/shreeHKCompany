@@ -65,6 +65,9 @@ const AddDiamondToBoxModal = ({
             open={visible}
             onCancel={onCancel}
             width={800}
+            closable={false}
+            maskClosable={false}
+            mask={{ closable: false }}
             footer={[
                 <Button key="close" onClick={onCancel}>Close</Button>,
                 <Button key="save" type="primary" loading={loading} onClick={handleSave}>

@@ -21,7 +21,7 @@ import { persist } from "zustand/middleware";
 const useUIStore = create(
     persist(
         (set) => ({
-            sidebarOpen: true,
+            sidebarOpen: false,
             isDarkMode: false,
             viewMode: "web",
             toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
@@ -59,7 +59,7 @@ const useUIStore = create(
                 })),
 
             soundEnabled: true,
-            setSoundEnabled: (soundEnabled) => set({ soundEnabled }),
+            setSoundEnabled: (  ) => set({ soundEnabled }),
             toggleSound: () => set((state) => ({ soundEnabled: !state.soundEnabled })),
 
             quickScanShortcut: true,

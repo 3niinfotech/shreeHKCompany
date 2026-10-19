@@ -1,11 +1,10 @@
 .container {
     height: var(--app-page-height);
     min-height: 0;
-    padding: 16px 18px 20px;
     background: var(--color-page-bg);
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 10px;
     overflow: hidden;
 }
 

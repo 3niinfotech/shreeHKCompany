@@ -14,6 +14,7 @@ import { ConfirmDeleteModal } from "../../components/common/modals";
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
 import styles from "../../assets/scss/pages/outward.module.scss";
 import useTableBodyScrollHeight from "../../hooks/useTableBodyScrollHeight";
+import useBranchCompanies from "../../hooks/useBranchCompanies";
 import { cssVar } from '../../theme';
 import { SkuLink } from '../../hooks/useSkuModalAction';
 import '../../assets/scss/masterEdit.scss';
@@ -81,6 +82,35 @@ const OutWord = () => {
     const [printData, setPrintData] = useState(null);
     const [editForm] = Form.useForm();
 
+    const { options: branchCompanies } = useBranchCompanies();
+    const companyMap = useMemo(() => {
+        const map = new Map();
+        (branchCompanies || []).forEach((c) => {
+            map.set(Number(c.value), c.name || c.label);
+        });
+        return map;
+    }, [branchCompanies]);
+
+    const branchCompanyOptions = useMemo(() => {
+        const list = (branchCompanies || []).map((c) => ({
+            label: c.label || c.name,
+            value: isNaN(Number(c.value)) ? c.value : Number(c.value),
+        }));
+        const rawComp = editingRecord?.company;
+        const currentCompId =
+            rawComp != null && rawComp !== ''
+                ? (isNaN(Number(rawComp)) ? rawComp : Number(rawComp))
+                : null;
+        if (currentCompId != null && !list.some((o) => String(o.value) === String(currentCompId))) {
+            const fallbackName =
+                editingRecord?.company_name ||
+                companyMap.get(Number(currentCompId)) ||
+                `Company #${currentCompId}`;
+            list.unshift({ label: fallbackName, value: currentCompId });
+        }
+        return list;
+    }, [branchCompanies, editingRecord, companyMap]);
+
     const [payload, setPayload] = useState({
         party: "", invoiceno: "", type: "", page: 1, limit: LIMIT, from: "", to: ""
     });
@@ -100,14 +130,17 @@ const OutWord = () => {
 
     const { mutate: deleteOutward, isPending: isDeleting } = useDeleteApiRequest(ENDPOINTS.outward.delete, 'OutwardList', { queryParam: 'deleteId' });
 
-    const isFilterSelected = useMemo(() => !!(payload.party || payload.invoiceno || payload.type || payload.from || payload.to), [payload]);
+    const isFilterSelected = useMemo(
+        () => !!(payload.party || payload.invoiceno || payload.type || payload.from || payload.to),
+        [payload]
+    );
 
-    const { data: outwardData, isLoading: outwardLoading, isFetching: outwardFetching } = useFetchApi(
+    const { data: outwardData, isLoading: outwardLoading, isFetching: outwardFetching, refetch } = useFetchApi(
         'OutwardList',
         ENDPOINTS.outward.list,
         payload,
         'POST',
-        { enabled: isFilterSelected }
+        { enabled: true, staleTime: 0, refetchOnMount: 'always' }
     );
 
     const { data: editDetailData, isLoading: isProductLoading } = useFetchApi(
@@ -128,8 +161,18 @@ const OutWord = () => {
     useEffect(() => {
         const details = editDetailData?.Data || editDetailData?.data;
         if (details) {
+            const rawComp = details.company != null && details.company !== '' ? details.company : editingRecord?.company;
+            const compId = rawComp != null && rawComp !== '' && !isNaN(Number(rawComp)) ? Number(rawComp) : null;
+            const resolvedCompName =
+                details.company_name ||
+                editingRecord?.company_name ||
+                (compId ? companyMap.get(compId) : '') ||
+                (typeof rawComp === 'string' && isNaN(Number(rawComp)) ? rawComp : '') ||
+                editForm.getFieldValue('company') ||
+                '';
             editForm.setFieldsValue({
                 ...details,
+                company: resolvedCompName,
                 date: details.date ? dayjs(details.date) : null,
                 invoicedate: details.invoicedate ? dayjs(details.invoicedate) : null,
                 duedate: details.duedate ? dayjs(details.duedate) : null,
@@ -141,12 +184,12 @@ const OutWord = () => {
             const products = editDetailData?.products || [];
             setFetchedProducts(products);
         }
-    }, [editDetailData, editForm]);
+    }, [editDetailData, editForm, editingRecord, companyMap]);
 
     const { form, renderFilters, handleClear } = useFiltersFormFields(['type', 'invoice', 'date', 'party'], {
         typeOptions: [
+            { label: 'Out Memo (Memo)', value: 'memo' },
             { label: 'Sale', value: 'sale' },
-            { label: 'Memo', value: 'memo' },
             { label: 'Export', value: 'export' },
             { label: 'Consignment', value: 'consign' }
         ],
@@ -206,7 +249,7 @@ const OutWord = () => {
             }
         }
         setIsFetchingMore(false);
-    }, [outwardData, payload.page]);
+    }, [outwardData, payload.page, isFilterSelected]);
 
     useEffect(() => {
         const tableBody = tableRef.current?.querySelector('.ant-table-body');
@@ -240,11 +283,12 @@ const OutWord = () => {
 
     const avgPrice = stats.carats > 0 ? stats.amount / stats.carats : 0;
 
-    const editMainFields = [
-        { name: 'entryno', label: 'Entry', type: 'text', required: true, span: 6 },
+    const editMainFields = useMemo(() => [
+        { name: 'entryno', label: 'Entry', type: 'text', required: true, span: 6, disabled: true },
+        { name: 'company', label: 'Company', type: 'text', span: 6, disabled: true },
         { name: 'date', label: 'Date', type: 'date', required: true, span: 6 },
         { name: 'reference', label: 'Reference', type: 'text', required: true, span: 6 },
-        { name: 'invoiceno', label: 'Invoice No', type: 'text', required: true, span: 6 },
+        { name: 'invoiceno', label: 'Invoice No', type: 'text', required: true, span: 6, disabled: true },
         { name: 'invoicedate', label: 'Invoice Date', type: 'date', required: true, span: 6 },
         { name: 'terms', label: 'Terms', type: 'text', required: true, span: 6 },
         { name: 'duedate', label: 'Due Date', type: 'date', required: true, span: 6 },
@@ -252,7 +296,7 @@ const OutWord = () => {
         { name: 'other_party', label: 'Other Party', type: 'select', options: partyOptions, required: true, span: 6 },
         { name: 'paid_amount', label: 'Paid Amount', type: 'number', required: true, span: 6 },
         { name: 'due_amount', label: 'Due Amount', type: 'number', required: true, span: 6 },
-    ];
+    ], [branchCompanyOptions, partyOptions]);
 
     const handleProductFieldChange = (index, field, value) => {
         setFetchedProducts(prev => {
@@ -322,7 +366,38 @@ const OutWord = () => {
         setEditId(record.id);
         setIsEditModalOpen(true);
         setFetchedProducts([]);
+        const rawComp = record?.company;
+        const compId = rawComp != null && rawComp !== '' && !isNaN(Number(rawComp)) ? Number(rawComp) : null;
+        const resolvedCompName =
+            record?.company_name ||
+            (compId ? companyMap.get(compId) : '') ||
+            (typeof rawComp === 'string' && isNaN(Number(rawComp)) ? rawComp : '') ||
+            '';
+        editForm.setFieldsValue({
+            ...record,
+            company: resolvedCompName,
+            date: record.date ? dayjs(record.date) : null,
+            invoicedate: record.invoicedate ? dayjs(record.invoicedate) : null,
+            duedate: record.duedate ? dayjs(record.duedate) : null,
+            party: record.party != null ? String(record.party) : undefined,
+            other_party: record.other_party != null ? String(record.other_party) : undefined,
+        });
     };
+
+    useEffect(() => {
+        if (!isEditModalOpen || !editingRecord) return;
+        const currentVal = editForm.getFieldValue('company');
+        const rawComp = editingRecord?.company;
+        const compId = rawComp != null && rawComp !== '' && !isNaN(Number(rawComp)) ? Number(rawComp) : null;
+        const compName =
+            editingRecord?.company_name ||
+            (compId ? companyMap.get(compId) : '') ||
+            (typeof rawComp === 'string' && isNaN(Number(rawComp)) ? rawComp : '') ||
+            '';
+        if (!currentVal && compName) {
+            editForm.setFieldsValue({ company: compName });
+        }
+    }, [isEditModalOpen, editingRecord, companyMap, editForm]);
 
     const handleSaveEdit = async () => {
         try {
@@ -331,9 +406,15 @@ const OutWord = () => {
             const formattedInvoiceDate = values.invoicedate?.format ? values.invoicedate.format('YYYY-MM-DD') : (values.invoicedate ? dayjs(values.invoicedate).format('YYYY-MM-DD') : null);
             const formattedDueDate = values.duedate?.format ? values.duedate.format('YYYY-MM-DD') : (values.duedate ? dayjs(values.duedate).format('YYYY-MM-DD') : null);
 
+            const originalCompanyId =
+                editingRecord?.company != null && editingRecord?.company !== ''
+                    ? (isNaN(Number(editingRecord.company)) ? editingRecord.company : Number(editingRecord.company))
+                    : undefined;
+
             const payload = {
                 id: editingRecord.id,
                 ...values,
+                ...(originalCompanyId != null ? { company: originalCompanyId } : {}),
                 type: values.type || editingRecord?.type,
                 boc: values.boc ? 1 : 0,
                 citi: values.citi ? 1 : 0,
@@ -345,6 +426,7 @@ const OutWord = () => {
                 products: fetchedProducts,
                 update: {
                     ...values,
+                    ...(originalCompanyId != null ? { company: originalCompanyId } : {}),
                     type: values.type || editingRecord?.type,
                     date: formattedDate,
                     invoicedate: formattedInvoiceDate,
@@ -408,8 +490,8 @@ const OutWord = () => {
             dataIndex: 'type',
             key: 'type',
             render: (type) => {
-                const colors = { sale: 'success', memo: 'red', export: '#8B5CF6', consign: '#F59E0B' };
-                return <Tag color={colors[type]} style={{ textTransform: 'uppercase', fontWeight: 600 }}>{type}</Tag>;
+                const colors = { sale: 'success', memo: 'warning', export: 'processing', consign: 'magenta' };
+                return <Tag color={colors[type] || 'default'} style={{ textTransform: 'uppercase', fontWeight: 600 }}>{type}</Tag>;
             }
         },
         { title: 'Invoice', dataIndex: 'invoiceno', key: 'invoiceno' },
@@ -463,13 +545,11 @@ const OutWord = () => {
                     <Space>
                         <Checkbox style={{ marginLeft: '15px' }}>Non-GIA Only</Checkbox>
                         <Button type="primary" icon={<ReloadOutlined />} onClick={() => {
-                            if (isFilterSelected) {
-                                setHasMore(true);
-                                if (payload.page === 1) {
-                                    refetch();
-                                } else {
-                                    setPayload(prev => ({ ...prev, page: 1 }));
-                                }
+                            setHasMore(true);
+                            if (payload.page === 1) {
+                                refetch();
+                            } else {
+                                setPayload(prev => ({ ...prev, page: 1 }));
                             }
                         }}>
                             Refresh Data
@@ -479,6 +559,7 @@ const OutWord = () => {
                             onClick={() => {
                                 handleClear();
                                 setHasMore(true);
+                                setSelectedRowKeys([]);
                                 setPayload({ party: "", invoiceno: "", type: "", page: 1, limit: LIMIT, from: "", to: "" });
                             }}
                         >
@@ -532,13 +613,13 @@ const OutWord = () => {
                                 <div className={styles.statsBar}>
                                     <div className={styles.legendGroup}>
                                         <Text strong>
-                                            Total Record: {outwardData?.total || mainTableData.length || 0}
-                                            {mainTableData.length > 0 && ` | showing: ${mainTableData.length}`}
+                                            Total Record: {isFilterSelected ? (outwardData?.total || mainTableData.length || 0) : 0}
+                                            {isFilterSelected && mainTableData.length > 0 && ` | showing: ${mainTableData.length}`}
                                         </Text>
                                         <Space size="small" style={{ marginLeft: '15px' }}>
                                             <Tag color="blue">GIA Certified</Tag>
-                                            <Tag color="red">On Memo</Tag>
-                                            <Tag color="green">Send To Lab</Tag>
+                                            <Tag color="warning">On Memo</Tag>
+                                            <Tag color="blue">Send To Lab</Tag>
                                         </Space>
                                     </div>
 
@@ -567,8 +648,8 @@ const OutWord = () => {
             </Card>
 
             <BaseModal
-                title="Edit"
-                subtitle={editingRecord?.invoiceno || ''}
+                title={editingRecord?.type ? `Edit Outward (${String(editingRecord.type).toUpperCase()})` : "Edit Outward"}
+                subtitle={`${editingRecord?.invoiceno || (editingRecord?.entryno ? `#${editingRecord.entryno}` : (editingRecord?.id ? `#${editingRecord.id}` : ''))}${editingRecord?.company ? ` • ${editingRecord?.company_name || companyMap.get(Number(editingRecord.company)) || `Company #${editingRecord.company}`}` : ''}`}
                 variant="edit"
                 headerIcon={<Pencil size={16} strokeWidth={2} />}
                 saveIcon={<CircleCheck size={15} strokeWidth={2.25} />}
@@ -587,9 +668,20 @@ const OutWord = () => {
                             .edit-modal-form-readable .ant-picker-disabled input,
                             .edit-modal-form-readable .ant-picker-input > input[disabled],
                             .edit-modal-form-readable textarea.ant-input-disabled {
-                              color: #000 !important;
-                              -webkit-text-fill-color: #000 !important;
+                              color: var(--color-text, #0f172a) !important;
+                              -webkit-text-fill-color: var(--color-text, #0f172a) !important;
                               opacity: 1 !important;
+                            }
+                            [data-theme='dark'] .edit-modal-form-readable .ant-input-disabled,
+                            [data-theme='dark'] .edit-modal-form-readable .ant-input[disabled],
+                            [data-theme='dark'] .edit-modal-form-readable .ant-input-number-disabled .ant-input-number-input,
+                            [data-theme='dark'] .edit-modal-form-readable .ant-input-number-disabled input,
+                            [data-theme='dark'] .edit-modal-form-readable .ant-select-disabled .ant-select-selection-item,
+                            [data-theme='dark'] .edit-modal-form-readable .ant-picker-disabled input,
+                            [data-theme='dark'] .edit-modal-form-readable .ant-picker-input > input[disabled],
+                            [data-theme='dark'] .edit-modal-form-readable textarea.ant-input-disabled {
+                              color: #e2e8f0 !important;
+                              -webkit-text-fill-color: #e2e8f0 !important;
                             }
                         `}</style>
                         <Form form={editForm} layout="vertical" className={`edit-modal-form-readable ${styles.stockEditForm}`}>

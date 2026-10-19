@@ -20,8 +20,8 @@ export const boxParcelColumns = [
     { title: "Clarity", dataIndex: "clarity", key: "clarity", minWidth: 80, width: 80 },
     { title: "Cost", dataIndex: "cost", key: "cost", minWidth: 90, width: 90, align: "right" },
     { title: "Rap Price", dataIndex: "rapPrice", key: "rapPrice", minWidth: 90, width: 90, align: "right" },
-    { title: "Price", dataIndex: "price", key: "price", minWidth: 90, width: 90, align: "right" },
-    { title: "Amount", dataIndex: "amount", key: "amount", minWidth: 110, width: 110, align: "right" },
+    { title: "Price", dataIndex: "price", key: "price", minWidth: 90, width: 90, align: "right", render: (v) => <span className="inventory-finance-value inventory-price-value">${Number(v || 0).toLocaleString()}</span> },
+    { title: "Amount", dataIndex: "amount", key: "amount", minWidth: 110, width: 110, align: "right", render: (v) => <span className="inventory-finance-value inventory-amount-value">${Number(v || 0).toLocaleString()}</span> },
     { title: "Location", dataIndex: "loc", key: "loc", minWidth: 100, width: 100, render: renderLocationWithFlag },
     { title: "Remark", dataIndex: "remark", key: "remark", minWidth: 140 },
 ];
@@ -42,8 +42,8 @@ export const singleStoneColumns = [
     { title: "Clarity", dataIndex: "clarity", key: "clarity", minWidth: 80, width: 80 },
     { title: "Cost", dataIndex: "cost", key: "cost", minWidth: 90, width: 90, align: "right" },
     { title: "Rap Price", dataIndex: "rapPrice", key: "rapPrice", minWidth: 90, width: 90, align: "right" },
-    { title: "Price", dataIndex: "price", key: "price", minWidth: 90, width: 90, align: "right" },
-    { title: "Amount", dataIndex: "amount", key: "amount", minWidth: 110, width: 110, align: "right", render: (val) => <Text strong>{val}</Text> },
+    { title: "Price", dataIndex: "price", key: "price", minWidth: 90, width: 90, align: "right", render: (v) => <span className="inventory-finance-value inventory-price-value">${Number(v || 0).toLocaleString()}</span> },
+    { title: "Amount", dataIndex: "amount", key: "amount", minWidth: 110, width: 110, align: "right", render: (v) => <span className="inventory-finance-value inventory-amount-value">${Number(v || 0).toLocaleString()}</span> },
     { title: "Location", dataIndex: "loc", key: "loc", minWidth: 100, width: 100, render: renderLocationWithFlag },
     { title: "Remark", dataIndex: "remark", key: "remark", minWidth: 140 },
 ];

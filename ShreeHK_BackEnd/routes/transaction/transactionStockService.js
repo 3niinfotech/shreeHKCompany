@@ -1,8 +1,19 @@
 const helper = require("../../helper.js");
 const productHelper = require("../../productHelper.js");
 const moment = require("moment");
+const stockMovement = require("../../services/stockMovementService.js");
+const { resolveListCompanyIds } = require("../../tenantHelper.js");
 
 const { query, insertString, getIncrementEntry, addHistory, addUserTrack, DEFAULT_COMPANY_ID } = helper;
+
+function companyInClause(alias, companyIds) {
+  const ids = (companyIds || []).map(Number).filter((id) => id > 0);
+  const list = ids.length ? ids : [DEFAULT_COMPANY_ID];
+  return {
+    clause: `${alias}.company IN (${list.map(() => "?").join(",")})`,
+    params: list,
+  };
+}
 const { logAudit, logAuditInTx } = require("../../services/auditIntegration.js");
 const { diffFields } = require("../../services/auditService.js");
 
@@ -35,16 +46,38 @@ const addHistoryAudited = async (
   }
 };
 
+function extractSeqNumber(value) {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  const n = parseInt(digits, 10);
+  return Number.isNaN(n) || n <= 0 ? 1 : n;
+}
+
 function advanceSequenceValue(val) {
-  const str = String(val ?? "").trim();
-  const parts = str.split("-");
-  if (parts.length >= 2) {
-    const num = parseInt(parts[1], 10);
-    parts[1] = String(Number.isNaN(num) ? 1 : num + 1);
-    return parts.join("-");
+  return String(extractSeqNumber(val) + 1);
+}
+
+/** memo/consign/sale/export → INV-1; lab → LAB-1 (supports company prefix) */
+function formatOutwardInvoiceNo(type, seq, customPrefix = null) {
+  const n = extractSeqNumber(seq);
+  const t = String(type || "").toLowerCase();
+  if (customPrefix && typeof customPrefix === "string" && customPrefix.trim()) {
+    const p = customPrefix.trim();
+    return p.endsWith("-") ? `${p}${n}` : `${p}-${n}`;
   }
-  const parsed = parseInt(str, 10);
-  return Number.isNaN(parsed) ? "1" : String(parsed + 1);
+  if (t === "lab") return `LAB-${n}`;
+  return `INV-${n}`;
+}
+
+/** memo-1 / sale-1 / lab-1 / consign-1 / export-1 */
+function formatOutwardEntryNo(type, seq) {
+  const n = extractSeqNumber(seq);
+  const t = String(type || "").toLowerCase();
+  let prefix = "sale";
+  if (t === "memo") prefix = "memo";
+  else if (t === "consign") prefix = "consign";
+  else if (t === "lab") prefix = "lab";
+  else if (t === "export") prefix = "export";
+  return `${prefix}-${n}`;
 }
 
 function buildUserFilter(alias, userId) {
@@ -80,10 +113,42 @@ async function getProductDetail(id) {
   return productHelper.getDetail(id, "p.id");
 }
 
+/** Product + stone attrs — always keep p.id (pv.* would overwrite id and drop attrs). */
+const PRODUCT_WITH_VALUE_SELECT = `
+  p.*,
+  p.id AS id,
+  p.sku AS sku,
+  p.lab AS lab,
+  p.remark AS remark,
+  p.location AS location,
+  p.mfg_code AS mfg_code,
+  p.diamond_no AS diamond_no,
+  p.main_color AS main_color,
+  pv.report_no AS report_no,
+  pv.shape AS shape,
+  pv.color AS color,
+  pv.clarity AS clarity,
+  pv.size AS size,
+  pv.polish AS polish,
+  pv.f_intensity AS f_intensity,
+  pv.symmentry AS symmentry,
+  pv.cut AS cut,
+  pv.mesurment AS mesurment,
+  pv.table_pc AS table_pc,
+  pv.depth_pc AS depth_pc,
+  pv.gridle AS gridle,
+  pv.intensity AS intensity,
+  pv.overtone AS overtone,
+  pv.package AS package,
+  pv.bgm AS bgm,
+  pv.eyeclean AS eyeclean
+`;
+
 async function loadProductsByInwardId(inwardId, filterMemo = true) {
   const rows = await query(
-    `SELECT p.*, pv.* FROM dai_product p
-     JOIN dai_product_value pv ON p.id = pv.product_id
+    `SELECT ${PRODUCT_WITH_VALUE_SELECT}
+     FROM dai_product p
+     LEFT JOIN dai_product_value pv ON p.id = pv.product_id
      WHERE p.inward_id = ?`,
     [inwardId]
   );
@@ -100,36 +165,184 @@ async function loadProductsByInwardId(inwardId, filterMemo = true) {
   });
 }
 
+/** Build display rows from dai_inward_item when product join fails (same SKU re-purchase). */
+function productsFromInwardItems(items) {
+  return (items || []).map((it) => {
+    const pcs = Number(it.pcs) || 0;
+    const carat = Number(it.carat) || 0;
+    const price = Number(it.price) || 0;
+    const amount = Number(it.amount) || Number((carat * price).toFixed(2));
+    return {
+      id: it.product_id,
+      sku: it.sku || "",
+      polish_pcs: pcs,
+      polish_carat: carat,
+      rought_pcs: pcs,
+      price,
+      amount,
+      purchase_price: price,
+      purchase_amount: amount,
+      purchase_pcs: pcs,
+      purchase_carat: carat,
+      cost: 0,
+      location: "",
+      lab: "",
+      group_type: "",
+    };
+  });
+}
+
+/** Prefer dai_inward_item product ids; else inward_id; else dai_inward.products CSV */
+async function loadProductsForInwardRow(row, filterMemo = true) {
+  let items = [];
+  try {
+    items = await stockMovement.getInwardItems(query, row.id);
+    const itemIds = [...new Set((items || []).map((it) => Number(it.product_id)).filter((n) => n > 0))];
+    if (itemIds.length) {
+      const products = await loadProductsByIds(itemIds);
+      if (products.length) {
+        if (!filterMemo) return products;
+        return products.filter((prod) => {
+          if (
+            (prod.outward === "memo" || prod.outward === "consign" || prod.outward === "sale") &&
+            prod.group_type !== "single" &&
+            prod.outward_parent
+          ) {
+            return false;
+          }
+          return true;
+        });
+      }
+      // Items exist but product rows missing — still show invoice lines from items
+      if (items.length) return productsFromInwardItems(items);
+    }
+  } catch (err) {
+    console.error("loadProductsForInwardRow inward_item:", err.message);
+  }
+
+  const byInwardId = await loadProductsByInwardId(row.id, filterMemo);
+  if (byInwardId.length) return byInwardId;
+
+  const ids = String(row.products || "")
+    .split(",")
+    .map((x) => Number(String(x).trim()))
+    .filter((n) => n > 0);
+  if (ids.length) {
+    const fromCsv = await loadProductsByIds(ids);
+    if (fromCsv.length) return fromCsv;
+  }
+
+  // Last resort: synthetic lines so invoice 10009 etc. still appear after same-SKU stock-add
+  if (items.length) return productsFromInwardItems(items);
+  return [];
+}
+
+/** Overlay THIS invoice's pcs/carat/price/amount from dai_inward_item (so re-purchase same SKU keeps separate lines). */
+async function applyInwardItemQtys(inwardId, products) {
+  if (!inwardId || !Array.isArray(products) || !products.length) return products;
+  try {
+    const items = await stockMovement.getInwardItems(query, inwardId);
+    if (!items.length) return products;
+    const byPid = {};
+    for (const it of items) {
+      byPid[String(it.product_id)] = it;
+    }
+    return products.map((p) => {
+      const it = byPid[String(p.id)];
+      if (!it) return p;
+      const pcs = Number(it.pcs) || 0;
+      const carat = Number(it.carat) || 0;
+      const price = Number(it.price) || Number(p.purchase_price) || Number(p.price) || 0;
+      const amount = Number(it.amount) || Number((carat * price).toFixed(2));
+      return {
+        ...p,
+        polish_pcs: pcs,
+        polish_carat: carat,
+        rought_pcs: pcs,
+        price,
+        amount,
+        purchase_price: price,
+        purchase_amount: amount,
+        purchase_pcs: pcs,
+        purchase_carat: carat,
+      };
+    });
+  } catch (err) {
+    console.error("applyInwardItemQtys:", err.message);
+    return products;
+  }
+}
+
+/** Deduplicate product rows (LEFT JOIN dai_product_value can multiply rows). */
+function dedupeProductsById(rows) {
+  if (!Array.isArray(rows) || !rows.length) return [];
+  const seen = new Map();
+  for (const row of rows) {
+    const key = String(row?.id ?? "");
+    if (!key || key === "undefined" || key === "null") continue;
+    if (!seen.has(key)) seen.set(key, row);
+  }
+  return [...seen.values()];
+}
+
 async function loadProductsByIds(ids) {
   if (!ids || !ids.length) return [];
   const placeholders = ids.map(() => "?").join(",");
-  return query(
-    `SELECT
-       p.*,
-       p.id AS id,
-       pv.report_no AS report_no,
-       pv.shape AS shape,
-       pv.color AS color,
-       pv.clarity AS clarity,
-       pv.size AS size,
-       pv.polish AS polish,
-       pv.f_intensity AS f_intensity,
-       pv.symmentry AS symmentry,
-       pv.cut AS cut,
-       pv.mesurment AS mesurment,
-       pv.table_pc AS table_pc,
-       pv.depth_pc AS depth_pc,
-       pv.gridle AS gridle,
-       pv.intensity AS intensity,
-       pv.overtone AS overtone,
-       pv.package AS package,
-       pv.bgm AS bgm,
-       pv.eyeclean AS eyeclean
+  const rows = await query(
+    `SELECT ${PRODUCT_WITH_VALUE_SELECT}
      FROM dai_product p
      LEFT JOIN dai_product_value pv ON p.id = pv.product_id
      WHERE p.id IN (${placeholders})`,
     ids
   );
+  // JOIN can return one product multiple times → list totals 5+5+5=15
+  return dedupeProductsById(rows);
+}
+
+/** Overlay memo/sale line pcs/carat from dai_outward_item onto product rows (main-stock model). */
+async function applyOutwardItemQtys(outwardId, products) {
+  if (!outwardId || !Array.isArray(products) || !products.length) return products;
+  try {
+    const items = await stockMovement.getOutwardItems(query, outwardId);
+    if (!items.length) return dedupeProductsById(products);
+    const byPid = {};
+    for (const it of items) {
+      const key = String(it.product_id);
+      if (!byPid[key]) {
+        byPid[key] = {
+          ...it,
+          pcs: 0,
+          carat: 0,
+          amount: 0,
+          price: Number(it.price) || 0,
+        };
+      }
+      byPid[key].pcs += Number(it.pcs) || 0;
+      byPid[key].carat += Number(it.carat) || 0;
+      byPid[key].amount += Number(it.amount) || 0;
+      if (it.price != null && it.price !== "") byPid[key].price = Number(it.price) || byPid[key].price;
+    }
+    return dedupeProductsById(products).map((p) => {
+      const it = byPid[String(p.id)];
+      if (!it) return p;
+      const pcs = Number(it.pcs) || 0;
+      const carat = Number(it.carat) || 0;
+      const price = Number(it.price) || Number(p.sell_price) || Number(p.price) || 0;
+      const amount = Number(it.amount) || Number((carat * price).toFixed(2));
+      return {
+        ...p,
+        polish_pcs: pcs,
+        polish_carat: carat,
+        sell_price: price,
+        sell_amount: amount,
+        memo_line_pcs: pcs,
+        memo_line_carat: carat,
+      };
+    });
+  } catch (err) {
+    console.error("applyOutwardItemQtys:", err.message);
+    return dedupeProductsById(products);
+  }
 }
 
 const PARTY_FIELDS = `
@@ -167,17 +380,49 @@ function mapProducts(products) {
     id: p.id,
     sell_price: p.sell_price || p.price,
     sell_amount: p.sell_amount || p.amount,
+    purchase_price: p.purchase_price || p.price,
+    purchase_amount: p.purchase_amount || p.amount,
     report_no: p.report_no || "",
     certificate: p.report_no || "",
+    shape: p.shape || "",
+    color: p.color || p.main_color || "",
+    main_color: p.main_color || p.color || "",
+    clarity: p.clarity || "",
+    size: p.size || "",
+    polish: p.polish || "",
+    f_intensity: p.f_intensity || "",
+    symmentry: p.symmentry || "",
+    cut: p.cut || "",
+    mesurment: p.mesurment || "",
+    table_pc: p.table_pc ?? "",
+    depth_pc: p.depth_pc ?? "",
+    gridle: p.gridle || "",
+    intensity: p.intensity || "",
+    overtone: p.overtone || "",
+    bgm: p.bgm || "",
+    eyeclean: p.eyeclean || "",
+    lab: p.lab || "",
+    remark: p.remark || "",
+    location: p.location || p.loc || "",
+    mfg_code: p.mfg_code || "",
+    diamond_no: p.diamond_no || p.d_no || "",
     label: buildProductLabel(p),
   }));
 }
 
 function normalizeInwardRow(row, products) {
   const partyName = row.party_name || row.party;
+  const entryno =
+    row.entryno != null && String(row.entryno).trim() !== ""
+      ? row.entryno
+      : row.id != null
+        ? `Inward-${row.id}`
+        : "";
   return {
     id: row.id,
-    entryno: row.entryno,
+    company: row.company != null ? Number(row.company) : undefined,
+    company_name: row.company_name || "",
+    entryno,
     party: row.party,
     party_name: partyName,
     party_address: row.party_address || "",
@@ -200,9 +445,17 @@ function normalizeInwardRow(row, products) {
 }
 
 function normalizeOutwardRow(row, products) {
+  const entryno =
+    row.entryno != null && String(row.entryno).trim() !== ""
+      ? row.entryno
+      : row.id != null
+        ? `Outward-${row.id}`
+        : "";
   return {
     id: row.id,
-    entryno: row.entryno,
+    company: row.company != null ? Number(row.company) : undefined,
+    company_name: row.company_name || "",
+    entryno,
     party: row.party,
     party_name: row.party_name || row.party,
     party_address: row.party_address || "",
@@ -218,8 +471,11 @@ function normalizeOutwardRow(row, products) {
     duedate: row.duedate,
     terms: row.terms,
     type: row.type,
+    status: row.status || (row.type === "sale" ? "on_sale" : row.type === "memo" ? "on_memo" : ""),
     lab: row.lab,
-    final_amount: row.final_amount,
+    final_amount:
+      Number(row.final_amount) ||
+      products.reduce((acc, p) => acc + (Number(p.sell_amount || p.amount) || 0), 0),
     paid_amount: row.paid_amount,
     due_amount: row.due_amount,
     shipping_name: row.shipping_name,
@@ -239,12 +495,20 @@ function normalizeOutwardRow(row, products) {
 }
 
 async function listGia(post, userContext = {}) {
-  const companyId = userContext.companyId || DEFAULT_COMPANY_ID;
+  const companyIds = await resolveListCompanyIds(userContext, DEFAULT_COMPANY_ID);
+  let effectiveCompanyIds = companyIds;
+  if (post.company && Number(post.company) > 0) {
+    const requestedComp = Number(post.company);
+    if (companyIds.includes(requestedComp)) {
+      effectiveCompanyIds = [requestedComp];
+    }
+  }
+  const companySql = companyInClause("o", effectiveCompanyIds);
   const userId = userContext.userId || helper.DEFAULT_USER_ID;
   const userFilter = buildUserFilter("o", userId);
   const limit = parseInt(post.limit, 10) || 10;
   const offset = parseInt(post.start, 10) || (parseInt(post.page, 10) - 1 || 0) * limit;
-  const params = [companyId, ...userFilter.params];
+  const params = [...companySql.params, ...userFilter.params];
   let partyClause = "";
   if (post.party && post.party !== "0" && post.party !== "") {
     partyClause = " AND o.party = ?";
@@ -252,8 +516,9 @@ async function listGia(post, userContext = {}) {
   }
   let invoiceClause = "";
   if (post.invoice || post.invoiceno) {
-    invoiceClause = " AND o.invoiceno LIKE ?";
-    params.push(`%${post.invoice || post.invoiceno}%`);
+    const inv = String(post.invoice || post.invoiceno).trim();
+    invoiceClause = " AND (CAST(o.invoiceno AS CHAR) = ? OR CAST(o.invoiceno AS CHAR) LIKE ?)";
+    params.push(inv, `${inv}%`);
   }
   let typeFilterClause = "";
   if (post.type) {
@@ -263,14 +528,15 @@ async function listGia(post, userContext = {}) {
   const dateClause = buildDateFilterClause("o", post, params);
   const countRows = await query(
     `SELECT COUNT(*) AS total FROM dai_outward o
-     WHERE o.company = ? AND o.type = 'lab' AND o.status = 'on_lab'
+     WHERE ${companySql.clause} AND o.type = 'lab' AND o.status = 'on_lab'
      ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${dateClause}`,
     params
   );
   const rows = await query(
-    `SELECT o.*, ${PARTY_FIELDS} FROM dai_outward o
+    `SELECT o.*, ${PARTY_FIELDS}, c.name AS company_name FROM dai_outward o
      LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name)
-     WHERE o.company = ? AND o.type = 'lab' AND o.status = 'on_lab'
+     LEFT JOIN company c ON (o.company = c.id)
+     WHERE ${companySql.clause} AND o.type = 'lab' AND o.status = 'on_lab'
      ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${dateClause}
      ORDER BY o.date DESC, o.id DESC LIMIT ? OFFSET ?`,
     [...params, limit, offset]
@@ -279,7 +545,8 @@ async function listGia(post, userContext = {}) {
   for (const row of rows) {
     if (!row.products) continue;
     const ids = row.products.split(",").filter(Boolean);
-    const products = await loadProductsByIds(ids);
+    let products = await loadProductsByIds(ids);
+    products = await applyOutwardItemQtys(row.id, products);
     if (!products.length) continue;
     data.push(normalizeOutwardRow(row, products));
   }
@@ -287,10 +554,23 @@ async function listGia(post, userContext = {}) {
 }
 
 async function listInwardStock(post, userContext = {}) {
-  const companyId = userContext.companyId || DEFAULT_COMPANY_ID;
+  try {
+    await stockMovement.ensureStockItemSchema(query);
+  } catch (schemaErr) {
+    console.error("listInwardStock ensureStockItemSchema:", schemaErr?.message || schemaErr);
+  }
+  const companyIds = await resolveListCompanyIds(userContext, DEFAULT_COMPANY_ID);
+  let effectiveCompanyIds = companyIds;
+  if (post.company && Number(post.company) > 0) {
+    const requestedComp = Number(post.company);
+    if (companyIds.includes(requestedComp)) {
+      effectiveCompanyIds = [requestedComp];
+    }
+  }
+  const companySql = companyInClause("i", effectiveCompanyIds);
   const userId = userContext.userId || helper.DEFAULT_USER_ID;
   const userFilter = buildUserFilter("i", userId);
-  const params = [companyId, ...userFilter.params];
+  const params = [...companySql.params, ...userFilter.params];
   let partyClause = "";
   if (post.party && post.party !== "0" && post.party !== "") {
     partyClause = " AND i.party = ?";
@@ -298,8 +578,9 @@ async function listInwardStock(post, userContext = {}) {
   }
   let invoiceClause = "";
   if (post.invoice || post.invoiceno) {
-    invoiceClause = " AND i.invoiceno LIKE ?";
-    params.push(`%${post.invoice || post.invoiceno}%`);
+    const inv = String(post.invoice || post.invoiceno).trim();
+    invoiceClause = " AND (CAST(i.invoiceno AS CHAR) = ? OR CAST(i.invoiceno AS CHAR) LIKE ?)";
+    params.push(inv, `${inv}%`);
   }
   let typeFilterClause = "";
   if (post.type) {
@@ -307,41 +588,61 @@ async function listInwardStock(post, userContext = {}) {
     params.push(String(post.type).toLowerCase());
   }
   const dateClause = buildDateFilterClause("i", post, params);
+  const isInterMemo = post.stockType === "inter_memo" || post.isInterTransfer === true;
+  const typeClause = isInterMemo
+    ? " AND i.inward_type IN ('inter_memo', 'inter_transfer_memo', 'transfer_memo')"
+    : " AND i.inward_type IN ('memo','consign') AND i.inward_type NOT IN ('inter_transfer', 'transfer', 'inter_memo', 'inter_transfer_memo', 'transfer_memo')";
   const rows = await query(
-    `SELECT i.*, ${PARTY_FIELDS} FROM dai_inward i
+    `SELECT i.*, ${PARTY_FIELDS}, c.name AS company_name FROM dai_inward i
      LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party = p.id OR i.party = p.name)
-     WHERE (i.deleted = 0 OR i.deleted IS NULL) AND i.company = ?
-     AND i.inward_type IN ('memo','consign')
+     LEFT JOIN company c ON (i.company = c.id)
+     WHERE (i.deleted = 0 OR i.deleted IS NULL) AND ${companySql.clause}
+     ${typeClause}
      ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${dateClause}
      ORDER BY i.date DESC, i.id DESC`,
     params
   );
   const data = [];
   for (const row of rows) {
-    const products = await loadProductsByInwardId(row.id, true);
-    if (!products.length) continue;
+    let products = await loadProductsForInwardRow(row, true);
+    products = await applyInwardItemQtys(row.id, products);
+    // Always show in-memo invoice even if product join is empty (stock-add / sibling company)
     data.push(normalizeInwardRow(row, products));
   }
   return { ok: true, Data: data, TotalItems: data.length };
 }
 
 async function listPurchaseStock(post, userContext = {}) {
-  const companyId = userContext.companyId || DEFAULT_COMPANY_ID;
+  try {
+    await stockMovement.ensureStockItemSchema(query);
+  } catch (schemaErr) {
+    console.error("listPurchaseStock ensureStockItemSchema:", schemaErr?.message || schemaErr);
+  }
+  const companyIds = await resolveListCompanyIds(userContext, DEFAULT_COMPANY_ID);
+  let effectiveCompanyIds = companyIds;
+  if (post.company && Number(post.company) > 0) {
+    const requestedComp = Number(post.company);
+    if (companyIds.includes(requestedComp)) {
+      effectiveCompanyIds = [requestedComp];
+    }
+  }
+  const companySql = companyInClause("i", effectiveCompanyIds);
   const userId = userContext.userId || helper.DEFAULT_USER_ID;
   const userFilter = buildUserFilter("i", userId);
   const limit = parseInt(post.limit, 10) || 10;
   const offset = parseInt(post.start, 10) || (parseInt(post.page, 10) - 1 || 0) * limit;
-  const params = [companyId, ...userFilter.params];
+  const params = [...companySql.params, ...userFilter.params];
   let partyClause = "";
   if (post.party && post.party !== "0" && post.party !== "") {
-    partyClause = " AND i.party = ?";
-    params.push(post.party);
+    partyClause = " AND (i.party = ? OR i.party = CAST(? AS CHAR) OR p.name = ? OR p.id = ?)";
+    params.push(post.party, post.party, post.party, post.party);
   }
   let invoiceClause = "";
   let limitClause = " LIMIT ? OFFSET ?";
   if (post.invoice || post.invoiceno) {
-    invoiceClause = " AND i.invoiceno LIKE ?";
-    params.push(`%${post.invoice || post.invoiceno}%`);
+    const inv = String(post.invoice || post.invoiceno).trim();
+    invoiceClause = " AND (CAST(i.invoiceno AS CHAR) = ? OR CAST(i.invoiceno AS CHAR) LIKE ?)";
+    params.push(inv, `${inv}%`);
     limitClause = "";
   }
   let typeFilterClause = "";
@@ -350,44 +651,70 @@ async function listPurchaseStock(post, userContext = {}) {
     params.push(String(post.type).toLowerCase());
   }
   const dateClause = buildDateFilterClause("i", post, params);
+  const isInterTransfer = post.isInterTransfer === true || post.stockType === "inter_transfer";
+  const typeClause = isInterTransfer
+    ? " AND i.inward_type IN ('inter_transfer', 'transfer')"
+    : " AND i.inward_type IN ('import','purchase','consign') AND i.inward_type NOT IN ('inter_transfer', 'transfer', 'inter_memo', 'inter_transfer_memo', 'transfer_memo')";
+
   const countParams = [...params];
   const countRows = await query(
     `SELECT COUNT(*) AS total FROM dai_inward i
-     WHERE (i.deleted = 0 OR i.deleted IS NULL) AND i.company = ?
-     AND i.inward_type IN ('import','purchase','consign')
+     WHERE (i.deleted = 0 OR i.deleted IS NULL) AND ${companySql.clause}
+     ${typeClause}
      ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${dateClause}`,
     countParams
   );
   const listParams = limitClause ? [...params, limit, offset] : params;
   const rows = await query(
-    `SELECT i.*, ${PARTY_FIELDS} FROM dai_inward i
+    `SELECT i.*, ${PARTY_FIELDS}, c.name AS company_name FROM dai_inward i
      LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party = p.id OR i.party = p.name)
-     WHERE (i.deleted = 0 OR i.deleted IS NULL) AND i.company = ?
-     AND i.inward_type IN ('import','purchase','consign')
+     LEFT JOIN company c ON (i.company = c.id)
+     WHERE (i.deleted = 0 OR i.deleted IS NULL) AND ${companySql.clause}
+     ${typeClause}
      ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${dateClause}
      ORDER BY i.date DESC, i.id DESC ${limitClause}`,
     listParams
   );
   const data = [];
   for (const row of rows) {
-    const products = await loadProductsByInwardId(row.id, false);
-    if (!products.length) continue;
+    let products = await loadProductsForInwardRow(row, false);
+    products = await applyInwardItemQtys(row.id, products);
+    // Always show the purchase invoice (10008 + 10009) even if product join is empty
     data.push(normalizeInwardRow(row, products));
   }
   return { ok: true, Data: data, TotalItems: countRows[0]?.total || data.length };
 }
 
 async function listOutwardStock(post, stockType, userContext = {}) {
-  const companyId = userContext.companyId || DEFAULT_COMPANY_ID;
+  try {
+    await stockMovement.ensureStockItemSchema(query);
+  } catch (schemaErr) {
+    console.error("listOutwardStock ensureStockItemSchema:", schemaErr?.message || schemaErr);
+  }
+  const companyIds = await resolveListCompanyIds(userContext, DEFAULT_COMPANY_ID);
+  let effectiveCompanyIds = companyIds;
+  if (post.company && Number(post.company) > 0) {
+    const requestedComp = Number(post.company);
+    if (companyIds.includes(requestedComp)) {
+      effectiveCompanyIds = [requestedComp];
+    }
+  }
+  const companySql = companyInClause("o", effectiveCompanyIds);
   const userId = userContext.userId || helper.DEFAULT_USER_ID;
   const userFilter = buildUserFilter("o", userId);
   const limit = parseInt(post.limit, 10) || 10;
   const offset = parseInt(post.start, 10) || (parseInt(post.page, 10) - 1 || 0) * limit;
-  const params = [companyId, ...userFilter.params];
+  const params = [...companySql.params, ...userFilter.params];
   let typeClause;
   switch (stockType) {
     case "sale":
       typeClause = " AND o.type IN ('sale','export') AND o.status IN ('on_sale','on_export')";
+      break;
+    case "inter_transfer":
+      typeClause = " AND o.type IN ('inter_transfer','transfer') AND o.status IN ('transferred','on_sale')";
+      break;
+    case "inter_memo":
+      typeClause = " AND o.type IN ('inter_memo', 'inter_transfer_memo', 'transfer_memo') AND o.status IN ('on_memo', 'on_transfer', 'transferred')";
       break;
     case "export":
       typeClause = " AND o.type = 'export' AND o.status = 'on_export'";
@@ -396,20 +723,24 @@ async function listOutwardStock(post, stockType, userContext = {}) {
       typeClause = " AND o.type = 'consign' AND o.status = 'on_consign'";
       break;
     case "memo":
-      typeClause = " AND o.type IN ('memo','consign') AND o.status IN ('on_memo','on_consign')";
+      typeClause = " AND o.type IN ('memo','consign')";
       break;
     default:
-      typeClause = " AND o.type IN ('memo','consign') AND o.status IN ('on_memo','on_consign')";
+      typeClause = " AND o.type IN ('memo','consign')";
   }
+  const excludeTransferClause = (stockType === "inter_transfer" || stockType === "inter_memo")
+    ? ""
+    : " AND o.type NOT IN ('inter_transfer', 'transfer', 'inter_memo', 'inter_transfer_memo', 'transfer_memo')";
   let partyClause = "";
   if (post.party && post.party !== "0" && post.party !== "") {
-    partyClause = " AND o.party = ?";
-    params.push(post.party);
+    partyClause = " AND (o.party = ? OR o.party = CAST(? AS CHAR) OR p.name = ? OR p.id = ?)";
+    params.push(post.party, post.party, post.party, post.party);
   }
   let invoiceClause = "";
   if (post.invoice || post.invoiceno) {
-    invoiceClause = " AND o.invoiceno LIKE ?";
-    params.push(`%${post.invoice || post.invoiceno}%`);
+    const inv = String(post.invoice || post.invoiceno).trim();
+    invoiceClause = " AND (CAST(o.invoiceno AS CHAR) = ? OR CAST(o.invoiceno AS CHAR) LIKE ?)";
+    params.push(inv, `${inv}%`);
   }
   let typeFilterClause = "";
   if (post.type) {
@@ -435,24 +766,52 @@ async function listOutwardStock(post, stockType, userContext = {}) {
   const dateClause = buildDateFilterClause("o", post, params);
   const countRows = await query(
     `SELECT COUNT(*) AS total FROM dai_outward o
-     WHERE o.company = ? ${typeClause}
+     WHERE ${companySql.clause} ${typeClause}
+     ${excludeTransferClause}
      ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${skuClause} ${dateClause}`,
     params
   );
   const rows = await query(
-    `SELECT o.*, ${PARTY_FIELDS} FROM dai_outward o
+    `SELECT o.*, ${PARTY_FIELDS}, c.name AS company_name FROM dai_outward o
      LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name)
-     WHERE o.company = ? ${typeClause}
+     LEFT JOIN company c ON (o.company = c.id)
+     WHERE ${companySql.clause} ${typeClause}
+     ${excludeTransferClause}
      ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${skuClause} ${dateClause}
      ORDER BY o.date DESC, o.id DESC LIMIT ? OFFSET ?`,
     [...params, limit, offset]
   );
   const data = [];
   for (const row of rows) {
-    if (!row.products) continue;
-    const ids = row.products.split(",").filter(Boolean);
-    const products = await loadProductsByIds(ids);
-    if (!products.length) continue;
+    const ids = String(row.products || "")
+      .split(",")
+      .map((x) => String(x).trim())
+      .filter(Boolean);
+    let products = ids.length ? await loadProductsByIds(ids) : [];
+    products = await applyOutwardItemQtys(row.id, products);
+    if (!products.length) {
+      try {
+        const items = await query(
+          "SELECT * FROM dai_outward_item WHERE outward_id = ? ORDER BY id ASC",
+          [row.id]
+        );
+        if (items.length) {
+          products = items.map((it) => ({
+            id: it.product_id,
+            sku: it.sku || "",
+            polish_pcs: Number(it.pcs) || 0,
+            polish_carat: Number(it.carat) || 0,
+            sell_price: Number(it.price) || 0,
+            sell_amount: Number(it.amount) || 0,
+            price: Number(it.price) || 0,
+            amount: Number(it.amount) || 0,
+          }));
+        }
+      } catch (err) {
+        console.error("listOutwardStock outward_item fallback:", err?.message || err);
+      }
+    }
+    // Keep memo/sale row visible even if product join is empty
     data.push(normalizeOutwardRow(row, products));
   }
   return { ok: true, Data: data, TotalItems: countRows[0]?.total || 0 };
@@ -477,62 +836,169 @@ async function getInwardData(id, companyId = null) {
 }
 
 async function returnGia(post, userContext = {}) {
-  const outid = post.outid;
-  const companyId = userContext.companyId || null;
-  const oData = await getOutwardData(outid, companyId);
+  const outid = post.outid ?? post.id;
+  if (outid == null || outid === "") {
+    return { ok: false, message: "GIA record id is required" };
+  }
+
+  // Resolve by id within branch companies (lab voucher may be under sibling operating company)
+  const lookupCompanyIds = await resolveListCompanyIds(userContext, DEFAULT_COMPANY_ID);
+  const companyPlaceholders = lookupCompanyIds.map(() => "?").join(",") || "?";
+  const companyParams = lookupCompanyIds.length ? lookupCompanyIds : [DEFAULT_COMPANY_ID];
+  let labRows = await query(
+    `SELECT * FROM dai_outward WHERE id = ? AND company IN (${companyPlaceholders})`,
+    [outid, ...companyParams]
+  );
+  if (!labRows.length) {
+    labRows = await query("SELECT * FROM dai_outward WHERE id = ?", [outid]);
+  }
+  const oData = labRows[0] || null;
   if (!oData) return { ok: false, message: "GIA record not found or access denied" };
+  if (String(oData.type || "").toLowerCase() !== "lab") {
+    return { ok: false, message: "Selected record is not a GIA/lab memo" };
+  }
+
   const lab = oData.lab;
   let oProducts = (oData.products || "").split(",").filter(Boolean);
   const record = post.record || {};
+  const returnedIds = Object.keys(record)
+    .map((pid) => parseInt(pid, 10))
+    .filter((id) => !Number.isNaN(id) && id > 0);
 
-  for (const [pid, v] of Object.entries(record)) {
-    const productId = parseInt(pid, 10);
+  if (!returnedIds.length) {
+    return { ok: false, message: "No stones selected for lab return" };
+  }
+
+  try {
+    await stockMovement.ensureStockItemSchema(query);
+  } catch (schemaErr) {
+    console.error("returnGia ensureStockItemSchema:", schemaErr?.message || schemaErr);
+  }
+
+  const outwardItems = await stockMovement.getOutwardItems(query, outid);
+
+  for (const productId of returnedIds) {
+    const v = record[productId] || record[String(productId)] || {};
     oProducts = oProducts.filter((id) => id !== String(productId));
     const product = await getProductDetail(productId);
     if (!product) continue;
 
-    if (!v.report) {
-      await query("UPDATE dai_product SET outward='', visibility=1 WHERE id = ?", [productId]);
+    const itemForProduct = outwardItems.find(
+      (it) => String(it.product_id) === String(productId)
+    );
+    let movePcs =
+      Number(itemForProduct?.pcs) > 0
+        ? Number(itemForProduct.pcs)
+        : Number(product.polish_pcs) || Number(product.onhand_pcs) || 0;
+    let moveCarat =
+      Number(itemForProduct?.carat) > 0
+        ? Number(itemForProduct.carat)
+        : Number(product.polish_carat) || Number(product.onhand_carat) || 0;
+
+    // Legacy lab send may leave polish/onhand at 0 with no item row — use last lab history qty
+    if (moveCarat <= 0 && movePcs <= 0) {
+      const hist = await query(
+        `SELECT pcs, carat FROM dai_history
+         WHERE product_id = ? AND action IN ('lab','gia')
+         ORDER BY id DESC LIMIT 1`,
+        [productId]
+      );
+      if (hist[0]) {
+        movePcs = Number(hist[0].pcs) || 0;
+        moveCarat = Number(hist[0].carat) || 0;
+      }
+    }
+    if (moveCarat <= 0 && movePcs <= 0) {
+      const purchased = Number(product.purchased_carat) || 0;
+      const sold = Number(product.sold_carat) || 0;
+      const memo = Number(product.memo_carat) || 0;
+      const restored = Math.max(0, purchased - sold - memo);
+      if (restored > 0) {
+        moveCarat = restored;
+        movePcs =
+          Math.max(
+            0,
+            (Number(product.purchased_pcs) || 0) -
+              (Number(product.sold_pcs) || 0) -
+              (Number(product.memo_pcs) || 0)
+          ) || 1;
+      }
+    }
+
+    // Lab send zeroes onhand/polish — restore so stone appears in inventory again
+    let bal = {
+      onhand_pcs: Number(product.onhand_pcs ?? product.polish_pcs) || 0,
+      onhand_carat: Number(product.onhand_carat ?? product.polish_carat) || 0,
+    };
+    if (moveCarat > 0 || movePcs > 0) {
+      bal = await stockMovement.applyOutwardQty(
+        query,
+        productId,
+        "lab_return",
+        movePcs,
+        moveCarat
+      );
+    }
+    await stockMovement.markOutwardItemReturned(query, outid, productId, movePcs, moveCarat);
+
+    const reportNo = String(v.report || "").trim();
+    const nextSku = v.sku || product.sku;
+    const nextMfg = v.mfg_code || product.mfg_code;
+    const nextColor = v.color || product.main_color || product.color || "";
+    const unitPrice = Number(product.price) || 0;
+    const amount = Number(((Number(bal.onhand_carat) || 0) * unitPrice).toFixed(2));
+
+    if (!reportNo) {
+      await query(
+        `UPDATE dai_product SET outward='', visibility=1,
+         site_upload=0, rapnet_upload=0, amount=?
+         WHERE id = ?`,
+        [amount, productId]
+      );
       await addHistoryAudited({
         product_id: productId,
         action: "lab_return",
         date: moment().format("YYYY-MM-DD HH:mm:ss"),
         description: "Lab Return with No Certificate:",
         type: "cr",
-        pcs: product.polish_pcs,
-        carat: product.polish_carat,
-        balance_pcs: product.polish_pcs,
-        balance_carat: product.polish_carat,
-        price: product.price,
-        amount: product.amount,
+        pcs: movePcs,
+        carat: moveCarat,
+        balance_pcs: bal.onhand_pcs,
+        balance_carat: bal.onhand_carat,
+        price: unitPrice,
+        amount,
+        invoice: oData.invoiceno,
+        party: oData.party,
+        sku: nextSku,
       });
       continue;
     }
 
-    const pcarat = product.polish_carat;
-    const amount = pcarat * product.price;
     await query(
-      `UPDATE dai_product SET lab=?, sku=?, mfg_code=?, main_color=?, polish_carat=?, amount=?,
+      `UPDATE dai_product SET lab=?, sku=?, mfg_code=?, main_color=?, amount=?,
        outward='', site_upload=0, rapnet_upload=0, is_uploadsite=1, is_uploadrapnet=1, visibility=1
        WHERE id = ?`,
-      [lab, v.sku || product.sku, v.mfg_code || product.mfg_code, v.color || product.main_color, pcarat, amount, productId]
+      [lab || product.lab || "gia", nextSku, nextMfg, nextColor, amount, productId]
     );
     await query(
-      `UPDATE dai_product_value SET intensity=?, overtone=?, color=? WHERE product_id = ?`,
-      [v.intensity || "", v.overtone || "", v.color || "", productId]
+      `UPDATE dai_product_value SET intensity=?, overtone=?, color=?, report_no=? WHERE product_id = ?`,
+      [v.intensity || "", v.overtone || "", nextColor, reportNo, productId]
     );
     await addHistoryAudited({
       product_id: productId,
       action: "lab_return",
       date: moment().format("YYYY-MM-DD HH:mm:ss"),
-      description: `Lab Return With Certificate no:${v.report}`,
+      description: `Lab Return With Certificate no:${reportNo}`,
       type: "cr",
-      pcs: product.polish_pcs,
-      carat: pcarat,
+      pcs: movePcs,
+      carat: moveCarat,
+      balance_pcs: bal.onhand_pcs,
+      balance_carat: bal.onhand_carat,
       amount,
-      price: product.price,
+      price: unitPrice,
       invoice: oData.invoiceno,
       party: oData.party,
+      sku: nextSku,
     });
   }
 
@@ -541,6 +1007,13 @@ async function returnGia(post, userContext = {}) {
   } else {
     await query("UPDATE dai_outward SET products=? WHERE id = ?", [oProducts.join(","), outid]);
   }
+
+  try {
+    await stockMovement.repairOrphanLabReturns(query);
+  } catch (repairErr) {
+    console.error("returnGia repairOrphanLabReturns:", repairErr?.message || repairErr);
+  }
+
   return { ok: true, message: "GIA return saved successfully" };
 }
 
@@ -600,17 +1073,59 @@ async function returnInwardMemo(post, userContext = {}) {
 }
 
 async function returnOutwardMemo(post, userContext = {}) {
-  const companyId = userContext.companyId || null;
   if (!Array.isArray(post.products) || post.products.length === 0) {
     return { ok: false, message: "No stones selected for return" };
   }
 
-  const mdata = await getOutwardData(post.id, companyId);
+  // Resolve by id within branch companies (memo may be under sibling operating company)
+  const lookupCompanyIds = await resolveListCompanyIds(userContext, DEFAULT_COMPANY_ID);
+  const companyPlaceholders = lookupCompanyIds.map(() => "?").join(",") || "?";
+  const companyParams = lookupCompanyIds.length ? lookupCompanyIds : [DEFAULT_COMPANY_ID];
+  let memoRows = await query(
+    `SELECT * FROM dai_outward WHERE id = ? AND company IN (${companyPlaceholders})`,
+    [post.id, ...companyParams]
+  );
+  if (!memoRows.length) {
+    memoRows = await query("SELECT * FROM dai_outward WHERE id = ?", [post.id]);
+  }
+  const mdata = memoRows[0] || null;
   if (!mdata) return { ok: false, message: "Outward record not found or access denied" };
+  const companyId = Number(mdata.company) || userContext.companyId || DEFAULT_COMPANY_ID;
   const products = (post.products || []).map(String);
   const recordMap = post.record || {};
   let returnProduct = (mdata.return_products || "").split(",").filter(Boolean);
   const mp = [];
+
+  // Load once per voucher (not per product)
+  const outwardItems = await stockMovement.getOutwardItems(query, post.id);
+
+  const outwardType = String(mdata.type || "").toLowerCase();
+  if (outwardType === "inter_transfer" || outwardType === "transfer") {
+    const transferRows = await query(
+      "SELECT * FROM dai_company_transfer WHERE source_outward_id = ? OR id = ? LIMIT 1",
+      [post.id, post.id]
+    );
+    if (transferRows.length) {
+      const companyTransferService = require("../../services/transaction/companyTransferService.js");
+      const transferRes = await companyTransferService.executeSaleReturn(
+        {
+          transfer_id: transferRows[0].id,
+          notes: post.narretion || "Sale return via Inter Transfer Sale",
+        },
+        userContext
+      );
+      return {
+        ok: true,
+        message: transferRes.message || "Sale return completed successfully.",
+      };
+    }
+  }
+
+  const isSaleVoucher =
+    outwardType === "sale" ||
+    outwardType === "export" ||
+    outwardType === "inter_transfer" ||
+    outwardType === "transfer";
 
   for (const pid of (mdata.products || "").split(",").filter(Boolean)) {
     if (!products.includes(pid)) {
@@ -620,7 +1135,35 @@ async function returnOutwardMemo(post, userContext = {}) {
     const pdata = await getProductDetail(pid);
     if (!pdata) continue;
 
-    if (pdata.outward !== "memo" && pdata.outward !== "consign" && !pdata.outward_parent) {
+    const isSale =
+      isSaleVoucher ||
+      String(pdata.outward || "").toLowerCase() === "sale" ||
+      String(pdata.outward || "").toLowerCase() === "export" ||
+      String(pdata.outward || "").toLowerCase() === "transferred";
+    const returnAction = isSale ? "sale_return" : "memo_return";
+    const returnTypeLabel = isSale ? "Sale" : "Memo";
+
+    const itemForProduct = outwardItems.find(
+      (it) => String(it.product_id) === String(pid)
+    );
+    // New model: memo/sale qty lives on outward_item / balances
+    const isMainStockMemoLine =
+      !pdata.outward_parent &&
+      (Boolean(itemForProduct) ||
+        Number(pdata.memo_carat) > 0 ||
+        (isSale && Number(pdata.sold_carat) > 0) ||
+        pdata.outward === "memo" ||
+        pdata.outward === "consign" ||
+        (isSale && (pdata.outward === "sale" || pdata.outward === "export" || pdata.outward === "transferred")));
+
+    if (
+      !isSale &&
+      pdata.outward !== "memo" &&
+      pdata.outward !== "consign" &&
+      !pdata.outward_parent &&
+      !itemForProduct &&
+      !(Number(pdata.memo_carat) > 0)
+    ) {
       return {
         ok: false,
         message: `Stone ${pdata.sku || pid} cannot be returned: current outward status is '${pdata.outward || "available"}' (expected 'memo').`,
@@ -628,23 +1171,100 @@ async function returnOutwardMemo(post, userContext = {}) {
     }
 
     const rec = recordMap[pid] || recordMap[String(pid)] || {};
-    const retPcs = rec.polish_pcs != null && rec.polish_pcs !== ""
-      ? Number(rec.polish_pcs)
-      : Number(pdata.polish_pcs) || 0;
-    const retCarat = rec.polish_carat != null && rec.polish_carat !== ""
-      ? Number(rec.polish_carat)
-      : Number(pdata.polish_carat) || 0;
-    const stockPcs = Number(pdata.polish_pcs) || 0;
-    const stockCarat = Number(pdata.polish_carat) || 0;
+    // Ceiling: item line → memo/sold bucket → product polish (legacy child rows)
+    const memoPcsCeiling =
+      Number(itemForProduct?.pcs) ||
+      Number(isSale ? pdata.sold_pcs : pdata.memo_pcs) ||
+      Number(pdata.polish_pcs) ||
+      0;
+    const memoCaratCeiling =
+      Number(itemForProduct?.carat) ||
+      Number(isSale ? pdata.sold_carat : pdata.memo_carat) ||
+      Number(pdata.polish_carat) ||
+      0;
+
+    // For sale return, carat and pcs must never be altered or updated
+    const retPcs = isSale
+      ? memoPcsCeiling
+      : (rec.polish_pcs != null && rec.polish_pcs !== "" ? Number(rec.polish_pcs) : memoPcsCeiling);
+    const retCarat = isSale
+      ? memoCaratCeiling
+      : (rec.polish_carat != null && rec.polish_carat !== "" ? Number(rec.polish_carat) : memoCaratCeiling);
+    const stockPcs = memoPcsCeiling;
+    const stockCarat = memoCaratCeiling;
 
     if (retCarat <= 0) {
       return { ok: false, message: `Enter carat for SKU ${pdata.sku || pid}` };
     }
-    if (retCarat > stockCarat) {
-      return { ok: false, message: `Carat exceed stock for SKU ${pdata.sku || pid}` };
+    if (retCarat > stockCarat + 0.0001) {
+      return {
+        ok: false,
+        message: `Carat exceed ${returnTypeLabel.toLowerCase()} qty for SKU ${pdata.sku || pid} (returning ${retCarat}, ${returnTypeLabel.toLowerCase()} has ${stockCarat})`,
+      };
     }
-    if (pdata.group_type === "box" && retPcs > stockPcs) {
-      return { ok: false, message: `Pcs exceed stock for SKU ${pdata.sku || pid}` };
+    if (pdata.group_type === "box" && retPcs > stockPcs + 0.0001) {
+      return { ok: false, message: `Pcs exceed ${returnTypeLabel.toLowerCase()} qty for SKU ${pdata.sku || pid}` };
+    }
+
+    // New model: same main stock id → restore onhand via balances (full or partial)
+    if (isMainStockMemoLine && !pdata.outward_parent) {
+      const bal = await stockMovement.applyOutwardQty(
+        query,
+        pid,
+        returnAction,
+        retPcs,
+        retCarat
+      );
+      await stockMovement.markOutwardItemReturned(query, post.id, pid, retPcs, retCarat);
+      const leftPcs = Math.max(0, stockPcs - retPcs);
+      const leftCarat = Math.max(0, stockCarat - retCarat);
+      const hasLeftover =
+        leftCarat > 0.0001 || (stockPcs > 0 && leftPcs > 0.0001);
+      // Partial leftover: keep classic memo/consign/sale flag if it was set; blank stays blank
+      const priorOut = String(pdata.outward || "").toLowerCase();
+      const nextOut =
+        priorOut === "memo" || priorOut === "consign" || priorOut === "sale" || priorOut === "export" ? priorOut : "";
+      if (hasLeftover) {
+        await query(
+          "UPDATE dai_product SET outward=?, site_upload=0, rapnet_upload=0 WHERE id = ?",
+          [nextOut, pid]
+        );
+        mp.push(pid);
+      } else {
+        await query(
+          "UPDATE dai_product SET outward='', site_upload=0, rapnet_upload=0 WHERE id = ?",
+          [pid]
+        );
+        returnProduct.push(pid);
+      }
+      const unitPrice = Number(pdata.sell_price || pdata.price) || 0;
+      const retAmount = Number((unitPrice * retCarat).toFixed(2));
+      const retPcsLabel = Number(retPcs) || 0;
+      const retCaratLabel = Number(retCarat.toFixed(3));
+      const memoPcsLabel = Number(stockPcs) || 0;
+      const memoCaratLabel = Number(Number(stockCarat).toFixed(3));
+      await addHistoryAudited({
+        product_id: pid,
+        action: returnAction,
+        party: mdata.party,
+        narretion: mdata.narretion,
+        date: moment().format("YYYY-MM-DD HH:mm:ss"),
+        description: hasLeftover
+          ? `Stone ${returnTypeLabel} return ${retPcsLabel}pcs / ${retCaratLabel}ct of ${returnTypeLabel.toLowerCase()} ${memoPcsLabel}pcs / ${memoCaratLabel}ct — ref ${mdata.reference || mdata.invoiceno || ""}`
+          : `Stone ${returnTypeLabel} return ${retPcsLabel}pcs / ${retCaratLabel}ct (full) — ref ${mdata.reference || mdata.invoiceno || ""}`,
+        pcs: retPcs,
+        carat: retCarat,
+        amount: retAmount,
+        price: unitPrice,
+        sku: pdata.sku,
+        type: "cr",
+        invoice: mdata.invoiceno,
+        entry_from: "outward",
+        entryno: mdata.id,
+        balance_pcs: bal.onhand_pcs,
+        balance_carat: bal.onhand_carat,
+      });
+      continue;
     }
 
     const isPartial = retCarat < stockCarat - 0.0001;
@@ -666,17 +1286,25 @@ async function returnOutwardMemo(post, userContext = {}) {
           parentAmount,
           edata.id,
         ]);
+        const unitPrice = Number(pdata.sell_price || pdata.price) || 0;
+        const retAmount = Number((unitPrice * retCarat).toFixed(2));
+        const retPcsLabel = Number(retPcs) || 0;
+        const retCaratLabel = Number(Number(retCarat).toFixed(3));
+        const memoPcsLabel = Number(stockPcs) || 0;
+        const memoCaratLabel = Number(Number(stockCarat).toFixed(3));
         await addHistoryAudited({
           product_id: edata.id,
-          action: "memo_return",
+          action: returnAction,
           party: mdata.party,
           narretion: mdata.narretion,
           date: moment().format("YYYY-MM-DD HH:mm:ss"),
-          description: `Stone Memo return with reference no is ${mdata.reference}`,
+          description: isPartial
+            ? `Stone ${returnTypeLabel} return ${retPcsLabel}pcs / ${retCaratLabel}ct of ${returnTypeLabel.toLowerCase()} ${memoPcsLabel}pcs / ${memoCaratLabel}ct — ref ${mdata.reference || mdata.invoiceno || ""}`
+            : `Stone ${returnTypeLabel} return ${retPcsLabel}pcs / ${retCaratLabel}ct (full) — ref ${mdata.reference || mdata.invoiceno || ""}`,
           pcs: retPcs,
           carat: retCarat,
-          amount: pdata.sell_amount || pdata.amount,
-          price: pdata.sell_price || pdata.price,
+          amount: retAmount,
+          price: unitPrice,
           sku: edata.sku,
           type: "cr",
           invoice: mdata.invoiceno,
@@ -706,18 +1334,22 @@ async function returnOutwardMemo(post, userContext = {}) {
         message: `Partial return for SKU ${pdata.sku || pid} is only supported for box/parcel splits. Return full carat or split first.`,
       };
     } else {
-      await query("UPDATE dai_product SET outward='', site_upload=0, rapnet_upload=0 WHERE outward IN ('memo','consign') AND id = ?", [pid]);
+      await query("UPDATE dai_product SET outward='', site_upload=0, rapnet_upload=0 WHERE outward IN ('memo','consign','sale','export') AND id = ?", [pid]);
+      const unitPrice = Number(pdata.sell_price || pdata.price) || 0;
+      const retAmount = Number((unitPrice * retCarat).toFixed(2));
+      const retPcsLabel = Number(retPcs) || 0;
+      const retCaratLabel = Number(Number(retCarat).toFixed(3));
       await addHistoryAudited({
         product_id: pid,
-        action: "memo_return",
+        action: returnAction,
         party: mdata.party,
         narretion: mdata.narretion,
         date: moment().format("YYYY-MM-DD HH:mm:ss"),
-        description: `Stone Memo return with reference no is ${mdata.reference}`,
+        description: `Stone ${returnTypeLabel} return ${retPcsLabel}pcs / ${retCaratLabel}ct (full) — ref ${mdata.reference || mdata.invoiceno || ""}`,
         pcs: retPcs,
         carat: retCarat,
-        amount: pdata.sell_amount || pdata.amount,
-        price: pdata.sell_price || pdata.price,
+        amount: retAmount,
+        price: unitPrice,
         sku: pdata.sku,
         type: "cr",
         invoice: mdata.invoiceno,
@@ -743,9 +1375,12 @@ async function returnOutwardMemo(post, userContext = {}) {
 
   returnProduct = [...new Set(returnProduct)];
   if (!mp.length) {
+    const closeStatus = isSaleVoucher
+      ? (outwardType === "export" ? "close_export" : (outwardType === "inter_transfer" || outwardType === "transfer" ? "returned" : "close_sale"))
+      : "close_memo";
     await query(
-      "UPDATE dai_outward SET products='', status='close_memo', return_products=?, final_amount=0, due_amount=0 WHERE id = ?",
-      [returnProduct.join(","), post.id]
+      "UPDATE dai_outward SET products='', status=?, return_products=?, final_amount=0, due_amount=0 WHERE id = ?",
+      [closeStatus, returnProduct.join(","), post.id]
     );
   } else {
     const paidAmount = Number(mdata.paid_amount || 0);
@@ -755,74 +1390,265 @@ async function returnOutwardMemo(post, userContext = {}) {
       [mp.join(","), returnProduct.join(","), remainingFinalAmount, dueAmount, post.id]
     );
   }
-  return { ok: true, message: "Out memo return completed" };
+  return { ok: true, message: isSaleVoucher ? "Sale return completed" : "Out memo return completed" };
 }
 
 async function outwardMemoToSale(post, userContext = {}) {
   const memoId = post.memo_id || post.id;
-  const companyId = userContext.companyId || DEFAULT_COMPANY_ID;
+  const operatingCompanyId = userContext.companyId || DEFAULT_COMPANY_ID;
   const userId = userContext.userId || helper.DEFAULT_USER_ID;
+  const lookupCompanyIds = await resolveListCompanyIds(userContext, DEFAULT_COMPANY_ID);
+  const companyPlaceholders = lookupCompanyIds.map(() => "?").join(",") || "?";
+  const companyParams = lookupCompanyIds.length ? lookupCompanyIds : [DEFAULT_COMPANY_ID];
 
   return helper.runInTransaction(async (q) => {
-    const memoRows = await q("SELECT * FROM dai_outward WHERE id = ? AND company = ?", [memoId, companyId]);
+    // Memo may be under sibling company in same branch — do not require exact operating company match
+    let memoRows = await q(
+      `SELECT * FROM dai_outward WHERE id = ? AND company IN (${companyPlaceholders})`,
+      [memoId, ...companyParams]
+    );
+    if (!memoRows.length) {
+      memoRows = await q("SELECT * FROM dai_outward WHERE id = ?", [memoId]);
+    }
     const mdata = memoRows[0] || null;
     if (!mdata) throw new Error("Memo not found");
 
-    const products = (post.products || []).map(String);
+    const memoCompanyId = Number(mdata.company) || operatingCompanyId;
+    // Sale invoice uses selected operating company; stock updates use product/memo company
+    const companyId = Number(operatingCompanyId) || memoCompanyId;
+
+    // Unique product ids only — duplicate JOIN rows in UI used to sell same stone 3× (5+5+5=15)
+    const products = [...new Set((post.products || []).map(String).filter(Boolean))];
     const record = post.record || {};
     const type = post.type || "sale";
 
-    // Sequence generation locked to company
-    const seqRows = await q("SELECT outward, invoice FROM dai_incrementid WHERE company = ? FOR UPDATE", [companyId]);
-    let curOutward = seqRows?.[0]?.outward;
-    let curInvoice = seqRows?.[0]?.invoice;
-    if (curOutward == null || curInvoice == null) {
-      curOutward = (await getIncrementEntry("outward", companyId)) || 1;
-      curInvoice = (await getIncrementEntry("invoice", companyId)) || 1;
+    // Sequence: lock counter + never reuse numbers already on dai_outward (fixes stuck #1)
+    let seqRows = await q(
+      "SELECT outward, invoice FROM dai_incrementid WHERE company = ? FOR UPDATE",
+      [companyId]
+    );
+    if (!seqRows.length) {
+      try {
+        await q(
+          "INSERT INTO dai_incrementid (company, outward, invoice, reference) VALUES (?, '1', '1', '1')",
+          [companyId]
+        );
+      } catch (_) {
+        /* may need more columns on some DBs */
+      }
+      seqRows = await q(
+        "SELECT outward, invoice FROM dai_incrementid WHERE company = ? FOR UPDATE",
+        [companyId]
+      );
     }
-    const incre_id = curOutward;
-    const invoice = curInvoice;
-    const nextOutward = advanceSequenceValue(curOutward);
-    const nextInvoice = advanceSequenceValue(curInvoice);
+    const existingOut = await q(
+      "SELECT entryno, invoiceno, type FROM dai_outward WHERE company = ? OR company = ?",
+      [companyId, String(companyId)]
+    );
+    const tLower = String(type || "sale").toLowerCase();
+    const invGroup = tLower === "export" ? ["sale", "export"] : ["sale", "export"];
+    let maxEntry = 0;
+    let maxInvoice = 0;
+    let maxEntryAll = 0;
+    let maxInvoiceAll = 0;
+    for (const r of existingOut || []) {
+      const rt = String(r.type || "").toLowerCase();
+      const e = extractSeqNumber(r.entryno);
+      const i = extractSeqNumber(r.invoiceno);
+      if (e > maxEntryAll) maxEntryAll = e;
+      if (i > maxInvoiceAll) maxInvoiceAll = i;
+      if (rt === tLower && e > maxEntry) maxEntry = e;
+      if (invGroup.includes(rt) && i > maxInvoice) maxInvoice = i;
+    }
+    const entrySeq = maxEntry + 1;
+    const invoiceSeq = maxInvoice + 1;
+
+    let compPrefix = "INV-";
+    try {
+      const compRows = await q(
+        "SELECT invoice_prefix, memo_prefix FROM company WHERE id = ? LIMIT 1",
+        [companyId]
+      );
+      if (compRows?.[0]?.invoice_prefix) {
+        compPrefix = compRows[0].invoice_prefix;
+      }
+    } catch (_) {}
+
+    const incre_id = formatOutwardEntryNo(type, entrySeq);
+    const invoice = formatOutwardInvoiceNo(type, invoiceSeq, compPrefix);
+    const nextOutward = String(Math.max(maxEntryAll, entrySeq) + 1);
+    const nextInvoice = String(Math.max(maxInvoiceAll, invoiceSeq) + 1);
 
     const outProducts = [];
     const soldSkus = [];
+    const saleLineItems = [];
+    /** Product ids still on this memo after sale (partial qty or not selected). */
+    const remainingOnMemo = [];
     let amount = 0;
 
+    await stockMovement.ensureStockItemSchema(q);
+    const memoItems = await stockMovement.getOutwardItems(q, memoId);
+
     for (const pid of products) {
-      const prodRows = await q("SELECT * FROM dai_product WHERE id = ? AND company = ?", [pid, companyId]);
+      let prodRows = await q(
+        `SELECT * FROM dai_product WHERE id = ? AND company IN (${companyPlaceholders})`,
+        [pid, ...companyParams]
+      );
+      if (!prodRows.length) {
+        prodRows = await q("SELECT * FROM dai_product WHERE id = ?", [pid]);
+      }
       const pdata = prodRows[0] || null;
       if (!pdata) continue;
+      const productCompanyId = Number(pdata.company) || memoCompanyId || companyId;
       soldSkus.push(pdata.sku);
-      const rec = record[pid] || record[String(pid)] || {
-        price: pdata.sell_price || pdata.price,
-        polish_pcs: pdata.polish_pcs,
-        polish_carat: pdata.polish_carat,
-      };
-      const sellAmount = parseFloat(rec.price) * parseFloat(rec.polish_carat || pdata.polish_carat);
+
+      const itemsForProduct = memoItems.filter((it) => String(it.product_id) === String(pid));
+      const onClassicMemo = pdata.outward === "memo" || pdata.outward === "consign";
+      const onMainStockMemo =
+        itemsForProduct.length > 0 || Number(pdata.memo_carat) > 0 || Number(pdata.memo_pcs) > 0;
+
+      if (!onClassicMemo && !onMainStockMemo) {
+        throw new Error(
+          `Stone ${pdata.sku || pid} is not on active memo (already sold or returned), please refresh`
+        );
+      }
+
+      // Ceiling = THIS memo voucher line qty only — never product onhand/polish total
+      const itemPcsSum = itemsForProduct.reduce((s, it) => s + (Number(it.pcs) || 0), 0);
+      const itemCaratSum = itemsForProduct.reduce((s, it) => s + (Number(it.carat) || 0), 0);
+      const memoPcs =
+        itemsForProduct.length > 0 ? itemPcsSum : Number(pdata.memo_pcs) || 0;
+      const memoCarat =
+        itemsForProduct.length > 0 ? itemCaratSum : Number(pdata.memo_carat) || 0;
+
+      const rec = record[pid] || record[String(pid)] || {};
+      const sellPcs =
+        rec.polish_pcs != null && rec.polish_pcs !== "" ? Number(rec.polish_pcs) : memoPcs;
+      const sellCarat =
+        rec.polish_carat != null && rec.polish_carat !== ""
+          ? Number(rec.polish_carat)
+          : memoCarat;
+      if (sellPcs <= 0 && sellCarat <= 0) {
+        throw new Error(
+          `Enter pcs/carat for SKU ${pdata.sku || pid} (memo qty missing — do not use remaining stock)`
+        );
+      }
+      const sellPrice =
+        Number(rec.price != null && rec.price !== "" ? rec.price : pdata.sell_price || pdata.price) ||
+        0;
+
+      if (sellCarat <= 0) {
+        throw new Error(`Enter carat for SKU ${pdata.sku || pid}`);
+      }
+      if (memoPcs > 0 && sellPcs > memoPcs + 0.0001) {
+        throw new Error(
+          `Pcs exceed memo qty for SKU ${pdata.sku || pid} (selling ${sellPcs}, memo has ${memoPcs})`
+        );
+      }
+      if (sellCarat > memoCarat + 0.0001) {
+        throw new Error(
+          `Carat exceed memo qty for SKU ${pdata.sku || pid} (selling ${sellCarat}, memo has ${memoCarat})`
+        );
+      }
+      // Selling all memo pcs must also take all memo carat (avoids orphan memo carat with 0 pcs)
+      if (memoPcs > 0 && Math.abs(sellPcs - memoPcs) <= 0.0001 && sellCarat + 0.0001 < memoCarat) {
+        throw new Error(
+          `Sell full memo carat for SKU ${pdata.sku || pid}: memo is ${memoPcs} pcs / ${memoCarat} ct, selling ${sellPcs} pcs / ${sellCarat} ct`
+        );
+      }
+      if (memoCarat > 0 && Math.abs(sellCarat - memoCarat) <= 0.0001 && memoPcs > 0 && sellPcs + 0.0001 < memoPcs) {
+        throw new Error(
+          `Sell full memo pcs for SKU ${pdata.sku || pid}: memo is ${memoPcs} pcs / ${memoCarat} ct, selling ${sellPcs} pcs / ${sellCarat} ct`
+        );
+      }
+
+      const sellAmount = Number((sellPrice * sellCarat).toFixed(2));
       amount += sellAmount;
       outProducts.push(pid);
 
-      const updateResult = await q(
-        "UPDATE dai_product SET outward=?, sell_price=?, sell_amount=?, site_upload=0, rapnet_upload=0 WHERE id = ? AND company = ? AND (outward = 'memo' OR outward = 'consign')",
-        [type, rec.price, sellAmount, pid, companyId]
-      );
-      if (updateResult.affectedRows === 0) {
-        throw new Error(`Stone ${pdata.sku || pid} is not on active memo (already sold or returned), please refresh`);
+      const leftCarat = memoCarat - sellCarat;
+      const leftPcs = Math.max(0, memoPcs - sellPcs);
+      const hasLeftover = leftCarat > 0.0001 || (memoPcs > 0 && leftPcs > 0.0001);
+
+      const useBalanceLedger =
+        itemsForProduct.length > 0 || Number(pdata.memo_carat) > 0 || Number(pdata.memo_pcs) > 0;
+
+      let bal = {
+        onhand_pcs: Number(pdata.onhand_pcs ?? pdata.polish_pcs) || 0,
+        onhand_carat: Number(pdata.onhand_carat ?? pdata.polish_carat) || 0,
+      };
+
+      if (useBalanceLedger) {
+        bal = await stockMovement.applyOutwardQty(q, pid, type, sellPcs, sellCarat);
+        await stockMovement.markOutwardItemReturned(q, memoId, pid, sellPcs, sellCarat);
+        if (hasLeftover) {
+          // Partial memo qty sold — keep stone on memo (outward stays memo/consign)
+          remainingOnMemo.push(String(pid));
+          await q(
+            "UPDATE dai_product SET sell_price=?, sell_amount=?, site_upload=0, rapnet_upload=0 WHERE id = ? AND company = ?",
+            [sellPrice, sellAmount, pid, productCompanyId]
+          );
+        } else {
+          // Memo line fully sold — only mark whole row sold when no onhand left
+          const stillOnhand =
+            (Number(bal.onhand_carat) || 0) > 0.0001 || (Number(bal.onhand_pcs) || 0) > 0.0001;
+          if (stillOnhand) {
+            await q(
+              "UPDATE dai_product SET outward='', sell_price=?, sell_amount=?, site_upload=0, rapnet_upload=0 WHERE id = ? AND company = ?",
+              [sellPrice, sellAmount, pid, productCompanyId]
+            );
+          } else {
+            await q(
+              "UPDATE dai_product SET outward=?, sell_price=?, sell_amount=?, site_upload=0, rapnet_upload=0 WHERE id = ? AND company = ?",
+              [type, sellPrice, sellAmount, pid, productCompanyId]
+            );
+          }
+        }
+      } else if (hasLeftover) {
+        // Classic flag model has no memo_* ledger — partial qty not supported (same as return)
+        throw new Error(
+          `Partial sale for SKU ${pdata.sku || pid} requires main-stock memo balances. Sell full memo qty.`
+        );
+      } else {
+        const updateResult = await q(
+          "UPDATE dai_product SET outward=?, sell_price=?, sell_amount=?, site_upload=0, rapnet_upload=0 WHERE id = ? AND company = ? AND (outward = 'memo' OR outward = 'consign')",
+          [type, sellPrice, sellAmount, pid, productCompanyId]
+        );
+        if (updateResult.affectedRows === 0) {
+          throw new Error(
+            `Stone ${pdata.sku || pid} is not on active memo (already sold or returned), please refresh`
+          );
+        }
       }
 
+      saleLineItems.push({
+        productId: pid,
+        sku: pdata.sku,
+        pcs: sellPcs,
+        carat: sellCarat,
+        price: sellPrice,
+        amount: sellAmount,
+        balance_pcs: bal.onhand_pcs,
+        balance_carat: bal.onhand_carat,
+      });
 
       const histPayload = {
         product_id: pid,
         action: type,
         party: post.party || mdata.party,
         date: moment().format("YYYY-MM-DD HH:mm:ss"),
-        description: `Stone ${type} FROM MEMO — SKU ${pdata.sku}`,
+        description: `Stone ${type} FROM MEMO${mdata.invoiceno ? ` #${mdata.invoiceno}` : ''} — SKU ${pdata.sku}`,
+        pcs: sellPcs,
+        carat: sellCarat,
+        balance_pcs: bal.onhand_pcs,
+        balance_carat: bal.onhand_carat,
         amount: sellAmount,
-        price: rec.price,
+        price: sellPrice,
         sku: pdata.sku,
         type: "dr",
         invoice: invoice,
+        entry_from: "outward",
+        user: userId,
       };
       if (histPayload.description) histPayload.description = histPayload.description.toUpperCase();
       const hData = insertString(histPayload);
@@ -844,11 +1670,18 @@ async function outwardMemoToSale(post, userContext = {}) {
       company: companyId,
       user: userId,
       entryno: incre_id,
-      invoiceno: post.invoiceno || invoice,
+      // Always new sale invoice from sequence — do NOT reuse memo invoice (was duplicating "1")
+      invoiceno: String(invoice),
       type,
       status: type === "export" ? "on_export" : "on_sale",
       party: post.party || mdata.party,
-      reference: post.reference != null ? post.reference : mdata.reference,
+      reference:
+        post.reference != null && String(post.reference).trim() !== ""
+          ? post.reference
+          : mdata.reference ||
+            (mdata.invoiceno != null && String(mdata.invoiceno).trim() !== ""
+              ? `Memo ${mdata.invoiceno}`
+              : ""),
       date: post.date || moment().format("YYYY-MM-DD"),
       invoicedate: post.invoicedate || post.date || moment().format("YYYY-MM-DD"),
       terms: post.terms != null ? post.terms : mdata.terms || "",
@@ -877,10 +1710,83 @@ async function outwardMemoToSale(post, userContext = {}) {
     const result = await q(`INSERT INTO dai_outward (${data[0]}) VALUES (${data[1]})`);
     const newOutwardId = result.insertId;
 
-    const remaining = (mdata.products || "")
-      .split(",")
-      .filter((id) => id && !products.map(String).includes(String(id)));
-    await q("UPDATE dai_outward SET products=? WHERE id = ?", [remaining.join(","), memoId]);
+    for (const line of saleLineItems) {
+      await stockMovement.insertOutwardItem(q, {
+        company: companyId,
+        outward_id: newOutwardId,
+        product_id: line.productId,
+        sku: line.sku,
+        party: post.party || mdata.party || "",
+        outward_type: type,
+        pcs: line.pcs,
+        carat: line.carat,
+        price: line.price,
+        amount: line.amount,
+        balance_pcs: line.balance_pcs,
+        balance_carat: line.balance_carat,
+        entry_date: salePost.invoicedate || moment().format("YYYY-MM-DD"),
+        invoice_no: salePost.invoiceno || String(invoice),
+        reference: salePost.reference || "",
+        narretion: salePost.narretion || "",
+        status: salePost.status || "on_sale",
+        user: userId,
+      });
+    }
+
+    // Mirror returnOutwardMemo: keep partial leftovers on memo; close when empty
+    const soldSet = new Set(products.map(String));
+    const leftoverSet = new Set(remainingOnMemo.map(String));
+    const mp = [
+      ...new Set(
+        (mdata.products || "")
+          .split(",")
+          .map((id) => String(id).trim())
+          .filter(Boolean)
+          .filter((id) => {
+            if (!soldSet.has(id)) return true; // not converted this call
+            return leftoverSet.has(id); // partial qty still on memo
+          })
+      ),
+    ];
+
+    let remainingFinalAmount = 0;
+    if (mp.length > 0) {
+      const placeholders = mp.map(() => "?").join(",");
+      const remainingRows = await q(
+        `SELECT SUM(COALESCE(sell_amount, amount, 0)) AS total_amount FROM dai_product WHERE id IN (${placeholders})`,
+        mp
+      );
+      remainingFinalAmount = Number(remainingRows?.[0]?.total_amount || 0);
+      // Prefer sum of still-active memo line amounts when item table has leftovers
+      try {
+        const itemAmtRows = await q(
+          `SELECT SUM(COALESCE(amount, 0)) AS total_amount FROM dai_outward_item
+           WHERE outward_id = ? AND product_id IN (${placeholders})
+             AND (status IS NULL OR status NOT IN ('returned','cancelled'))`,
+          [memoId, ...mp]
+        );
+        const itemTotal = Number(itemAmtRows?.[0]?.total_amount);
+        if (Number.isFinite(itemTotal) && itemTotal > 0) {
+          remainingFinalAmount = itemTotal;
+        }
+      } catch (_) {
+        /* dai_outward_item may be absent on older DBs */
+      }
+    }
+
+    if (!mp.length) {
+      await q(
+        "UPDATE dai_outward SET products='', status='close_memo', final_amount=0, due_amount=0 WHERE id = ?",
+        [memoId]
+      );
+    } else {
+      const memoPaidAmount = Number(mdata.paid_amount || 0);
+      const memoDueAmount = Math.max(0, remainingFinalAmount - memoPaidAmount);
+      await q(
+        "UPDATE dai_outward SET products=?, final_amount=?, due_amount=? WHERE id = ?",
+        [mp.join(","), remainingFinalAmount, memoDueAmount, memoId]
+      );
+    }
 
     // Persist company increment sequence
     await q("UPDATE dai_incrementid SET outward = ?, invoice = ? WHERE company = ?", [nextOutward, nextInvoice, companyId]);
@@ -1075,7 +1981,25 @@ async function outwardToExport(post) {
   if (!oData) return { ok: false, message: "Record not found" };
   const newType = post.type === "export" ? "export" : "consign";
   const newStatus = post.type === "export" ? "on_export" : "on_consign";
-  await query("UPDATE dai_outward SET type=?, status=? WHERE id = ?", [newType, newStatus, post.id]);
+
+  // Export / Consign modal saves shipping / origin / charge / CIF / narration
+  await query(
+    `UPDATE dai_outward
+     SET type=?, status=?,
+         shipping_name=?, origin_of=?, shipping_charge=?, cif=?, narretion=?
+     WHERE id = ?`,
+    [
+      newType,
+      newStatus,
+      post.shipping_name != null ? String(post.shipping_name) : (oData.shipping_name || ""),
+      post.origin_of != null ? String(post.origin_of) : (oData.origin_of || ""),
+      post.shipping_charge != null ? Number(post.shipping_charge) || 0 : (Number(oData.shipping_charge) || 0),
+      post.cif != null ? String(post.cif) : (oData.cif || ""),
+      post.narretion != null ? String(post.narretion) : (oData.narretion || ""),
+      post.id,
+    ],
+  );
+
   return { ok: true, message: `Converted to ${newType}` };
 }
 
@@ -1243,6 +2167,7 @@ async function deleteOutwardStock(id, options = {}) {
               entryno: id,
               balance_pcs: parentPcs,
               balance_carat: parentCarat,
+              user: oData.user || options.userId || helper.DEFAULT_USER_ID,
             };
             const hData = helper.insertString(histPayload);
             await q(`INSERT INTO dai_history (${hData[0]}) VALUES (${hData[1]})`);
@@ -1280,6 +2205,7 @@ async function deleteOutwardStock(id, options = {}) {
             entryno: id,
             balance_pcs: pdata.polish_pcs || 0,
             balance_carat: pdata.polish_carat || 0,
+            user: oData.user || options.userId || helper.DEFAULT_USER_ID,
           };
           const hData = helper.insertString(histPayload);
           await q(`INSERT INTO dai_history (${hData[0]}) VALUES (${hData[1]})`);

@@ -24,10 +24,12 @@ const AdvanceTableData = () => {
 
     const limit = 100;
 
-    const { data, isLoading, isFetching, refetch } = useFetchApi(
+    const { data, isLoading, isFetching, refetch, isPlaceholderData } = useFetchApi(
         `advanceData_page_${offset}`,
         ENDPOINTS.advance.list,
-        { limit, offset }
+        { limit, offset },
+        'GET',
+        { placeholderData: undefined }
     );
 
     const { data: companyData } = useFetchApi('GetCompany', ENDPOINTS.company.options);
@@ -61,25 +63,27 @@ const AdvanceTableData = () => {
     const { mutate: deleteExpanse, isPending: isDeleting } = useDeleteApiRequest(ENDPOINTS.advance.delete, 'advanceDataDelete', { queryParam: 'deleteId' });
 
     useEffect(() => {
-        if (data && data.Data) {
-            const rawRecords = Array.isArray(data.Data) ? data.Data : Object.values(data.Data);
-            const newRecords = rawRecords.length > limit
-                ? rawRecords.slice(offset, offset + limit)
-                : rawRecords;
+        if (!data?.Data || isPlaceholderData) return;
 
-            if (newRecords.length > 0) {
-                setAllData(prev => {
-                    if (offset === 0) return newRecords;
-                    const existingIds = new Set(prev.map(item => item.id));
-                    const uniqueNew = newRecords.filter(item => !existingIds.has(item.id));
-                    return [...prev, ...uniqueNew];
-                });
-                if (newRecords.length < limit) setHasMore(false);
+        const newRecords = Array.isArray(data.Data) ? data.Data : Object.values(data.Data || {});
+        const totalItems = Number(data.TotalItems ?? data.total ?? data.Total) || 0;
+
+        if (newRecords.length > 0) {
+            setAllData((prev) => {
+                if (offset === 0) return newRecords;
+                const existingIds = new Set(prev.map((item) => item.id));
+                return [...prev, ...newRecords.filter((item) => !existingIds.has(item.id))];
+            });
+            if (totalItems > 0) {
+                setHasMore(offset + newRecords.length < totalItems);
             } else {
-                setHasMore(false);
+                setHasMore(newRecords.length >= limit);
             }
+        } else {
+            if (offset === 0) setAllData([]);
+            setHasMore(false);
         }
-    }, [data, offset]);
+    }, [data, offset, limit, isPlaceholderData]);
 
     const handleLoadMore = useCallback(() => {
         if (!isLoading && !isFetching && hasMore) {
@@ -240,8 +244,10 @@ const AdvanceTableData = () => {
                     if (result?.data?.Data) {
                         const rawRecords = Array.isArray(result.data.Data)
                             ? result.data.Data
-                            : Object.values(result.data.Data);
-                        setAllData(rawRecords.length > limit ? rawRecords.slice(0, limit) : rawRecords);
+                            : Object.values(result.data.Data || {});
+                        const totalItems = Number(result.data.TotalItems ?? result.data.total ?? result.data.Total) || 0;
+                        setAllData(rawRecords);
+                        setHasMore(totalItems > 0 ? rawRecords.length < totalItems : rawRecords.length >= limit);
                     }
                 }}
                 refreshLoading={isLoading || isFetching}

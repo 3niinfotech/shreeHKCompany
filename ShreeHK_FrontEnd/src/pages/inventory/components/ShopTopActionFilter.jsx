@@ -165,6 +165,7 @@ export function StoneActionSuccessModal({
   stone = {},
   count = 1, // how many stones this action applied to (bulk selections)
   onViewStone,
+  onPrint,
   autoCloseMs = null, // e.g. 6000 to auto-dismiss; null = manual only
 }) {
   const [mounted, setMounted] = useState(false);
@@ -205,26 +206,6 @@ export function StoneActionSuccessModal({
 
   if (!mounted) return null;
 
-  const formatCarat = (val) => {
-    if (val === undefined || val === null || val === "") return "";
-    if (typeof val === "string" && val.trim().toLowerCase().endsWith("ct")) return val.trim();
-    const n = Number(val);
-    if (!Number.isFinite(n) || n === 0) return typeof val === "string" ? val : "";
-    return `${n.toFixed(2)} ct`;
-  };
-
-  const rawSku = stone.sku || stone.SKU || stone.name || stone.diamond_no || (count > 1 ? `${count} items` : "-");
-  const rawCarat = stone.carat ?? stone.Carat ?? stone.polishCarat ?? stone.polish_carat ?? stone.weight ?? stone.Weight ?? "";
-  const rawShape = stone.shape || stone.Shape || "-";
-  const rawClarity = stone.clarity || stone.Clarity || stone.mainClarity || stone.in_house_clarity || "-";
-
-  const certDetails = [
-    { label: "SKU", value: rawSku },
-    { label: "CARAT", value: formatCarat(rawCarat) || "-" },
-    { label: "SHAPE", value: String(rawShape).toUpperCase() },
-    { label: "CLARITY", value: String(rawClarity).toUpperCase() },
-  ];
-
   return (
     <div
       className={`stone-modal-overlay ${closing ? "is-closing" : "is-open"}`}
@@ -263,15 +244,6 @@ export function StoneActionSuccessModal({
           )}
         </p>
 
-        <div className="stone-cert-strip">
-          {certDetails.map(({ label, value }) => (
-            <div className="stone-cert-item" key={label}>
-              <span className="stone-cert-label">{label}</span>
-              <span className="stone-cert-value">{value}</span>
-            </div>
-          ))}
-        </div>
-
         <div className="stone-modal-actions">
           {onViewStone && (
             <button
@@ -287,9 +259,12 @@ export function StoneActionSuccessModal({
           <button
             className="stone-btn stone-btn-primary"
             style={{ "--accent": cfg.accent }}
-            onClick={handleClose}
+            onClick={() => {
+              onPrint?.(stone);
+              handleClose();
+            }}
           >
-            Done
+            Print
           </button>
         </div>
 
@@ -470,46 +445,6 @@ export function StoneActionSuccessModal({
           to { opacity: 1; transform: translateY(0); }
         }
 
-        /* ---------- Certificate strip ---------- */
-        .stone-cert-strip {
-          width: 100%;
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 1px;
-          background: #E2E8F0;
-          border: 1px solid #CBD5E1;
-          border-radius: 14px;
-          overflow: hidden;
-          margin-bottom: 24px;
-          animation: fadeUp 0.4s ease 0.68s both;
-        }
-        .stone-cert-item {
-          padding: 13px 12px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 4px;
-          background: #F8FAFC;
-          transition: background 0.2s ease;
-        }
-        .stone-cert-item:hover {
-          background: #F1F5F9;
-        }
-        .stone-cert-label {
-          font-size: 10px;
-          font-weight: 700;
-          letter-spacing: 0.12em;
-          color: #64748B;
-          text-transform: uppercase;
-        }
-        .stone-cert-value {
-          font-size: 14px;
-          color: #0F172A;
-          font-weight: 700;
-          letter-spacing: 0.02em;
-        }
-
         /* ---------- Buttons ---------- */
         .stone-modal-actions {
           display: flex;
@@ -564,7 +499,7 @@ export function StoneActionSuccessModal({
           .stone-modal-overlay, .stone-modal-card, .diamond-outline, .diamond-facet,
           .diamond-shimmer, .diamond-check, .stone-sparkle, .medallion-ring,
           .stone-modal-eyebrow, .stone-modal-heading, .stone-modal-message,
-          .stone-cert-strip, .stone-modal-actions {
+          .stone-modal-actions {
             animation-duration: 0.01ms !important;
           }
         }

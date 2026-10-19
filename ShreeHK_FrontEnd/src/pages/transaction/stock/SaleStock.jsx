@@ -34,12 +34,18 @@ const SaleStock = () => (
       { value: 'export', label: 'Export' },
     ]}
     actions={{
+      showReturn: true,
+      returnBtnText: 'Sale Return',
+      returnVariant: 'sale',
+      returnEndpoint: ENDPOINTS.transactionStock.outward.return,
       showPrint: true,
       showDelete: true,
       showEdit: true,
       showToExport: true,
       toExportEndpoint: ENDPOINTS.transactionStock.outward.toExport,
       printType: 'sale',
+      typeWidth: 80,
+      referenceWidth: 160,
     }}
   />
 );

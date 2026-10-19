@@ -66,11 +66,16 @@ export const ENDPOINTS = {
         pairAssign: "/product/pair/assign",
         pairUnpair: "/product/pair/unpair",
         packageAssign: "/product/package/assign",
+        mixingChildren: "/product/mixing/container-children",
+        mixingUnbox: "/product/mixing/unbox",
+        mixingSeparate: "/product/mixing/separate",
+        mixingTransfer: "/product/mixing/transfer",
     },
     inward: {
         checkExist: "/inward/checkExist",
         save: "/inward/save",
         getById: "/inward",
+        update: "/inward/update",
     },
     transactionStock: {
         gia: {
@@ -96,6 +101,12 @@ export const ENDPOINTS = {
             delete: "/transaction/outward-stock",
         },
         print: "/transaction/print",
+    },
+    companyTransfer: {
+        create: "/transaction/company-transfer",
+        list: "/transaction/company-transfer/list",
+        getById: (id) => `/transaction/company-transfer/${id}`,
+        return: "/transaction/company-transfer/return",
     },
     outward: {
         list: "/outward/list",
@@ -180,10 +191,18 @@ export const ENDPOINTS = {
     },
     portal: {
         companyYears: "/portal/company-years",
+        branchCompanies: "/portal/branch-companies",
         years: "/portal/years",
         addYear: "/portal/year",
         updateYear: "/portal/year",
         deleteYear: "/portal/year",
+    },
+    branch: {
+        list: "/admin/branch",
+        detail: (id) => `/admin/branch/${id}`,
+        save: "/admin/branch/save",
+        delete: "/admin/branch/delete",
+        options: "/admin/branch/options",
     },
     tenantCompany: {
         list: "/admin/tenant-company",

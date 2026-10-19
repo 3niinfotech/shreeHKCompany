@@ -14,7 +14,9 @@ const {
 AdvancePayment.get("/advance/get", authenticateToken, async (req, res) => {
   try {
     const companyId = buildUserContext(req).companyId;
-    const result = await advanceService.getAdvancePayments(companyId);
+    const limit = parseInt(req.query.limit, 10) || 100;
+    const offset = parseInt(req.query.offset, 10) || 0;
+    const result = await advanceService.getAdvancePayments(companyId, { limit, offset });
     res.status(result.status).json(result.data);
   } catch (err) {
     res.status(500).json({ err: err.message });

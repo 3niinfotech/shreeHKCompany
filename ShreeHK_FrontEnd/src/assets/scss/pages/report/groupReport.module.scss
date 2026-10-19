@@ -30,6 +30,14 @@
     flex: 1 1 auto !important;
     min-height: 0 !important;
     height: 100% !important;
+
+    // ~25% shorter row height vs ant-table-small default
+    :global(.ant-table.ant-table-small .ant-table-thead > tr > th),
+    :global(.ant-table.ant-table-small .ant-table-tbody > tr > td) {
+        padding-top: 4px !important;
+        padding-bottom: 4px !important;
+        line-height: 1.25 !important;
+    }
 }
 
 .headerRow {
@@ -100,6 +108,14 @@
 
     :global(.ant-table-tbody > tr:hover > td) {
         background: var(--table-row-hover) !important;
+    }
+
+    // ~25% shorter row height vs ant-table-small default
+    :global(.ant-table.ant-table-small .ant-table-thead > tr > th),
+    :global(.ant-table.ant-table-small .ant-table-tbody > tr > td) {
+        padding-top: 4px !important;
+        padding-bottom: 4px !important;
+        line-height: 1.25 !important;
     }
 }
 

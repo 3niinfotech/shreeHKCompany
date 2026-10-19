@@ -22,7 +22,6 @@ const OutStandingReport = () => {
     const [tableData, setTableData] = useState([]);
     const [open, setOpen] = useState(false);
     const [selectedRow, setSelectedRow] = useState(null);
-    const [page, setPage] = useState(1);
     const [exporting, setExporting] = useState(false);
     const location = useLocation();
     const { data: companyData, isLoading: isCompanyLoading } = useFetchApi('GetCompany', ENDPOINTS.company.options);
@@ -52,17 +51,13 @@ const OutStandingReport = () => {
         }
     );
 
-    const handleSearch = (currentValues, resetPage = false) => {
-        const targetPage = resetPage ? 1 : page;
-        if (resetPage) setPage(1);
-
+    const handleSearch = (currentValues) => {
         const payload = {
             from: currentValues.dateRange?.[0]?.format('YYYY-MM-DD') || "",
             to: currentValues.dateRange?.[1]?.format('YYYY-MM-DD') || "",
             invoiceno: currentValues.invoiceNo || "",
             party: currentValues.party || "",
             type: currentValues.type || "sale",
-            page: targetPage
         };
 
         fetchData(payload, {
@@ -84,24 +79,25 @@ const OutStandingReport = () => {
             key: 'no',
             width: 60,
             align: 'center',
-            render: (_, __, idx) => ((page - 1) * 10) + idx + 1
+            render: (_, __, idx) => idx + 1
         },
         // { title: 'Entry No', dataIndex: 'entryno', key: 'entryno' },
         {
             title: 'Entry No',
             dataIndex: 'entryno',
             key: 'entryno',
+            align: 'center',
             render: (text, record) => (
                 <span
-                    style={{ color: cssVar('color-text-link'), cursor: 'pointer', fontWeight: 500 }}
+                    style={{ color: cssVar('color-text-link'), cursor: 'pointer', fontWeight: 500, }}
                     onClick={() => openModal(record)}
                 >
                     {text}
                 </span>
             )
         },
-        { title: 'Company', dataIndex: 'name', key: 'name', width: 250 },
-        { title: 'Invoice', dataIndex: 'invoiceno', key: 'invoiceno' },
+        { title: 'Company', dataIndex: 'name', key: 'name', width: 250, align: 'center' },
+        { title: 'Invoice', dataIndex: 'invoiceno', key: 'invoiceno', align: 'center' },
         { title: 'Date', dataIndex: 'invoicedate', key: 'invoicedate', align: 'center', render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
         {
             title: 'Paid Amount',
@@ -118,7 +114,7 @@ const OutStandingReport = () => {
             render: (val) => <Tag color="blue">{val || 0} Days</Tag>
         },
         { title: 'Due Date', dataIndex: 'due_date', key: 'due_date', align: 'center', render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
-        { title: 'Reference', dataIndex: 'reference', key: 'reference' },
+        { title: 'Reference', dataIndex: 'reference', key: 'reference', align: 'center' },
         {
             title: 'Due Amount',
             dataIndex: 'due_amount',
@@ -131,7 +127,11 @@ const OutStandingReport = () => {
             dataIndex: 'final_amount',
             key: 'final_amount',
             align: 'right',
-            render: (val) => <b>{Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</b>
+            render: (val) => (
+                <b style={{ color: cssVar('color-primary-dark') }}>
+                    {Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </b>
+            ),
         },
     ];
 
@@ -154,11 +154,13 @@ const OutStandingReport = () => {
         { title: 'Due Date', key: 'due_date', width: 14, align: 'center' },
         { title: 'Pcs', key: 'pcs', width: 8, align: 'center', type: 'n', total: true, decimals: 0, accessor: (row) => Number(row.pcs) || 0 },
         { title: 'Carat', key: 'carat', width: 10, align: 'center', type: 'n', total: true, decimals: 3, accessor: (row) => Number(row.carat) || 0 },
-        { title: 'Price', key: 'price', width: 10, align: 'center', type: 'n', total: true, decimals: 2, accessor: (row) => {
-            const carat = Number(row.carat) || 0;
-            const amount = Number(row.final_amount) || 0;
-            return carat > 0 ? Number((amount / carat).toFixed(2)) : 0;
-        } },
+        {
+            title: 'Price', key: 'price', width: 10, align: 'center', type: 'n', total: true, decimals: 2, accessor: (row) => {
+                const carat = Number(row.carat) || 0;
+                const amount = Number(row.final_amount) || 0;
+                return carat > 0 ? Number((amount / carat).toFixed(2)) : 0;
+            }
+        },
         { title: 'Amount', key: 'final_amount', width: 14, align: 'center', type: 'n', total: true, decimals: 2, accessor: (row) => Number(row.final_amount) || 0 },
         { title: 'Reference', key: 'reference', width: 32, align: 'center' },
         { title: 'Paid Amt.', key: 'paid_amount', width: 12, align: 'center', type: 'n', total: true, decimals: 2, accessor: (row) => Number(row.paid_amount) || 0 },
@@ -172,7 +174,7 @@ const OutStandingReport = () => {
         }
         setExporting(true);
         try {
-            const rows = tableData.map((row, idx) => ({ ...row, no: ((page - 1) * 10) + idx + 1 }));
+            const rows = tableData.map((row, idx) => ({ ...row, no: idx + 1 }));
             await exportReportToExcel({
                 headers: exportHeaders,
                 rows,
@@ -202,7 +204,7 @@ const OutStandingReport = () => {
     }, []);
 
     const tableRef = useRef(null);
-    const tableHeight = useTableBodyScrollHeight(tableRef, [tableData.length, isSubmitting, page]);
+    const tableHeight = useTableBodyScrollHeight(tableRef, [tableData.length, isSubmitting]);
 
     return (
         <div className={styles.pageContainer}>
@@ -210,7 +212,7 @@ const OutStandingReport = () => {
                 title="Outstanding Report"
                 // subtitle="Filter by type, party, invoice, and date range."
                 showClear={false}
-                onSearch={() => handleSearch(form.getFieldsValue(), true)}
+                onSearch={() => handleSearch(form.getFieldsValue())}
                 searchLoading={isSubmitting}
                 extraActions={(
                     <>
@@ -218,7 +220,7 @@ const OutStandingReport = () => {
                             type="default"
                             icon={<ReloadOutlined />}
                             className={filterPanelStyles.btnClear}
-                            onClick={() => handleSearch(form.getFieldsValue(), true)}
+                            onClick={() => handleSearch(form.getFieldsValue())}
                             loading={isSubmitting}
                         >
                             Reload
@@ -252,21 +254,13 @@ const OutStandingReport = () => {
                     <SkeletonAwareTable
                         columns={columns}
                         dataSource={tableData}
-                        pagination={{
-                            current: page,
-                            pageSize: 10,
-                            onChange: (p) => {
-                                setPage(p);
-                                const values = form.getFieldsValue();
-                                handleSearch(values, false);
-                            },
-                            showTotal: (total) => `Total ${total} items`
-                        }}
+                        pagination={false}
                         bordered
                         size="small"
                         loading={isSubmitting}
                         rowKey="id"
                         scroll={{ x: "max-content", y: tableHeight }}
+                        className={styles.customTable}
                     />
                 </div>
 
@@ -276,7 +270,7 @@ const OutStandingReport = () => {
                     onClose={closeModal}
                     onSaved={() => {
                         closeModal();
-                        handleSearch(form.getFieldsValue(), false);
+                        handleSearch(form.getFieldsValue());
                     }}
                 />
             </Card>

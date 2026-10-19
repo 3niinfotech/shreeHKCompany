@@ -4,7 +4,21 @@ const holdRepository = require("./holdRepository.js");
 const { logAuditInTx, logAudit } = require("../../services/auditIntegration.js");
 const { diffFields } = require("../../services/auditService.js");
 const { buildFullProductAuditSnapshot } = require("../../services/auditProductSnapshot.js");
+const stockMovement = require("../../services/stockMovementService.js");
+const { getBranchCompanyIds } = require("../../tenantHelper.js");
 const { DEFAULT_COMPANY_ID, DEFAULT_USER_ID } = helper;
+
+function normalizeCompanyIds(companyIdOrIds) {
+  const raw = Array.isArray(companyIdOrIds) ? companyIdOrIds : [companyIdOrIds];
+  const ids = [...new Set(raw.map((c) => Number(c)).filter((c) => c > 0))];
+  return ids.length ? ids : [DEFAULT_COMPANY_ID];
+}
+
+async function resolveLookupCompanyIds(sessionOrOperatingCompanyId) {
+  const base = Number(sessionOrOperatingCompanyId) || DEFAULT_COMPANY_ID;
+  const branchIds = await getBranchCompanyIds(base);
+  return normalizeCompanyIds(branchIds.length ? branchIds : [base]);
+}
 
 const TABLE_OUTWARD = "dai_outward";
 const TABLE_PRODUCT = "dai_product";
@@ -30,6 +44,130 @@ function toNum(val, def = 0) {
   if (val == null || val === "" || val === "NaN") return def;
   const n = Number(val);
   return Number.isFinite(n) ? n : def;
+}
+
+/** Extract numeric sequence from "1", "MEMO-00001", "Outward-12", etc. */
+function extractSeqNumber(value) {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  const n = parseInt(digits, 10);
+  return Number.isNaN(n) || n <= 0 ? 1 : n;
+}
+
+/**
+ * Invoice display: memo/consign/sale/export → INV-1; lab → LAB-1
+ * Supports company-specific custom prefixes (e.g. HK-INV-1, HK-MEMO-1)
+ * Counter in dai_incrementid.invoice stays numeric.
+ */
+function formatOutwardInvoiceNo(type, seq, customPrefix = null) {
+  const n = extractSeqNumber(seq);
+  const t = String(type || "").toLowerCase();
+  if (customPrefix && typeof customPrefix === "string" && customPrefix.trim()) {
+    const p = customPrefix.trim();
+    return p.endsWith("-") ? `${p}${n}` : `${p}-${n}`;
+  }
+  if (t === "lab") return `LAB-${n}`;
+  return `INV-${n}`;
+}
+
+/** Entry No display/storage: memo-1, sale-1, lab-1, consign-1, export-1 */
+function formatOutwardEntryNo(type, seq) {
+  const n = extractSeqNumber(seq);
+  const t = String(type || "").toLowerCase();
+  let prefix = "sale";
+  if (t === "memo") prefix = "memo";
+  else if (t === "consign") prefix = "consign";
+  else if (t === "lab") prefix = "lab";
+  else if (t === "export") prefix = "export";
+  return `${prefix}-${n}`;
+}
+
+function nextSeqNumber(value) {
+  return String(extractSeqNumber(value) + 1);
+}
+
+function invoiceTypeGroup(type) {
+  const t = String(type || "").toLowerCase();
+  if (t === "lab") return ["lab"];
+  if (t === "memo" || t === "consign") return ["memo", "consign"];
+  return ["sale", "export"];
+}
+
+/**
+ * Next entryno + invoice for a company.
+ * Entry series is per-type (memo-1, sale-1).
+ * Invoice INV-n is per group (memo|consign vs sale|export) so each list can start at INV-1.
+ */
+async function allocateOutwardNumbers(q, companyId, type) {
+  const cid = Number(companyId) || DEFAULT_COMPANY_ID;
+  const tLower = String(type || "memo").toLowerCase();
+  const invGroup = invoiceTypeGroup(tLower);
+
+  let seqRows = await q(
+    "SELECT outward, invoice FROM dai_incrementid WHERE company = ? FOR UPDATE",
+    [cid]
+  );
+  if (!seqRows.length) {
+    try {
+      await q(
+        "INSERT INTO dai_incrementid (company, outward, invoice, reference) VALUES (?, '1', '1', '1')",
+        [cid]
+      );
+    } catch (e) {
+      if (e?.code !== "ER_DUP_ENTRY") {
+        console.error("allocateOutwardNumbers seed:", e?.message || e);
+      }
+    }
+    seqRows = await q(
+      "SELECT outward, invoice FROM dai_incrementid WHERE company = ? FOR UPDATE",
+      [cid]
+    );
+  }
+
+  const existing = await q(
+    "SELECT entryno, invoiceno, type FROM dai_outward WHERE company = ? OR company = ?",
+    [cid, String(cid)]
+  );
+  let maxEntry = 0;
+  let maxInvoice = 0;
+  let maxEntryAll = 0;
+  let maxInvoiceAll = 0;
+  for (const r of existing || []) {
+    const rt = String(r.type || "").toLowerCase();
+    const e = extractSeqNumber(r.entryno);
+    const i = extractSeqNumber(r.invoiceno);
+    if (e > maxEntryAll) maxEntryAll = e;
+    if (i > maxInvoiceAll) maxInvoiceAll = i;
+    if (rt === tLower && e > maxEntry) maxEntry = e;
+    if (invGroup.includes(rt) && i > maxInvoice) maxInvoice = i;
+  }
+
+  const entryno = maxEntry + 1;
+  const invoiceSeq = maxInvoice + 1;
+
+  let compRows = [];
+  try {
+    compRows = await q(
+      "SELECT invoice_prefix, memo_prefix, purchase_prefix, lab_prefix FROM company WHERE id = ? LIMIT 1",
+      [cid]
+    );
+  } catch (_) {
+    /* fallback to default */
+  }
+  const compPrefix = compRows?.[0] || {};
+  let customPrefix = compPrefix.invoice_prefix || "INV-";
+  if (tLower === "lab") {
+    customPrefix = compPrefix.lab_prefix || "LAB-";
+  } else if (tLower === "memo" || tLower === "consign") {
+    customPrefix = compPrefix.memo_prefix || compPrefix.invoice_prefix || "MEMO-";
+  }
+
+  return {
+    entryno: formatOutwardEntryNo(type, entryno),
+    invoiceno: formatOutwardInvoiceNo(type, invoiceSeq, customPrefix),
+    // Shared counters track global max so getIncrement stays ahead
+    nextOutward: String(Math.max(maxEntryAll, entryno) + 1),
+    nextInvoice: String(Math.max(maxInvoiceAll, invoiceSeq) + 1),
+  };
 }
 
 function buildMemoOutwardRow(post, productsCsv) {
@@ -159,10 +297,12 @@ async function getIncrementEntry(q, field, companyId = DEFAULT_COMPANY_ID) {
   return rows.length ? rows[0][field] : "";
 }
 
-async function getProductDetail(q, id, companyId = DEFAULT_COMPANY_ID) {
+async function getProductDetail(q, id, companyIdOrIds = DEFAULT_COMPANY_ID) {
+  const companyIds = normalizeCompanyIds(companyIdOrIds);
+  const placeholders = companyIds.map(() => "?").join(",");
   const rows = await q(
-    `SELECT * FROM ${TABLE_PRODUCT} p WHERE p.company = ? AND p.id = ?`,
-    [companyId, id]
+    `SELECT * FROM ${TABLE_PRODUCT} p WHERE p.id = ? AND p.company IN (${placeholders})`,
+    [id, ...companyIds]
   );
   if (!rows.length) return null;
   const data = { ...rows[0] };
@@ -200,6 +340,11 @@ async function addHistoryTx(q, post) {
   if (history.description) {
     history.description = String(history.description).toUpperCase();
   }
+  // Stone History filters with `user <> 16` — NULL user rows are hidden in SQL.
+  // Always stamp user so memo/lab/sale appear like inward history.
+  if (history.user == null || history.user === "") {
+    history.user = post.user || DEFAULT_USER_ID;
+  }
   const data = helper.insertString(history);
   const sql = `INSERT INTO dai_history (${data[0]}) VALUES (${data[1]})`;
   await q(sql);
@@ -217,140 +362,77 @@ async function addUserTrackTx(q, post) {
 }
 
 /**
- * Port of outwardModel::separateSale — box/parcel partial outward.
+ * Box/parcel outward on SAME main stock id (no child SKU).
+ * Returns { productId, pcs, carat, price, amount, balance_*, sku }.
  */
 async function separateSale(q, v, edata, type, post) {
   const saleCtx = buildSaleContext(post);
   const parentBefore = buildProductAuditSnapshot(edata, saleCtx);
-  const child = (Number(edata.child_count) || 0) + 1;
-  edata.child_count = child;
-
-  const childSku = `${edata.sku}-${child}`;
   const tp = Number(v.polish_pcs) || 0;
   const tc = Number(v.polish_carat) || 0;
-  const availableCarat = Number(edata.polish_carat) || 0;
-  const availablePcs = Number(edata.polish_pcs) || 0;
+  const availableCarat =
+    Number(edata.onhand_carat != null ? edata.onhand_carat : edata.polish_carat) || 0;
+  const availablePcs =
+    Number(edata.onhand_pcs != null ? edata.onhand_pcs : edata.polish_pcs) || 0;
 
   if (tc <= 0 || tc > availableCarat) {
     throw new Error(
       `Insufficient stock for SKU ${edata.sku}: available ${availableCarat} ct / ${availablePcs} pcs, requested ${tc} ct / ${tp} pcs`
     );
   }
-
-  if (edata.group_type === "box") {
-    if (tp <= 0 || tp > availablePcs) {
-      throw new Error(
-        `Insufficient stock for SKU ${edata.sku}: available ${availableCarat} ct / ${availablePcs} pcs, requested ${tc} ct / ${tp} pcs`
-      );
-    }
-    edata.polish_pcs = availablePcs - tp;
+  if (edata.group_type === "box" && (tp <= 0 || tp > availablePcs)) {
+    throw new Error(
+      `Insufficient stock for SKU ${edata.sku}: available ${availableCarat} ct / ${availablePcs} pcs, requested ${tc} ct / ${tp} pcs`
+    );
   }
-  edata.polish_carat = availableCarat - tc;
-  edata.amount = Number((edata.polish_carat * edata.price).toFixed(2));
-
-  const now = new Date().toISOString().slice(0, 19).replace("T", " ");
-  const pc = v.polish_pcs;
-  let group = "";
-  if (pc == 1 || pc == 1.0) group = "single";
-  else if (pc > 1) group = "box";
-  else if (pc === "" || pc == 0 || pc === "0") group = "parcel";
 
   const price = Number(v.price) || 0;
-  const sellAmount = price * tc;
+  const sellAmount = Number((price * tc).toFixed(2));
+  const bal = await stockMovement.applyOutwardQty(q, edata.id, type, tp, tc);
 
-  const productRow = {
-    sku: childSku,
-    date: now,
-    company: post.company,
-    user: post.user,
-    polish_pcs: v.polish_pcs,
-    polish_carat: v.polish_carat,
-    group_type: group,
-    site_upload: 1,
-    rapnet_upload: 1,
-    is_uploadsite: 0,
-    is_uploadrapnet: 0,
-    outward_parent: edata.id,
-    main_color: edata.main_color,
-    location: edata.location,
-    main_group: edata.main_group,
-    sub_group: edata.sub_group,
-    remark: edata.remark,
-    transaction: "dr",
-    inward: edata.inward,
-    inward_id: edata.inward_id,
-    outward: type,
-    visibility: type === "sale" || type === "export" ? 0 : 1,
-    sell_price: price,
-    sell_amount: sellAmount,
-    price,
-    amount: sellAmount,
-    child_count: 0,
-  };
+  const isFull =
+    Math.abs(availableCarat - tc) < 0.0001 &&
+    (edata.group_type !== "box" || Math.abs(availablePcs - tp) < 0.0001);
+  if (isFull) {
+    await q(
+      `UPDATE ${TABLE_PRODUCT} SET sell_price = ?, sell_amount = ?, outward = ?, site_upload = 0, rapnet_upload = 0 WHERE id = ?`,
+      [price, sellAmount, type, edata.id]
+    );
+  } else {
+    await q(`UPDATE ${TABLE_PRODUCT} SET sell_price = ?, sell_amount = ? WHERE id = ?`, [
+      price,
+      sellAmount,
+      edata.id,
+    ]);
+  }
 
-  const prid = await insertRow(q, TABLE_PRODUCT, productRow);
-
-  const attr = { ...(edata.record || {}) };
-  delete attr.pid;
-  attr.product_id = prid;
-  await insertRow(q, TABLE_PRODUCT_VALUE, attr);
-
-  await addHistoryTx(q, {
-    product_id: prid,
-    action: "unboxing",
-    party: post.party,
-    narretion: post.narretion,
-    date: post.invoicedate,
-    description: `${type} with Unboxing from ${edata.sku} with  carat :${v.polish_carat}`,
-    pcs: v.polish_pcs,
-    carat: v.polish_carat,
-    amount: sellAmount,
-    price,
-    sku: childSku,
-    type: "cr",
-    invoice: post.invoiceno,
-    entry_from: "outward",
-    balance_pcs: v.polish_pcs,
-    balance_carat: v.polish_carat,
-  });
-
-  await q(
-    `UPDATE ${TABLE_PRODUCT} SET polish_pcs = ?, polish_carat = ?, amount = ?, child_count = ? WHERE id = ?`,
-    [edata.polish_pcs, edata.polish_carat, edata.amount, edata.child_count, edata.id]
-  );
-
+  const tcLabel = Number(tc.toFixed(3));
   await addHistoryTx(q, {
     product_id: edata.id,
     action: type,
     party: post.party,
     narretion: post.narretion,
     date: post.invoicedate,
-    description: `${type} with carat :${tc}`,
-    pcs: v.polish_pcs,
-    carat: v.polish_carat,
+    description: `${type} ${tp}pcs / ${tcLabel}ct from main stock ${edata.sku}`,
+    pcs: tp,
+    carat: tc,
     amount: sellAmount,
     price,
     sku: edata.sku,
     type: "dr",
     invoice: post.invoiceno,
     entry_from: "outward",
-    balance_pcs: edata.polish_pcs,
-    balance_carat: edata.polish_carat,
+    balance_pcs: bal.onhand_pcs,
+    balance_carat: bal.onhand_carat,
+    user: post.user || DEFAULT_USER_ID,
   });
 
   const companyId = post.company || DEFAULT_COMPANY_ID;
   const parentAfterRow = await getProductDetail(q, edata.id, companyId);
-  const childAfterRow = await getProductDetail(q, prid, companyId);
   const parentAfter = buildProductAuditSnapshot(parentAfterRow, {
     ...saleCtx,
     sale_type: type,
   });
-  const childAfter = buildProductAuditSnapshot(childAfterRow, {
-    ...saleCtx,
-    sale_type: type,
-    split_from: edata.sku,
-  });
-
   await logAuditInTx(q, {
     actionType: type === "sale" ? "STOCK_OUT" : "UPDATE",
     moduleName: "Diamond Stock",
@@ -359,27 +441,20 @@ async function separateSale(q, v, edata, type, post) {
     oldValue: parentBefore,
     newValue: parentAfter,
     changedFields: diffFields(parentBefore, parentAfter),
-    description:
-      type === "sale"
-        ? `Inventory sale — parent ${edata.sku} split (${tc} ct → ${childSku})`
-        : `Partial ${type} — parent ${edata.sku} split (${tc} ct → ${childSku})`,
+    description: `${type} ${tc} ct from ${edata.sku} (same stock id, no child)`,
     companyId,
   });
 
-  await logAuditInTx(q, {
-    actionType: type === "sale" ? "STOCK_OUT" : "CREATE",
-    moduleName: "Diamond Stock",
-    recordId: prid,
-    recordReference: childSku,
-    newValue: childAfter,
-    description:
-      type === "sale"
-        ? `Inventory sale — child stone ${childSku} from ${edata.sku}`
-        : `Partial ${type} — child stone ${childSku} from ${edata.sku}`,
-    companyId,
-  });
-
-  return prid;
+  return {
+    productId: edata.id,
+    pcs: tp,
+    carat: tc,
+    price,
+    amount: sellAmount,
+    balance_pcs: bal.onhand_pcs,
+    balance_carat: bal.onhand_carat,
+    sku: edata.sku,
+  };
 }
 
 function recordToArray(record) {
@@ -390,14 +465,15 @@ function recordToArray(record) {
 
 /**
  * Validate products before sendTo (memo / inventory).
+ * companyIdOrIds: operating company or full branch company id list.
  */
-async function validateProductsForMemo(productIds, companyId = DEFAULT_COMPANY_ID) {
+async function validateProductsForMemo(productIds, companyIdOrIds = DEFAULT_COMPANY_ID) {
   if (!productIds || !productIds.length) {
     return "Please Select Item";
   }
   const q = (sql, vals) => helper.query(sql, vals);
   for (const pid of productIds) {
-    const edata = await getProductDetail(q, pid, companyId);
+    const edata = await getProductDetail(q, pid, companyIdOrIds);
     if (!edata) {
       return `Product id ${pid} not found`;
     }
@@ -417,13 +493,13 @@ async function validateProductsForMemo(productIds, companyId = DEFAULT_COMPANY_I
 /**
  * Validate products for memo -> sale conversion.
  */
-async function validateProductsForMemoSale(productIds, companyId = DEFAULT_COMPANY_ID) {
+async function validateProductsForMemoSale(productIds, companyIdOrIds = DEFAULT_COMPANY_ID) {
   if (!productIds || !productIds.length) {
     return "Please Select Item";
   }
   const q = (sql, vals) => helper.query(sql, vals);
   for (const pid of productIds) {
-    const edata = await getProductDetail(q, pid, companyId);
+    const edata = await getProductDetail(q, pid, companyIdOrIds);
     if (!edata) {
       return `Product id ${pid} not found`;
     }
@@ -438,13 +514,13 @@ async function validateProductsForMemoSale(productIds, companyId = DEFAULT_COMPA
 }
 
 /** Stock outward (lab / export) — stone must be available on hand. */
-async function validateProductsForStockOut(productIds, companyId = DEFAULT_COMPANY_ID) {
+async function validateProductsForStockOut(productIds, companyIdOrIds = DEFAULT_COMPANY_ID) {
   if (!productIds || !productIds.length) {
     return "Please Select Item";
   }
   const q = (sql, vals) => helper.query(sql, vals);
   for (const pid of productIds) {
-    const edata = await getProductDetail(q, pid, companyId);
+    const edata = await getProductDetail(q, pid, companyIdOrIds);
     if (!edata) {
       return `Product id ${pid} not found`;
     }
@@ -480,6 +556,8 @@ async function sendTo(rawPost, userContext = {}) {
 
   const companyId = userContext.companyId || DEFAULT_COMPANY_ID;
   const userId = userContext.userId || userContext.user_id || DEFAULT_USER_ID;
+  // Inventory is branch-scoped; product may belong to sibling company under same branch
+  const lookupCompanyIds = await resolveLookupCompanyIds(companyId);
 
   const recordList = recordToArray(post.record);
   if (!recordList.length) {
@@ -489,10 +567,10 @@ async function sendTo(rawPost, userContext = {}) {
   const productIds = recordList.map((r) => r.id).filter(Boolean);
   const preCheck =
     type === "sale"
-      ? await validateProductsForMemoSale(productIds, companyId)
+      ? await validateProductsForMemoSale(productIds, lookupCompanyIds)
       : type === "memo" || type === "consign"
-        ? await validateProductsForMemo(productIds, companyId)
-        : await validateProductsForStockOut(productIds, companyId);
+        ? await validateProductsForMemo(productIds, lookupCompanyIds)
+        : await validateProductsForStockOut(productIds, lookupCompanyIds);
   if (preCheck) {
     return { ok: false, message: preCheck };
   }
@@ -504,7 +582,7 @@ async function sendTo(rawPost, userContext = {}) {
   if (type === "export") {
     const qRead = (sql, vals) => helper.query(sql, vals);
     for (const pid of productIds) {
-      const edata = await getProductDetail(qRead, pid, companyId);
+      const edata = await getProductDetail(qRead, pid, lookupCompanyIds);
       const inward = String(edata?.inward || "").toLowerCase();
       if (inward === "memo" || inward === "consign") {
         return {
@@ -520,28 +598,32 @@ async function sendTo(rawPost, userContext = {}) {
   }
 
   try {
+    await stockMovement.ensureStockItemSchema(helper.query);
     const outwardId = await withTransaction(async (q) => {
-      const increId = await getIncrementEntry(q, "outward", companyId);
-      const invoiceNo = await getIncrementEntry(q, "invoice", companyId);
+      await stockMovement.ensureStockItemSchema(q);
+      const allocated = await allocateOutwardNumbers(q, companyId, type);
 
       const today = new Date().toISOString().slice(0, 10);
-      post.date = formatDateOnly(post.invoicedate) || today;
-      post.invoicedate = formatDateOnly(post.invoicedate) || today;
+      // Keep Date and Invoice Date independent (form sends both)
+      post.date = formatDateOnly(post.date) || formatDateOnly(post.invoicedate) || today;
+      post.invoicedate = formatDateOnly(post.invoicedate) || formatDateOnly(post.date) || today;
       post.company = companyId;
       post.user = userId;
-      post.entryno = post.entryno || increId;
-      post.invoiceno = post.invoiceno || invoiceNo;
+      // Always allocate server-side (form values ignored — prevents all rows stuck at #1)
+      post.entryno = allocated.entryno;
+      post.invoiceno = allocated.invoiceno;
       post.type = type;
       post.status = post.status || OUTWARD_STATUS_BY_TYPE[type] || `on_${type}`;
       post.duedate = formatDateOnly(post.duedate);
 
       const OutProducts = [];
       const Productsku = [];
+      const lineItems = [];
       let amount = 0;
 
       for (const rec of recordList) {
         const pid = rec.id;
-        const edata = await getProductDetail(q, pid, companyId);
+        const edata = await getProductDetail(q, pid, lookupCompanyIds);
         if (!edata) {
           throw new Error(`Product id ${pid} not found`);
         }
@@ -550,13 +632,12 @@ async function sendTo(rawPost, userContext = {}) {
           rec.polish_carat !== undefined && rec.polish_carat !== ""
             ? Number(rec.polish_carat)
             : null;
-        const stockCarat = Number(edata.polish_carat) || 0;
+        const stockCarat =
+          Number(edata.onhand_carat != null ? edata.onhand_carat : edata.polish_carat) || 0;
+        const stockPcs =
+          Number(edata.onhand_pcs != null ? edata.onhand_pcs : edata.polish_pcs) || 0;
 
-        if (
-          rec.group_type &&
-          recCarat !== null &&
-          recCarat !== stockCarat
-        ) {
+        if (rec.group_type && recCarat !== null && recCarat !== stockCarat) {
           if (
             rec.price === "NaN" ||
             rec.price === "" ||
@@ -568,10 +649,7 @@ async function sendTo(rawPost, userContext = {}) {
               `Please Enter price and amount of carat for SKU : ${edata.sku}`
             );
           }
-          if (
-            Number(rec.polish_pcs) > Number(edata.polish_pcs) &&
-            edata.group_type === "box"
-          ) {
+          if (Number(rec.polish_pcs) > stockPcs && edata.group_type === "box") {
             throw new Error(`Pcs is exceed than stock PCS For SKU : ${edata.sku}`);
           }
           if (recCarat > stockCarat) {
@@ -582,12 +660,16 @@ async function sendTo(rawPost, userContext = {}) {
 
       for (const rec of recordList) {
         const pid = rec.id;
-        const edata = await getProductDetail(q, pid, companyId);
+        const edata = await getProductDetail(q, pid, lookupCompanyIds);
+        const productCompanyId = Number(edata.company) || companyId;
         const recCarat =
           rec.polish_carat !== undefined && rec.polish_carat !== ""
             ? Number(rec.polish_carat)
             : null;
-        const stockCarat = Number(edata.polish_carat) || 0;
+        const stockCarat =
+          Number(edata.onhand_carat != null ? edata.onhand_carat : edata.polish_carat) || 0;
+        const stockPcs =
+          Number(edata.onhand_pcs != null ? edata.onhand_pcs : edata.polish_pcs) || 0;
 
         const isBoxParcelOutward =
           rec.group_type &&
@@ -599,23 +681,54 @@ async function sendTo(rawPost, userContext = {}) {
           if (rec.price === "" || rec.price == null || rec.amount === "" || rec.amount == null) {
             throw new Error("Please Enter price and amount of carat");
           }
-          const rid = await separateSale(q, rec, edata, type, post);
-          OutProducts.push(rid);
-          const sData = await getProductDetail(q, rid, companyId);
-          Productsku.push(sData.sku);
-          const lineAmount = Number(rec.price) * recCarat;
-          amount += lineAmount;
+          const line = await separateSale(q, rec, edata, type, { ...post, company: productCompanyId });
+          OutProducts.push(line.productId);
+          Productsku.push(line.sku);
+          lineItems.push(line);
+          amount += line.amount;
         } else {
           OutProducts.push(pid);
           Productsku.push(edata.sku);
           const sprice = Number(rec.price) || 0;
-          const samount = sprice * stockCarat;
+          // Use form sold qty — never remaining onhand (e.g. sell 2 of 6 must record 2, not 4)
+          const formPcs =
+            rec.polish_pcs != null && rec.polish_pcs !== "" ? Number(rec.polish_pcs) : null;
+          const formCarat =
+            rec.polish_carat != null && rec.polish_carat !== "" ? Number(rec.polish_carat) : null;
+          const movePcs = formPcs != null && !Number.isNaN(formPcs) && formPcs > 0 ? formPcs : stockPcs;
+          const moveCarat =
+            formCarat != null && !Number.isNaN(formCarat) && formCarat > 0 ? formCarat : stockCarat;
+          if (movePcs > stockPcs + 0.0001) {
+            throw new Error(
+              `Pcs exceed stock for SKU ${edata.sku}: available ${stockPcs}, requested ${movePcs}`
+            );
+          }
+          if (moveCarat > stockCarat + 0.0001) {
+            throw new Error(
+              `Carat exceed stock for SKU ${edata.sku}: available ${stockCarat}, requested ${moveCarat}`
+            );
+          }
+          const samount = Number((sprice * moveCarat).toFixed(2));
           const saleCtx = buildSaleContext(post);
           const stoneBefore = buildProductAuditSnapshot(edata, saleCtx);
-          const updateResult = await q(
-            `UPDATE ${TABLE_PRODUCT} SET sell_price = ?, sell_amount = ?, outward = ?, site_upload = 0, rapnet_upload = 0 WHERE id = ? AND company = ? AND (outward IS NULL OR outward = '')`,
-            [sprice, samount, type, pid, companyId]
-          );
+          const bal = await stockMovement.applyOutwardQty(q, pid, type, movePcs, moveCarat);
+          // Same as box/parcel separateSale: flag whole row only when onhand fully consumed
+          const isFullOut =
+            (Number(bal.onhand_carat) || 0) <= 0.0001 &&
+            (Number(bal.onhand_pcs) || 0) <= 0.0001;
+          let updateResult;
+          if (isFullOut) {
+            updateResult = await q(
+              `UPDATE ${TABLE_PRODUCT} SET sell_price = ?, sell_amount = ?, outward = ?, site_upload = 0, rapnet_upload = 0 WHERE id = ? AND company = ? AND (outward IS NULL OR outward = '' OR outward = 'memo' OR outward = 'consign')`,
+              [sprice, samount, type, pid, productCompanyId]
+            );
+          } else {
+            // Remaining onhand must stay visible in inventory (memo qty lives in memo_* balances)
+            updateResult = await q(
+              `UPDATE ${TABLE_PRODUCT} SET sell_price = ?, sell_amount = ?, outward = '', site_upload = 0, rapnet_upload = 0 WHERE id = ? AND company = ? AND (outward IS NULL OR outward = '' OR outward = 'memo' OR outward = 'consign')`,
+              [sprice, samount, pid, productCompanyId]
+            );
+          }
           if (updateResult.affectedRows === 0) {
             throw new Error(`Stone ${edata.sku || pid} is already dispatched or on memo, please refresh and try again`);
           }
@@ -627,17 +740,29 @@ async function sendTo(rawPost, userContext = {}) {
             narretion: post.narretion,
             date: post.invoicedate,
             description: ` Stone ${type}  with reference no is ${post.reference || ""}`,
-            pcs: edata.polish_pcs,
-            carat: edata.polish_carat,
-            balance_pcs: 0,
-            balance_carat: 0,
+            pcs: movePcs,
+            carat: moveCarat,
+            balance_pcs: bal.onhand_pcs,
+            balance_carat: bal.onhand_carat,
             amount: samount,
             price: sprice,
             sku: edata.sku,
             type: "dr",
             invoice: post.invoiceno,
+            entry_from: "outward",
+            user: userId || post.user || DEFAULT_USER_ID,
           });
-          const stoneAfterRow = await getProductDetail(q, pid, companyId);
+          lineItems.push({
+            productId: pid,
+            pcs: movePcs,
+            carat: moveCarat,
+            price: sprice,
+            amount: samount,
+            balance_pcs: bal.onhand_pcs,
+            balance_carat: bal.onhand_carat,
+            sku: edata.sku,
+          });
+          const stoneAfterRow = await getProductDetail(q, pid, lookupCompanyIds);
           const stoneAfter = buildProductAuditSnapshot(stoneAfterRow, {
             ...saleCtx,
             sale_type: type,
@@ -654,7 +779,7 @@ async function sendTo(rawPost, userContext = {}) {
               type === "sale"
                 ? `Inventory sale — ${edata.sku} memo → sale (invoice ${post.invoiceno || post.reference || "—"})`
                 : undefined,
-            companyId,
+            companyId: productCompanyId,
           });
           amount += samount;
         }
@@ -674,10 +799,33 @@ async function sendTo(rawPost, userContext = {}) {
         throw new Error("Please select item or enter required value for box/parcel ");
       }
 
-      const productsCsv = OutProducts.join(",");
+      const productsCsv = [...new Set(OutProducts.map(String))].join(",");
       const outwardPayload = buildMemoOutwardRow(post, productsCsv);
 
       const Oid = await insertOutwardRow(q, post, productsCsv);
+
+      for (const line of lineItems) {
+        await stockMovement.insertOutwardItem(q, {
+          company: companyId,
+          outward_id: Oid,
+          product_id: line.productId,
+          sku: line.sku,
+          party: post.party || "",
+          outward_type: type,
+          pcs: line.pcs,
+          carat: line.carat,
+          price: line.price,
+          amount: line.amount,
+          balance_pcs: line.balance_pcs,
+          balance_carat: line.balance_carat,
+          entry_date: post.invoicedate,
+          invoice_no: post.invoiceno || "",
+          reference: post.reference || "",
+          narretion: post.narretion || "",
+          status: post.status || `on_${type}`,
+          user: userId,
+        });
+      }
 
       const sku = Productsku.join(",");
       await addUserTrackTx(q, {
@@ -689,17 +837,10 @@ async function sendTo(rawPost, userContext = {}) {
         company: companyId,
       });
 
-      const temp = String(increId || "").split("-");
-      if (temp.length >= 2) {
-        const parsed = parseInt(temp[1], 10);
-        temp[1] = String(Number.isNaN(parsed) ? 1 : parsed + 1);
-      }
-      const setNewid = temp.join("-");
-      const parsedInv = parseInt(invoiceNo, 10);
-      const nextInvoice = Number.isNaN(parsedInv) ? String(invoiceNo || "1") : String(parsedInv + 1);
+      // Persist next counters (numeric); invoice display uses MEMO-00001 etc.
       await q(
         `UPDATE dai_incrementid SET outward = ?, invoice = ? WHERE company = ?`,
-        [setNewid, nextInvoice, companyId]
+        [allocated.nextOutward, allocated.nextInvoice, companyId]
       );
 
       const outwardRows = await q(`SELECT * FROM ${TABLE_OUTWARD} WHERE id = ?`, [Oid]);
@@ -812,6 +953,7 @@ function mapRequestBody(body) {
     type,
     status: body.status || `on_${type}`,
     party: body.party ?? body.company,
+    date: body.date ?? body.invoicedate,
     invoicedate: body.invoicedate ?? body.date,
     narretion: body.narretion ?? body.narration ?? "",
     reference: body.reference ?? "",
@@ -857,6 +999,7 @@ async function holdProducts(post, userContext = {}) {
   const description = post.description != null ? String(post.description) : "";
   const userId = userContext.userId || userContext.user_id || DEFAULT_USER_ID;
   const companyId = userContext.companyId || DEFAULT_COMPANY_ID;
+  const lookupCompanyIds = await resolveLookupCompanyIds(companyId);
 
   const q = (sql, values = []) => helper.query(sql, values);
 
@@ -868,7 +1011,7 @@ async function holdProducts(post, userContext = {}) {
     const productId = parseInt(v, 10);
     if (!productId) continue;
 
-    const productBefore = await getProductDetail(q, productId, companyId);
+    const productBefore = await getProductDetail(q, productId, lookupCompanyIds);
     if (!productBefore) {
       return { ok: false, message: `Product id ${productId} not found` };
     }
@@ -882,7 +1025,7 @@ async function holdProducts(post, userContext = {}) {
       return { ok: false, message: err.message || String(err) };
     }
 
-    const productAfter = await getProductDetail(q, productId, companyId);
+    const productAfter = await getProductDetail(q, productId, lookupCompanyIds);
     pidList.push(productId);
     skuList.push(productBefore.sku);
 
@@ -1062,8 +1205,8 @@ async function updateOutward(rawPost) {
               description: `Stone ${otype} return with reference no is ${headerRef}`,
               pcs: pdata.polish_pcs,
               carat: pdata.polish_carat,
-              balance_pcs: edata.polish_pcs,
-              balance_carat: edata.polish_carat,
+              balance_pcs: parentPcs,
+              balance_carat: parentCarat,
               amount: pdata.sell_amount == 0 ? pdata.amount : pdata.sell_amount,
               price: pdata.sell_price == 0 ? pdata.price : pdata.sell_price,
               sku: pdata.sku,
@@ -1071,6 +1214,7 @@ async function updateOutward(rawPost) {
               invoice: headerInvoice,
               entry_from: "outward",
               entryno: id,
+              user: existing.user || DEFAULT_USER_ID,
             });
           }
           await q(
@@ -1100,6 +1244,7 @@ async function updateOutward(rawPost) {
             invoice: headerInvoice,
             entry_from: "outward",
             entryno: id,
+            user: existing.user || DEFAULT_USER_ID,
           });
         }
       }
@@ -1139,7 +1284,7 @@ async function updateOutward(rawPost) {
             oldData &&
             (oldData.group_type === "box" || oldData.group_type === "parcel")
           ) {
-            const rid = await separateSale(q, pdata, oldData, otype, {
+            const line = await separateSale(q, pdata, oldData, otype, {
               ...post,
               party: headerParty,
               narretion: headerNarration,
@@ -1148,11 +1293,11 @@ async function updateOutward(rawPost) {
               company: companyId,
               user: post.user ?? DEFAULT_USER_ID,
             });
-            if (typeof rid === "number") {
-              updatedProductIds.push(rid);
+            if (line && line.productId) {
+              updatedProductIds.push(line.productId);
               continue;
             }
-            return { ok: false, message: String(rid) };
+            return { ok: false, message: "Failed to process box/parcel outward line" };
           }
         }
 
@@ -1188,6 +1333,7 @@ async function updateOutward(rawPost) {
           invoice: headerInvoice,
           entry_from: "outward",
           entryno: id,
+          user: existing.user || DEFAULT_USER_ID,
         });
 
         if (BaseData) {
@@ -1216,6 +1362,7 @@ async function updateOutward(rawPost) {
               invoice: headerInvoice,
               entry_from: "outward",
               entryno: id,
+              user: existing.user || DEFAULT_USER_ID,
             });
           }
         }

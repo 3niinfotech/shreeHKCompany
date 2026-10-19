@@ -104,7 +104,7 @@ const GiaReturnModal = ({ open, record, productIds, products, onClose, onSuccess
     if (!open || !productIds?.length) return;
     const initial = {};
     productIds.forEach((id) => {
-      const p = products.find((row) => row.id === id) || {};
+      const p = products.find((row) => String(row.id) === String(id)) || {};
       initial[id] = {
         mfg_code: p.mfg_code || '',
         sku: p.sku || '',
@@ -125,8 +125,9 @@ const GiaReturnModal = ({ open, record, productIds, products, onClose, onSuccess
   };
 
   const handleSave = () => {
+    if (record?.id == null) return;
     saveReturn(
-      { outid: record?.id, record: records },
+      { outid: record.id, id: record.id, record: records },
       { onSuccess: () => onSuccess?.() }
     );
   };

@@ -167,21 +167,21 @@ export type ColorTokens = {
 };
 
 /** Brand violet — diamond ERP identity (keep stable across modes) */
-const BRAND_PRIMARY = "#5B4FCF";
-const BRAND_PRIMARY_DARK = "#4A3FBA";
-const BRAND_PRIMARY_DARKER = "#3B32A0";
-const BRAND_PRIMARY_MEDIUM = "#7B70E0";
-const BRAND_PRIMARY_LIGHT = "#EEECFB";
-const BRAND_PRIMARY_PALE = "#F6F5FD";
-const BRAND_PRIMARY_FOCUS_RING = "rgba(91, 79, 207, 0.16)";
-const BRAND_PRIMARY_ACTIVE_BG = "rgba(91, 79, 207, 0.32)";
-const BRAND_SIDEBAR_BG = "#16143A";
-const BRAND_SIDEBAR_FOOTER = "#100E2A";
-const ERP_NAVY = "#1A1840";
-const ERP_BODY = "#3A3F55";
-const ERP_MUTED = "#6B7285";
-const ERP_BORDER = "#E3E5EF";
-const ERP_PAGE = "#F4F5F9";
+const BRAND_PRIMARY = "#0D7B6B";
+const BRAND_PRIMARY_DARK = "#095B50";
+const BRAND_PRIMARY_DARKER = "#06483F";
+const BRAND_PRIMARY_MEDIUM = "#249989";
+const BRAND_PRIMARY_LIGHT = "#E6F4F1";
+const BRAND_PRIMARY_PALE = "#F2FAF8";
+const BRAND_PRIMARY_FOCUS_RING = "rgba(13, 123, 107, 0.18)";
+const BRAND_PRIMARY_ACTIVE_BG = "rgba(13, 123, 107, 0.14)";
+const BRAND_SIDEBAR_BG = "#1A2B3C";
+const BRAND_SIDEBAR_FOOTER = "#142231";
+const ERP_NAVY = "#1F2937";
+const ERP_BODY = "#374151";
+const ERP_MUTED = "#64748B";
+const ERP_BORDER = "#DDE4EA";
+const ERP_PAGE = "#F4F6F8";
 
 const lightColors: ColorTokens = {
   colorPrimary: BRAND_PRIMARY,

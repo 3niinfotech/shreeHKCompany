@@ -15,7 +15,7 @@ const dbConfig = {
   port: process.env.DB_PORT || "3306",
 };
 
-const META_DB = process.env.DB_NAME || "shreehkweb_snj2024";
+const META_DB = process.env.DB_NAME || "shreehkweb_snj2024_test";
 
 function createPool(database) {
   // perf: pool size via env; default 10 matches prior behavior

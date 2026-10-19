@@ -3,7 +3,9 @@ import { Table } from "antd";
 
 const getRowKey = (record) => String(record.id);
 const TABLE_LOCALE = { emptyText: "No data found" };
-const TABLE_HEADER_FOOTER_RESERVE = 39;
+/** Header (~40) + footer totals bar (~48) — body must not paint over footer */
+const TABLE_HEADER_RESERVE = 40;
+const TABLE_FOOTER_RESERVE = 48;
 const TABLE_BODY_MIN_HEIGHT = 160;
 
 const InventoryTableSection = React.memo(function InventoryTableSection({
@@ -19,13 +21,22 @@ const InventoryTableSection = React.memo(function InventoryTableSection({
   handleOnRow,
   renderTableFooter,
 }) {
-  const bodyScrollY = Math.max(tableHeight - TABLE_HEADER_FOOTER_RESERVE, TABLE_BODY_MIN_HEIGHT);
+  const bodyScrollY = Math.max(
+    tableHeight - TABLE_HEADER_RESERVE - TABLE_FOOTER_RESERVE,
+    TABLE_BODY_MIN_HEIGHT
+  );
 
   return (
     <div
       ref={tableRef}
       className="erp-table-container"
-      style={{ height: tableHeight, overflowY: "hidden", overflowX: "hidden" }}
+      style={{
+        height: tableHeight,
+        overflowY: "hidden",
+        overflowX: "hidden",
+        // Force body to full scroll.y so horizontal scrollbar stays at bottom (1 or 100 rows)
+        ["--inventory-table-body-y"]: `${bodyScrollY}px`,
+      }}
     >
       <Table
         className="diamond-inventory-table"

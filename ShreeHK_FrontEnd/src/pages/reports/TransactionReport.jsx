@@ -35,33 +35,63 @@ const TYPE_OPTIONS = [
 
 const PARTY_COLUMNS = [
     { title: 'No', dataIndex: 'no', key: 'no', width: 60, align: 'center' },
-    { title: 'Invoice', dataIndex: 'invoice', key: 'invoice' },
-    { title: 'Date', dataIndex: 'date', key: 'date', render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
-    { title: 'Company', dataIndex: 'company', key: 'company' },
+    { title: 'Invoice', dataIndex: 'invoice', key: 'invoice', align: 'center' },
+    { title: 'Date', dataIndex: 'date', key: 'date', align: 'center', render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
+    { title: 'Company', dataIndex: 'company', key: 'company', align: 'center' },
     { title: 'Pcs', dataIndex: 'pcs', key: 'pcs', align: 'center' },
-    { title: 'Carat', dataIndex: 'carat', key: 'carat', align: 'right' },
-    { title: 'Price', dataIndex: 'price', key: 'price', align: 'right' },
-    { title: 'Amount', dataIndex: 'amount', key: 'amount', align: 'right' },
+    { title: 'Carat', dataIndex: 'carat', key: 'carat', align: 'center' },
+    {
+        title: 'Price',
+        dataIndex: 'price',
+        key: 'price',
+        align: 'right',
+        render: (v) => <span style={{ color: 'var(--color-success-dark)' }}>{v ?? '-'}</span>,
+    },
+    {
+        title: 'Amount',
+        dataIndex: 'amount',
+        key: 'amount',
+        align: 'right',
+        render: (v) => <span style={{ color: 'var(--color-primary-dark)' }}>{v ?? '-'}</span>,
+    },
     { title: 'Term', dataIndex: 'term', key: 'term', align: 'center' },
-    { title: 'Due Date', dataIndex: 'dueDate', key: 'dueDate', render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
-    { title: 'Reference', dataIndex: 'reference', key: 'reference' },
+    { title: 'Due Date', dataIndex: 'dueDate', key: 'dueDate', align: 'center', render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
+    { title: 'Reference', dataIndex: 'reference', key: 'reference', align: 'center' },
 ];
 
 const PACKET_COLUMNS = [
     { title: 'No', dataIndex: 'no', key: 'no', width: 40, align: 'center' },
-    { title: 'Date', dataIndex: 'out_date', key: 'out_date', width: 100, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
-    { title: 'Sku', dataIndex: 'sku', key: 'sku', width: 160, render: (text, record) => <SkuLink sku={text} record={record} /> },
+    { title: 'Date', dataIndex: 'out_date', key: 'out_date', width: 100, align: 'center', render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
+    { title: 'Sku', dataIndex: 'sku', key: 'sku', width: 160, align: 'center', render: (text, record) => <SkuLink sku={text} record={record} /> },
     { title: 'Lab', dataIndex: 'lab', key: 'lab', width: 70, align: 'center' },
-    { title: 'Report No.', dataIndex: 'report_no', key: 'report_no', width: 120 },
-    { title: 'P.Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', width: 70, align: 'right' },
-    { title: 'P.Carat', dataIndex: 'polish_carat', key: 'polish_carat', width: 80, align: 'right' },
-    { title: 'Price', dataIndex: 'sell_price', key: 'sell_price', width: 90, align: 'right', render: (v, row) => v ?? row.purchase_price ?? '-' },
-    { title: 'Amount', dataIndex: 'sell_amount', key: 'sell_amount', width: 100, align: 'right', render: (v, row) => v ?? row.purchase_amount ?? '-' },
-    { title: 'Shape', dataIndex: 'shape', key: 'shape', width: 90 },
+    { title: 'Report No.', dataIndex: 'report_no', key: 'report_no', width: 120, align: 'center' },
+    { title: 'P.Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', width: 70, align: 'center' },
+    { title: 'P.Carat', dataIndex: 'polish_carat', key: 'polish_carat', width: 80, align: 'center' },
+    {
+        title: 'Price',
+        dataIndex: 'sell_price',
+        key: 'sell_price',
+        width: 90,
+        align: 'right',
+        render: (v, row) => (
+            <span style={{ color: 'var(--color-success-dark)' }}>{v ?? row.purchase_price ?? '-'}</span>
+        ),
+    },
+    {
+        title: 'Amount',
+        dataIndex: 'sell_amount',
+        key: 'sell_amount',
+        width: 100,
+        align: 'right',
+        render: (v, row) => (
+            <span style={{ color: 'var(--color-primary-dark)' }}>{v ?? row.purchase_amount ?? '-'}</span>
+        ),
+    },
+    { title: 'Shape', dataIndex: 'shape', key: 'shape', width: 90, align: 'center' },
     { title: 'Color', dataIndex: 'color', key: 'color', width: 70, align: 'center' },
     { title: 'Clarity', dataIndex: 'clarity', key: 'clarity', width: 80, align: 'center' },
-    { title: 'Company', dataIndex: 'party', key: 'party', width: 180 },
-    { title: 'Remark', dataIndex: 'remark', key: 'remark', width: 160 },
+    { title: 'Company', dataIndex: 'party', key: 'party', width: 180, align: 'center' },
+    { title: 'Remark', dataIndex: 'remark', key: 'remark', width: 160, align: 'center' },
 ];
 
 const formatExcelDate = (value) => {

@@ -7,7 +7,7 @@ const outMemoProductColumns = [
   { title: 'Sr No', key: 'srNo', width: 70, align: 'center', render: (_, __, index) => index + 1 },
   { title: 'Parent SKU', dataIndex: 'parent_sku', key: 'parent_sku', width: 120, render: (_, row) => (row.parent_sku ? <SkuLink sku={row.parent_sku} record={row} /> : '-') },
   { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 120, render: (text, record) => <SkuLink sku={text} record={record} /> },
-  { title: 'Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', width: 70, align: 'center' },
+  { title: 'Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', width: 60, align: 'center' },
   { title: 'Carat', dataIndex: 'polish_carat', key: 'polish_carat', width: 90, align: 'center' },
   { title: 'Lab', dataIndex: 'lab', key: 'lab', width: 80, render: (v) => v || '-' },
   { title: 'Certificate', dataIndex: 'report_no', key: 'report_no', width: 130, render: (v, row) => v || row.certificate || '-' },
@@ -44,6 +44,13 @@ const OutMemoStock = () => (
       memoToSaleEndpoint: ENDPOINTS.transactionStock.outward.memoToSale,
       toExportEndpoint: ENDPOINTS.transactionStock.outward.toExport,
       printType: 'memo',
+      typeWidth: 60,
+      referenceWidth: 80,
+      entryWidth: 80,
+      partyWidth: 160,
+      invoiceWidth: 80,
+      dateWidth: 100,
+      operationsWidth: 230,
     }}
   />
 );

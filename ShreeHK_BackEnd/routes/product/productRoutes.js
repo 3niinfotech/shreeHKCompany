@@ -16,9 +16,15 @@ const { validateExportBody } = require("./exportValidation.js");
 const inventoryMailService = require("./inventoryMailService.js");
 const { validateInventoryMailBody } = require("./inventoryMailValidation.js");
 const { authenticateToken } = require("../../authMiddleware.js");
-const { buildUserContext } = require("../../tenantHelper.js");
+const {
+  buildUserContext,
+  getBranchCompanyIds,
+  resolveListCompanyIds,
+  metaQuery,
+} = require("../../tenantHelper.js");
 const { getInventorySuggestions } = require("./inventorySuggestService.js");
 const { getInventorySummary } = require("../../services/inventorySummaryService.js");
+const stockMovement = require("../../services/stockMovementService.js");
 const boxParcelService = require("./boxParcelService.js");
 const {
   normalizeInventoryQuery,
@@ -30,7 +36,7 @@ const productRouter = express.Router();
 productRouter.use(express.json());
 
 const columnName =
-  " p.id,p.mfg_code,p.diamond_no,p.sku,p.pair,p.polish_pcs,p.polish_carat,p.rap_price,p.cost,p.price,p.amount,p.main_group,p.sub_group,p.remark,p.location,p.date,p.company,p.inward_id,p.inward,p.group_type,p.lab,p.send_to_lab,p.outward,p.box_products,p.parcel_products,p.box_id,p.parcel_id,p.hold,p.visibility,p.parent_id,p.main_color,p.category,p.argyle_color,p.in_house_clarity,p.mining,p.origin,p.rapnet_upload,p.site_upload,pv.report_no,pv.shape,pv.color,pv.clarity,pv.size,pv.polish,pv.f_intensity,pv.symmentry,pv.cut,pv.mesurment,pv.table_pc,pv.depth_pc,pv.gridle,pv.intensity,pv.overtone,pv.package,pv.bgm,pv.eyeclean ";
+  " p.id,p.mfg_code,p.diamond_no,p.sku,p.pair,p.polish_pcs,p.polish_carat,p.memo_pcs,p.memo_carat,p.rap_price,p.cost,p.price,p.amount,p.main_group,p.sub_group,p.remark,p.location,p.date,p.company,p.inward_id,p.inward,p.group_type,p.lab,p.send_to_lab,p.outward,p.box_products,p.parcel_products,p.box_id,p.parcel_id,p.hold,p.visibility,p.parent_id,p.main_color,p.category,p.argyle_color,p.in_house_clarity,p.mining,p.origin,p.rapnet_upload,p.site_upload,pv.report_no,pv.shape,pv.color,pv.clarity,pv.size,pv.polish,pv.f_intensity,pv.symmentry,pv.cut,pv.mesurment,pv.table_pc,pv.depth_pc,pv.gridle,pv.intensity,pv.overtone,pv.package,pv.bgm,pv.eyeclean ";
 
 const ALLOWED_SORT_COLUMNS = {
   id: "p.id",
@@ -134,9 +140,41 @@ productRouter.get("/product/inventory/summary", authenticateToken, async (req, r
 });
 
 // Get Inventory
+let labReturnRepairPromise = null;
 productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
+  try {
+    await stockMovement.ensureStockItemSchema(helper.query);
+  } catch (schemaErr) {
+    console.error("ensureStockItemSchema (inventory):", schemaErr?.message || schemaErr);
+  }
+  // Once per process: restore lab-returned stones stuck at 0 carat (pre-fix returns)
+  if (!labReturnRepairPromise) {
+    labReturnRepairPromise = stockMovement
+      .repairOrphanLabReturns(helper.query)
+      .then((r) => {
+        if (r?.fixed) console.log(`lab return balances restored for ${r.fixed} stone(s)`);
+        return r;
+      })
+      .catch((err) => {
+        console.error("lab return balance repair failed:", err?.message || err);
+        labReturnRepairPromise = null;
+      });
+  }
+  try {
+    await labReturnRepairPromise;
+  } catch (_) {
+    /* already logged */
+  }
   let post = normalizeInventoryQuery(req.query);
-  const companyId = buildUserContext(req).companyId;
+  const userContext = buildUserContext(req);
+  // Branch scope: all sibling companies by default; optional filterCompanyId → one company only
+  const branchCompanyIds = await resolveListCompanyIds(userContext, userContext.companyId || 1);
+  const requestedFilter = Number(post.filterCompanyId || post.companyFilter) || 0;
+  const companyIdList =
+    requestedFilter && branchCompanyIds.map(Number).includes(requestedFilter)
+      ? [requestedFilter]
+      : branchCompanyIds;
+  const companyPlaceholders = companyIdList.map(() => "?").join(",") || "?";
   const form_type = post.form_type;
   const searchInput = post.searchInput;
   const limit = parseInt(post.limit, 10) || 100;
@@ -151,7 +189,7 @@ productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
     }
   }
 
-  const queryParams = [companyId];
+  const queryParams = [...companyIdList];
 
   let pair = "";
   let location = "";
@@ -382,8 +420,9 @@ productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
 
   // query — outward scope mirrors venya inventoryModel.php per filter branch
   let query = "";
+  // Keep full-memo stones visible: polish_carat syncs to onhand (0) while memo_carat holds qty
   const inventoryBaseFrom =
-    " FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id WHERE p.company = ? and visibility = 1 and polish_carat <> 0";
+    ` FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id WHERE p.company IN (${companyPlaceholders}) and visibility = 1 and (COALESCE(p.polish_carat,0) <> 0 OR COALESCE(p.memo_carat,0) <> 0 OR COALESCE(p.onhand_carat,0) <> 0)`;
   const inventoryBoxParcel =
     " and (p.box_id='' || p.box_id IS NULL) and (p.parcel_id='' || p.parcel_id IS NULL)";
   let outwardScope = " and (p.outward='' || p.outward IS NULL)";
@@ -511,13 +550,16 @@ productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
     if (s === "hold" || s === "on_hold" || s === "grey") {
       rowStatusFilter = " and p.hold = 1 ";
     } else if (s === "memo" || s === "consign" || s === "red") {
-      rowStatusFilter = " and (p.outward = 'memo' || p.outward = 'consign') ";
+      // Full memo (outward) + partial memo (memo_carat > 0, outward empty)
+      rowStatusFilter =
+        " and (p.outward = 'memo' || p.outward = 'consign' || COALESCE(p.memo_carat,0) > 0) ";
     } else if (s === "certified" || s === "blue") {
       rowStatusFilter = " and (p.lab != '' and p.lab IS NOT NULL) ";
     } else if (s === "lab" || s === "green") {
       rowStatusFilter = " and p.outward = 'lab' ";
     } else if (s === "available" || s === "white" || s === "on_hand") {
-      rowStatusFilter = " and (p.outward = '' || p.outward IS NULL) and (p.hold = 0 || p.hold IS NULL || p.hold = '') ";
+      rowStatusFilter =
+        " and (p.outward = '' || p.outward IS NULL) and COALESCE(p.memo_carat,0) <= 0 and (p.hold = 0 || p.hold IS NULL || p.hold = '') ";
     }
   }
 
@@ -560,6 +602,38 @@ productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
         console.error("attachMemoCaratToProducts:", enrichError);
       }
 
+      // Attach tenant company code/name for inventory columns
+      try {
+        const ids = [
+          ...new Set(
+            (rows || [])
+              .map((r) => Number(r.company))
+              .filter((id) => id > 0)
+          ),
+        ];
+        if (ids.length) {
+          const placeholders = ids.map(() => "?").join(",");
+          const companyRows = await metaQuery(
+            `SELECT id, name, shortcutName FROM company WHERE id IN (${placeholders})`,
+            ids
+          );
+          const byId = {};
+          for (const c of companyRows || []) {
+            byId[Number(c.id)] = c;
+          }
+          rows = (rows || []).map((r) => {
+            const c = byId[Number(r.company)];
+            return {
+              ...r,
+              company_code: c?.shortcutName || "",
+              company_name: c?.name || "",
+            };
+          });
+        }
+      } catch (companyEnrichErr) {
+        console.error("inventory company enrich:", companyEnrichErr?.message || companyEnrichErr);
+      }
+
       const response = {
         TotalData: {
           TotalItems: countResult[0]?.totalProducts || 0,
@@ -588,23 +662,38 @@ productRouter.get("/product/detail", authenticateToken, (req, res) => {
   }
 
   const trimmed = String(id).trim();
-  const companyId = buildUserContext(req).companyId;
+  const sessionCompanyId = buildUserContext(req).companyId;
 
   const loadDetail = async () => {
-    if (by === "p.sku" && companyId) {
-      const scoped = await productHelper.getDetailBySku(trimmed, companyId);
-      if (scoped) return scoped;
+    const branchIds = sessionCompanyId
+      ? await getBranchCompanyIds(sessionCompanyId)
+      : [];
+    const scopeIds = (branchIds.length ? branchIds : [sessionCompanyId]).filter(
+      (c) => Number(c) > 0
+    );
+
+    if (by === "p.sku" && scopeIds.length) {
+      for (const cid of scopeIds) {
+        const scoped = await productHelper.getDetailBySku(trimmed, cid);
+        if (scoped) return scoped;
+      }
     }
     return productHelper.getDetail(trimmed, by);
   };
 
   loadDetail()
-    .then((data) => {
+    .then(async (data) => {
       if (!data) {
         return res.status(404).json({ error: "Stone not found", Data: null });
       }
-      if (companyId && String(data.company) !== String(companyId)) {
-        return res.status(404).json({ error: "Stone not found", Data: null });
+      if (sessionCompanyId) {
+        const branchIds = await getBranchCompanyIds(sessionCompanyId);
+        const allowed = new Set(
+          (branchIds.length ? branchIds : [sessionCompanyId]).map(String)
+        );
+        if (!allowed.has(String(data.company))) {
+          return res.status(404).json({ error: "Stone not found", Data: null });
+        }
       }
       res.json({ Data: data });
     })
@@ -656,6 +745,7 @@ productRouter.post("/product/save", authenticateToken, async (req, res) => {
       const oldSnap = buildFullProductAuditSnapshot({ ...oldRow, record: oldValRow });
       const newSnap = buildFullProductAuditSnapshot({ ...newRows[0], record: newValRows[0] });
 
+      const changed = diffFields(oldSnap, newSnap);
       await logAuditInTx(q, {
         actionType: "UPDATE",
         moduleName: "Stone Update",
@@ -663,8 +753,30 @@ productRouter.post("/product/save", authenticateToken, async (req, res) => {
         recordReference: newRows[0]?.sku || String(id),
         oldValue: oldSnap,
         newValue: newSnap,
-        changedFields: diffFields(oldSnap, newSnap),
+        changedFields: changed,
       });
+
+      if (changed && changed.length > 0) {
+        try {
+          const diffSummary = changed.map((f) => {
+            const oldV = oldSnap[f] != null && oldSnap[f] !== "" ? oldSnap[f] : "—";
+            const newV = newSnap[f] != null && newSnap[f] !== "" ? newSnap[f] : "—";
+            return `${f.toUpperCase()}: ${oldV} → ${newV}`;
+          });
+          const desc = `Stone Detail Updated: ${diffSummary.join("; ")}`;
+          const histData = helper.insertString({
+            product_id: id,
+            sku: newRows[0]?.sku || oldRow?.sku || "",
+            action: "stone_update",
+            date: new Date(),
+            description: desc.toUpperCase(),
+            user: req.user?.user_id || 1,
+          });
+          await q(`INSERT INTO dai_history (${histData[0]}) VALUES (${histData[1]})`);
+        } catch (histErr) {
+          console.error("[product/save] dai_history insert warning:", histErr.message);
+        }
+      }
     });
 
     res.status(201).json({ message: message });
@@ -697,6 +809,7 @@ productRouter.post("/product/update-remark", authenticateToken, async (req, res)
         const { diffFields } = require("../../services/auditService.js");
         const oldSnap = { remark: oldRemark };
         const newSnap = { remark };
+        const changed = diffFields(oldSnap, newSnap);
         await logAuditInTx(q, {
           actionType: "UPDATE",
           moduleName: "Inventory Remark",
@@ -704,8 +817,25 @@ productRouter.post("/product/update-remark", authenticateToken, async (req, res)
           recordReference: rows[0]?.sku || String(id),
           oldValue: oldSnap,
           newValue: newSnap,
-          changedFields: diffFields(oldSnap, newSnap),
+          changedFields: changed,
         });
+
+        if (oldRemark !== remark) {
+          try {
+            const desc = `Remark Changed: "${oldRemark || "—"}" → "${remark || "—"}"`;
+            const histData = helper.insertString({
+              product_id: id,
+              sku: rows[0]?.sku || "",
+              action: "remark_change",
+              date: new Date(),
+              description: desc.toUpperCase(),
+              user: req.user?.user_id || 1,
+            });
+            await q(`INSERT INTO dai_history (${histData[0]}) VALUES (${histData[1]})`);
+          } catch (histErr) {
+            console.error("[update-remark] dai_history insert warning:", histErr.message);
+          }
+        }
       } catch (_) {
         // Audit must not block remark save
       }
@@ -967,6 +1097,47 @@ productRouter.post("/product/parcel/add-stones", authenticateToken, async (req, 
     return res.status(code).json({ ok: false, message: error.message || "Server error" });
   }
 });
+
+productRouter.get("/product/mixing/container-children", authenticateToken, async (req, res) => {
+  try {
+    const result = await boxParcelService.getContainerChildren(req.query.containerId, buildUserContext(req));
+    return res.status(200).json(result);
+  } catch (error) {
+    const code = error.statusCode || 500;
+    return res.status(code).json({ ok: false, message: error.message || "Server error" });
+  }
+});
+
+productRouter.post("/product/mixing/unbox", authenticateToken, async (req, res) => {
+  try {
+    const result = await boxParcelService.unboxStonesFromContainer(req.body, buildUserContext(req));
+    return res.status(200).json(result);
+  } catch (error) {
+    const code = error.statusCode || 500;
+    return res.status(code).json({ ok: false, message: error.message || "Server error" });
+  }
+});
+
+productRouter.post("/product/mixing/separate", authenticateToken, async (req, res) => {
+  try {
+    const result = await boxParcelService.separateContainerStones(req.body, buildUserContext(req));
+    return res.status(200).json(result);
+  } catch (error) {
+    const code = error.statusCode || 500;
+    return res.status(code).json({ ok: false, message: error.message || "Server error" });
+  }
+});
+
+productRouter.post("/product/mixing/transfer", authenticateToken, async (req, res) => {
+  try {
+    const result = await boxParcelService.transferBetweenContainers(req.body, buildUserContext(req));
+    return res.status(200).json(result);
+  } catch (error) {
+    const code = error.statusCode || 500;
+    return res.status(code).json({ ok: false, message: error.message || "Server error" });
+  }
+});
+
 
 productRouter.get("/product/categorize/tree", authenticateToken, async (req, res) => {
   try {

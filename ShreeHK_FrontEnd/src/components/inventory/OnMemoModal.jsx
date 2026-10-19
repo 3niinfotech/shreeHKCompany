@@ -11,6 +11,7 @@ import { fetchProductDetail } from "../../api/services/productService";
 import { toastApiError } from "../../utils/toastNotify";
 import { getActionTheme } from "./inventoryActionConfig";
 import { SkuLink } from "../../hooks/useSkuModalAction";
+import useBranchCompanies from "../../hooks/useBranchCompanies";
 import styles from "../../assets/scss/components/inventoryBulkActionModal.module.scss";
 import "../../assets/scss/pages/inventory/onMemoModal.scss";
 
@@ -39,8 +40,14 @@ const resolveOutwardType = (actionType) => {
 const calcAmount = (carat, price) =>
   Math.round((Number(carat) || 0) * (Number(price) || 0) * 100) / 100;
 
-const isBoxOrParcel = (groupType) =>
-  groupType === "box" || groupType === "parcel";
+const isBoxOrParcel = (groupType) => {
+  const t = String(groupType || "").toLowerCase();
+  return t === "box" || t === "parcel";
+};
+
+/** Single stone: Pcs/Carat locked; only box/parcel rows can edit them */
+const canEditPcsCarat = (record) =>
+  Boolean(record?._resolved) && isBoxOrParcel(record.groupType);
 
 const recalcFromDisc = (row) => {
   const carat = Number(row.polishCarat) || 0;
@@ -277,6 +284,10 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
     "GET",
     { enabled: open },
   );
+  const {
+    options: branchCompanyOptions,
+    isLoading: isBranchCompanyLoading,
+  } = useBranchCompanies();
   const { data: incrementData } = useFetchApi(
     "getIncrement",
     ENDPOINTS.common.increment,
@@ -328,10 +339,16 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
     setExtraCharge(null);
     setLookupRowKey(null);
     const inc = incrementData?.Data;
+    // Default Company = stone's stock company (branch siblings share inventory list)
+    const productCompany =
+      Number(selectedRows?.[0]?.company) ||
+      Number(branchCompanyOptions?.[0]?.value) ||
+      undefined;
     form.setFieldsValue({
       date: dayjs(),
       invoiceType: "Invoice From",
       vat_percent: "0",
+      operating_company_id: productCompany,
       ...(inc
         ? {
           entryno: inc.outward,
@@ -339,7 +356,7 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
         }
         : {}),
     });
-  }, [open, selectedRows, form, incrementData]);
+  }, [open, selectedRows, form, incrementData, branchCompanyOptions]);
 
   const handleFormValuesChange = (changedValues) => {
     if (!isSaleLike) return;
@@ -373,13 +390,19 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
 
   const handleCaratChange = useCallback((rowKey, value) => {
     setMemoRows((prev) =>
-      prev.map((row) => (row.rowKey === rowKey ? recalcFromCarat(row, value) : row))
+      prev.map((row) => {
+        if (row.rowKey !== rowKey || !canEditPcsCarat(row)) return row;
+        return recalcFromCarat(row, value);
+      })
     );
   }, []);
 
   const handlePcsChange = useCallback((rowKey, value) => {
     setMemoRows((prev) =>
-      prev.map((row) => (row.rowKey === rowKey ? recalcFromPcs(row, value) : row))
+      prev.map((row) => {
+        if (row.rowKey !== rowKey || !canEditPcsCarat(row)) return row;
+        return recalcFromPcs(row, value);
+      })
     );
   }, []);
 
@@ -583,9 +606,13 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
           min={0}
           step={1}
           precision={0}
-          disabled={!record._resolved}
+          disabled={!canEditPcsCarat(record)}
+          readOnly={!canEditPcsCarat(record)}
           className="memo-editable-cell"
-          onChange={(val) => handlePcsChange(record.rowKey, val)}
+          onChange={(val) => {
+            if (!canEditPcsCarat(record)) return;
+            handlePcsChange(record.rowKey, val);
+          }}
         />
       ),
     },
@@ -599,9 +626,13 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
           value={value}
           min={0}
           step={0.01}
-          disabled={!record._resolved}
+          disabled={!canEditPcsCarat(record)}
+          readOnly={!canEditPcsCarat(record)}
           className="memo-editable-cell"
-          onChange={(val) => handleCaratChange(record.rowKey, val)}
+          onChange={(val) => {
+            if (!canEditPcsCarat(record)) return;
+            handleCaratChange(record.rowKey, val);
+          }}
         />
       ),
     },
@@ -672,7 +703,7 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
       className={`on-memo-modal ${isSaleLike ? "on-memo-modal--sell" : ""}`}
       open={open}
       onCancel={onClose}
-      width="88vw"
+      width="92vw"
       centered
       closable={false}
       styles={{
@@ -683,6 +714,7 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
       }}
       destroyOnClose
       maskClosable={false}
+      mask={{ closable: false }}
       title={
         <div className="memo-modal-title">
           <span className="memo-title-text">{config.title}</span>
@@ -693,38 +725,52 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
       }
       footer={null}
     >
+      <div className="memo-modal-scroll">
       <div className="memo-modal-header">
         <Form form={form} layout="inline" className="memo-header-form" onValuesChange={handleFormValuesChange}>
           <Form.Item label="Outward" name="entryno">
-            <Input placeholder="Outward-###" readOnly style={{ width: 110 }} />
+            <Input placeholder="Outward-###" readOnly style={{ width: 72 }} />
           </Form.Item>
           <Form.Item label="Invoice" name="invoiceno">
-            <Input placeholder="Invoice No" style={{ width: 100 }} />
+            <Input placeholder="Invoice No" style={{ width: 68 }} />
           </Form.Item>
           <Form.Item label="Reference" name="reference">
-            <Input placeholder="#Ref" style={{ width: 110 }} />
+            <Input placeholder="#Ref" style={{ width: 90 }} />
           </Form.Item>
           <Form.Item label="Date" name="date" rules={[{ required: true, message: "Date required" }]}>
-            <DatePicker format="DD-MM-YYYY" style={{ width: 130 }} />
+            <DatePicker format="DD-MM-YYYY" style={{ width: 118 }} />
           </Form.Item>
           {isSaleLike && (
             <>
               <Form.Item label="Terms" name="terms">
-                <InputNumber placeholder="Days" min={0} style={{ width: 80 }} />
+                <InputNumber placeholder="Days" min={0} style={{ width: 70 }} />
               </Form.Item>
               <Form.Item label="Due Date" name="duedate">
-                <DatePicker format="DD-MM-YYYY" style={{ width: 130 }} />
+                <DatePicker format="DD-MM-YYYY" style={{ width: 118 }} />
               </Form.Item>
             </>
           )}
-          <Form.Item label="Company" name="company" rules={[{ required: true, message: "Company required" }]}>
-            <Select options={companyOptions} placeholder="Select Company" allowClear showSearch optionFilterProp="label" virtual style={{ width: 180 }} />
+          <Form.Item
+            label="Company"
+            name="operating_company_id"
+            rules={[{ required: true, message: "Please select Company" }]}
+          >
+            <Select
+              options={branchCompanyOptions}
+              placeholder="Select Company (e.g. ShreeHK / KG)"
+              showSearch
+              optionFilterProp="label"
+              loading={isBranchCompanyLoading}
+              allowClear={false}
+              virtual
+              style={{ width: 190 }}
+            />
           </Form.Item>
-          {/* <Form.Item name="invoiceType">
-            <Select options={[{ label: "Invoice From", value: "Invoice From" }, { label: "Invoice To", value: "Invoice To" }]} style={{ width: 130 }} />
-          </Form.Item> */}
+          <Form.Item label="Party" name="company" rules={[{ required: true, message: "Party required" }]}>
+            <Select options={companyOptions} placeholder="Select Party" allowClear showSearch optionFilterProp="label" virtual style={{ width: 150 }} />
+          </Form.Item>
           <Form.Item label="Other Party" name="other_party">
-            <Select options={companyOptions} placeholder="Select other Party" allowClear showSearch optionFilterProp="label" virtual style={{ width: 180 }} />
+            <Select options={companyOptions} placeholder="Select other Party" allowClear showSearch optionFilterProp="label" virtual style={{ width: 150 }} />
           </Form.Item>
           <Form.Item name="boc" valuePropName="checked"><Checkbox>BOC</Checkbox></Form.Item>
           <Form.Item name="citi" valuePropName="checked"><Checkbox>Citi</Checkbox></Form.Item>
@@ -766,6 +812,7 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
 
       <div className="memo-modal-table">
         <div className="memo-table-toolbar">
+          <span className="memo-add-row-hint">Enter SKU in the new row, then press Enter</span>
           <Button
             type="primary"
             icon={<PlusOutlined />}
@@ -778,7 +825,6 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
           >
             Add Stone
           </Button>
-          <span className="memo-add-row-hint">Enter SKU in the new row, then press Enter</span>
         </div>
         <Table
           columns={columns}
@@ -875,11 +921,12 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
           </div>
         </div>
       )}
+      </div>
 
       <div className="memo-modal-footer">
-        <div className="memo-footer-stats-row">
-          <div className="memo-footer-stats">
-            <div className="memo-footer-stats-left">
+        <div className="memo-footer-bar">
+          <div className="memo-footer-left">
+            <div className="memo-footer-stats">
               <span className="memo-stat-badge memo-stat-badge--pcs">
                 <BarChart3 size={14} className="memo-stat-badge-icon" />
                 Pcs: <b>{footerStats.pcs}</b>
@@ -896,8 +943,6 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
                 <Tag size={14} className="memo-stat-badge-icon" />
                 Total Amount: <b>${footerStats.amount.toFixed(2)}</b>
               </span>
-            </div>
-            <div className="memo-footer-stats-right">
               {isSaleLike && (lessPercent || otherLessPercent || extraCharge || vatAmount) ? (
                 <span className="memo-stat-badge memo-stat-badge--final">
                   <DollarSign size={14} className="memo-stat-badge-icon" />
@@ -905,34 +950,32 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
                 </span>
               ) : null}
             </div>
+
+            <div className="memo-footer-narration">
+              <label className="memo-narration-label">Narration</label>
+              <Input
+                placeholder="Enter Narration"
+                value={narration}
+                maxLength={200}
+                onChange={(e) => setNarration(e.target.value)}
+              />
+            </div>
           </div>
 
-          <div className="memo-footer-narration">
-            <label className="memo-narration-label">Narration <span>(Optional)</span></label>
-            <Input.TextArea
-              rows={1}
-              placeholder="Enter narration..."
-              value={narration}
-              maxLength={200}
-              showCount
-              onChange={(e) => setNarration(e.target.value)}
-            />
+          <div className="memo-footer-actions">
+            <Button onClick={onClose} danger size="middle">Cancel</Button>
+            <Button
+              type="primary"
+              size="middle"
+              className={styles.btnSave}
+              loading={submitting}
+              disabled={submitting || !resolvedRowCount}
+              onClick={handleSubmit}
+              icon={<SendOutlined />}
+            >
+              {config.submitBtn.label}
+            </Button>
           </div>
-        </div>
-
-        <div className="memo-footer-actions">
-          <Button onClick={onClose} danger size="middle">Cancel</Button>
-          <Button
-            type="primary"
-            size="middle"
-            className={styles.btnSave}
-            loading={submitting}
-            disabled={submitting || !resolvedRowCount}
-            onClick={handleSubmit}
-            icon={<SendOutlined />}
-          >
-            {config.submitBtn.label}
-          </Button>
         </div>
       </div>
     </Modal>

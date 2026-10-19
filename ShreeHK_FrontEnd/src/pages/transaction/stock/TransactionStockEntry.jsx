@@ -23,10 +23,15 @@ export const STOCK_ENTRY_CONFIG = {
     props: {
       title: "Inward - Memo Transaction",
       defaultInwardType: "memo",
-      showRPcs: true,
+      showRPcs: false,
       initialLineCount: 7,
       visibleRowCount: 7,
       scrollableTable: true,
+      skipExistCheck: true,
+      hideMfgDno: true,
+      wideLineFields: true,
+      requirePcs: true,
+      polishFieldLabels: true,
     },
   },
   SALE: {

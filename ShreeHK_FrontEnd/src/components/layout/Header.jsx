@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Layout, Modal, Tooltip } from "antd";
 import TopbarSearch from "../sub_component/TopBarSearch";
 import ProfileDropdown from "../sub_component/ProfileDropdown";
@@ -7,8 +7,8 @@ import TaskHeaderButton from "../sub_component/TaskHeaderButton";
 import NavBar from "./NavBar";
 import SkuActionModal from "../../hooks/useSkuModalAction";
 import styles from "../../assets/scss/layout/header.module.scss";
-import { Link, useNavigate } from "react-router-dom";
-import { Gem, Menu, Wifi, WifiOff, RefreshCw, CheckCircle2, Database, FileCheck, Send, ShoppingCart, ShoppingBag, Package, FlaskConical } from "lucide-react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Gem, Menu, Wifi, WifiOff, RefreshCw, CheckCircle2, Database, Boxes, FileCheck, Send, ShoppingCart, ShoppingBag, Package, FlaskConical, ArrowLeftRight } from "lucide-react";
 import useAuthStore from "../../store/Auth.Store";
 import logo from "../../assets/loader/softWare_Header_white.svg";
 import { PAUSE_BACKGROUND_API } from "../../api/pauseBackgroundApi";
@@ -24,6 +24,7 @@ const HEADER_QUICK_ROUTES = {
   purchase: "/transaction/purchase",
   consign: "/transaction/out-memo?type=consign",
   lab: "/transaction/gia-memo",
+  interTransfer: "/inter-transfer/company-transfer",
 };
 
 const prefetchHeaderRoute = (path) => {
@@ -148,9 +149,35 @@ const Header = ({
   const previousOnlineRef = useRef(navigator.onLine);
   const offlineTimerRef = useRef(null);
   const reconnectTimerRef = useRef(null);
+  const location = useLocation();
   const authCompanyName = useAuthStore((s) => s.companyName);
-  const authCompanyShortcutName = useAuthStore((s) => s.companyShortcutName);
-  const companyName = authCompanyShortcutName || authCompanyName || "Smart DIA";
+
+  const displayFullName = useMemo(() => {
+    return (authCompanyName && String(authCompanyName).trim()) || "ShreeHK International";
+  }, [authCompanyName]);
+
+  const displayShortName = useMemo(() => {
+    const name = authCompanyName && String(authCompanyName).trim();
+    if (!name) return "SI";
+    const cleanWithoutSuffix = name
+      .replace(/\b(Pvt\.?|Ltd\.?|Private|Limited|LLP|Inc\.?|Co\.?|Corp\.?)\b/gi, "")
+      .trim();
+    const target = cleanWithoutSuffix || name;
+    const words = target.split(/[\s\-_/]+/).filter(Boolean);
+    if (words.length >= 2) {
+      return `${words[0][0]}${words[words.length - 1][0]}`.toUpperCase();
+    }
+    if (words.length === 1) {
+      const caps = words[0].replace(/[^A-Z0-9]/g, "");
+      if (caps.length >= 2) return caps.slice(0, 2).toUpperCase();
+      return words[0].slice(0, 2).toUpperCase();
+    }
+    return "SI";
+  }, [authCompanyName]);
+
+  // Shortcut only in dashboard; in web view, do not show company name
+  const isDashboard = location.pathname === "/dashboard" || location.pathname === "/";
+  const companyName = isDashboard ? displayShortName : null;
 
   const checkServerHealth = async () => {
     if (!navigator.onLine) {
@@ -306,13 +333,12 @@ const Header = ({
           )}
 
           {!hideLogo && (
-            <Link to="/dashboard" className={styles.logoLink}>
+            <Link to="/dashboard" className={styles.logoLink} title={displayFullName}>
               <span className={styles.logoIcon}>
                 {/* <Gem size={20} strokeWidth={2.2} /> */}
                 <img src={logo} alt="logo" className={styles.logoImage} />
               </span>
-              {/* <span className={styles.logoText}>Smart DIA</span> */}
-              <span className={styles.logoText}>{companyName}</span>
+              {companyName ? <span className={styles.logoText}>{companyName}</span> : null}
             </Link>
           )}
 
@@ -337,7 +363,7 @@ const Header = ({
           <div className={styles.topQuickActions}>
             <Tooltip title="My Inventory">
               <Button
-                icon={<Database size={20} />}
+                icon={<Boxes size={20} />}
                 className={`${styles.topQuickBtn} ${styles.myInventoryBtn}`}
                 onMouseEnter={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.inventory)}
                 onFocus={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.inventory)}
@@ -431,6 +457,20 @@ const Header = ({
                 }}
               >
                 <span className={styles.topQuickLabel}>Lab</span>
+              </Button>
+            </Tooltip>
+            <Tooltip title="Inter Transfer">
+              <Button
+                icon={<ArrowLeftRight size={20} />}
+                className={`${styles.topQuickBtn} ${styles.transferBtn}`}
+                onMouseEnter={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.interTransfer)}
+                onFocus={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.interTransfer)}
+                onClick={() => {
+                  prefetchHeaderRoute(HEADER_QUICK_ROUTES.interTransfer);
+                  navigate(HEADER_QUICK_ROUTES.interTransfer);
+                }}
+              >
+                <span className={styles.topQuickLabel}>Inter Transfer</span>
               </Button>
             </Tooltip>
           </div>

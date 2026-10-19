@@ -69,7 +69,9 @@ const ActivityLogDeleteModal = ({
       onCancel={() => !loading && onCancel()}
       centered
       width={width}
+      closable={false}
       maskClosable={false}
+      mask={{ closable: false }}
       footer={[
         <Button key="cancel" disabled={loading} onClick={onCancel}>
           Cancel

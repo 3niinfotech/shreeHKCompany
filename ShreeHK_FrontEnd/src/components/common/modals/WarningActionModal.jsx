@@ -1,6 +1,6 @@
 import React from "react";
 import { Modal, Button, Popconfirm } from "antd";
-import { AlertTriangle, Save, ShieldCheck, X } from "lucide-react";
+import { AlertTriangle, Save, ShieldCheck } from "lucide-react";
 
 /**
  * Inward validation warning modal styled as per design specification.
@@ -17,7 +17,9 @@ const WarningActionModal = ({
         <Modal
             open={isVisible}
             onCancel={onClose}
-            closeIcon={<X size={18} style={{ color: "#94A3B8" }} />}
+            closable={false}
+            maskClosable={false}
+            mask={{ closable: false }}
             width={640}
             centered
             footer={null}

@@ -12,14 +12,18 @@ const { metaQuery, parseCompanyJson } = require("../../tenantHelper.js");
 const tenantCompanyRouter = express.Router();
 tenantCompanyRouter.use(express.json());
 
+const { ensureBranchSchema } = require("../../services/ensureBranchSchemaService.js");
+const { ensureCurrentFiscalYear } = require("../../services/ensureCurrentFiscalYearService.js");
+
 const COMPANY_COLUMNS = [
   "name", "address", "number", "date", "type", "partner", "city", "state",
   "pincode", "country", "email", "website", "panno", "tinno", "iecno",
   "vatno", "vwef", "cstno", "cwef", "period", "startdate", "enddate",
-  "rapnet_id", "rapnet_password", "shortcutName", "logo",
+  "rapnet_id", "rapnet_password", "shortcutName", "logo", "branch_id",
+  "invoice_prefix", "memo_prefix", "purchase_prefix", "lab_prefix",
 ];
 const COMPANY_SAFE_SELECT = ["id", ...COMPANY_COLUMNS.filter((column) => column !== "rapnet_password")]
-  .map((column) => `\`${column}\``)
+  .map((column) => `c.\`${column}\``)
   .join(", ");
 
 const logoStorage = multer.diskStorage({
@@ -59,6 +63,25 @@ const ensureLogoColumn = async () => {
     }
   }
   logoColumnReady = true;
+};
+
+let prefixColumnsReady = false;
+const ensureCompanyPrefixColumns = async () => {
+  if (prefixColumnsReady) return;
+  const cols = [
+    { name: "invoice_prefix", def: "VARCHAR(50) NULL DEFAULT 'INV-'" },
+    { name: "memo_prefix", def: "VARCHAR(50) NULL DEFAULT 'MEMO-'" },
+    { name: "purchase_prefix", def: "VARCHAR(50) NULL DEFAULT 'PUR-'" },
+    { name: "lab_prefix", def: "VARCHAR(50) NULL DEFAULT 'LAB-'" },
+  ];
+  for (const c of cols) {
+    try {
+      await metaQuery(`ALTER TABLE company ADD COLUMN ${c.name} ${c.def}`);
+    } catch (_) {
+      // already exists
+    }
+  }
+  prefixColumnsReady = true;
 };
 
 const seedIncrementId = (companyId, pool, cb) => {
@@ -102,7 +125,13 @@ const seedIncrementId = (companyId, pool, cb) => {
 
 tenantCompanyRouter.get("/admin/tenant-company/options", authenticateToken, isSuperAdmin, async (req, res) => {
   try {
-    const rows = await metaQuery("SELECT id, name FROM company ORDER BY name ASC");
+    await ensureBranchSchema();
+    const rows = await metaQuery(
+      `SELECT c.id, c.name, c.branch_id, b.name AS branch_name
+       FROM company c
+       LEFT JOIN branch b ON b.id = c.branch_id
+       ORDER BY c.name ASC`
+    );
     res.json({ status: true, Data: rows });
   } catch (err) {
     res.status(500).json({ status: false, message: err.message });
@@ -112,15 +141,27 @@ tenantCompanyRouter.get("/admin/tenant-company/options", authenticateToken, isSu
 tenantCompanyRouter.get("/admin/tenant-company", authenticateToken, isSuperAdmin, async (req, res) => {
   try {
     await ensureLogoColumn();
-    const { searchInput = "" } = req.query;
-    let sql = `SELECT ${COMPANY_SAFE_SELECT} FROM company`;
+    await ensureCompanyPrefixColumns();
+    await ensureBranchSchema();
+    const { searchInput = "", branch_id: branchId } = req.query;
+    let sql = `
+      SELECT ${COMPANY_SAFE_SELECT}, b.name AS branch_name, b.shortcutName AS branch_shortcut
+      FROM company c
+      LEFT JOIN branch b ON b.id = c.branch_id
+    `;
     const params = [];
+    const where = [];
     if (searchInput) {
-      sql += " WHERE name LIKE ? OR address LIKE ? OR number LIKE ?";
+      where.push("(c.name LIKE ? OR c.address LIKE ? OR c.number LIKE ?)");
       const term = `%${searchInput}%`;
       params.push(term, term, term);
     }
-    sql += " ORDER BY id ASC";
+    if (branchId !== undefined && branchId !== null && String(branchId).trim() !== "") {
+      where.push("c.branch_id = ?");
+      params.push(Number(branchId));
+    }
+    if (where.length) sql += ` WHERE ${where.join(" AND ")}`;
+    sql += " ORDER BY c.id ASC";
     const rows = await metaQuery(sql, params);
     res.json({ status: true, TotalItems: rows.length, Data: rows });
   } catch (err) {
@@ -131,10 +172,15 @@ tenantCompanyRouter.get("/admin/tenant-company", authenticateToken, isSuperAdmin
 tenantCompanyRouter.get("/admin/tenant-company/:id", authenticateToken, isSuperAdmin, async (req, res) => {
   try {
     await ensureLogoColumn();
+    await ensureCompanyPrefixColumns();
+    await ensureBranchSchema();
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ status: false, message: "Invalid id" });
     const rows = await metaQuery(
-      `SELECT ${COMPANY_SAFE_SELECT} FROM company WHERE id = ? LIMIT 1`,
+      `SELECT ${COMPANY_SAFE_SELECT}, b.name AS branch_name
+       FROM company c
+       LEFT JOIN branch b ON b.id = c.branch_id
+       WHERE c.id = ? LIMIT 1`,
       [id],
     );
     if (!rows.length) {
@@ -161,6 +207,8 @@ tenantCompanyRouter.post(
   async (req, res) => {
     try {
       await ensureLogoColumn();
+      await ensureCompanyPrefixColumns();
+      await ensureBranchSchema();
       const body = req.body || {};
       const id = Number(body.id) || 0;
 
@@ -175,6 +223,11 @@ tenantCompanyRouter.post(
       COMPANY_COLUMNS.forEach((col) => {
         if (body[col] !== undefined && col !== "logo") post[col] = body[col];
       });
+      if (post.branch_id !== undefined && post.branch_id !== null && post.branch_id !== "") {
+        post.branch_id = Number(post.branch_id) || null;
+      } else if (body.branch_id === "" || body.branch_id === null) {
+        post.branch_id = null;
+      }
       if (!post.date) post.date = new Date().toISOString().slice(0, 10);
 
       if (req.file) {
@@ -205,13 +258,18 @@ tenantCompanyRouter.post(
         if (err) return res.status(500).json({ status: false, message: err.message });
 
         const newId = result.insertId;
-        seedIncrementId(newId, meta, (seedErr) => {
+        seedIncrementId(newId, meta, async (seedErr) => {
           if (seedErr) {
             return res.status(500).json({
               status: false,
               message: "Company created but increment seed failed: " + seedErr.message,
               id: newId,
             });
+          }
+          try {
+            await ensureCurrentFiscalYear();
+          } catch (fyErr) {
+            console.error("ensureCurrentFiscalYear after company create:", fyErr?.message || fyErr);
           }
           res.status(201).json({
             status: true,

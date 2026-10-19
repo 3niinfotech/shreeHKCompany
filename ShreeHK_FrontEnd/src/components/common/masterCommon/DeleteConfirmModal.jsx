@@ -26,6 +26,9 @@ const DeleteConfirmModal = ({
             onCancel={onCancel}
             keyboard={false}
             centered
+            closable={false}
+            maskClosable={false}
+            mask={{ closable: false }}
             width={400}
             className="master-delete-modal"
             rootClassName="master-delete-modal-root"

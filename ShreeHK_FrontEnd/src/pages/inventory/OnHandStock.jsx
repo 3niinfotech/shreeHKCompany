@@ -31,10 +31,7 @@ import AIResultPanel from "../../components/ai/AIResultPanel";
 import useAiStockAlert from "../../components/ai/useAiStockAlert";
 import { SkuLink } from "../../hooks/useSkuModalAction";
 import InventoryFilterPresets from "../../components/inventory/InventoryFilterPresets";
-import InventorySummaryToolbar from "../../components/inventory/InventorySummaryToolbar";
 import { mapInventoryRowCamel } from "../../utils/inventoryApiFilters";
-import { useFetchApi } from "../../api/ApiFunction";
-import { ENDPOINTS } from "../../api/endpoints";
 import { cssVar } from "../../theme";
 
 import "../../assets/scss/pages/inventory/onHand_module.scss";
@@ -160,13 +157,6 @@ const OnHandStock = () => {
         runStockAlert,
     } = useAiStockAlert();
 
-    const { data: summaryRes } = useFetchApi(
-        "onHandInventorySummary",
-        ENDPOINTS.product.inventorySummary,
-        {}
-    );
-    const summary = summaryRes?.Data;
-    const summaryTotals = summary?.totals;
 
     const { form: filterForm, handleClear, renderFilters } = useFiltersFormFields(
         FILTER_FIELDS,
@@ -293,7 +283,6 @@ const OnHandStock = () => {
 
     return (
         <>
-            <InventorySummaryToolbar totals={summaryTotals} />
             <div className="inventory-page-toolbar-wrap">
                 {/* <InventoryFilterPresets
                     pageKey="on-hand-stock"

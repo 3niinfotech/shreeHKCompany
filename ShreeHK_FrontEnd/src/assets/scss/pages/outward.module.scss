@@ -550,8 +550,8 @@
 
 .actionButtons {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-wrap: nowrap;
+  gap: 4px;
   justify-content: center;
   align-items: center;
 }
@@ -559,20 +559,21 @@
 .actionBtn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 32px;
-  min-height: 32px;
-  padding: 0 8px;
+  gap: 3px;
+  height: 26px;
+  min-height: 26px;
+  padding: 0 6px;
   border-radius: var(--radius-control);
   border: 1px solid transparent;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 11px;
   cursor: pointer;
   white-space: nowrap;
   line-height: 1;
+  flex-shrink: 0;
 
   :global(.anticon) {
-    font-size: 13px;
+    font-size: 12px;
   }
 }
 
@@ -619,6 +620,15 @@
 }
 
 .stockEditForm {
+  :global(.ant-row) {
+    row-gap: 0 !important;
+  }
+
+  :global(.ant-col) {
+    min-width: 0;
+    max-width: 100%;
+  }
+
   :global(.ant-form-item) {
     margin-bottom: 12px !important;
   }
@@ -702,6 +712,29 @@
   min-width: 0;
 }
 
+.memoConvertBodyReturn {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.stockEditProductWrapReturn {
+  flex: 1 1 auto;
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+
+  :global(.ant-table-wrapper),
+  :global(.ant-spin-nested-loading),
+  :global(.ant-spin-container),
+  :global(.ant-table),
+  :global(.ant-table-container) {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+  }
+}
+
 .memoConvertTitle {
   display: inline-flex;
   align-items: center;
@@ -735,8 +768,8 @@
 .memoConvertHeader {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: 10px;
+  padding: 4px 12px;
   border: 1px solid var(--color-border, #e8eaed);
   border-radius: 8px;
   background: #fafbfc;
@@ -748,6 +781,31 @@
   gap: 12px 14px;
   align-items: end;
   width: 100%;
+}
+
+.memoConvertHeaderRowSingle {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+  align-items: end;
+  width: 100%;
+
+  .memoConvertField {
+    flex: 1 1 0;
+    min-width: 110px;
+    grid-column: auto;
+  }
+
+  .memoConvertFieldCompany {
+    flex: 1.6 1 0;
+    min-width: 180px;
+  }
+
+  .memoConvertFieldTerms {
+    flex: 0 0 72px;
+    min-width: 64px;
+    max-width: 80px;
+  }
 }
 
 .memoConvertField {
@@ -796,12 +854,22 @@
   white-space: nowrap;
 }
 
+.memoConvertNarrationInline {
+  flex: 1 1 280px;
+  max-width: 420px;
+  min-width: 200px;
+
+  :global(.ant-input) {
+    height: 32px;
+  }
+}
+
 .memoConvertNarration {
   display: flex;
   flex-direction: column;
   gap: 6px;
 
-  > label {
+  >label {
     font-size: 13px;
     font-weight: 600;
     color: #334155;
@@ -816,48 +884,51 @@
 .memoConvertExtras {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 14px 16px;
+  gap: 10px;
+  padding: 10px 12px;
   border: 1px solid var(--color-border, #e8eaed);
   border-radius: 8px;
   background: #fafbfc;
 }
 
-.memoConvertExtrasRow,
-.memoConvertPayRow {
+.memoConvertExtrasRow {
   display: grid;
-  grid-template-columns: 1.4fr 1.4fr 0.7fr;
-  gap: 14px 16px;
+  grid-template-columns: 1.35fr 1.35fr 0.7fr;
+  gap: 10px 12px;
   align-items: end;
   width: 100%;
 }
 
 .memoConvertPayRow {
-  grid-template-columns: auto 1.2fr 1fr 1fr 1fr;
-  padding-top: 4px;
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1fr) minmax(120px, 1fr) minmax(100px, 0.9fr) minmax(100px, 0.9fr) minmax(180px, 1.4fr);
+  gap: 10px 12px;
+  align-items: end;
+  width: 100%;
+  padding-top: 8px;
   border-top: 1px dashed var(--color-border, #e2e8f0);
 }
 
 .memoConvertExtraGroup {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 }
 
 .memoConvertExtraGroupSm {
-  max-width: 180px;
+  max-width: none;
 }
 
 .memoConvertExtraInputs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 
   :global(.ant-input-number) {
     width: 100% !important;
-    min-height: 36px !important;
-    height: 36px !important;
+    min-height: 32px !important;
+    height: 32px !important;
   }
 
   :global(.ant-input-number-input) {
@@ -872,23 +943,30 @@
 .memoConvertPayCheck {
   display: flex;
   align-items: flex-end;
-  padding-bottom: 6px;
+  height: 32px;
+  padding-bottom: 0;
   white-space: nowrap;
 
   :global(.ant-checkbox-wrapper) {
     font-size: 13px !important;
     font-weight: 600 !important;
+    line-height: 32px;
   }
 }
 
+.memoConvertNarrationInExtras {
+  min-width: 160px;
+}
+
 .memoConvertPayRow .memoConvertExtraGroup {
+
   :global(.ant-input),
   :global(.ant-input-number),
   :global(.ant-picker),
   :global(.ant-select-selector) {
     width: 100% !important;
-    min-height: 36px !important;
-    height: 36px !important;
+    min-height: 32px !important;
+    height: 32px !important;
   }
 
   :global(.ant-select) {
@@ -904,10 +982,403 @@
   }
 }
 
-/* Title badge sits next to modal title text */
-.memoConvertModal {
+.convertExportModalRoot {
+
+  :global(.ant-modal-content),
+  :global(.ant-modal-container) {
+    border-radius: 8px;
+    overflow: hidden;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+  }
+
+  :global(.ant-modal-header) {
+    padding: 4px 0px !important;
+    min-height: unset !important;
+    margin-bottom: 0 !important;
+  }
+
+  :global(.ant-modal-body) {
+    padding: 4px 0 !important;
+  }
+
+  :global(.ant-modal-footer) {
+    padding: 4px 0 !important;
+    border-top: none !important;
+    box-shadow: none !important;
+  }
+
+  :global([class*="modalBody"]) {
+    padding: 4px 0 !important;
+  }
+}
+
+.convertExportPadHeader {
+  padding: 4px 0 !important;
+  min-height: unset !important;
+  margin-bottom: 0 !important;
+  border-bottom: 1px solid #e3e5ef !important;
+  background: #fff !important;
+}
+
+.convertExportPadBody {
+  padding: 4px 0 !important;
+}
+
+.convertExportPadFooter {
+  padding: 4px 0 !important;
+  border-top: none !important;
+  box-shadow: none !important;
+  margin-top: 0 !important;
+  text-align: right;
+}
+
+:global(.ant-modal-header).convertExportPadHeader {
+  padding: 4px 0 !important;
+  min-height: unset !important;
+}
+
+:global(.ant-modal-body).convertExportPadBody {
+  padding: 4px 0 !important;
+}
+
+:global(.ant-modal-footer).convertExportPadFooter {
+  padding: 4px 0 !important;
+  border-top: none !important;
+}
+
+.convertExportModal {
+  :global(.ant-modal-close) {
+    display: none !important;
+  }
+
+  :global(.ant-modal-header) {
+    margin-bottom: 0 !important;
+    padding: 4px 0 !important;
+    min-height: unset !important;
+    border-bottom: 1px solid #e3e5ef !important;
+    background: #fff;
+  }
+
+  :global(.ant-modal-title),
+  :global(.modalTitle) {
+    color: var(--color-text-heading, #0f172a) !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    margin: 0 !important;
+  }
+
+  :global(.ant-modal-body) {
+    padding: 4px 0 !important;
+  }
+
+  :global(.ant-modal-footer) {
+    margin-top: 0 !important;
+    padding: 4px 0 !important;
+    border-top: none !important;
+    box-shadow: none !important;
+    text-align: right;
+  }
+
+  :global([class*="modalBody"]) {
+    padding: 4px 0 !important;
+  }
+}
+
+.convertExportBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.convertExportMeta {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+
+  @media (max-width: 720px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.convertExportBadge {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #e3e5ef;
+  background: #f8fafc;
+}
+
+.convertExportBadgeLbl {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+  line-height: 1.2;
+}
+
+.convertExportBadgeVal {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.convertExportForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.convertExportFormRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.convertExportField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+
+  label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+    line-height: 1.2;
+  }
+
+  :global(.ant-input),
+  :global(.ant-input-number),
+  :global(.ant-select-selector) {
+    min-height: 32px !important;
+    height: 32px !important;
+    border-radius: 6px !important;
+  }
+
+  :global(.ant-select),
+  :global(.ant-input-number) {
+    width: 100% !important;
+  }
+}
+
+.convertExportNarration {
+  border-top: none;
+  padding-top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.convertExportNarrationLbl {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  line-height: 1.2;
+}
+
+.convertExportNarration {
+  :global(textarea.ant-input) {
+    min-height: 72px !important;
+    border-radius: 6px;
+    resize: vertical;
+    font-size: 13px;
+
+    &:focus,
+    &:focus-within,
+    &.ant-input-focused {
+      border-color: #d9d9d9 !important;
+      box-shadow: none !important;
+      outline: none !important;
+    }
+  }
+}
+
+.convertExportFooter {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.convertExportSaveBtn {
+  height: 32px !important;
+  font-weight: 600 !important;
+  background: #60a5fa !important;
+  border-color: #60a5fa !important;
+
+  &:hover {
+    background: #3b82f6 !important;
+    border-color: #3b82f6 !important;
+  }
+}
+
+.convertExportCloseBtn {
+  height: 32px !important;
+  font-weight: 600 !important;
+}
+
+/* Title badge sits next to modal title text — Sale / Return / Purchase */
+.memoConvertModalReturn {
+
+  :global(.ant-modal-container),
+  :global(.ant-modal-content) {
+    min-height: 40vh !important;
+    height: 68vh !important;
+  }
+
+  :global(.ant-modal-body) {
+    min-height: calc(40vh - 96px) !important;
+    height: calc(40vh - 96px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+}
+
+.memoConvertPadHeader {
+  padding: 4px 12px !important;
+  min-height: unset !important;
+  margin-bottom: 0 !important;
+}
+
+.memoConvertPadBody {
+  padding: 4px 12px !important;
+}
+
+.memoConvertPadBodyReturn {
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.memoConvertPadFooter {
+  padding: 4px 12px !important;
+  border-top: none !important;
+  box-shadow: none !important;
+  margin-top: 0 !important;
+}
+
+:global(.ant-modal-header).memoConvertPadHeader {
+  padding: 4px 12px !important;
+  min-height: unset !important;
+}
+
+:global(.ant-modal-body).memoConvertPadBody {
+  padding: 4px 12px !important;
+}
+
+:global(.ant-modal-footer).memoConvertPadFooter {
+  padding: 4px 12px !important;
+  border-top: none !important;
+}
+
+.memoConvertModalRoot {
+
+  :global(.ant-modal-container),
+  :global(.ant-modal-content) {
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+  }
+
+  :global(.ant-modal-header) {
+    padding: 4px 12px !important;
+    min-height: unset !important;
+    margin-bottom: 0 !important;
+  }
+
   :global(.ant-modal-title) {
     line-height: 1.2;
+    padding: 0 !important;
+
+    >span {
+      padding: 0 !important;
+    }
+  }
+
+  :global(.ant-modal-close) {
+    display: none !important;
+  }
+
+  :global(.ant-modal-body) {
+    padding: 4px 12px !important;
+    max-height: calc(100vh - 140px);
+    overflow: auto;
+  }
+
+  :global(.ant-modal-footer) {
+    padding: 4px 12px !important;
+    border-top: none !important;
+  }
+
+  :global([class*="modalBody"]) {
+    padding: 4px 0 !important;
+  }
+}
+
+.memoConvertModal {
+  :global(.ant-modal-header) {
+    padding: 4px 12px !important;
+    min-height: unset !important;
+    margin-bottom: 0 !important;
+  }
+
+  :global(.ant-modal-title) {
+    line-height: 1.2;
+    padding: 0 !important;
+
+    >span {
+      padding: 0 !important;
+    }
+  }
+
+  :global(.ant-modal-close) {
+    display: none !important;
+  }
+
+  :global(.ant-modal-body) {
+    padding: 4px 12px !important;
+    max-height: calc(100vh - 140px);
+    overflow: auto;
+  }
+
+  :global(.ant-modal-footer) {
+    padding: 4px 12px !important;
+    border-top: none !important;
+  }
+
+  :global([class*="modalBody"]) {
+    padding: 4px 0 !important;
+  }
+
+  :global(.ant-table-body) {
+    overflow-x: auto !important;
+  }
+
+  .stockEditTotalsBar {
+    padding: 4px 10px;
+    min-height: 0;
+    gap: 8px 12px;
+  }
+
+  .stockEditTotalsMetrics {
+    gap: 8px 16px;
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  .memoConvertNarrationInline {
+    :global(.ant-input) {
+      height: 28px;
+    }
   }
 }
 
@@ -1024,47 +1495,108 @@
   }
 }
 
+/* Edit modal totals row — compact + narration right-aligned */
+.stockEditTotalsBarCompact {
+  padding: 4px 12px !important;
+  gap: 8px 12px !important;
+  min-height: 0 !important;
+  height: auto !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: nowrap !important;
+
+  .stockEditTotalsMetrics {
+    flex: 0 0 auto;
+    gap: 8px 16px !important;
+    font-size: 12px !important;
+    line-height: 28px !important;
+    white-space: nowrap;
+    align-self: center;
+  }
+}
+
 .stockEditTotalsNarration {
-  flex: 1 1 280px;
+  flex: 0 0 auto;
+  margin: 0 0 0 auto !important;
   margin-bottom: 0 !important;
-  max-width: 420px;
+  min-width: 260px;
+  width: min(360px, 42%);
+  max-width: 360px;
+  display: flex !important;
+  align-items: center !important;
+  align-self: center;
 
   :global(.ant-form-item-row) {
     display: flex !important;
     flex-direction: row !important;
     align-items: center !important;
     flex-wrap: nowrap !important;
-    gap: 8px;
+    gap: 8px !important;
+    width: 100%;
+    margin: 0 !important;
   }
 
   :global(.ant-form-item-label) {
     padding: 0 !important;
     width: auto !important;
+    flex: 0 0 auto !important;
+    max-width: none !important;
+    align-self: center !important;
 
-    > label {
-      font-size: 12px;
-      font-weight: 600;
-      color: #334155;
-      height: auto !important;
+    >label {
+      font-size: 12px !important;
+      font-weight: 600 !important;
+      color: #334155 !important;
+      height: 28px !important;
+      line-height: 28px !important;
+      margin: 0 !important;
+      white-space: nowrap;
     }
   }
 
   :global(.ant-form-item-control) {
-    flex: 1;
-    min-width: 0;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
   }
 
-  > label {
-    font-size: 12px;
-    font-weight: 600;
-    color: #334155;
-    margin-right: 8px;
-    white-space: nowrap;
+  :global(.ant-form-item-control-input) {
+    min-height: 28px !important;
   }
 
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  :global(.ant-form-item-control-input-content) {
+    display: flex;
+    align-items: center;
+  }
+
+  :global(.ant-form-item-explain),
+  :global(.ant-form-item-extra) {
+    display: none !important;
+    min-height: 0 !important;
+    height: 0 !important;
+  }
+
+  :global(.ant-input),
+  :global(.ant-input-affix-wrapper) {
+    width: 100% !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    font-size: 13px !important;
+    line-height: 22px !important;
+    border-radius: 6px !important;
+  }
+
+  :global(.ant-input-affix-wrapper) {
+    display: inline-flex !important;
+    align-items: center !important;
+
+    .ant-input {
+      height: auto !important;
+      min-height: 0 !important;
+      padding: 0 !important;
+      line-height: 22px !important;
+    }
+  }
 }
 
 .stockEditProductTable {
@@ -1084,11 +1616,11 @@
     overflow: hidden !important;
   }
 
-  // ~4 product rows visible by default (header separate; ~48px per row)
+  // ~3–4 product rows visible (header separate)
   :global(.ant-table-body) {
-    height: 192px !important;
-    max-height: 192px !important;
-    min-height: 192px !important;
+    height: 180px !important;
+    max-height: 180px !important;
+    min-height: 180px !important;
     overflow-y: auto !important;
   }
 

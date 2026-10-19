@@ -101,9 +101,7 @@ const RapNetPriceList = () => {
 
     return (
         <>
-            <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-                Prices are synced from the Rapaport API. Click <strong>Update Rapnet Price</strong> to load data into the current company/year database.
-            </Text>
+           
             {loadError && (
                 <Alert
                     type="error"

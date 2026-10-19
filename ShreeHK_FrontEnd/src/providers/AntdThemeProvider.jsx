@@ -24,7 +24,14 @@ export default function AntdThemeProvider({ children }) {
   const mode = isDarkMode ? "dark" : "light";
 
   return (
-    <ConfigProvider locale={antdLocale} theme={getAntdThemeConfig(mode, viewMode)}>
+    <ConfigProvider
+      locale={antdLocale}
+      theme={getAntdThemeConfig(mode, viewMode)}
+      modal={{
+        closable: false,
+        mask: { closable: false },
+      }}
+    >
       {children}
     </ConfigProvider>
   );

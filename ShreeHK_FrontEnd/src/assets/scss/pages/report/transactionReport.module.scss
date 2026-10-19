@@ -4,7 +4,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    gap: 14px;
+    gap: 10px;
 
     .tableCard {
         flex: 1;
@@ -96,6 +96,14 @@
         background: var(--color-bg-muted, #f8fafc) !important;
         font-weight: 700;
         border-top: 1px solid var(--color-border) !important;
+    }
+
+    // ~25% shorter row height vs ant-table-small default
+    :global(.ant-table.ant-table-small .ant-table-thead > tr > th),
+    :global(.ant-table.ant-table-small .ant-table-tbody > tr > td) {
+        padding-top: 4px !important;
+        padding-bottom: 4px !important;
+        line-height: 1.25 !important;
     }
 }
 

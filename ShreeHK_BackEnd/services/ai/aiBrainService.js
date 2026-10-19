@@ -53,7 +53,7 @@ function wantsBroadFetch(message) {
 
 async function discoverTables() {
   if (tablesCache) return tablesCache;
-  const dbName = process.env.DB_NAME || "shreehkweb_snj2024";
+  const dbName = process.env.DB_NAME || "shreehkweb_snj2024_test";
   const rows = await helper.query(
     `SELECT TABLE_NAME AS name
      FROM information_schema.TABLES
@@ -67,7 +67,7 @@ async function discoverTables() {
 
 async function getTableColumns(tableName) {
   if (columnsCache[tableName]) return columnsCache[tableName];
-  const dbName = process.env.DB_NAME || "shreehkweb_snj2024";
+  const dbName = process.env.DB_NAME || "shreehkweb_snj2024_test";
   const rows = await helper.query(
     `SELECT COLUMN_NAME AS name
      FROM information_schema.COLUMNS
@@ -241,7 +241,7 @@ async function buildBrainContext(message) {
 
   const context = {
     fetched_at: new Date().toISOString(),
-    database: process.env.DB_NAME || "shreehkweb_snj2024",
+    database: process.env.DB_NAME || "shreehkweb_snj2024_test",
     table_counts,
     entities: {},
     tables: {},

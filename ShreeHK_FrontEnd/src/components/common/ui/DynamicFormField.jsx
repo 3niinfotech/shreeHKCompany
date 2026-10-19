@@ -9,7 +9,7 @@ const DynamicForm = ({ fields, forceFullWidth, layout = 'grid' }) => {
 
     const renderInput = (field) => {
         const inputStyle = {
-            height: field.type === 'textarea' ? 'auto' : (isStack ? '32px' : '40px'),
+            height: field.type === 'textarea' ? 'auto' : (isStack ? '32px' : '36px'),
             width: isStack ? '100%' : (field.width || '100%'),
         };
 
@@ -21,7 +21,7 @@ const DynamicForm = ({ fields, forceFullWidth, layout = 'grid' }) => {
                         placeholder={field.placeholder || `Select ${field.label}`}
                         options={field.options}
                         showSearch
-                        allowClear
+                        allowClear={field.allowClear !== false}
                         virtual
                         maxTagCount={field.mode === 'multiple' ? 'responsive' : undefined}
                         optionFilterProp="label"
@@ -79,25 +79,34 @@ const DynamicForm = ({ fields, forceFullWidth, layout = 'grid' }) => {
     };
 
     return (
-        <Row gutter={isStack ? [0, 8] : [16, 0]} className={isStack ? 'dynamic-form--stack' : undefined}>
+        <Row gutter={isStack ? [0, 8] : [16, 8]} className={isStack ? 'dynamic-form--stack' : 'dynamic-form--grid'}>
             {fields.map((field, index) => {
                 const columnSpan = isStack || forceFullWidth ? 24 : (field.span || 12);
+                const colFlex = !isStack && !forceFullWidth ? field.flex : undefined;
                 const isCheckbox = field.type === 'checkbox';
                 const isUpload = field.type === 'upload';
                 const isHidden = field.type === 'hidden';
                 const isCustom = field.type === 'custom';
                 const itemKey = `${field.name ?? 'field'}-${field.label ?? ''}-${index}`;
+                const colProps = {
+                    key: itemKey,
+                    ...(colFlex ? { flex: colFlex } : { span: columnSpan }),
+                    style: {
+                        ...(field.style || {}),
+                        ...(isHidden ? { display: 'none' } : null),
+                    },
+                };
 
                 if (isCustom && field.noFormItem) {
                     return (
-                        <Col span={columnSpan} key={itemKey} style={isHidden ? { display: 'none' } : undefined}>
+                        <Col {...colProps}>
                             {typeof field.render === 'function' ? field.render() : field.render}
                         </Col>
                     );
                 }
 
                 return (
-                    <Col span={columnSpan} key={itemKey} style={isHidden ? { display: 'none' } : undefined}>
+                    <Col {...colProps}>
                         <Form.Item
                             name={field.name}
                             label={

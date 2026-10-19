@@ -406,11 +406,13 @@ async function getCaratBalanceSeries(
 
 async function getDashboardTrends(req) {
   const companyId = resolveCompanyId(req);
+  // Widget aggregates expect company id list (array); a bare number breaks .filter
+  const companyIds = companyId > 0 ? [companyId] : [0];
   const { key, days, grain, from, to } = resolveRange(req.query?.range);
   const previousFrom = addUtcDays(from, -days);
 
   const [widgets, flow, saleSeries, currentTotals, previousTotals] = await Promise.all([
-    getWidgetCounts(companyId),
+    getWidgetCounts(companyIds),
     getFlowSeries(companyId, from, to, grain),
     getSaleSeries(companyId, from, to, grain),
     compareWindow(companyId, from, to),

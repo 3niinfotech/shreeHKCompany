@@ -4,23 +4,33 @@ const { logAudit } = require("../auditIntegration.js");
 /**
  * Fetch advance payment records for a tenant company
  * @param {number} companyId
+ * @param {{ limit?: number, offset?: number }} [pagination]
  */
-async function getAdvancePayments(companyId) {
+async function getAdvancePayments(companyId, pagination = {}) {
+  const limit = Math.max(1, parseInt(pagination.limit, 10) || 100);
+  const offset = Math.max(0, parseInt(pagination.offset, 10) || 0);
+
   if (!companyId || companyId <= 0) {
     return {
       status: 200,
       data: {
         message: "Advance Payment Data fetch Successfully",
+        TotalItems: 0,
         Data: [],
       },
     };
   }
 
-  const rows = await advanceRepository.getAdvancePaymentsByCompany(companyId);
+  const [totalItems, rows] = await Promise.all([
+    advanceRepository.countAdvancePaymentsByCompany(companyId),
+    advanceRepository.getAdvancePaymentsByCompany(companyId, limit, offset),
+  ]);
+
   return {
     status: 200,
     data: {
       message: "Advance Payment Data fetch Successfully",
+      TotalItems: totalItems,
       Data: rows || [],
     },
   };

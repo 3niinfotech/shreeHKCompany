@@ -89,7 +89,7 @@ Agar koi naya reusable pattern banana zaroori lage (kyunki existing cheez fit na
 | `TabsStore` | `src/store/Tabs.Store.jsx` | Multi-tab navigation |
 | `UiStore` | `src/store/Ui.Store.jsx` | Theme, sidebar, notifications drawer |
 
-**❌ Naya global store mat banao agar existing store mein fit ho sakta hai.**
+**❌ Naya global store mat banao agar existing store mein fit ho sakta hai.**                                                                                             
 
 ### React Query Cache Keys (naya query add karte waqt in existing keys se collide mat karo)
 | Query Key Pattern | Domain |
