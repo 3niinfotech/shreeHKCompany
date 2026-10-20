@@ -305,17 +305,21 @@
     }
 
     :global(.ant-tabs-tabpane) {
+        display: none !important;
+    }
+
+    :global(.ant-tabs-tabpane-active) {
         flex: 1 1 auto;
         min-height: 0;
         height: 100%;
-        display: flex;
+        display: flex !important;
         flex-direction: column;
         padding: 0 !important;
         overflow-y: auto;
     }
 
-    :global(.ant-tabs-tabpane-active) {
-        display: flex !important;
+    :global(.ant-tabs-tabpane-hidden) {
+        display: none !important;
     }
 
     :global(.ant-tabs-tab) {
@@ -430,6 +434,69 @@
     margin-top: 8px;
     padding-top: 12px;
     border-top: 1px solid var(--color-table-border);
+}
+
+.oldHistoryHeaderCellTd {
+    padding: 0 !important;
+    background: var(--color-page-bg, #f8fafc) !important;
+    border-top: 2px solid var(--color-border, #cbd5e1) !important;
+    border-bottom: 1px solid var(--color-border, #cbd5e1) !important;
+    cursor: default;
+}
+
+.tableSectionDivider {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: linear-gradient(90deg, rgba(30, 58, 138, 0.08) 0%, rgba(2, 132, 199, 0.05) 50%, transparent 100%);
+    border-left: 4px solid var(--color-primary, #1e3a8a);
+    width: 100%;
+    box-sizing: border-box;
+
+    .tableSectionDividerLeft {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .tableSectionDividerIcon {
+        color: var(--color-primary, #1e3a8a);
+    }
+
+    .tableSectionDividerTitle {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--color-text-heading, #0f172a);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .tableSectionDividerTag {
+        margin: 0 !important;
+        font-size: 11px !important;
+        font-weight: 600 !important;
+        border-radius: 4px !important;
+    }
+
+    .tableSectionDividerDesc {
+        font-size: 12px;
+        color: var(--color-text-muted, #64748b);
+        font-style: italic;
+    }
+}
+
+.oldHistoryHeaderRow {
+    &:hover > td {
+        background: var(--color-page-bg, #f8fafc) !important;
+    }
+}
+
+.oldHistoryRow {
+    background-color: rgba(248, 250, 252, 0.6);
+    &:hover > td {
+        background-color: rgba(241, 245, 249, 0.9) !important;
+    }
 }
 
 .tabLabel {

@@ -474,11 +474,30 @@ const InwardEntryForm = ({
     setIsSubmitted(false);
   };
 
-  const totalStats = useMemo(() => items.reduce((acc, curr) => ({
-    pcs: acc.pcs + (curr.pPcs || curr.rPcs || 0),
-    carats: acc.carats + (curr.pCarat || 0),
-    amount: acc.amount + (curr.amount || 0),
-  }), { pcs: 0, carats: 0, amount: 0 }), [items]);
+  const totalStats = useMemo(() => {
+    let rows = 0;
+    let pcs = 0;
+    let carats = 0;
+    let amount = 0;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const hasSku = String(item.sku || '').trim().length > 0;
+      const p = Number(item.pPcs) || Number(item.rPcs) || 0;
+      const c = Number(item.pCarat) || 0;
+      const a = Number(item.amount) || 0;
+
+      if (hasSku || p > 0 || c > 0 || a > 0) {
+        rows += 1;
+      }
+      pcs += p;
+      carats += c;
+      amount += a;
+    }
+    if (rows === 0 && items.length > 0) {
+      rows = items.length;
+    }
+    return { rows, pcs, carats, amount };
+  }, [items]);
 
   return (
     <div className={`${styles.purchaseContainer} ${scrollableTable ? styles.purchaseContainerFixed : ''}`}>
@@ -508,6 +527,8 @@ const InwardEntryForm = ({
         />
         <div className={`${styles.footerStats} ${styles.footerStatsBar}`}>
           <div className={styles.footerStatsTotals}>
+            <div className={styles.statItem}><label>Total Rows</label><span>{totalStats.rows.toLocaleString()}</span></div>
+            <div className={styles.statItem}><label>Total Pcs</label><span>{totalStats.pcs.toLocaleString()}</span></div>
             <div className={styles.statItem}><label>Total Carats</label><span>{totalStats.carats.toFixed(2)}</span></div>
             <div className={styles.statItem}><label>Total Amount</label><span className={styles.amount}>${totalStats.amount.toLocaleString()}</span></div>
           </div>

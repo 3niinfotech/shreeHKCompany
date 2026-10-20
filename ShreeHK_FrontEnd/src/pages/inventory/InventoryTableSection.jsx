@@ -34,7 +34,6 @@ const InventoryTableSection = React.memo(function InventoryTableSection({
         height: tableHeight,
         overflowY: "hidden",
         overflowX: "hidden",
-        // Force body to full scroll.y so horizontal scrollbar stays at bottom (1 or 100 rows)
         ["--inventory-table-body-y"]: `${bodyScrollY}px`,
       }}
     >

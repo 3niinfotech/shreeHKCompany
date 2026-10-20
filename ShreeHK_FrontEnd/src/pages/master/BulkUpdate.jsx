@@ -139,6 +139,14 @@ const BulkUpdate = () => {
             headers: ["Sku", "Package"],
             row: ["H24-58A", "Lot"],
         },
+        Sku: {
+            headers: ["Sku", "New Sku"],
+            row: ["H24-58A", "H24-58B"],
+        },
+        "SKU Change": {
+            headers: ["Sku", "New Sku"],
+            row: ["H24-58A", "H24-58B"],
+        },
         "Shape,Clarity": {
             headers: ["Sku", "Shape", "Clarity"],
             row: ["H24-58A", "ROUND", "VS2"],
