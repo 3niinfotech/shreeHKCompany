@@ -4,13 +4,44 @@ const helper = require("../../helper.js");
 const productHelper = require("../../productHelper.js");
 const { authenticateToken } = require("../../authMiddleware.js");
 const { buildUserContext } = require("../../tenantHelper.js");
-const { logAudit } = require("../../services/auditIntegration.js");
 const stockMovement = require("../../services/stockMovementService.js");
+const { logAudit } = require("../../services/auditIntegration.js");
 const inwardRouter = express.Router();
 const moment = require("moment");
-inwardRouter.use(express.json());
+inwardRouter.use(express.json({ limit: "150mb" }));
+inwardRouter.use(express.urlencoded({ extended: true, limit: "150mb" }));
 
 const isBlank = (value) => value === undefined || value === null || String(value).trim() === "";
+
+const SAFE_COLUMN_REGEX = /^[a-zA-Z0-9_]+$/;
+
+function safeVal(val) {
+  if (val === undefined || val === null) return "NULL";
+  if (typeof val === "number" && (Number.isNaN(val) || !Number.isFinite(val))) return "NULL";
+  if (val === "NaN" || val === "undefined") return "NULL";
+  return connection.escape(val);
+}
+
+async function bulkInsertRecords(q, tableName, items) {
+  if (!items || items.length === 0) return;
+  const keySet = new Set();
+  for (const item of items) {
+    for (const k of Object.keys(item)) {
+      if (k !== "id" && k !== "NaN" && SAFE_COLUMN_REGEX.test(k)) {
+        keySet.add(k);
+      }
+    }
+  }
+  const keys = Array.from(keySet);
+  if (keys.length === 0) return;
+
+  const valueRows = items.map((item) => {
+    return "(" + keys.map((k) => safeVal(item[k])).join(",") + ")";
+  });
+
+  const sql = `INSERT INTO ${tableName} (${keys.join(",")}) VALUES ${valueRows.join(",")}`;
+  await q(sql);
+}
 
 inwardRouter.post("/inward/checkExist", authenticateToken, async (req, res) => {
   const { products } = req.body;
@@ -44,42 +75,62 @@ inwardRouter.post("/inward/checkExist", authenticateToken, async (req, res) => {
     let status = true;
     let checkedCount = 0;
 
+    const validProducts = [];
+    const uniqueSkuSet = new Set();
     for (const r of products) {
       if (r.id || isBlank(r.sku) || isBlank(r.polish_carat) || isBlank(r.price) || isBlank(r.amount)) {
         continue;
       }
+      validProducts.push(r);
+      uniqueSkuSet.add(String(r.sku).trim().toUpperCase());
+    }
+    checkedCount = validProducts.length;
 
-      checkedCount += 1;
-      const skuKey = String(r.sku).trim();
+    // Fast batch pre-fetch in chunks of 2,000 SKUs instead of N+1 individual queries
+    const uniqueSkus = Array.from(uniqueSkuSet);
+    const skuFoundMap = new Map();
+    const BATCH_SIZE = 2000;
 
-      // Check in dai_product
+    for (let i = 0; i < uniqueSkus.length; i += BATCH_SIZE) {
+      const skuChunk = uniqueSkus.slice(i, i + BATCH_SIZE);
       const prodRows = await helper.query(
         `SELECT p.id, p.sku, p.company, p.polish_pcs, p.polish_carat, p.price, p.amount,
                 c.name AS company_name
          FROM dai_product p
          LEFT JOIN company c ON c.id = p.company
-         WHERE UPPER(TRIM(p.sku)) = UPPER(?)
-         ORDER BY p.id ASC
-         LIMIT 1`,
-        [skuKey]
+         WHERE UPPER(TRIM(p.sku)) IN (?)
+         ORDER BY p.id ASC`,
+        [skuChunk]
       );
-      let found = prodRows?.[0] || null;
+      for (const row of (prodRows || [])) {
+        const k = String(row.sku || "").trim().toUpperCase();
+        if (!skuFoundMap.has(k)) {
+          skuFoundMap.set(k, row);
+        }
+      }
 
-      // If not in dai_product, check if previously inwarded in dai_inward_item
-      if (!found) {
+      const remainingSkus = skuChunk.filter((s) => !skuFoundMap.has(s));
+      if (remainingSkus.length > 0) {
         const itemRows = await helper.query(
           `SELECT ii.id, ii.sku, ii.company, c.name AS company_name
            FROM dai_inward_item ii
            LEFT JOIN company c ON c.id = ii.company
-           WHERE UPPER(TRIM(ii.sku)) = UPPER(?)
-           ORDER BY ii.id DESC
-           LIMIT 1`,
-          [skuKey]
+           WHERE UPPER(TRIM(ii.sku)) IN (?)
+           ORDER BY ii.id DESC`,
+          [remainingSkus]
         );
-        if (itemRows?.[0]) {
-          found = itemRows[0];
+        for (const row of (itemRows || [])) {
+          const k = String(row.sku || "").trim().toUpperCase();
+          if (!skuFoundMap.has(k)) {
+            skuFoundMap.set(k, row);
+          }
         }
       }
+    }
+
+    for (const r of validProducts) {
+      const skuKey = String(r.sku).trim();
+      const found = skuFoundMap.get(skuKey.toUpperCase()) || null;
 
       if (found) {
         const ownerCompanyId = Number(found.company) || 0;
@@ -293,47 +344,105 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
       const skuArray = [];
       const insertedItems = [];
 
-      // 4. Sequential processing of product items to avoid race conditions
-      for (const r of (Array.isArray(products) ? products : [])) {
+      // Filter valid products and pre-fetch SKUs in chunks
+      const rawProducts = Array.isArray(products) ? products : [];
+      const validProducts = [];
+      const skuSet = new Set();
+      for (const r of rawProducts) {
         if (!r.sku || !r.polish_carat || !r.price || !r.amount) continue;
+        r.sku = String(r.sku || "").trim();
+        validProducts.push(r);
+        skuSet.add(r.sku.toUpperCase());
+      }
 
-        // Same stock id (SKU) → only reuse within the SAME company
-        const skuKey = String(r.sku || "").trim();
-        r.sku = skuKey;
-        let skuRows = await q(
-          `SELECT * FROM dai_product
-           WHERE company = ? AND UPPER(TRIM(sku)) = UPPER(?)
-           ORDER BY id ASC
-           LIMIT 1`,
-          [companyId, skuKey]
+      // Pre-fetch all existing SKUs in batches of 2000 (O(1) memory lookup)
+      const uniqueSkus = Array.from(skuSet);
+      const currentCompanyProductMap = new Map();
+      const otherCompanyOwnerMap = new Map();
+      const CHUNK_SIZE = 2000;
+
+      for (let i = 0; i < uniqueSkus.length; i += CHUNK_SIZE) {
+        const skuChunk = uniqueSkus.slice(i, i + CHUNK_SIZE);
+
+        const currentRows = await q(
+          `SELECT id, sku, company, group_type, polish_pcs, polish_carat, purchased_pcs, purchased_carat,
+                  onhand_pcs, onhand_carat, memo_pcs, memo_carat, sold_pcs, sold_carat, price, cost, amount, outward
+           FROM dai_product
+           WHERE company = ? AND UPPER(TRIM(sku)) IN (?)
+           ORDER BY id ASC`,
+          [companyId, skuChunk]
         );
-        let SkuData = skuRows[0] || null;
+        for (const row of (currentRows || [])) {
+          const k = String(row.sku || "").trim().toUpperCase();
+          if (!currentCompanyProductMap.has(k)) {
+            currentCompanyProductMap.set(k, row);
+          }
+        }
 
-        // If not found in current company, ensure SKU does not belong to any other company
-        if (!SkuData) {
+        const remainingSkus = skuChunk.filter((s) => !currentCompanyProductMap.has(s));
+        if (remainingSkus.length > 0) {
           const otherProdRows = await q(
             `SELECT p.id, p.sku, p.company, c.name AS company_name
              FROM dai_product p
              LEFT JOIN company c ON c.id = p.company
-             WHERE UPPER(TRIM(p.sku)) = UPPER(?)
-             ORDER BY p.id ASC
-             LIMIT 1`,
-            [skuKey]
+             WHERE UPPER(TRIM(p.sku)) IN (?)
+             ORDER BY p.id ASC`,
+            [remainingSkus]
           );
-          let otherOwner = otherProdRows[0] || null;
-          if (!otherOwner) {
+          for (const row of (otherProdRows || [])) {
+            const k = String(row.sku || "").trim().toUpperCase();
+            if (!otherCompanyOwnerMap.has(k)) {
+              otherCompanyOwnerMap.set(k, row);
+            }
+          }
+
+          const stillRemaining = remainingSkus.filter((s) => !otherCompanyOwnerMap.has(s));
+          if (stillRemaining.length > 0) {
             const otherInwardRows = await q(
               `SELECT ii.id, ii.sku, ii.company, c.name AS company_name
                FROM dai_inward_item ii
                LEFT JOIN company c ON c.id = ii.company
-               WHERE UPPER(TRIM(ii.sku)) = UPPER(?)
-               ORDER BY ii.id DESC
-               LIMIT 1`,
-              [skuKey]
+               WHERE UPPER(TRIM(ii.sku)) IN (?)
+               ORDER BY ii.id DESC`,
+              [stillRemaining]
             );
-            otherOwner = otherInwardRows[0] || null;
+            for (const row of (otherInwardRows || [])) {
+              const k = String(row.sku || "").trim().toUpperCase();
+              if (!otherCompanyOwnerMap.has(k)) {
+                otherCompanyOwnerMap.set(k, row);
+              }
+            }
           }
+        }
+      }
 
+      // Buffers for batch-inserting child records
+      const pendingProductValues = [];
+      const pendingInwardItems = [];
+      const pendingHistories = [];
+
+      const flushPendingBatches = async () => {
+        if (pendingProductValues.length > 0) {
+          const itemsToInsert = pendingProductValues.splice(0, pendingProductValues.length);
+          await bulkInsertRecords(q, "dai_product_value", itemsToInsert);
+        }
+        if (pendingInwardItems.length > 0) {
+          const itemsToInsert = pendingInwardItems.splice(0, pendingInwardItems.length);
+          await bulkInsertRecords(q, "dai_inward_item", itemsToInsert);
+        }
+        if (pendingHistories.length > 0) {
+          const itemsToInsert = pendingHistories.splice(0, pendingHistories.length);
+          await bulkInsertRecords(q, "dai_history", itemsToInsert);
+        }
+      };
+
+      for (const r of validProducts) {
+        const skuKey = r.sku;
+        const skuUpper = skuKey.toUpperCase();
+        let SkuData = currentCompanyProductMap.get(skuUpper) || null;
+
+        if (!SkuData) {
+          const otherOwner = otherCompanyOwnerMap.get(skuUpper) || null;
           if (otherOwner && Number(otherOwner.company) !== Number(companyId)) {
             const ownerName = otherOwner.company_name || `Company #${otherOwner.company}`;
             throw new Error(
@@ -400,15 +509,11 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
         // Same SKU already in inventory → PLUS qty on same stock id (memo/sale later use this row)
         if (SkuData) {
           const pid = SkuData.id;
-          console.log(
-            `[inward/save] stock-add SKU=${skuKey} productId=${pid} +${addPcs}pcs/+${addCarat}ct company=${companyId}`
-          );
           const bal = await stockMovement.applyInwardQty(q, pid, addPcs, addCarat, r.price, {
             cost: r.cost,
             amount: itemAmount,
           });
-          // Align company + group so next lookup / inventory stay on this row.
-          // Safety: sold/exported SKUs are hidden from All Stock until outward is cleared.
+
           await q(
             `UPDATE dai_product
              SET company = ?,
@@ -426,35 +531,29 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
           iProducts.push(pid);
           skuArray.push(SkuData.sku);
 
-          try {
-            const itemId = await stockMovement.insertInwardItem(q, {
-              company: companyId,
-              inward_id: lid,
-              product_id: pid,
-              sku: SkuData.sku,
-              party: post.party || "",
-              inward_type: post.inward_type,
-              pcs: addPcs,
-              carat: addCarat,
-              price: Number(r.price) || 0,
-              amount: itemAmount,
-              balance_pcs: bal.onhand_pcs,
-              balance_carat: bal.onhand_carat,
-              entry_date: post.invoicedate,
-              invoice_no: post.invoiceno || "",
-              reference: post.reference || "",
-              narretion: post.narretion || "",
-              user: userid,
-            });
-            if (!itemId) {
-              console.error(
-                `[inward/save] dai_inward_item insert skipped/failed for SKU=${SkuData.sku} inward=${lid}`
-              );
-            }
-          } catch (itemErr) {
-            console.error("[inward/save] insertInwardItem error:", itemErr?.message || itemErr);
-            throw itemErr;
-          }
+          // Update memory representation for subsequent same-SKU rows
+          SkuData.onhand_pcs = bal.onhand_pcs;
+          SkuData.onhand_carat = bal.onhand_carat;
+
+          pendingInwardItems.push({
+            company: companyId,
+            inward_id: lid,
+            product_id: pid,
+            sku: SkuData.sku,
+            party: post.party || "",
+            inward_type: post.inward_type,
+            pcs: addPcs,
+            carat: addCarat,
+            price: Number(r.price) || 0,
+            amount: itemAmount,
+            balance_pcs: bal.onhand_pcs,
+            balance_carat: bal.onhand_carat,
+            entry_date: post.invoicedate,
+            invoice_no: post.invoiceno || "",
+            reference: post.reference || "",
+            narretion: post.narretion || "",
+            user: userid,
+          });
 
           insertedItems.push({
             id: pid,
@@ -478,31 +577,29 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
             stock_add: true,
           });
 
-          try {
-            const histPayload = {
-              product_id: pid,
-              action,
-              party: post.party || "",
-              narretion: post.narretion || "",
-              date: post.invoicedate,
-              description: `Stock add ${post.inward_type} +${addPcs}pcs / +${addCarat}ct ref ${post.reference}`,
-              pcs: addPcs,
-              carat: addCarat,
-              balance_pcs: bal.onhand_pcs,
-              balance_carat: bal.onhand_carat,
-              amount: itemAmount,
-              price: Number(r.price) || 0,
-              sku: SkuData.sku,
-              type: "cr",
-              invoice: post.invoiceno || "",
-              entry_from: "inward",
-              entryno: lid,
-              user: userid,
-            };
-            const hData = helper.insertString(histPayload);
-            await q(`INSERT INTO dai_history (${hData[0]}) VALUES (${hData[1]})`);
-          } catch (histErr) {
-            console.error("inward/save addHistory (stock add) error:", histErr);
+          pendingHistories.push({
+            product_id: pid,
+            action,
+            party: post.party || "",
+            narretion: post.narretion || "",
+            date: post.invoicedate,
+            description: `Stock add ${post.inward_type} +${addPcs}pcs / +${addCarat}ct ref ${post.reference}`,
+            pcs: addPcs,
+            carat: addCarat,
+            balance_pcs: bal.onhand_pcs,
+            balance_carat: bal.onhand_carat,
+            amount: itemAmount,
+            price: Number(r.price) || 0,
+            sku: SkuData.sku,
+            type: "cr",
+            invoice: post.invoiceno || "",
+            entry_from: "inward",
+            entryno: lid,
+            user: userid,
+          });
+
+          if (pendingInwardItems.length >= 500) {
+            await flushPendingBatches();
           }
           continue;
         }
@@ -510,19 +607,33 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
         // New main stock row (only when SKU does not exist at all)
         r.visibility = 1;
         r.company = companyId;
+        r.purchased_pcs = addPcs;
+        r.purchased_carat = addCarat;
+        r.memo_pcs = 0;
+        r.memo_carat = 0;
+        r.sold_pcs = 0;
+        r.sold_carat = 0;
+        r.onhand_pcs = addPcs;
+        r.onhand_carat = addCarat;
         skuArray.push(r.sku);
 
         const rData = helper.insertString(r);
         const pResult = await q(`INSERT INTO dai_product (${rData[0]}) VALUES (${rData[1]})`);
         const pid = pResult.insertId;
-        // Guarantee company is set (needed for next same-SKU lookup)
-        await q(`UPDATE dai_product SET company = ?, visibility = 1 WHERE id = ?`, [
-          companyId,
-          pid,
-        ]);
         iProducts.push(pid);
 
-        await stockMovement.setInitialBalances(q, pid, addPcs, addCarat);
+        // Put in currentCompanyProductMap so if another row in the same batch has same SKU, it treats it as stock-add
+        currentCompanyProductMap.set(skuUpper, {
+          id: pid,
+          sku: r.sku,
+          company: companyId,
+          group_type: group || "single",
+          onhand_pcs: addPcs,
+          onhand_carat: addCarat,
+          price: Number(r.price) || 0,
+          cost: Number(r.cost) || 0,
+          amount: itemAmount,
+        });
 
         insertedItems.push({
           id: pid,
@@ -546,10 +657,9 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
         });
 
         attr.product_id = pid;
-        const attrData = helper.insertString(attr);
-        await q(`INSERT INTO dai_product_value (${attrData[0]}) VALUES (${attrData[1]})`);
+        pendingProductValues.push(attr);
 
-        await stockMovement.insertInwardItem(q, {
+        pendingInwardItems.push({
           company: companyId,
           inward_id: lid,
           product_id: pid,
@@ -569,33 +679,34 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
           user: userid,
         });
 
-        try {
-          const histPayload = {
-            product_id: pid,
-            action,
-            party: post.party || "",
-            narretion: post.narretion || "",
-            date: post.invoicedate,
-            description: `New Stone ${post.inward_type} with reference no is ${post.reference}`,
-            pcs: addPcs,
-            carat: addCarat,
-            balance_pcs: addPcs,
-            balance_carat: addCarat,
-            amount: Number(r.amount) || 0,
-            price: Number(r.price) || 0,
-            sku: r.sku,
-            type: "cr",
-            invoice: post.invoiceno || "",
-            entry_from: "inward",
-            entryno: lid,
-            user: userid,
-          };
-          const hData = helper.insertString(histPayload);
-          await q(`INSERT INTO dai_history (${hData[0]}) VALUES (${hData[1]})`);
-        } catch (histErr) {
-          console.error("inward/save addHistory error:", histErr);
+        pendingHistories.push({
+          product_id: pid,
+          action,
+          party: post.party || "",
+          narretion: post.narretion || "",
+          date: post.invoicedate,
+          description: `New Stone ${post.inward_type} with reference no is ${post.reference}`,
+          pcs: addPcs,
+          carat: addCarat,
+          balance_pcs: addPcs,
+          balance_carat: addCarat,
+          amount: Number(r.amount) || 0,
+          price: Number(r.price) || 0,
+          sku: r.sku,
+          type: "cr",
+          invoice: post.invoiceno || "",
+          entry_from: "inward",
+          entryno: lid,
+          user: userid,
+        });
+
+        if (pendingInwardItems.length >= 500) {
+          await flushPendingBatches();
         }
       }
+
+      // Flush any remaining items in the batches
+      await flushPendingBatches();
 
       const uniqueProducts = [...new Set(iProducts.map(String))];
       await q(
@@ -604,10 +715,16 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
       );
 
       const track = {
-        product_id: iProducts.join(","),
+        product_id:
+          iProducts.length > 500
+            ? iProducts.slice(0, 500).join(",") + `... (${iProducts.length} items)`
+            : iProducts.join(","),
         action: post.inward_type,
         date: new Date().toISOString().slice(0, 19).replace("T", " "),
-        description: `New Stone import with ${post.inward_type} sku: ${skuArray.join(",")}`,
+        description:
+          skuArray.length > 500
+            ? `New Stone import with ${post.inward_type} count: ${skuArray.length}`
+            : `New Stone import with ${post.inward_type} sku: ${skuArray.join(",")}`,
         user: userid,
         company: companyId,
       };
@@ -619,18 +736,40 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
 
     // Per-product CREATE audit log for each created diamond stock item (executed post-commit)
     if (result.insertedItems && result.insertedItems.length > 0) {
-      for (const item of result.insertedItems) {
+      if (result.insertedItems.length <= 100) {
+        for (const item of result.insertedItems) {
+          logAudit({
+            actionType: "CREATE",
+            moduleName: "Diamond Stock",
+            recordId: item.id,
+            recordReference: item.sku ? String(item.sku) : undefined,
+            newValue: {
+              ...item,
+              inward_id: result.lid,
+              inward_type: post.inward_type,
+              invoice_no: post.invoiceno,
+              entry_no: incre_id,
+            },
+            companyId,
+          }).catch(console.error);
+        }
+      } else {
+        // Bulk import summary log to prevent exhausting connection pool
         logAudit({
           actionType: "CREATE",
           moduleName: "Diamond Stock",
-          recordId: item.id,
-          recordReference: item.sku ? String(item.sku) : undefined,
+          recordId: result.lid,
+          recordReference: `Bulk Import (${result.insertedItems.length} stones)`,
+          description: `Bulk imported ${result.insertedItems.length} diamond stones for inward entry #${incre_id}`,
           newValue: {
-            ...item,
+            total_items: result.insertedItems.length,
             inward_id: result.lid,
             inward_type: post.inward_type,
             invoice_no: post.invoiceno,
             entry_no: incre_id,
+            total_pcs: result.iPcs,
+            total_carat: result.iCarat,
+            total_amount: result.iTotal,
           },
           companyId,
         }).catch(console.error);

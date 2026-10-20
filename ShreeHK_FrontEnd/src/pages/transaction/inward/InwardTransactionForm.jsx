@@ -666,7 +666,7 @@ const InwardTransactionForm = ({
 
   const onFinalSave = (lineItems = items) => {
     const headerValues = form.getFieldsValue();
-    const filledItems = getFilledLineItems(lineItems).map(normalizeLineItem);
+    const filledItems = getFilledLineItems(lineItems);
 
     if (!headerValues.operating_company_id) {
       toast.error('Please select Company');
@@ -687,8 +687,12 @@ const InwardTransactionForm = ({
       products: formatProductsPayload(filledItems)
     };
 
+    const count = filledItems.length;
+    const loadingToastId = count > 500 ? toast.loading(`Saving ${count.toLocaleString()} inward stones to database... Please wait.`) : null;
+
     saveInward(finalPayload, {
       onSuccess: async () => {
+        if (loadingToastId) toast.dismiss(loadingToastId);
         invalidateInventoryCaches(queryClient);
         queryClient.invalidateQueries({ queryKey: ['GetIncrement'] });
         setIsModalOpen(false);
@@ -705,6 +709,10 @@ const InwardTransactionForm = ({
         } catch {
           applyHeaderDefaults(null);
         }
+      },
+      onError: (error) => {
+        if (loadingToastId) toast.dismiss(loadingToastId);
+        toastApiError(error);
       }
     });
   };
@@ -723,13 +731,13 @@ const InwardTransactionForm = ({
         return;
       }
 
-      setItems(normalizedItems);
-
-      // Import: skip checkExist API + confirmation modal → save directly
+      // Import: skip checkExist API + confirmation modal → save directly without locking UI with redundant re-render
       if (skipExistCheck) {
         onFinalSave(normalizedItems);
         return;
       }
+
+      setItems(normalizedItems);
 
       const operatingCompanyId = form.getFieldValue('operating_company_id');
       const checkPayload = {
@@ -757,9 +765,30 @@ const InwardTransactionForm = ({
     setExcelFileName('');
   };
 
-  const totalStats = useMemo(() => items.reduce((acc, curr) => ({
-    pcs: acc.pcs + (curr.pPcs || curr.rPcs || 0), carats: acc.carats + (curr.pCarat || 0), amount: acc.amount + (curr.amount || 0)
-  }), { pcs: 0, carats: 0, amount: 0 }), [items]);
+  const totalStats = useMemo(() => {
+    let rows = 0;
+    let pcs = 0;
+    let carats = 0;
+    let amount = 0;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const hasSku = String(item.sku || '').trim().length > 0;
+      const p = Number(item.pPcs) || Number(item.rPcs) || 0;
+      const c = Number(item.pCarat) || 0;
+      const a = Number(item.amount) || 0;
+
+      if (hasSku || p > 0 || c > 0 || a > 0) {
+        rows += 1;
+      }
+      pcs += p;
+      carats += c;
+      amount += a;
+    }
+    if (rows === 0 && items.length > 0) {
+      rows = items.length;
+    }
+    return { rows, pcs, carats, amount };
+  }, [items]);
 
   return (
     <div className={styles.purchaseContainer}>
@@ -849,6 +878,8 @@ const InwardTransactionForm = ({
         </div>
         <div className={`${styles.footerStats} ${scrollableTable ? styles.footerStatsBar : ''}`}>
           <div className={styles.footerStatsTotals}>
+            <div className={styles.statItem}><label>Total Rows</label><span>{totalStats.rows.toLocaleString()}</span></div>
+            <div className={styles.statItem}><label>Total Pcs</label><span>{totalStats.pcs.toLocaleString()}</span></div>
             <div className={styles.statItem}><label>Total Carats</label><span>{totalStats.carats.toFixed(2)}</span></div>
             <div className={styles.statItem}><label>Total Amount</label><span className={styles.amount}>${totalStats.amount.toLocaleString()}</span></div>
           </div>

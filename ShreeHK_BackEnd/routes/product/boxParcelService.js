@@ -92,14 +92,17 @@ async function attachStonesToContainer({ stones, container, containerField, acti
   let addAmount = 0;
   const now = new Date().toISOString().slice(0, 19).replace("T", " ");
 
+  const containerCompany = Number(container.company) || helper.resolveCompanyId(userContext.companyId);
+
   for (const stone of stones) {
     addPcs += Number(stone.polish_pcs || 0);
     addCarat += Number(stone.polish_carat || 0);
     addAmount += Number(stone.amount || 0);
 
+    const stoneCompany = Number(stone.company) || containerCompany;
     await helper.query(
-      `UPDATE dai_product SET visibility = 0, parent_id = ?, ${containerField} = ? WHERE id = ?`,
-      [container.id, container.id, stone.id],
+      `UPDATE dai_product SET visibility = 0, parent_id = ?, ${containerField} = ? WHERE id = ? AND company = ?`,
+      [container.id, container.id, stone.id, stoneCompany],
     );
 
     if (!productList.includes(String(stone.id))) {
@@ -125,8 +128,8 @@ async function attachStonesToContainer({ stones, container, containerField, acti
   const productsField = container.group_type === "parcel" ? "parcel_products" : "box_products";
 
   await helper.query(
-    `UPDATE dai_product SET polish_pcs = ?, polish_carat = ?, amount = ?, price = ?, child_count = ?, ${productsField} = ? WHERE id = ?`,
-    [newPcs, newCarat, newAmount, newPrice, productList.length, productList.join(","), container.id],
+    `UPDATE dai_product SET polish_pcs = ?, polish_carat = ?, amount = ?, price = ?, child_count = ?, ${productsField} = ? WHERE id = ? AND company = ?`,
+    [newPcs, newCarat, newAmount, newPrice, productList.length, productList.join(","), container.id, containerCompany],
   );
 
   const stoneSkus = stones.map((s) => s.sku).filter(Boolean);
@@ -732,6 +735,7 @@ async function unboxStonesFromContainer({ containerId, stoneIds }, userContext =
     err.statusCode = 404;
     throw err;
   }
+  const effectiveCompanyId = Number(container.company) || companyId;
 
   const isParcel = container.group_type === "parcel";
   const productsField = isParcel ? "parcel_products" : "box_products";
@@ -754,9 +758,10 @@ async function unboxStonesFromContainer({ containerId, stoneIds }, userContext =
     unboxedSkus.push(stone.sku);
 
     // Restore stone to active inventory and detach from container
+    const stoneCompany = Number(stone.company) || effectiveCompanyId;
     await helper.query(
       `UPDATE dai_product SET visibility = 1, parent_id = 0, ${containerField} = NULL, rapnet_upload = 0 WHERE id = ? AND company = ?`,
-      [stoneId, companyId]
+      [stoneId, stoneCompany]
     );
 
     await addHistoryAudited({
@@ -782,7 +787,7 @@ async function unboxStonesFromContainer({ containerId, stoneIds }, userContext =
 
   await helper.query(
     `UPDATE dai_product SET polish_pcs = ?, polish_carat = ?, amount = ?, price = ?, child_count = ?, ${productsField} = ? WHERE id = ? AND company = ?`,
-    [newPcs, newCarat, newAmount, newPrice, updatedProductList.length, updatedProductList.join(","), cid, companyId]
+    [newPcs, newCarat, newAmount, newPrice, updatedProductList.length, updatedProductList.join(","), cid, effectiveCompanyId]
   );
 
   await addHistoryAudited({
@@ -919,9 +924,10 @@ async function separateContainerStones({ containerId, records }, userContext = {
   const newAmount = Math.max(0, Number((Number(container.amount || 0) - totalSepAmount).toFixed(2)));
   const newPrice = newCarat > 0 ? Number((newAmount / newCarat).toFixed(2)) : container.price;
 
+  const effectiveCompanyId = Number(container.company) || companyId;
   await helper.query(
     `UPDATE dai_product SET polish_pcs = ?, polish_carat = ?, amount = ?, price = ? WHERE id = ? AND company = ?`,
-    [newPcs, newCarat, newAmount, newPrice, cid, companyId]
+    [newPcs, newCarat, newAmount, newPrice, cid, effectiveCompanyId]
   );
 
   await addHistoryAudited({

@@ -134,8 +134,12 @@ class BulkModel {
             company: this.companyId,
             user: helper.DEFAULT_USER_ID,
           };
-          const tData = helper.insertString(track);
-          if (tData) await q(`INSERT INTO dai_user_track (${tData[0]}) VALUES (${tData[1]})`);
+          try {
+            const tData = helper.insertString(track);
+            if (tData) await q(`INSERT INTO user_track (${tData[0]}) VALUES (${tData[1]})`);
+          } catch (trackErr) {
+            console.error("user_track log error (price):", trackErr?.message || trackErr);
+          }
         }
       } else if (type === "location") {
         for (let i = 2; i <= arrayCount; i++) {
@@ -218,8 +222,12 @@ class BulkModel {
             company: this.companyId,
             user: helper.DEFAULT_USER_ID,
           };
-          const tData = helper.insertString(track);
-          if (tData) await q(`INSERT INTO dai_user_track (${tData[0]}) VALUES (${tData[1]})`);
+          try {
+            const tData = helper.insertString(track);
+            if (tData) await q(`INSERT INTO user_track (${tData[0]}) VALUES (${tData[1]})`);
+          } catch (trackErr) {
+            console.error("user_track log error (sku):", trackErr?.message || trackErr);
+          }
         }
       } else if (type === "shape") {
         for (let i = 2; i <= arrayCount; i++) {
@@ -314,8 +322,12 @@ class BulkModel {
             company: this.companyId,
             user: helper.DEFAULT_USER_ID,
           };
-          const tData = helper.insertString(track);
-          if (tData) await q(`INSERT INTO dai_user_track (${tData[0]}) VALUES (${tData[1]})`);
+          try {
+            const tData = helper.insertString(track);
+            if (tData) await q(`INSERT INTO user_track (${tData[0]}) VALUES (${tData[1]})`);
+          } catch (trackErr) {
+            console.error("user_track log error (rap_price):", trackErr?.message || trackErr);
+          }
         }
       } else if (type === "group") {
         for (let i = 2; i <= arrayCount; i++) {

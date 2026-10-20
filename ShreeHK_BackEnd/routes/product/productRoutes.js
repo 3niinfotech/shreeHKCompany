@@ -771,6 +771,12 @@ productRouter.post("/product/save", authenticateToken, async (req, res) => {
             date: new Date(),
             description: desc.toUpperCase(),
             user: req.user?.user_id || 1,
+            price: newRows[0]?.price || oldRow?.price || null,
+            amount: newRows[0]?.amount || oldRow?.amount || null,
+            pcs: newRows[0]?.polish_pcs ?? oldRow?.polish_pcs ?? null,
+            carat: newRows[0]?.polish_carat ?? oldRow?.polish_carat ?? null,
+            balance_pcs: newRows[0]?.polish_pcs ?? oldRow?.polish_pcs ?? null,
+            balance_carat: newRows[0]?.polish_carat ?? oldRow?.polish_carat ?? null,
           });
           await q(`INSERT INTO dai_history (${histData[0]}) VALUES (${histData[1]})`);
         } catch (histErr) {
@@ -796,7 +802,7 @@ productRouter.post("/product/update-remark", authenticateToken, async (req, res)
 
   try {
     await helper.runInTransaction(async (q) => {
-      const rows = await q("SELECT id, sku, remark FROM dai_product WHERE id=? LIMIT 1", [id]);
+      const rows = await q("SELECT id, sku, remark, price, amount, polish_pcs, polish_carat FROM dai_product WHERE id=? LIMIT 1", [id]);
       if (!rows?.length) {
         throw new Error("Product not found.");
       }
@@ -830,6 +836,12 @@ productRouter.post("/product/update-remark", authenticateToken, async (req, res)
               date: new Date(),
               description: desc.toUpperCase(),
               user: req.user?.user_id || 1,
+              price: rows[0]?.price || null,
+              amount: rows[0]?.amount || null,
+              pcs: rows[0]?.polish_pcs ?? null,
+              carat: rows[0]?.polish_carat ?? null,
+              balance_pcs: rows[0]?.polish_pcs ?? null,
+              balance_carat: rows[0]?.polish_carat ?? null,
             });
             await q(`INSERT INTO dai_history (${histData[0]}) VALUES (${histData[1]})`);
           } catch (histErr) {

@@ -2,8 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { Tag, Button, Input, Table, Tooltip, Empty } from 'antd';
 import {
     Network, Box, Boxes, Layers, Gem, ArrowDown, ArrowRight,
-    ExternalLink, Search, RefreshCw, GitCommit, CheckCircle2,
-    Calendar, User, Tag as TagIcon, ShieldCheck, ArrowUpRight, Info
+    ExternalLink, Search, RefreshCw, CheckCircle2,
+    Tag as TagIcon, ShieldCheck, ArrowUpRight, Info
 } from 'lucide-react';
 import styles from '../../assets/scss/pages/report/stoneHistory.module.scss';
 
@@ -383,18 +383,6 @@ const LineageTreePanel = ({ lineage, currentDetail, onNavigateSku }) => {
                                 </span>
                             </div>
                         </div>
-
-                        {/* If current stone contains children */}
-                        {rawChildren.length > 0 ? (
-                            <div className={styles.treeConnectorDown}>
-                                <div className={styles.treeLineVertical} />
-                                <div className={styles.connectorBadge}>
-                                    <ArrowDown size={12} />
-                                    <span>Contains {rawChildren.length} Constituent Child Stones</span>
-                                </div>
-                                <div className={styles.treeLineVertical} />
-                            </div>
-                        ) : null}
                     </div>
 
                     {/* Level 3: Children Stones (if current is Box or Parcel container) */}
@@ -477,72 +465,8 @@ const LineageTreePanel = ({ lineage, currentDetail, onNavigateSku }) => {
                 ) : null}
             </div>
 
-            {/* Transformation & Life Cycle Timeline */}
-            {transformations.length > 0 ? (
-                <div className={styles.timelineSection}>
-                    <div className={styles.treeSectionTitle}>
-                        <GitCommit size={14} />
-                        <span>Stone Transformation & Life Cycle Timeline</span>
-                    </div>
-                    <div className={styles.timelineFlow}>
-                        {transformations.map((t, idx) => (
-                            <div key={t.id || idx} className={styles.timelineItem}>
-                                <div className={styles.timelineMarker}>
-                                    <div className={`${styles.timelineDot} ${t.is_from_memo ? styles.dotMemo : ''}`} />
-                                    {idx < transformations.length - 1 ? <div className={styles.timelineConnectorLine} /> : null}
-                                </div>
-                                <div className={styles.timelineContentCard}>
-                                    <div className={styles.timelineHeader}>
-                                        <div className={styles.timelineTypeBadge}>
-                                            <Tag color={getActionTagColor(t.action)} style={{ fontWeight: 600 }}>
-                                                {t.type_label}
-                                            </Tag>
-                                            {t.is_from_memo ? (
-                                                <Tag color="gold" style={{ fontSize: '11px', fontWeight: 700 }}>
-                                                    From Memo
-                                                </Tag>
-                                            ) : null}
-                                        </div>
-                                        <div className={styles.timelineDate}>
-                                            <Calendar size={12} />
-                                            <span>{t.date}</span>
-                                        </div>
-                                    </div>
-                                    <div className={styles.timelineDesc}>
-                                        {t.description || 'Action performed on stone.'}
-                                    </div>
-                                    <div className={styles.timelineMetaRow}>
-                                        {t.party ? <span><b>Party</b>: {t.party}</span> : null}
-                                        {t.invoice ? <span><b>Invoice</b>: {t.invoice}</span> : null}
-                                        {t.carat ? <span><b>Movement</b>: {t.carat} ct ({t.pcs || 0} pcs)</span> : null}
-                                        {t.balance_carat ? <span><b>Balance</b>: {t.balance_carat} ct</span> : null}
-                                        {t.updated_by && t.updated_by !== '—' ? (
-                                            <span className={styles.timelineUser}>
-                                                <User size={11} /> {t.updated_by}
-                                            </span>
-                                        ) : null}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            ) : null}
         </div>
     );
-};
-
-const getActionTagColor = (action) => {
-    const a = String(action || '').toLowerCase().trim();
-    if (a === 'memo_return' || a === 'consign_return') return 'cyan';
-    if (a === 'sale_return' || a === 'lab_return' || a === 'purchase_return') return 'green';
-    if (a === 'memo' || a === 'consign') return 'orange';
-    if (a === 'sale' || a === 'export') return 'magenta';
-    if (a === 'box_add' || a === 'to_box' || a === 'boxing') return 'geekblue';
-    if (a === 'unboxing' || a === 'from_box') return 'purple';
-    if (a === 'parcel_add') return 'volcano';
-    if (a === 'sku_change') return 'gold';
-    return 'blue';
 };
 
 export default LineageTreePanel;

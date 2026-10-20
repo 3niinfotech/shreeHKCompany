@@ -1044,6 +1044,12 @@ async function holdProducts(post, userContext = {}) {
         date: now,
         description: historyDescription,
         user: userId,
+        price: productBefore.price || productAfter?.price || null,
+        amount: productBefore.amount || productAfter?.amount || null,
+        pcs: productBefore.polish_pcs ?? null,
+        carat: productBefore.polish_carat ?? null,
+        balance_pcs: productBefore.polish_pcs ?? null,
+        balance_carat: productBefore.polish_carat ?? null,
       });
       await logAudit({
         actionType: "UPDATE",

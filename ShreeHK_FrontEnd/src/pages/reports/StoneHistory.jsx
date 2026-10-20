@@ -915,10 +915,70 @@ const StoneHistory = () => {
     const tableRef = React.useRef(null);
     const tableScrollY = useTableBodyScrollHeight(tableRef, [
         historyRows.length,
+        oldHistoryRows.length,
         loading,
         stockSummary,
         activeTab,
     ]);
+
+    const fetchOldHistoryData = async (skuValue, detailObj, showToast = false) => {
+        if (!skuValue) return [];
+        setOldLoading(true);
+        try {
+            const res = await api.get(ENDPOINTS.report.stoneDetailOld, { params: { sku: skuValue } });
+            const history = res.data?.history || [];
+            const basePrice = Number(detailObj?.price) || Number(detailObj?.purchase_price) || 0;
+            const baseCarat = Number(detailObj?.polish_carat) || 0;
+            let lastPrice = basePrice;
+            let lastAmount = Number(detailObj?.amount) || Number((basePrice * baseCarat).toFixed(2)) || 0;
+
+            const resolvedOld = history.map((h, i) => {
+                if (h.price != null && h.price !== '' && Number(h.price) > 0) {
+                    lastPrice = Number(h.price);
+                }
+                const rowPrice = h.price != null && h.price !== '' && Number(h.price) > 0
+                    ? Number(h.price)
+                    : (lastPrice > 0 ? lastPrice : (basePrice > 0 ? basePrice : null));
+
+                let rowAmount = h.amount != null && h.amount !== '' && Number(h.amount) > 0
+                    ? Number(h.amount)
+                    : null;
+                if (rowAmount == null || rowAmount === 0) {
+                    const c = Number(h.balance_carat || h.carat || baseCarat || 0);
+                    if (c > 0 && rowPrice > 0) {
+                        rowAmount = Number((c * rowPrice).toFixed(2));
+                    } else if (lastAmount > 0) {
+                        rowAmount = lastAmount;
+                    } else if (detailObj?.amount) {
+                        rowAmount = Number(detailObj.amount);
+                    }
+                } else {
+                    lastAmount = rowAmount;
+                }
+
+                return {
+                    ...h,
+                    price: rowPrice > 0 ? rowPrice : h.price,
+                    amount: rowAmount > 0 ? rowAmount : h.amount,
+                    key: h.id != null ? `old-${h.id}` : `old-${i}`,
+                };
+            });
+            setOldHistoryRows(resolvedOld);
+            if (showToast) {
+                if (!history.length) {
+                    toastWarning('No old history found for this SKU.');
+                } else {
+                    toastSuccess(`Loaded ${history.length} old history row(s) into table`);
+                }
+            }
+            return resolvedOld;
+        } catch (err) {
+            if (showToast) toastApiError(err);
+            return [];
+        } finally {
+            setOldLoading(false);
+        }
+    };
 
     const applyDetailResponse = async (res) => {
         const { detail, history, status: st, stock_summary, lineage: lin, activity_logs } = res.data || {};
@@ -946,6 +1006,9 @@ const StoneHistory = () => {
             } catch {
                 setHoldInfo(null);
             }
+        }
+        if (detail?.sku) {
+            fetchOldHistoryData(detail.sku, detail, false);
         }
         return true;
     };
@@ -1181,9 +1244,15 @@ const StoneHistory = () => {
     };
 
     const historyRowClassName = (row) => {
+        if (row?.isOldHistoryHeader) {
+            return styles.oldHistoryHeaderRow;
+        }
         const classes = [];
         if (highlightedRowKey === row.key) {
             classes.push('stone-row-highlighted', styles.rowHighlighted);
+        }
+        if (row?.key && String(row.key).startsWith('old-')) {
+            classes.push(styles.oldHistoryRow);
         }
         if (row?.is_from_memo) classes.push(styles.rowFromMemo);
         const a = String(row?.action || '').toLowerCase().trim();
@@ -1395,6 +1464,75 @@ const StoneHistory = () => {
         0
     );
 
+    const displayedHistoryRows = React.useMemo(() => {
+        if (!oldHistoryRows || !oldHistoryRows.length) return historyRows;
+        return [
+            ...historyRows,
+            {
+                key: '__old_history_section_header__',
+                isOldHistoryHeader: true,
+            },
+            ...oldHistoryRows,
+        ];
+    }, [historyRows, oldHistoryRows]);
+
+    const finalHistoryColumns = React.useMemo(() => {
+        return historyColumns.map((col, idx) => {
+            const origOnCell = col.onCell;
+            const origRender = col.render;
+
+            if (idx === 0) {
+                return {
+                    ...col,
+                    onCell: (record) => {
+                        if (record?.isOldHistoryHeader) {
+                            return {
+                                colSpan: historyColumns.length,
+                                className: styles.oldHistoryHeaderCellTd,
+                            };
+                        }
+                        return origOnCell ? origOnCell(record) : {};
+                    },
+                    render: (val, record, rIdx) => {
+                        if (record?.isOldHistoryHeader) {
+                            return (
+                                <div className={styles.tableSectionDivider}>
+                                    <div className={styles.tableSectionDividerLeft}>
+                                        <History size={15} className={styles.tableSectionDividerIcon} />
+                                        <span className={styles.tableSectionDividerTitle}>Old History</span>
+                                        <Tag color="blue" className={styles.tableSectionDividerTag}>
+                                            Previous Financial Years ({oldHistoryRows.length} records)
+                                        </Tag>
+                                    </div>
+                                    <span className={styles.tableSectionDividerDesc}>
+                                        Historical records prior to current financial year
+                                    </span>
+                                </div>
+                            );
+                        }
+                        return origRender ? origRender(val, record, rIdx) : val;
+                    },
+                };
+            }
+
+            return {
+                ...col,
+                onCell: (record) => {
+                    if (record?.isOldHistoryHeader) {
+                        return { colSpan: 0 };
+                    }
+                    return origOnCell ? origOnCell(record) : {};
+                },
+                render: (val, record, rIdx) => {
+                    if (record?.isOldHistoryHeader) {
+                        return null;
+                    }
+                    return origRender ? origRender(val, record, rIdx) : val;
+                },
+            };
+        });
+    }, [historyColumns, oldHistoryRows.length]);
+
     const handleSearch = async () => {
         const skuValue = (searchForm.getFieldValue('searchSku') || '').trim();
         if (!skuValue) return;
@@ -1416,7 +1554,7 @@ const StoneHistory = () => {
     };
 
     const handleExport = async () => {
-        if (!historyRows.length) {
+        if (!historyRows.length && !oldHistoryRows.length) {
             toastWarning('Search for a SKU first — no history to export.');
             return;
         }
@@ -1428,7 +1566,7 @@ const StoneHistory = () => {
                     key: c.dataIndex || c.key,
                     width: 14,
                 })),
-                rows: historyRows.map((row) => ({
+                rows: [...historyRows, ...oldHistoryRows].map((row) => ({
                     ...row,
                     date: formatHistoryDate(row),
                     date_display: formatHistoryDateTime(row),
@@ -1480,21 +1618,7 @@ const StoneHistory = () => {
             toastWarning('Search for a SKU first.');
             return;
         }
-        setOldLoading(true);
-        try {
-            const res = await api.get(ENDPOINTS.report.stoneDetailOld, { params: { sku: skuValue } });
-            const history = res.data?.history || [];
-            setOldHistoryRows(history.map((h, i) => ({ ...h, key: h.id != null ? `old-${h.id}` : `old-${i}` })));
-            if (!history.length) {
-                toastWarning('No old history found for this SKU.');
-            } else {
-                toastSuccess(`Loaded ${history.length} old history row(s)`);
-            }
-        } catch (err) {
-            toastApiError(err);
-        } finally {
-            setOldLoading(false);
-        }
+        await fetchOldHistoryData(skuValue, stoneDetail, true);
     };
 
     const handleReset = () => {
@@ -1581,13 +1705,13 @@ const StoneHistory = () => {
                                             loading={oldLoading}
                                             onClick={handleLoadOld}
                                         >
-                                            Load Old
+                                            {oldHistoryRows.length ? `Reload Old (${oldHistoryRows.length})` : 'Load Old'}
                                         </Button>
                                         <ExportExcelButton
                                             size="small"
                                             loading={exporting}
                                             onClick={handleExport}
-                                            disabled={!historyRows.length}
+                                            disabled={!historyRows.length && !oldHistoryRows.length}
                                         />
                                     </span>
                                 ) : null
@@ -1599,9 +1723,9 @@ const StoneHistory = () => {
                                         <span className={styles.tabLabel}>
                                             <History size={14} />
                                             History
-                                            {historyRows.length > 0 && (
+                                            {(historyRows.length > 0 || oldHistoryRows.length > 0) && (
                                                 <Badge
-                                                    count={historyRows.length}
+                                                    count={historyRows.length + oldHistoryRows.length}
                                                     style={{ backgroundColor: '#0284c7', marginLeft: 4 }}
                                                 />
                                             )}
@@ -1691,8 +1815,8 @@ const StoneHistory = () => {
                                             )}
                                             <div ref={tableRef} className={styles.historyTableScroll}>
                                                 <SkeletonAwareTable
-                                                    columns={historyColumns}
-                                                    dataSource={historyRows}
+                                                    columns={finalHistoryColumns}
+                                                    dataSource={displayedHistoryRows}
                                                     loading={loading}
                                                     size="small"
                                                     bordered
@@ -1708,33 +1832,6 @@ const StoneHistory = () => {
                                                     })}
                                                 />
                                             </div>
-                                            {oldHistoryRows.length ? (
-                                                <div className={styles.oldHistoryBlock}>
-                                                    <div className={styles.tabSectionTitle}>
-                                                        <History size={13} />
-                                                        Old History
-                                                    </div>
-                                                    <div className={styles.historyTableScroll}>
-                                                        <SkeletonAwareTable
-                                                            columns={historyColumns}
-                                                            dataSource={oldHistoryRows}
-                                                            loading={oldLoading}
-                                                            size="small"
-                                                            bordered
-                                                            pagination={false}
-                                                            tableLayout="fixed"
-                                                            scroll={{ x: historyTableScrollX }}
-                                                            rowClassName={historyRowClassName}
-                                                            rowKey="key"
-                                                            onRow={(record) => ({
-                                                                id: `stone-history-row-${record.key}`,
-                                                                'data-history-row-key': record.key,
-                                                                'data-invoice': record.invoice || '',
-                                                            })}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            ) : null}
                                         </div>
                                     ),
                                 },

@@ -4,7 +4,7 @@ const baseURL = import.meta.env.VITE_NODE_API_URL || "";
 
 export const api = axios.create({
     baseURL: baseURL,
-    timeout: 30000,
+    timeout: 300000,
 });
 
 let cachedAuthStorageRaw = null;

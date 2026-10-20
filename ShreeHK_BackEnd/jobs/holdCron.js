@@ -49,6 +49,12 @@ async function runHoldCron() {
       date: now,
       description:
         "stone put on unhold through auto unhold and show in inventory.",
+      price: detail?.price || null,
+      amount: detail?.amount || null,
+      pcs: detail?.polish_pcs ?? null,
+      carat: detail?.polish_carat ?? null,
+      balance_pcs: detail?.polish_pcs ?? null,
+      balance_carat: detail?.polish_carat ?? null,
     });
 
     try {
