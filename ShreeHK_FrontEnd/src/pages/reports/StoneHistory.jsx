@@ -54,13 +54,13 @@ const HISTORY_DEBIT_ACTIONS = new Set([
     'memo', 'sale', 'lab', 'export', 'consign',
     'purchase_return', 'purchase_delete',
     'sale_close', 'close_sale', 'memo_close', 'close_memo',
-    'lab_close', 'close_lab', 'export_close', 'consign_close',
+    'lab_close', 'close_lab', 'consign_close',
 ]);
 const HISTORY_CREDIT_ACTIONS = new Set([
     'import', 'in_import', 'purchase', 'in_memo', 'in_consign',
     'memo_return', 'sale_return', 'lab_return', 'consign_return',
     'hold', 'unhold', 'price_change', 'boxing', 'sku_change',
-    'stone_update', 'remark_change',
+    'stone_update', 'remark_change', 'export_close',
 ]);
 
 const isHistoryCredit = (row, isContainer = false) => {
@@ -1007,9 +1007,6 @@ const StoneHistory = () => {
                 setHoldInfo(null);
             }
         }
-        if (detail?.sku) {
-            fetchOldHistoryData(detail.sku, detail, false);
-        }
         return true;
     };
 
@@ -1064,7 +1061,7 @@ const StoneHistory = () => {
         if (a === 'sale_return' || a === 'lab_return' || a === 'purchase_return' || a === 'sale') return 'green';
         if (a === 'memo') return 'orange';
         if (a === 'consign') return 'magenta';
-        if (a === 'export') return 'blue';
+        if (a === 'export' || a === 'export_close') return 'blue';
         if (a === 'lab') return 'blue';
         if (a.includes('transfer')) return 'geekblue';
         if (a === 'unboxing' || a === 'from_box' || a === 'from_parcel') return 'volcano';
@@ -1613,7 +1610,7 @@ const StoneHistory = () => {
     }, [searchParams]);
 
     const handleLoadOld = async () => {
-        const skuValue = (searchForm.getFieldValue('searchSku') || '').trim();
+        const skuValue = (searchForm.getFieldValue('searchSku') || stoneDetail?.sku || '').trim();
         if (!skuValue) {
             toastWarning('Search for a SKU first.');
             return;
@@ -1705,7 +1702,7 @@ const StoneHistory = () => {
                                             loading={oldLoading}
                                             onClick={handleLoadOld}
                                         >
-                                            {oldHistoryRows.length ? `Reload Old (${oldHistoryRows.length})` : 'Load Old'}
+                                            {oldHistoryRows.length ? `Reload Old History (${oldHistoryRows.length})` : 'Old History'}
                                         </Button>
                                         <ExportExcelButton
                                             size="small"
@@ -1835,28 +1832,29 @@ const StoneHistory = () => {
                                         </div>
                                     ),
                                 },
-                                {
-                                    key: 'change_history',
-                                    label: (
-                                        <span className={styles.tabLabel}>
-                                            <History size={14} />
-                                            Change History (Old vs New)
-                                            {(activityLogs || []).filter((l) => l.action_type !== 'API_READ' && l.action_type !== 'LOGIN').length > 0 && (
-                                                <Badge
-                                                    count={(activityLogs || []).filter((l) => l.action_type !== 'API_READ' && l.action_type !== 'LOGIN').length}
-                                                    style={{ backgroundColor: '#0284c7', marginLeft: 4 }}
-                                                />
-                                            )}
-                                        </span>
-                                    ),
-                                    children: (
-                                        <ChangeHistoryPanel
-                                            logs={activityLogs}
-                                            currentSku={stoneDetail?.sku}
-                                            loading={loading}
-                                        />
-                                    ),
-                                },
+                                // do not uncomment this code ok 
+                                // {
+                                //     key: 'change_history',
+                                //     label: (
+                                //         <span className={styles.tabLabel}>
+                                //             <History size={14} />
+                                //             Change History (Old vs New)
+                                //             {(activityLogs || []).filter((l) => l.action_type !== 'API_READ' && l.action_type !== 'LOGIN').length > 0 && (
+                                //                 <Badge
+                                //                     count={(activityLogs || []).filter((l) => l.action_type !== 'API_READ' && l.action_type !== 'LOGIN').length}
+                                //                     style={{ backgroundColor: '#0284c7', marginLeft: 4 }}
+                                //                 />
+                                //             )}
+                                //         </span>
+                                //     ),
+                                //     children: (
+                                //         <ChangeHistoryPanel
+                                //             logs={activityLogs}
+                                //             currentSku={stoneDetail?.sku}
+                                //             loading={loading}
+                                //         />
+                                //     ),
+                                // },
                                 {
                                     key: 'lineage',
                                     label: (

@@ -113,6 +113,7 @@ const CycleCount = () => {
       </Card>
       <div ref={tableRef} className={`${styles.tableSection} erp-table-container`}>
         <Table
+          loading={loading}
           size="small"
           bordered
           rowKey="id"

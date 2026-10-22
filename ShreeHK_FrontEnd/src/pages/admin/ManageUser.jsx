@@ -264,7 +264,7 @@ const ManageUser = () => {
                 columns={columns}
                 onDelete={openDelete}
                 dataSource={combinedData}
-                loading={isLoading && offset === 0}
+                loading={(isLoading || isFetching) && offset === 0}
                 formFields={formFields}
                 onEdit={handleEdit}
                 onSave={handleSave}

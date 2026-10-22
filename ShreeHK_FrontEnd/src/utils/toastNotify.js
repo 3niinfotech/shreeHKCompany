@@ -62,28 +62,48 @@ function mergeOptions(classNames, icon, options = {}) {
   };
 }
 
+function toSafeMessage(message) {
+  if (message == null || message === "") return "";
+  if (typeof message === "string") return message;
+  if (typeof message === "number" || typeof message === "boolean") return String(message);
+  if (typeof message === "object") {
+    if (typeof message.message === "string") return message.message;
+    if (typeof message.error === "string") return message.error;
+    try {
+      return JSON.stringify(message);
+    } catch {
+      return "";
+    }
+  }
+  return "";
+}
+
 /** Success / add / update — green */
 export function toastSuccess(message, options) {
-  if (message == null || message === "") return;
-  return toast.success(String(message), mergeOptions(toastClassNames.success, toastIcon(CircleCheck), options));
+  const msg = toSafeMessage(message);
+  if (!msg) return;
+  return toast.success(msg, mergeOptions(toastClassNames.success, toastIcon(CircleCheck), options));
 }
 
 /** Error / failed — red */
 export function toastError(message, options) {
-  if (message == null || message === "") return;
-  return toast.error(String(message), mergeOptions(toastClassNames.error, toastIcon(CircleX), options));
+  const msg = toSafeMessage(message);
+  if (!msg) return;
+  return toast.error(msg, mergeOptions(toastClassNames.error, toastIcon(CircleX), options));
 }
 
 /** Warning — yellow/orange */
 export function toastWarning(message, options) {
-  if (message == null || message === "") return;
-  return toast.warning(String(message), mergeOptions(toastClassNames.warning, toastIcon(TriangleAlert), options));
+  const msg = toSafeMessage(message);
+  if (!msg) return;
+  return toast.warning(msg, mergeOptions(toastClassNames.warning, toastIcon(TriangleAlert), options));
 }
 
 /** Info — theme blue/neutral */
 export function toastInfo(message, options) {
-  if (message == null || message === "") return;
-  return toast.info(String(message), mergeOptions(toastClassNames.info, toastIcon(Info), options));
+  const msg = toSafeMessage(message);
+  if (!msg) return;
+  return toast.info(msg, mergeOptions(toastClassNames.info, toastIcon(Info), options));
 }
 
 /** Delete success — API message only; styled delete toast when present */

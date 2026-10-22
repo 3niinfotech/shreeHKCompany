@@ -346,13 +346,23 @@ async function applyOutwardItemQtys(outwardId, products) {
 }
 
 const PARTY_FIELDS = `
-  p.name AS party_name,
-  p.address AS party_address,
-  p.pincode AS party_pincode,
-  p.country AS party_country,
-  p.contact_number AS party_contact,
+  COALESCE(p.name, comp.name) AS party_name,
+  COALESCE(p.address, comp.address) AS party_address,
+  COALESCE(p.pincode, comp.pincode) AS party_pincode,
+  COALESCE(p.country, comp.country) AS party_country,
+  COALESCE(p.contact_number, comp.number) AS party_contact,
   p.fax AS party_fax,
-  p.contact_person AS contact_person`;
+  COALESCE(p.contact_person, comp.partner) AS contact_person,
+  c.name AS company_name,
+  c.address AS company_address,
+  c.city AS company_city,
+  c.state AS company_state,
+  c.pincode AS company_pincode,
+  c.country AS company_country,
+  c.number AS company_number,
+  c.email AS company_email,
+  c.website AS company_website,
+  c.logo AS company_logo`;
 
 function formatMeasurement(value) {
   return String(value || "").replace(/mm/gi, "").replace(/\s+/g, "");
@@ -422,6 +432,15 @@ function normalizeInwardRow(row, products) {
     id: row.id,
     company: row.company != null ? Number(row.company) : undefined,
     company_name: row.company_name || "",
+    company_address: row.company_address || "",
+    company_city: row.company_city || "",
+    company_state: row.company_state || "",
+    company_pincode: row.company_pincode || "",
+    company_country: row.company_country || "",
+    company_number: row.company_number || "",
+    company_email: row.company_email || "",
+    company_website: row.company_website || "",
+    company_logo: row.company_logo || null,
     entryno,
     party: row.party,
     party_name: partyName,
@@ -455,6 +474,15 @@ function normalizeOutwardRow(row, products) {
     id: row.id,
     company: row.company != null ? Number(row.company) : undefined,
     company_name: row.company_name || "",
+    company_address: row.company_address || "",
+    company_city: row.company_city || "",
+    company_state: row.company_state || "",
+    company_pincode: row.company_pincode || "",
+    company_country: row.company_country || "",
+    company_number: row.company_number || "",
+    company_email: row.company_email || "",
+    company_website: row.company_website || "",
+    company_logo: row.company_logo || null,
     entryno,
     party: row.party,
     party_name: row.party_name || row.party,
@@ -533,8 +561,9 @@ async function listGia(post, userContext = {}) {
     params
   );
   const rows = await query(
-    `SELECT o.*, ${PARTY_FIELDS}, c.name AS company_name FROM dai_outward o
+    `SELECT o.*, ${PARTY_FIELDS} FROM dai_outward o
      LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name)
+     LEFT JOIN company comp ON (o.party = CAST(comp.id AS CHAR) OR o.party = comp.id OR o.party = comp.name OR o.party = comp.shortcutName)
      LEFT JOIN company c ON (o.company = c.id)
      WHERE ${companySql.clause} AND o.type = 'lab' AND o.status = 'on_lab'
      ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${dateClause}
@@ -593,8 +622,9 @@ async function listInwardStock(post, userContext = {}) {
     ? " AND i.inward_type IN ('inter_memo', 'inter_transfer_memo', 'transfer_memo')"
     : " AND i.inward_type IN ('memo','consign') AND i.inward_type NOT IN ('inter_transfer', 'transfer', 'inter_memo', 'inter_transfer_memo', 'transfer_memo')";
   const rows = await query(
-    `SELECT i.*, ${PARTY_FIELDS}, c.name AS company_name FROM dai_inward i
+    `SELECT i.*, ${PARTY_FIELDS} FROM dai_inward i
      LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party = p.id OR i.party = p.name)
+     LEFT JOIN company comp ON (i.party = CAST(comp.id AS CHAR) OR i.party = comp.id OR i.party = comp.name OR i.party = comp.shortcutName)
      LEFT JOIN company c ON (i.company = c.id)
      WHERE (i.deleted = 0 OR i.deleted IS NULL) AND ${companySql.clause}
      ${typeClause}
@@ -666,8 +696,9 @@ async function listPurchaseStock(post, userContext = {}) {
   );
   const listParams = limitClause ? [...params, limit, offset] : params;
   const rows = await query(
-    `SELECT i.*, ${PARTY_FIELDS}, c.name AS company_name FROM dai_inward i
+    `SELECT i.*, ${PARTY_FIELDS} FROM dai_inward i
      LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party = p.id OR i.party = p.name)
+     LEFT JOIN company comp ON (i.party = CAST(comp.id AS CHAR) OR i.party = comp.id OR i.party = comp.name OR i.party = comp.shortcutName)
      LEFT JOIN company c ON (i.company = c.id)
      WHERE (i.deleted = 0 OR i.deleted IS NULL) AND ${companySql.clause}
      ${typeClause}
@@ -772,8 +803,9 @@ async function listOutwardStock(post, stockType, userContext = {}) {
     params
   );
   const rows = await query(
-    `SELECT o.*, ${PARTY_FIELDS}, c.name AS company_name FROM dai_outward o
+    `SELECT o.*, ${PARTY_FIELDS} FROM dai_outward o
      LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name)
+     LEFT JOIN company comp ON (o.party = CAST(comp.id AS CHAR) OR o.party = comp.id OR o.party = comp.name OR o.party = comp.shortcutName)
      LEFT JOIN company c ON (o.company = c.id)
      WHERE ${companySql.clause} ${typeClause}
      ${excludeTransferClause}
@@ -919,8 +951,8 @@ async function returnGia(post, userContext = {}) {
           Math.max(
             0,
             (Number(product.purchased_pcs) || 0) -
-              (Number(product.sold_pcs) || 0) -
-              (Number(product.memo_pcs) || 0)
+            (Number(product.sold_pcs) || 0) -
+            (Number(product.memo_pcs) || 0)
           ) || 1;
       }
     }
@@ -1135,13 +1167,14 @@ async function returnOutwardMemo(post, userContext = {}) {
     const pdata = await getProductDetail(pid);
     if (!pdata) continue;
 
+    const isExport = outwardType === "export" || String(pdata.outward || "").toLowerCase() === "export";
     const isSale =
       isSaleVoucher ||
       String(pdata.outward || "").toLowerCase() === "sale" ||
-      String(pdata.outward || "").toLowerCase() === "export" ||
+      isExport ||
       String(pdata.outward || "").toLowerCase() === "transferred";
-    const returnAction = isSale ? "sale_return" : "memo_return";
-    const returnTypeLabel = isSale ? "Sale" : "Memo";
+    const returnAction = isExport ? "export_close" : (isSale ? "sale_return" : "memo_return");
+    const returnTypeLabel = isExport ? "Export" : (isSale ? "Sale" : "Memo");
 
     const itemForProduct = outwardItems.find(
       (it) => String(it.product_id) === String(pid)
@@ -1249,9 +1282,11 @@ async function returnOutwardMemo(post, userContext = {}) {
         party: mdata.party,
         narretion: mdata.narretion,
         date: moment().format("YYYY-MM-DD HH:mm:ss"),
-        description: hasLeftover
-          ? `Stone ${returnTypeLabel} return ${retPcsLabel}pcs / ${retCaratLabel}ct of ${returnTypeLabel.toLowerCase()} ${memoPcsLabel}pcs / ${memoCaratLabel}ct — ref ${mdata.reference || mdata.invoiceno || ""}`
-          : `Stone ${returnTypeLabel} return ${retPcsLabel}pcs / ${retCaratLabel}ct (full) — ref ${mdata.reference || mdata.invoiceno || ""}`,
+        description: isExport
+          ? "EXPORT CLOSING / DELETING"
+          : (hasLeftover
+            ? `Stone ${returnTypeLabel} return ${retPcsLabel}pcs / ${retCaratLabel}ct of ${returnTypeLabel.toLowerCase()} ${memoPcsLabel}pcs / ${memoCaratLabel}ct — ref ${mdata.reference || mdata.invoiceno || ""}`
+            : `Stone ${returnTypeLabel} return ${retPcsLabel}pcs / ${retCaratLabel}ct (full) — ref ${mdata.reference || mdata.invoiceno || ""}`),
         pcs: retPcs,
         carat: retCarat,
         amount: retAmount,
@@ -1298,9 +1333,11 @@ async function returnOutwardMemo(post, userContext = {}) {
           party: mdata.party,
           narretion: mdata.narretion,
           date: moment().format("YYYY-MM-DD HH:mm:ss"),
-          description: isPartial
-            ? `Stone ${returnTypeLabel} return ${retPcsLabel}pcs / ${retCaratLabel}ct of ${returnTypeLabel.toLowerCase()} ${memoPcsLabel}pcs / ${memoCaratLabel}ct — ref ${mdata.reference || mdata.invoiceno || ""}`
-            : `Stone ${returnTypeLabel} return ${retPcsLabel}pcs / ${retCaratLabel}ct (full) — ref ${mdata.reference || mdata.invoiceno || ""}`,
+          description: isExport
+            ? "EXPORT CLOSING / DELETING"
+            : (isPartial
+              ? `Stone ${returnTypeLabel} return ${retPcsLabel}pcs / ${retCaratLabel}ct of ${returnTypeLabel.toLowerCase()} ${memoPcsLabel}pcs / ${memoCaratLabel}ct — ref ${mdata.reference || mdata.invoiceno || ""}`
+              : `Stone ${returnTypeLabel} return ${retPcsLabel}pcs / ${retCaratLabel}ct (full) — ref ${mdata.reference || mdata.invoiceno || ""}`),
           pcs: retPcs,
           carat: retCarat,
           amount: retAmount,
@@ -1345,7 +1382,9 @@ async function returnOutwardMemo(post, userContext = {}) {
         party: mdata.party,
         narretion: mdata.narretion,
         date: moment().format("YYYY-MM-DD HH:mm:ss"),
-        description: `Stone ${returnTypeLabel} return ${retPcsLabel}pcs / ${retCaratLabel}ct (full) — ref ${mdata.reference || mdata.invoiceno || ""}`,
+        description: isExport
+          ? "EXPORT CLOSING / DELETING"
+          : `Stone ${returnTypeLabel} return ${retPcsLabel}pcs / ${retCaratLabel}ct (full) — ref ${mdata.reference || mdata.invoiceno || ""}`,
         pcs: retPcs,
         carat: retCarat,
         amount: retAmount,
@@ -1472,7 +1511,7 @@ async function outwardMemoToSale(post, userContext = {}) {
       if (compRows?.[0]?.invoice_prefix) {
         compPrefix = compRows[0].invoice_prefix;
       }
-    } catch (_) {}
+    } catch (_) { }
 
     const incre_id = formatOutwardEntryNo(type, entrySeq);
     const invoice = formatOutwardInvoiceNo(type, invoiceSeq, compPrefix);
@@ -1679,9 +1718,9 @@ async function outwardMemoToSale(post, userContext = {}) {
         post.reference != null && String(post.reference).trim() !== ""
           ? post.reference
           : mdata.reference ||
-            (mdata.invoiceno != null && String(mdata.invoiceno).trim() !== ""
-              ? `Memo ${mdata.invoiceno}`
-              : ""),
+          (mdata.invoiceno != null && String(mdata.invoiceno).trim() !== ""
+            ? `Memo ${mdata.invoiceno}`
+            : ""),
       date: post.date || moment().format("YYYY-MM-DD"),
       invoicedate: post.invoicedate || post.date || moment().format("YYYY-MM-DD"),
       terms: post.terms != null ? post.terms : mdata.terms || "",
@@ -2180,7 +2219,27 @@ async function deleteOutwardStock(id, options = {}) {
           "UPDATE dai_product SET outward = '', visibility = 0, outward_parent = 0, site_upload = 0, rapnet_upload = 0 WHERE id = ?",
           [pid]
         );
-      } else {
+        const isExport = oData.type === "export";
+        const isSale = oData.type === "sale";
+        const histAction = isExport ? "export_close" : (isSale ? "sale_close" : "outward_cancel");
+        const histDesc = isExport
+          ? "EXPORT CLOSING / DELETING"
+          : (isSale
+            ? "sale Closing / deleting"
+            : `Outward ${oData.type || ""} cancelled: Restored to inventory`);
+
+        if ((isExport || isSale) && (Number(pdata.sold_carat) > 0 || Number(pdata.sold_pcs) > 0)) {
+          try {
+            await stockMovement.applyOutwardQty(
+              q,
+              pid,
+              isExport ? "export_close" : "sale_return",
+              Number(pdata.polish_pcs) || 0,
+              Number(pdata.polish_carat) || 0
+            );
+          } catch (_) {}
+        }
+
         // Standard standalone product restoration
         await q(
           "UPDATE dai_product SET outward = '', visibility = 1, is_uploadsite = 1, is_uploadrapnet = 1, site_upload = 0, rapnet_upload = 0 WHERE id = ?",
@@ -2189,11 +2248,11 @@ async function deleteOutwardStock(id, options = {}) {
         try {
           const histPayload = {
             product_id: pid,
-            action: "outward_cancel",
+            action: histAction,
             party: oData.party || "",
             narretion: oData.narretion || "",
             date: moment().format("YYYY-MM-DD HH:mm:ss"),
-            description: `Outward ${oData.type || ""} cancelled: Restored to inventory`,
+            description: histDesc,
             pcs: pdata.polish_pcs || 0,
             carat: pdata.polish_carat || 0,
             amount: pdata.amount || 0,

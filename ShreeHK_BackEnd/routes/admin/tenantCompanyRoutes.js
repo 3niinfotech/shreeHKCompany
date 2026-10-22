@@ -143,7 +143,10 @@ tenantCompanyRouter.get("/admin/tenant-company", authenticateToken, isSuperAdmin
     await ensureLogoColumn();
     await ensureCompanyPrefixColumns();
     await ensureBranchSchema();
-    const { searchInput = "", branch_id: branchId } = req.query;
+    const { searchInput = "", branch_id: branchId, all = false } = req.query;
+    const userContext = buildUserContext(req);
+    const sessionCompanyId = Number(userContext.companyId) || 0;
+
     let sql = `
       SELECT ${COMPANY_SAFE_SELECT}, b.name AS branch_name, b.shortcutName AS branch_shortcut
       FROM company c
@@ -151,6 +154,13 @@ tenantCompanyRouter.get("/admin/tenant-company", authenticateToken, isSuperAdmin
     `;
     const params = [];
     const where = [];
+
+    // Filter to only active company context unless explicitly asked for all
+    if (!all && sessionCompanyId > 0) {
+      where.push("c.id = ?");
+      params.push(sessionCompanyId);
+    }
+
     if (searchInput) {
       where.push("(c.name LIKE ? OR c.address LIKE ? OR c.number LIKE ?)");
       const term = `%${searchInput}%`;

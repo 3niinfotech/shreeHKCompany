@@ -3,9 +3,9 @@ import { Table } from "antd";
 
 const getRowKey = (record) => String(record.id);
 const TABLE_LOCALE = { emptyText: "No data found" };
-/** Header (~40) + footer totals bar (~48) — body must not paint over footer */
+/** Header (~40) + footer totals bar (~35) — calibrated for 582px body height */
 const TABLE_HEADER_RESERVE = 40;
-const TABLE_FOOTER_RESERVE = 48;
+const TABLE_FOOTER_RESERVE = 35;
 const TABLE_BODY_MIN_HEIGHT = 160;
 
 const InventoryTableSection = React.memo(function InventoryTableSection({

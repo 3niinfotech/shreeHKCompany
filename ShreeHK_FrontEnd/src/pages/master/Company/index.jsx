@@ -400,7 +400,7 @@ const CompanyPage = () => {
                 title="Party"
                 columns={columns}
                 dataSource={combinedData}
-                loading={isLoading && offset === 0}
+                loading={(isLoading || isFetching) && offset === 0}
                 loadingMore={isFetching && offset > 0}
                 onAdd={handleAddClick}
                 onEdit={handleEditClick}

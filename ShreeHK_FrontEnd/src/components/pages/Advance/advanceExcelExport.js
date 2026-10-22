@@ -8,7 +8,7 @@ import dayjs from "dayjs";
  * @param {Array} records Array of advance records
  * @param {Function} resolvePartyName Optional function to resolve party ID to party name
  */
-export async function exportAdvanceExcel(records = [], resolvePartyName) {
+export async function exportAdvanceExcel(records = [], resolvePartyName, resolveBookName) {
   if (!records || records.length === 0) {
     toastWarning("No advance payment records to export");
     return;
@@ -114,7 +114,7 @@ export async function exportAdvanceExcel(records = [], resolvePartyName) {
 
       const invoiceStr = item.invoice || item.invoice_id || "";
       const partyStr = item.party_name || (resolvePartyName ? resolvePartyName(item.party) : item.party) || "";
-      const bookStr = item.book || item.booktype || "";
+      const bookStr = item.book_name || (resolveBookName ? resolveBookName(item.book, item) : item.book) || item.booktype || "";
       const typeStr = item.type ? String(item.type).toUpperCase() : "";
 
       const rawAmount = item.amount != null && item.amount !== "" ? Number(item.amount) : null;

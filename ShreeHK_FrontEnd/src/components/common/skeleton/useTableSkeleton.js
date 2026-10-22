@@ -27,7 +27,6 @@ export default function useTableSkeleton({
     showOverlay,
     columns: showSkeleton ? skeleton.columns : columns,
     dataSource: showSkeleton ? skeleton.dataSource : safeData,
-    /** Never use Ant Design table spin — skeleton or stale rows only */
-    tableLoading: false,
+    tableLoading: Boolean(showOverlay),
   };
 }

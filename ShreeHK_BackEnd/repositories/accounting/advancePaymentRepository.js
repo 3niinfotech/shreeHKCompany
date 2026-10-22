@@ -45,15 +45,22 @@ async function getAdvancePaymentsByCompany(companyId, limit = null, offset = 0) 
              WHERE (a.party = CAST(p.id AS CHAR) OR a.party = p.name)
                AND (p.company = ? OR p.company IS NULL)
              LIMIT 1
-           ) AS party_name
+           ) AS party_name,
+           (
+             SELECT bk.book
+             FROM dai_book bk
+             WHERE (a.book = CAST(bk.id AS CHAR) OR a.book = bk.book)
+               AND (bk.company = ? OR bk.company IS NULL)
+             LIMIT 1
+           ) AS book_name
     FROM acc_advance a
     WHERE (a.deleted = 0 OR a.deleted IS NULL) AND a.company = ?
     ORDER BY a.id DESC
     ${limit != null ? "LIMIT ? OFFSET ?" : ""}
   `;
   const params = limit != null
-    ? [companyId, companyId, Number(limit), Number(offset) || 0]
-    : [companyId, companyId];
+    ? [companyId, companyId, companyId, Number(limit), Number(offset) || 0]
+    : [companyId, companyId, companyId];
   return queryAsync(sql, params);
 }
 

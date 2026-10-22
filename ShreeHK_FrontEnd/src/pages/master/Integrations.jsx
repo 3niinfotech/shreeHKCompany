@@ -8,6 +8,7 @@ import { SkuLink } from "../../hooks/useSkuModalAction";
 import ExportExcelButton from "../../components/common/ExportExcelButton";
 import { exportReportToExcel } from "../../utils/reportExcelExport";
 import { toastSuccess } from "../../utils/toastNotify";
+import LabIntegrationTab from "./components/LabIntegrationTab";
 
 const { Title, Text } = Typography;
 
@@ -109,6 +110,11 @@ const Integrations = () => {
   ];
 
   const items = [
+    {
+      key: "lab_providers",
+      label: "Diamond Lab APIs (GIA / IGI)",
+      children: <LabIntegrationTab />,
+    },
     {
       key: "gia",
       label: "GIA Lookup",

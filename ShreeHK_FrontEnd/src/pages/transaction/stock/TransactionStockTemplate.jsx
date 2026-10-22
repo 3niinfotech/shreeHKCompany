@@ -1440,7 +1440,7 @@ const TransactionStockTemplate = ({
                   }}
                 >
                   <RollbackOutlined />
-                  {actions.returnBtnText || 'Return'}
+                  {displayType === 'export' ? 'Export Close' : (actions.returnBtnText || 'Return')}
                 </button>
               )}
               {actions.showMemoToSale && (

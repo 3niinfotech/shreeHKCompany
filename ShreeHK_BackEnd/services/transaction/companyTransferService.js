@@ -307,8 +307,9 @@ const companyTransferService = {
         const origCarat = Number(stone.polish_carat || 0);
         let remPcs = Math.max(0, origPcs - item.pcs);
         const remCarat = Math.max(0, origCarat - item.carat);
+        const isFullTransfer = remCarat <= 0.0001;
 
-        if (remCarat <= 0.0001) {
+        if (isFullTransfer) {
           // Fully transferred
           await queryWith(
             q,

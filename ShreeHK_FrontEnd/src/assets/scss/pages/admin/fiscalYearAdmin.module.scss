@@ -4,17 +4,13 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+  padding: 0 20px 16px;
   box-sizing: border-box;
-  background: var(--color-page-bg);
-}
+  background: var(--color-page-bg, #f1f5f9);
 
-.infoAlert {
-  margin: 4px;
-  border-radius: 6px;
-
-  :global(.ant-alert) {
-    border-radius: 6px;
+  @media (max-width: 768px) {
+    padding: 0 12px 12px;
   }
 }
 
@@ -36,24 +32,24 @@
 .formCard,
 .tableCard {
   width: 100%;
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  box-shadow: none;
-  background: var(--color-card-bg, #fff);
+  border-radius: 10px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  background: var(--color-card-bg, #ffffff);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 
   :global(.ant-card-head) {
-    border-bottom: 1px solid var(--color-border);
-    min-height: 48px;
-    padding: 0 14px;
-    background: var(--color-bg-muted, #f7fafc);
+    border-bottom: 1px solid var(--color-border, #e2e8f0);
+    min-height: 52px;
+    padding: 0 18px;
+    background: var(--color-card-bg, #ffffff);
   }
 
   :global(.ant-card-head-title) {
-    font-weight: 650;
-    font-size: 13px;
-    padding: 10px 0;
+    padding: 12px 0;
   }
 
   :global(.ant-card-body) {
@@ -61,13 +57,13 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
-    padding: 14px;
   }
 }
 
 .formCard {
   :global(.ant-card-body) {
-    padding: 14px 14px 16px;
+    padding: 18px 20px 20px;
+    overflow-y: auto;
   }
 }
 
@@ -77,8 +73,46 @@
   }
 }
 
+.cardHeaderTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--color-text-heading, #0f172a);
+  letter-spacing: -0.01em;
+}
+
+.headerIconWrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--color-primary-pale, rgba(14, 98, 81, 0.08));
+  color: var(--color-primary, #0e6251);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.countBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-primary, #0e6251);
+  background: var(--color-primary-pale, rgba(14, 98, 81, 0.1));
+  border: 1px solid var(--color-primary-light, rgba(14, 98, 81, 0.25));
+  margin-left: 2px;
+}
+
 .createForm {
-  flex: 1;
   display: flex;
   flex-direction: column;
 
@@ -88,7 +122,36 @@
 
   :global(.ant-form-item-label > label) {
     font-weight: 600;
+    font-size: 12.5px;
+    color: var(--color-text-heading, #1e293b);
+  }
+
+  :global(.ant-input),
+  :global(.ant-picker) {
+    height: 38px;
+    border-radius: 6px;
+    border-color: var(--color-border, #cbd5e1);
     font-size: 13px;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: var(--color-primary, #0e6251);
+    }
+
+    &:focus,
+    &.ant-picker-focused {
+      border-color: var(--color-primary, #0e6251);
+      box-shadow: 0 0 0 2px var(--color-primary-pale, rgba(14, 98, 81, 0.15));
+    }
+  }
+
+  :global(.ant-input-prefix) {
+    margin-right: 8px;
+    color: var(--color-primary, #0e6251);
+  }
+
+  :global(.ant-picker-suffix) {
+    color: var(--color-primary, #0e6251);
   }
 }
 
@@ -97,29 +160,48 @@
 }
 
 .createBtn {
-  margin-top: auto;
+  margin-top: 8px;
   border-radius: 6px;
-  height: 38px;
-  font-weight: 600;
-}
-
-.tableTitle {
-  width: 100%;
-}
-
-.countBadge {
+  height: 40px;
+  font-weight: 650;
+  font-size: 13px;
+  background: var(--color-primary, #0e6251) !important;
+  border-color: var(--color-primary, #0e6251) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(14, 98, 81, 0.2);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 7px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 650;
-  color: var(--color-text-heading, #1f2a37);
-  background: var(--color-bg-muted, #edf2f7);
-  border: 1px solid var(--color-border);
+  gap: 8px;
+  transition: all 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background: var(--color-primary-dark, #0b4e40) !important;
+    border-color: var(--color-primary-dark, #0b4e40) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(14, 98, 81, 0.25);
+  }
+}
+
+.formNote {
+  margin-top: 18px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--color-bg-muted, #f8fafc);
+  border: 1px dashed var(--color-border, #e2e8f0);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-text-secondary, #64748b);
+
+  .noteIcon {
+    color: var(--color-primary, #0e6251);
+    font-size: 14px;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
 }
 
 .fiscalTable {
@@ -135,104 +217,188 @@
   }
 
   :global(.ant-table-thead > tr > th) {
-    font-weight: 650;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    color: var(--color-text-secondary, #6b7f8f);
-    background: var(--color-bg-muted, #f7fafc) !important;
-    white-space: nowrap;
-    border-bottom: 1px solid var(--color-border);
+    padding: 4px 8px !important;
+    height: 38px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.03em !important;
+    text-transform: uppercase !important;
+    color: #334155 !important;
+    background: #f2f6f9 !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+    line-height: 1.35 !important;
+
+    &::before {
+      display: none !important;
+    }
+
+    &:hover {
+      background: #e2e8f0 !important;
+    }
   }
 
   :global(.ant-table-tbody > tr > td) {
+    padding: 12px 16px;
     vertical-align: middle;
     font-size: 13px;
+    border-bottom: 1px solid var(--color-border, #f1f5f9);
+    transition: background 0.15s ease;
   }
 
   :global(.ant-table-tbody > tr:hover > td) {
-    background: var(--color-bg-muted, #f7fafc) !important;
+    background: var(--color-table-row-hover, rgba(14, 98, 81, 0.03)) !important;
   }
 
   :global(.ant-table-cell-fix-right) {
-    background: var(--color-bg-card, #fff) !important;
+    background: var(--color-card-bg, #ffffff) !important;
     right: 0 !important;
   }
 
   :global(.ant-table-thead .ant-table-cell-fix-right) {
-    background: var(--color-bg-muted, #f7fafc) !important;
+    background: #f2f6f9 !important;
   }
 
   :global(.ant-pagination) {
-    margin: 10px 14px !important;
+    margin: 14px 18px !important;
   }
+}
+
+.yearBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 650;
+  font-size: 12.5px;
+  color: var(--color-primary, #0e6251);
+  background: var(--color-primary-pale, rgba(14, 98, 81, 0.08));
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--color-primary-light, rgba(14, 98, 81, 0.2));
+  font-variant-numeric: tabular-nums;
+}
+
+.yearBadgeIcon {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.dateCell {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-body, #334155);
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .actionCol {
   text-align: center !important;
 }
 
-.yearCell {
-  font-weight: 600;
-  color: var(--color-text-heading, #1f2a37);
-  font-variant-numeric: tabular-nums;
+.actionWrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
 }
 
-.actionEdit {
-  color: var(--color-primary) !important;
+.actionBtnEdit {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary, #0e6251) !important;
+  background: var(--color-primary-pale, rgba(14, 98, 81, 0.08)) !important;
+  border: 1px solid var(--color-primary-light, rgba(14, 98, 81, 0.2)) !important;
+  padding: 0 !important;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: var(--color-primary, #0e6251) !important;
+    color: #ffffff !important;
+    border-color: var(--color-primary, #0e6251) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(14, 98, 81, 0.2);
+  }
+}
+
+.actionBtnDelete {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-danger, #ef4444) !important;
+  background: rgba(239, 68, 68, 0.08) !important;
+  border: 1px solid rgba(239, 68, 68, 0.2) !important;
+  padding: 0 !important;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: var(--color-danger, #ef4444) !important;
+    color: #ffffff !important;
+    border-color: var(--color-danger, #ef4444) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+  }
 }
 
 .editModal {
   :global(.ant-modal-content) {
-    border-radius: 10px;
-    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    border: 1px solid var(--color-border, #e2e8f0);
     overflow: hidden;
-    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.14);
+    padding: 0;
   }
 
   :global(.ant-modal-header) {
-    border-bottom: 1px solid var(--color-border);
-    padding: 14px 18px;
+    border-bottom: 1px solid var(--color-border, #e2e8f0);
+    padding: 16px 20px;
+    margin: 0;
+    background: var(--color-card-bg, #ffffff);
   }
 
   :global(.ant-modal-title) {
     font-weight: 650;
     font-size: 15px;
+    color: var(--color-text-heading, #0f172a);
   }
 
   :global(.ant-modal-body) {
-    padding: 16px 18px;
+    padding: 20px;
   }
 
   :global(.ant-modal-footer) {
-    border-top: 1px solid var(--color-border);
-    padding: 12px 18px;
+    border-top: 1px solid var(--color-border, #e2e8f0);
+    padding: 14px 20px;
+    margin: 0;
+    background: var(--color-bg-muted, #f8fafc);
   }
 }
 
 .editModalRoot {
-  :global(.ant-modal-footer .ant-btn-primary),
   :global(.ant-modal-footer .fiscal-save-btn) {
-    background: var(--color-success, #2f9e6a) !important;
-    border-color: var(--color-success, #2f9e6a) !important;
-    color: #fff !important;
-    box-shadow: none !important;
+    background: var(--color-primary, #0e6251) !important;
+    border-color: var(--color-primary, #0e6251) !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 4px rgba(14, 98, 81, 0.2) !important;
     font-weight: 600;
     border-radius: 6px;
+    height: 36px;
+    padding: 0 18px;
 
     &:hover:not(:disabled),
     &:focus:not(:disabled),
     &:active:not(:disabled) {
-      background: var(--color-success-dark, #247a52) !important;
-      border-color: var(--color-success-dark, #247a52) !important;
-      color: #fff !important;
+      background: var(--color-primary-dark, #0b4e40) !important;
+      border-color: var(--color-primary-dark, #0b4e40) !important;
+      color: #ffffff !important;
     }
   }
-}
-
-.modalActions {
-  justify-content: flex-end;
-  width: 100%;
 }
 
 @media (max-width: 1199px) {
@@ -247,6 +413,21 @@
 }
 
 [data-theme="dark"] {
+  .fiscalPage {
+    background: var(--color-page-bg);
+  }
+
+  .formCard,
+  .tableCard {
+    background: var(--color-card-bg);
+    border-color: var(--color-border);
+
+    :global(.ant-card-head) {
+      background: var(--color-card-bg);
+      border-color: var(--color-border);
+    }
+  }
+
   .fiscalTable {
     :global(.ant-table-thead > tr > th),
     :global(.ant-table-thead .ant-table-cell-fix-right) {
@@ -258,10 +439,8 @@
     }
   }
 
-  .formCard,
-  .tableCard {
-    :global(.ant-card-head) {
-      background: color-mix(in srgb, var(--color-card-bg) 70%, #000);
-    }
+  .formNote {
+    background: color-mix(in srgb, var(--color-card-bg) 80%, #000);
+    border-color: var(--color-border);
   }
 }

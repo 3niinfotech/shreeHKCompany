@@ -8,7 +8,7 @@ import NavBar from "./NavBar";
 import SkuActionModal from "../../hooks/useSkuModalAction";
 import styles from "../../assets/scss/layout/header.module.scss";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Gem, Menu, Wifi, WifiOff, RefreshCw, CheckCircle2, Database, Boxes, FileCheck, Send, ShoppingCart, ShoppingBag, Package, FlaskConical, ArrowLeftRight } from "lucide-react";
+import { Gem, Menu, Wifi, WifiOff, RefreshCw, CheckCircle2, Database, Boxes, FileCheck, Send, ShoppingCart, ShoppingBag, Package, FlaskConical, ArrowLeftRight, Import } from "lucide-react";
 import useAuthStore from "../../store/Auth.Store";
 import logo from "../../assets/loader/softWare_Header_white.svg";
 import { PAUSE_BACKGROUND_API } from "../../api/pauseBackgroundApi";
@@ -18,6 +18,7 @@ const { Header: AntHeader } = Layout;
 
 const HEADER_QUICK_ROUTES = {
   inventory: "/inventory/my-inventory",
+  import: "/transaction/inward/import",
   inMemo: "/transaction/in-memo",
   outMemo: "/transaction/out-memo",
   sale: "/transaction/sale",
@@ -338,7 +339,8 @@ const Header = ({
                 {/* <Gem size={20} strokeWidth={2.2} /> */}
                 <img src={logo} alt="logo" className={styles.logoImage} />
               </span>
-              {companyName ? <span className={styles.logoText}>{companyName}</span> : null}
+              {companyName ? "" : null}
+              {/*<span className={styles.logoText}>{companyName}</span> */}
             </Link>
           )}
 
@@ -375,6 +377,34 @@ const Header = ({
                 <span className={styles.topQuickLabel}>Inventory</span>
               </Button>
             </Tooltip>
+            <Tooltip title="Purchase">
+              <Button
+                icon={<ShoppingBag size={20} />}
+                className={`${styles.topQuickBtn} ${styles.outMemoBtn}`}
+                onMouseEnter={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.purchase)}
+                onFocus={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.purchase)}
+                onClick={() => {
+                  prefetchHeaderRoute(HEADER_QUICK_ROUTES.purchase);
+                  navigate(HEADER_QUICK_ROUTES.purchase);
+                }}
+              >
+                <span className={styles.topQuickLabel}>Purchase</span>
+              </Button>
+            </Tooltip>
+            <Tooltip title="Inward Import">
+              <Button
+                icon={<Import size={20} />}
+                className={`${styles.topQuickBtn} ${styles.importBtn}`}
+                onMouseEnter={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.import)}
+                onFocus={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.import)}
+                onClick={() => {
+                  prefetchHeaderRoute(HEADER_QUICK_ROUTES.import);
+                  navigate(HEADER_QUICK_ROUTES.import);
+                }}
+              >
+                <span className={styles.topQuickLabel}>Import</span>
+              </Button>
+            </Tooltip>
             <Tooltip title="In Memo">
               <Button
                 icon={<FileCheck size={20} />}
@@ -403,48 +433,6 @@ const Header = ({
                 <span className={styles.topQuickLabel}>OutMemo</span>
               </Button>
             </Tooltip>
-            <Tooltip title="Sale">
-              <Button
-                icon={<ShoppingCart size={20} />}
-                className={`${styles.topQuickBtn} ${styles.saleBtn}`}
-                onMouseEnter={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.sale)}
-                onFocus={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.sale)}
-                onClick={() => {
-                  prefetchHeaderRoute(HEADER_QUICK_ROUTES.sale);
-                  navigate(HEADER_QUICK_ROUTES.sale);
-                }}
-              >
-                <span className={styles.topQuickLabel}>Sale</span>
-              </Button>
-            </Tooltip>
-            <Tooltip title="Purchase">
-              <Button
-                icon={<ShoppingBag size={20} />}
-                className={`${styles.topQuickBtn} ${styles.outMemoBtn}`}
-                onMouseEnter={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.purchase)}
-                onFocus={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.purchase)}
-                onClick={() => {
-                  prefetchHeaderRoute(HEADER_QUICK_ROUTES.purchase);
-                  navigate(HEADER_QUICK_ROUTES.purchase);
-                }}
-              >
-                <span className={styles.topQuickLabel}>Purchase</span>
-              </Button>
-            </Tooltip>
-            <Tooltip title="Consignment">
-              <Button
-                icon={<Package size={20} />}
-                className={`${styles.topQuickBtn} ${styles.consignBtn}`}
-                onMouseEnter={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.outMemo)}
-                onFocus={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.outMemo)}
-                onClick={() => {
-                  prefetchHeaderRoute(HEADER_QUICK_ROUTES.outMemo);
-                  navigate(HEADER_QUICK_ROUTES.consign);
-                }}
-              >
-                <span className={styles.topQuickLabel}>Consign</span>
-              </Button>
-            </Tooltip>
             <Tooltip title="Lab">
               <Button
                 icon={<FlaskConical size={20} />}
@@ -459,18 +447,32 @@ const Header = ({
                 <span className={styles.topQuickLabel}>Lab</span>
               </Button>
             </Tooltip>
-            <Tooltip title="Inter Transfer">
+            <Tooltip title="Sale">
               <Button
-                icon={<ArrowLeftRight size={20} />}
-                className={`${styles.topQuickBtn} ${styles.transferBtn}`}
-                onMouseEnter={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.interTransfer)}
-                onFocus={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.interTransfer)}
+                icon={<ShoppingCart size={20} />}
+                className={`${styles.topQuickBtn} ${styles.saleBtn}`}
+                onMouseEnter={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.sale)}
+                onFocus={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.sale)}
                 onClick={() => {
-                  prefetchHeaderRoute(HEADER_QUICK_ROUTES.interTransfer);
-                  navigate(HEADER_QUICK_ROUTES.interTransfer);
+                  prefetchHeaderRoute(HEADER_QUICK_ROUTES.sale);
+                  navigate(HEADER_QUICK_ROUTES.sale);
                 }}
               >
-                <span className={styles.topQuickLabel}>Inter Transfer</span>
+                <span className={styles.topQuickLabel}>Sale</span>
+              </Button>
+            </Tooltip>
+            <Tooltip title="Consignment">
+              <Button
+                icon={<Package size={20} />}
+                className={`${styles.topQuickBtn} ${styles.consignBtn}`}
+                onMouseEnter={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.outMemo)}
+                onFocus={() => prefetchHeaderRoute(HEADER_QUICK_ROUTES.outMemo)}
+                onClick={() => {
+                  prefetchHeaderRoute(HEADER_QUICK_ROUTES.outMemo);
+                  navigate(HEADER_QUICK_ROUTES.consign);
+                }}
+              >
+                <span className={styles.topQuickLabel}>Consign</span>
               </Button>
             </Tooltip>
           </div>

@@ -174,8 +174,7 @@
   font-size: 13px;
 }
 
-.countBadge,
-.companyCountTag {
+.countBadge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -188,6 +187,21 @@
   color: var(--color-text-heading, #1f2a37);
   background: var(--color-bg-muted, #edf2f7);
   border: 1px solid var(--color-border);
+}
+
+.companyCountTag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  margin-inline-start: 4px;
 }
 
 .newRoleBtn {
@@ -300,14 +314,13 @@
   grid-row: 2;
   margin: 0;
   width: fit-content;
-  border: none;
   border-radius: 4px;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.3;
-  padding: 0 6px;
-  color: var(--color-text-secondary, #6b7f8f);
-  background: transparent;
+  padding: 1px 7px;
+  text-transform: uppercase;
+  letter-spacing: 0.25px;
 }
 
 .deleteRoleBtn {
@@ -334,7 +347,7 @@
 .companyCheckGroup,
 .createCompanyGroup {
   display: grid !important;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   width: 100%;
 

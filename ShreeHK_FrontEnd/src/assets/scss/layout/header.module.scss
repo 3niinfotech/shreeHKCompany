@@ -110,7 +110,7 @@
     .topQuickActions {
       display: inline-flex;
       align-items: center;
-      gap: 2px;
+      gap: 8px;
     }
 
     .topQuickBtn {
@@ -197,6 +197,7 @@
     }
 
     .myInventoryBtn,
+    .importBtn,
     .inMemoBtn,
     .outMemoBtn,
     .saleBtn,

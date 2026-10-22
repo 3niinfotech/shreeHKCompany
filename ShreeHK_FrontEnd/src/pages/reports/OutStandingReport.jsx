@@ -51,6 +51,9 @@ const OutStandingReport = () => {
         }
     );
 
+    const selectedType = Form.useWatch('type', form) || 'sale';
+    const isPurchase = selectedType === 'purchase';
+
     const handleSearch = (currentValues) => {
         const payload = {
             from: currentValues.dateRange?.[0]?.format('YYYY-MM-DD') || "",
@@ -77,11 +80,10 @@ const OutStandingReport = () => {
         {
             title: 'No',
             key: 'no',
-            width: 60,
+            width: 50,
             align: 'center',
             render: (_, __, idx) => idx + 1
         },
-        // { title: 'Entry No', dataIndex: 'entryno', key: 'entryno' },
         {
             title: 'Entry No',
             dataIndex: 'entryno',
@@ -89,23 +91,16 @@ const OutStandingReport = () => {
             align: 'center',
             render: (text, record) => (
                 <span
-                    style={{ color: cssVar('color-text-link'), cursor: 'pointer', fontWeight: 500, }}
+                    style={{ color: cssVar('color-text-link'), cursor: 'pointer', fontWeight: 500 }}
                     onClick={() => openModal(record)}
                 >
                     {text}
                 </span>
             )
         },
-        { title: 'Company', dataIndex: 'name', key: 'name', width: 250, align: 'center' },
+        { title: 'Company', dataIndex: 'name', key: 'name', width: 220, align: 'center' },
         { title: 'Invoice', dataIndex: 'invoiceno', key: 'invoiceno', align: 'center' },
         { title: 'Date', dataIndex: 'invoicedate', key: 'invoicedate', align: 'center', render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
-        {
-            title: 'Paid Amount',
-            dataIndex: 'paid_amount',
-            key: 'paid_amount',
-            align: 'right',
-            render: (val) => <span style={{ color: cssVar('color-success') }}>{Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-        },
         {
             title: 'Term',
             dataIndex: 'terms',
@@ -114,24 +109,49 @@ const OutStandingReport = () => {
             render: (val) => <Tag color="blue">{val || 0} Days</Tag>
         },
         { title: 'Due Date', dataIndex: 'due_date', key: 'due_date', align: 'center', render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
+        {
+            title: 'Pcs',
+            dataIndex: 'pcs',
+            key: 'pcs',
+            align: 'right',
+            render: (val) => Number(val || 0).toLocaleString()
+        },
+        {
+            title: 'Carat',
+            dataIndex: 'carat',
+            key: 'carat',
+            align: 'right',
+            render: (val) => Number(val || 0).toFixed(3)
+        },
         { title: 'Reference', dataIndex: 'reference', key: 'reference', align: 'center' },
+        {
+            title: 'Amount',
+            dataIndex: 'final_amount',
+            key: 'amount',
+            align: 'right',
+            render: (val, record) => (
+                <b style={{ color: cssVar('color-primary-dark') }}>
+                    {Number(val ?? record?.amount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </b>
+            ),
+        },
+        {
+            title: isPurchase ? 'Paid Amount' : 'Received Amount',
+            dataIndex: 'paid_amount',
+            key: isPurchase ? 'paid_amount' : 'received_amount',
+            align: 'right',
+            render: (val, record) => (
+                <span style={{ color: cssVar('color-success') }}>
+                    {Number(val ?? record?.received_amount ?? record?.paid_amount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </span>
+            )
+        },
         {
             title: 'Due Amount',
             dataIndex: 'due_amount',
             key: 'due_amount',
             align: 'right',
             render: (val) => <span style={{ color: cssVar('color-error') }}>{Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-        },
-        {
-            title: 'Final Amount',
-            dataIndex: 'final_amount',
-            key: 'final_amount',
-            align: 'right',
-            render: (val) => (
-                <b style={{ color: cssVar('color-primary-dark') }}>
-                    {Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </b>
-            ),
         },
     ];
 
@@ -163,7 +183,7 @@ const OutStandingReport = () => {
         },
         { title: 'Amount', key: 'final_amount', width: 14, align: 'center', type: 'n', total: true, decimals: 2, accessor: (row) => Number(row.final_amount) || 0 },
         { title: 'Reference', key: 'reference', width: 32, align: 'center' },
-        { title: 'Paid Amt.', key: 'paid_amount', width: 12, align: 'center', type: 'n', total: true, decimals: 2, accessor: (row) => Number(row.paid_amount) || 0 },
+        { title: isPurchase ? 'Paid Amt.' : 'Received Amt.', key: 'paid_amount', width: 14, align: 'center', type: 'n', total: true, decimals: 2, accessor: (row) => Number(row.paid_amount ?? row.received_amount) || 0 },
         { title: 'Due Amt.', key: 'due_amount', width: 14, align: 'center', type: 'n', total: true, decimals: 2, accessor: (row) => Number(row.due_amount) || 0 },
     ];
 

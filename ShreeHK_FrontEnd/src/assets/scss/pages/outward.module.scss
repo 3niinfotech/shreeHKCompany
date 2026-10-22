@@ -240,18 +240,36 @@
     }
 
     :global(.ant-table-thead > tr > th) {
-      background: var(--color-primary-light) !important;
-      color: var(--color-navy) !important;
-      font-weight: 600;
-      font-size: 13px;
-      border-bottom: 0.5px solid var(--color-border) !important;
+      padding: 4px 8px !important;
+      height: 38px !important;
+      font-size: 11px !important;
+      font-weight: 700 !important;
+      letter-spacing: 0.03em !important;
+      text-transform: uppercase !important;
+      color: #334155 !important;
+      background: #f2f6f9 !important;
+      border-bottom: 1px solid #e2e8f0 !important;
+      white-space: nowrap !important;
+      vertical-align: middle !important;
+      line-height: 1.35 !important;
+
+      &::before {
+        display: none !important;
+      }
+
+      &:hover {
+        background: #e2e8f0 !important;
+      }
     }
 
-    // Main table header — keep existing padding
+    // Main table header
     :global(.ant-table-header .ant-table-thead > tr > th),
     :global(.ant-table-header .ant-table-cell-fix-left),
     :global(.ant-table-header .ant-table-cell-fix-right) {
-      padding: 10px 8px !important;
+      padding: 4px 8px !important;
+      height: 38px !important;
+      background: #f2f6f9 !important;
+      color: #334155 !important;
     }
 
     // Main table row data — top/bottom padding reduced 60% (10px → 4px)
@@ -282,10 +300,15 @@
 
       :global(.ant-table-thead > tr > th),
       :global(.ant-table-thead > tr > th.ant-table-cell) {
-        background: var(--color-bg-muted) !important;
-        color: var(--color-text-body) !important;
-        font-weight: 600 !important;
-        font-size: 12px !important;
+        background: #f2f6f9 !important;
+        color: #334155 !important;
+        font-weight: 700 !important;
+        font-size: 11px !important;
+        letter-spacing: 0.03em !important;
+        text-transform: uppercase !important;
+        height: 38px !important;
+        padding: 4px 8px !important;
+        border-bottom: 1px solid #e2e8f0 !important;
       }
 
       :global(.ant-table-tbody > tr > td) {
@@ -294,12 +317,17 @@
       }
     }
 
-    // Child expanded table thead only — parent main thead stays primary-light
+    // Child expanded table thead
     :global(.ant-table-expanded-row) .innerTable {
 
       :global(.ant-table-thead > tr > th),
       :global(.ant-table-thead > tr > th.ant-table-cell) {
-        background: #DDD8F5 !important;
+        background: #f2f6f9 !important;
+        color: #334155 !important;
+        font-weight: 700 !important;
+        font-size: 11px !important;
+        letter-spacing: 0.03em !important;
+        text-transform: uppercase !important;
       }
     }
   }
@@ -385,9 +413,15 @@
       }
 
       :global(.ant-table-thead > tr > th.ant-table-cell) {
-        padding: 10px !important;
+        padding: 4px 8px !important;
+        height: 38px !important;
         vertical-align: middle !important;
-        background: #DDD8F5 !important;
+        background: #f2f6f9 !important;
+        color: #334155 !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.03em !important;
+        text-transform: uppercase !important;
       }
 
       :global(.ant-table-tbody > tr:not(.ant-table-measure-row) > td.ant-table-cell) {
@@ -1625,12 +1659,26 @@
   }
 
   :global(.ant-table-thead > tr > th) {
-    padding: 8px 12px !important;
-    font-size: 12px !important;
+    padding: 4px 8px !important;
+    height: 38px !important;
+    font-size: 11px !important;
     font-weight: 700 !important;
-    background: #ece8f8 !important;
-    color: var(--color-text-heading) !important;
-    border-bottom: 1px solid var(--color-border, #e8eaed) !important;
+    letter-spacing: 0.03em !important;
+    text-transform: uppercase !important;
+    background: #f2f6f9 !important;
+    color: #334155 !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+    line-height: 1.35 !important;
+
+    &::before {
+      display: none !important;
+    }
+
+    &:hover {
+      background: #e2e8f0 !important;
+    }
   }
 
   :global(.ant-table-tbody > tr > td) {

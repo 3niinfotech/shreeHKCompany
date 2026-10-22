@@ -544,7 +544,7 @@ const OutWord = () => {
 
                     <Space>
                         <Checkbox style={{ marginLeft: '15px' }}>Non-GIA Only</Checkbox>
-                        <Button type="primary" icon={<ReloadOutlined />} onClick={() => {
+                        <Button type="primary" icon={<ReloadOutlined />} loading={(outwardLoading || outwardFetching) && payload.page === 1} onClick={() => {
                             setHasMore(true);
                             if (payload.page === 1) {
                                 refetch();
@@ -598,7 +598,7 @@ const OutWord = () => {
                     <Table
                         columns={columns}
                         dataSource={mainTableData}
-                        loading={outwardLoading && payload.page === 1}
+                        loading={(outwardLoading || outwardFetching) && payload.page === 1}
                         rowKey="id"
                         className={styles.tableWrapper}
                         scroll={{ x: "max-content", y: tableHeight }}

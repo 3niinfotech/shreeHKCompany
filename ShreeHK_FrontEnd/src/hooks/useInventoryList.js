@@ -124,10 +124,12 @@ export default function useInventoryList({
   }, [productData, offset, mapRow]);
 
   const displayTableData = tableData.length > 0 ? tableData : cachedMappedRows;
+  const isListLoading = Boolean(isLoading || (isFetching && !isFetchingMore));
 
   return {
     tableData: displayTableData,
-    isLoading: isLoading && offset === 0 && displayTableData.length === 0,
+    isLoading: isListLoading,
+    isFetching,
     isFetchingMore,
     isError,
     error,

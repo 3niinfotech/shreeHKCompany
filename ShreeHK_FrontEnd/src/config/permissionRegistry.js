@@ -21,6 +21,9 @@ export const PAGE_ENTRIES = [
   { key: "master.attribute", label: "Attribute", path: "/master/attribute", moduleKey: "master" },
   { key: "master.refresh_stock", label: "Refresh Stock", path: "/master/refresh-stock", moduleKey: "master" },
   { key: "master.integrations", label: "Integrations", path: "/master/integrations", moduleKey: "master" },
+  { key: "lab.fetch", label: "Lab Certificate Fetch", path: "/transaction/inward", moduleKey: "master" },
+  { key: "lab.fetch.bulk", label: "Lab Bulk Certificate Fetch", path: "/transaction/inward", moduleKey: "master" },
+  { key: "lab.manage", label: "Lab Provider Management", path: "/master/integrations", moduleKey: "master" },
 
   { key: "inventory.my_inventory", label: "My Inventory", path: "/inventory/my-inventory", moduleKey: "inventory" },
   { key: "inventory.categorize", label: "Categorize", path: "/inventory/categorize-inventory", moduleKey: "inventory" },

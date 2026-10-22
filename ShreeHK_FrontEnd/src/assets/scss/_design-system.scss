@@ -802,7 +802,7 @@ span[class*="memoStatusTag"] {
 }
 
 // ---------------------------------------------------------------------------
-// Tables (all except inventory — see $inventory-table-selectors)
+// Tables (Universal Header Standard matching Diamond Inventory Table)
 // ---------------------------------------------------------------------------
 $inv-not: ":not(.diamond-inventory-table):not(.custom-ant-table):not(.erp-table):not(.parcel-erp-table)";
 
@@ -817,11 +817,142 @@ $inv-not: ":not(.diamond-inventory-table):not(.custom-ant-table):not(.erp-table)
   background: var(--color-card-bg);
 }
 
-.ant-table-wrapper#{$inv-not} .ant-table-thead>tr>th {
-  background: var(--color-table-header-bg) !important;
-  color: var(--color-table-header-text) !important;
-  font-weight: 600 !important;
-  border-bottom: var(--border-width-thin) solid var(--color-table-border) !important;
+// Universal Ant Table Header (applied to all tables across the project)
+.ant-table-wrapper .ant-table-thead > tr > th.ant-table-cell,
+.ant-table-wrapper .ant-table-thead > tr > th,
+.ant-table .ant-table-thead > tr > th,
+.custom-warning-table-wrapper.custom-warning-table-wrapper .ant-table-thead > tr > th,
+.assigned-invoice-compact-table.assigned-invoice-compact-table .ant-table-thead > tr > th {
+  padding: 4px 8px !important;
+  height: 38px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.03em !important;
+  text-transform: uppercase !important;
+  color: #334155 !important;
+  background: #f2f6f9 !important;
+  border-color: var(--color-table-border, #e2e8f0) !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  white-space: nowrap !important;
+  vertical-align: middle !important;
+  line-height: 1.35 !important;
+  box-sizing: border-box !important;
+  transition: background 0.18s ease, color 0.18s ease;
+
+  &::before {
+    display: none !important;
+  }
+
+  &:hover {
+    background: #e2e8f0 !important;
+  }
+
+  .ant-table-column-title {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .ant-table-column-sorters {
+    display: inline-flex;
+    align-items: center;
+    justify-content: inherit;
+    gap: 4px;
+    width: 100%;
+    padding: 0;
+  }
+
+  .ant-table-column-sorter {
+    margin-inline-start: 2px;
+    color: color-mix(in srgb, #334155 45%, transparent) !important;
+    transition: color 0.15s ease;
+
+    &-inner {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      line-height: 1;
+    }
+  }
+
+  .ant-table-column-sorter-up.active,
+  .ant-table-column-sorter-down.active {
+    color: #334155 !important;
+  }
+
+  .ant-table-filter-trigger {
+    margin-inline-start: 4px;
+    color: color-mix(in srgb, #334155 45%, transparent) !important;
+    transition: color 0.15s ease;
+
+    &:hover {
+      color: #334155 !important;
+    }
+  }
+}
+
+// Right-aligned headers
+.ant-table-wrapper .ant-table-thead > tr > th.ant-table-cell-align-right {
+  .ant-table-column-sorters {
+    justify-content: flex-end;
+  }
+}
+
+// Fixed column cells in header
+.ant-table-wrapper .ant-table-thead .ant-table-cell-fix-left,
+.ant-table-wrapper .ant-table-thead .ant-table-cell-fix-right,
+.ant-table .ant-table-thead .ant-table-cell-fix-left,
+.ant-table .ant-table-thead .ant-table-cell-fix-right {
+  z-index: 4 !important;
+  background: #f2f6f9 !important;
+  box-shadow: var(--shadow-md);
+}
+
+// Selection column in header
+.ant-table-wrapper .ant-table-thead .ant-table-selection-column,
+.ant-table .ant-table-thead .ant-table-selection-column {
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+
+[data-theme="dark"] {
+  .ant-table-wrapper .ant-table-thead > tr > th.ant-table-cell,
+  .ant-table-wrapper .ant-table-thead > tr > th,
+  .ant-table .ant-table-thead > tr > th,
+  .custom-warning-table-wrapper.custom-warning-table-wrapper .ant-table-thead > tr > th,
+  .assigned-invoice-compact-table.assigned-invoice-compact-table .ant-table-thead > tr > th {
+    background: var(--color-table-inventory-header-bg, #1e293b) !important;
+    color: var(--color-table-header-text, #f1f5f9) !important;
+    border-color: var(--color-border) !important;
+    border-bottom: 1px solid var(--color-border) !important;
+
+    &:hover {
+      background: var(--color-table-inventory-header-hover, #334155) !important;
+    }
+
+    .ant-table-column-sorter {
+      color: color-mix(in srgb, var(--color-table-header-text, #f1f5f9) 45%, transparent) !important;
+    }
+
+    .ant-table-column-sorter-up.active,
+    .ant-table-column-sorter-down.active {
+      color: var(--color-table-header-text, #f1f5f9) !important;
+    }
+
+    .ant-table-filter-trigger {
+      color: color-mix(in srgb, var(--color-table-header-text, #f1f5f9) 45%, transparent) !important;
+
+      &:hover {
+        color: var(--color-table-header-text, #f1f5f9) !important;
+      }
+    }
+  }
+
+  .ant-table-wrapper .ant-table-thead .ant-table-cell-fix-left,
+  .ant-table-wrapper .ant-table-thead .ant-table-cell-fix-right,
+  .ant-table .ant-table-thead .ant-table-cell-fix-left,
+  .ant-table .ant-table-thead .ant-table-cell-fix-right {
+    background: var(--color-table-inventory-header-bg, #1e293b) !important;
+  }
 }
 
 .ant-table-wrapper#{$inv-not} .ant-table-tbody>tr>td {

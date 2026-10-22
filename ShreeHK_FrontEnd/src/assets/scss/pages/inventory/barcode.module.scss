@@ -90,16 +90,26 @@ $toolbar-gap: 8px;
                 font-size: 11px;
 
                 .ant-table-thead>tr>th {
-                    background: $header-bg !important;
-                    color: $header-fg !important;
-                    font-weight: 600;
-                    font-size: 11px;
-                    padding: 4px 6px !important;
-                    border-color: var(--color-text-heading) !important;
-                }
+                    padding: 4px 8px !important;
+                    height: 38px !important;
+                    font-size: 11px !important;
+                    font-weight: 700 !important;
+                    letter-spacing: 0.03em !important;
+                    text-transform: uppercase !important;
+                    color: #334155 !important;
+                    background: #f2f6f9 !important;
+                    border-bottom: 1px solid #e2e8f0 !important;
+                    white-space: nowrap !important;
+                    vertical-align: middle !important;
+                    line-height: 1.35 !important;
 
-                .ant-table-thead>tr:first-child>th {
-                    border-bottom-color: var(--color-text-heading) !important;
+                    &::before {
+                        display: none !important;
+                    }
+
+                    &:hover {
+                        background: #e2e8f0 !important;
+                    }
                 }
 
                 .ant-table-tbody>tr>td {

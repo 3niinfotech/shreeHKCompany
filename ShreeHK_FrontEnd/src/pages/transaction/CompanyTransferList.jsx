@@ -805,7 +805,7 @@ const CompanyTransferList = () => {
             columns={skeletonAwareColumns}
             dataSource={skeletonAwareTransfers}
             rowKey={showSkeleton ? '_skeletonKey' : 'id'}
-            loading={tableLoading}
+            loading={showSkeleton ? false : Boolean(tableLoading || loading)}
             className={styles.tableWrapper}
             size="small"
             bordered

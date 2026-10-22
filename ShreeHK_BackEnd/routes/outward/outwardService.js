@@ -997,6 +997,7 @@ async function holdProducts(post, userContext = {}) {
   const ids = Array.isArray(post.ids) ? post.ids : [];
   const holdDate = post.date != null ? String(post.date).trim() : "";
   const description = post.description != null ? String(post.description) : "";
+  const trimmedDesc = description ? String(description).trim() : "";
   const userId = userContext.userId || userContext.user_id || DEFAULT_USER_ID;
   const companyId = userContext.companyId || DEFAULT_COMPANY_ID;
   const lookupCompanyIds = await resolveLookupCompanyIds(companyId);
@@ -1030,8 +1031,8 @@ async function holdProducts(post, userContext = {}) {
     skuList.push(productBefore.sku);
 
     const historyDescription = status
-      ? "Stone put on Hold for while."
-      : `Stone put unhold and show in inventory. User Description:${description}`;
+      ? (trimmedDesc ? `Stone put on Hold for while. User Description: ${trimmedDesc}` : "Stone put on Hold for while.")
+      : `Stone put unhold and show in inventory. User Description:${trimmedDesc}`;
 
     const beforeSnap = buildFullProductAuditSnapshot(productBefore);
     const afterSnap = buildFullProductAuditSnapshot(productAfter);
@@ -1066,13 +1067,13 @@ async function holdProducts(post, userContext = {}) {
       return { ok: false, message: err.message || String(err) };
     }
 
-    // L1174–1191: dai_hold when status=1 and date provided
-    if (status === 1 && holdDate !== "") {
+    // L1174–1191: dai_hold when status=1 and date or description provided
+    if (status === 1 && (holdDate !== "" || trimmedDesc !== "")) {
       try {
         await holdRepository.upsertHoldRow(q, {
           product_id: productId,
-          date: holdDate,
-          description,
+          date: holdDate || now.slice(0, 10),
+          description: trimmedDesc,
           user: userId,
         });
       } catch (err) {
@@ -1094,8 +1095,8 @@ async function holdProducts(post, userContext = {}) {
   const alsku = skuList.join(",");
   const alpid = pidList.join(",");
   const trackDescription = status
-    ? `${alsku} put on Hold for while.`
-    : `${alsku} put unhold and show in inventory. User Description:${description}`;
+    ? (trimmedDesc ? `${alsku} put on Hold for while. User Description: ${trimmedDesc}` : `${alsku} put on Hold for while.`)
+    : `${alsku} put unhold and show in inventory. User Description:${trimmedDesc}`;
 
   try {
     await addUserTrackTx(q, {

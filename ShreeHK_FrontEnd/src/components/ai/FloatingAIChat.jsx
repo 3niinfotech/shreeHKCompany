@@ -208,10 +208,9 @@ const FloatingAIChat = () => {
         <span className={styles.fabLabel}>Diamond AI Assistant (Cmd+K)</span>
         <Button
           type="primary"
-          shape="circle"
           size="small"
           className={styles.chatFab}
-          icon={<Sparkles size={20} strokeWidth={1.75} />}
+          icon={<Sparkles size={16} strokeWidth={1.8} />}
           onClick={() => setOpen(true)}
           aria-label="Open Diamond Inventory AI"
         />
@@ -350,25 +349,28 @@ const FloatingAIChat = () => {
                 </div>
 
                 <div className={styles.promptGrid}>
-                  {QUICK_PROMPTS.map(({ icon: Icon, label, text, color, bg, border }) => (
-                    <div
-                      key={text}
-                      className={styles.actionCard}
-                      onClick={() => sendMessage(text)}
-                      style={{ '--card-accent': color, '--card-bg': bg, '--card-border': border }}
-                    >
-                      <div className={styles.actionCardLeft}>
-                        <div className={styles.actionIconBox} style={{ color, backgroundColor: bg, borderColor: border }}>
-                          <Icon size={16} />
+                  {QUICK_PROMPTS.map((prompt) => {
+                    const PromptIcon = prompt.icon;
+                    return (
+                      <div
+                        key={prompt.text}
+                        className={styles.actionCard}
+                        onClick={() => sendMessage(prompt.text)}
+                        style={{ '--card-accent': prompt.color, '--card-bg': prompt.bg, '--card-border': prompt.border }}
+                      >
+                        <div className={styles.actionCardLeft}>
+                          <div className={styles.actionIconBox} style={{ color: prompt.color, backgroundColor: prompt.bg, borderColor: prompt.border }}>
+                            <PromptIcon size={16} />
+                          </div>
+                          <div className={styles.actionTextGroup}>
+                            <span className={styles.actionTag} style={{ color: prompt.color }}>{prompt.label}</span>
+                            <span className={styles.actionPromptText}>{prompt.text}</span>
+                          </div>
                         </div>
-                        <div className={styles.actionTextGroup}>
-                          <span className={styles.actionTag} style={{ color }}>{label}</span>
-                          <span className={styles.actionPromptText}>{text}</span>
-                        </div>
+                        <ArrowRight size={15} className={styles.actionArrow} />
                       </div>
-                      <ArrowRight size={15} className={styles.actionArrow} />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ) : (

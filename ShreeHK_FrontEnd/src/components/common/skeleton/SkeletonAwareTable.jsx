@@ -35,7 +35,7 @@ export default function SkeletonAwareTable({
       columns={skColumns}
       dataSource={skData}
       rowKey={resolvedRowKey}
-      loading={tableLoading}
+      loading={showSkeleton ? false : Boolean(tableLoading || loading || rest.loading)}
       rowSelection={showSkeleton ? undefined : rest.rowSelection}
       expandable={showSkeleton ? undefined : rest.expandable}
       onRow={showSkeleton ? undefined : rest.onRow}

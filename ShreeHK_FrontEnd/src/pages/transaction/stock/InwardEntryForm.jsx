@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Form, Input, Button, Table, InputNumber } from 'antd';
-import { RefreshCcw, PlusCircle, Trash2, CheckCircle } from 'lucide-react';
+import { Form, Input, Button, Table, InputNumber, Tag, Select } from 'antd';
+import { RefreshCcw, PlusCircle, Trash2, CheckCircle, Sparkles } from 'lucide-react';
 import dayjs from 'dayjs';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { toastApiError } from '../../../utils/toastNotify';
+import { api } from '../../../api/client/axiosInstance';
 import DynamicForm from '../../../components/common/ui/DynamicFormField';
 import { useFetchApi, usePostApiRequest } from '../../../api/ApiFunction';
 import { ENDPOINTS } from '../../../api/endpoints';
@@ -153,6 +154,7 @@ const InwardEntryForm = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [existData, setExistData] = useState([]);
   const [checkMessage, setCheckMessage] = useState('');
+  const [fetchingRowKeys, setFetchingRowKeys] = useState({});
 
   const {
     form,
@@ -162,6 +164,110 @@ const InwardEntryForm = ({
     removeRow,
     updateTableValue,
   } = useFormHandleChange({}, createInitialLineItems(initialLineCount));
+
+  const handleFetchLabForRow = async (record) => {
+    const reportNo = String(record.reportNo || '').trim();
+    if (!reportNo) {
+      toast.warning('Please enter a Report / Certificate number first.');
+      return;
+    }
+    const lab = record.lab || 'GIA';
+    setFetchingRowKeys((prev) => ({ ...prev, [record.key]: true }));
+    try {
+      const response = await api.post(ENDPOINTS.labIntegration.fetch, {
+        lab,
+        reportNumber: reportNo,
+      });
+
+      const resData = response.data;
+      if (resData.status && resData.data) {
+        const labData = resData.data;
+        const mapped = labData.erpMapped || {};
+        const isMock = Boolean(resData.isMock);
+
+        if (isMock) {
+          // STRICT RULE: Mock responses do NOT auto-fill specs, only display MOCK DATA badge for preview
+          setItems((prevItems) =>
+            prevItems.map((item) => {
+              if (item.key === record.key) {
+                return {
+                  ...item,
+                  isMock: true,
+                  mockPreviewData: labData,
+                };
+              }
+              return item;
+            })
+          );
+          toast.info(`Mock certificate preview received for #${reportNo} (Simulation mode: form values not modified)`);
+          return;
+        }
+
+        const changedMap = {
+          shape: true,
+          color: true,
+          clarity: true,
+          cut: true,
+          polish: true,
+          symm: true,
+          floIntensity: true,
+          tablePer: true,
+          depthPer: true,
+          measurements: true,
+          girdle: true,
+        };
+
+        const newCarat = (!record.pCarat || Number(record.pCarat) === 0) && labData.carat
+          ? Number(labData.carat)
+          : record.pCarat;
+        if (newCarat && newCarat !== record.pCarat) {
+          changedMap.pCarat = true;
+        }
+
+        const price = Number(record.price) || 0;
+        const amount = newCarat > 0 && price > 0 ? Math.round(newCarat * price * 100) / 100 : record.amount;
+
+        setItems((prevItems) =>
+          prevItems.map((item) => {
+            if (item.key === record.key) {
+              return {
+                ...item,
+                lab: labData.lab || item.lab || 'GIA',
+                shape: mapped.shape || item.shape,
+                color: mapped.color || item.color,
+                clarity: mapped.clarity || item.clarity,
+                cut: mapped.cut || item.cut,
+                polish: mapped.polish || item.polish,
+                symm: mapped.symmentry || item.symm,
+                floIntensity: mapped.f_intensity || item.floIntensity,
+                tablePer: mapped.table_pc || item.tablePer,
+                depthPer: mapped.depth_pc || item.depthPer,
+                measurements: mapped.mesurment || item.measurements,
+                girdle: mapped.gridle || item.girdle,
+                pCarat: newCarat,
+                amount,
+                isMock: false,
+                labVerified: true,
+                changedByLab: {
+                  ...(item.changedByLab || {}),
+                  ...changedMap,
+                },
+              };
+            }
+            return item;
+          })
+        );
+
+        toast.success(`Official lab specs loaded for #${reportNo}`);
+      } else {
+        toast.error(resData.message || 'Certificate not found.');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to fetch certificate from lab.');
+    } finally {
+      setFetchingRowKeys((prev) => ({ ...prev, [record.key]: false }));
+    }
+  };
 
   const queryClient = useQueryClient();
   const { data: companyData, isLoading: isCompanyLoading } = useFetchApi('GetCompany', ENDPOINTS.company.options);
@@ -255,32 +361,36 @@ const InwardEntryForm = ({
 
   const handleUpdateCell = (key, field, value) => {
     updateTableValue(key, field, value, (item) => {
+      let updatedItem = { ...item };
+      if (updatedItem.changedByLab && updatedItem.changedByLab[field]) {
+        updatedItem.changedByLab = { ...updatedItem.changedByLab, [field]: false };
+      }
       if (field === 'rPcs') {
         return {
-          ...item,
+          ...updatedItem,
           rPcs: value,
         };
       }
       if (field === 'pPcs') {
         return {
-          ...item,
+          ...updatedItem,
           pPcs: value,
         };
       }
       if (field === 'pCarat' || field === 'price') {
-        const carat = field === 'pCarat' ? (value || 0) : (item.pCarat || 0);
-        const price = field === 'price' ? (value || 0) : (item.price || 0);
-        return { ...item, amount: Math.round(carat * price * 100) / 100 };
+        const carat = field === 'pCarat' ? (value || 0) : (updatedItem.pCarat || 0);
+        const price = field === 'price' ? (value || 0) : (updatedItem.price || 0);
+        return { ...updatedItem, amount: Math.round(carat * price * 100) / 100 };
       }
       if (field === 'amount') {
         const amount = value || 0;
-        const price = item.price || 0;
+        const price = updatedItem.price || 0;
         if (price > 0 && amount > 0) {
-          return { ...item, amount, pCarat: Math.round((amount / price) * 10000) / 10000 };
+          return { ...updatedItem, amount, pCarat: Math.round((amount / price) * 10000) / 10000 };
         }
-        return { ...item, amount };
+        return { ...updatedItem, amount };
       }
-      return item;
+      return updatedItem;
     });
   };
 
@@ -293,13 +403,27 @@ const InwardEntryForm = ({
             : field === 'price' ? !record.price || record.price <= 0
               : !record.amount || record.amount <= 0
     );
+    const isLabFilled = Boolean(record.changedByLab?.[field]);
     const inputW = wideLineFields
       ? (type === 'number' ? '100%' : '100%')
       : (type === 'number' ? '80px' : '100px');
+
+    const style = {
+      width: inputW,
+      ...(isLabFilled
+        ? {
+            backgroundColor: '#f0fdf4',
+            borderColor: '#86efac',
+            color: '#15803d',
+            transition: 'background-color 0.3s ease, border-color 0.3s ease',
+          }
+        : {}),
+    };
+
     return type === 'number' ? (
-      <InputNumber status={hasError ? 'error' : ''} value={record[field]} onChange={(val) => handleUpdateCell(record.key, field, val)} style={{ width: inputW }} />
+      <InputNumber status={hasError ? 'error' : ''} value={record[field]} onChange={(val) => handleUpdateCell(record.key, field, val)} style={style} />
     ) : (
-      <Input status={hasError ? 'error' : ''} value={record[field]} onChange={(e) => handleUpdateCell(record.key, field, e.target.value)} placeholder={placeholder} style={{ width: inputW }} />
+      <Input status={hasError ? 'error' : ''} value={record[field]} onChange={(e) => handleUpdateCell(record.key, field, e.target.value)} placeholder={placeholder} style={style} />
     );
   };
 
@@ -360,8 +484,64 @@ const InwardEntryForm = ({
     { title: 'Amount', width: w.amount, align: 'right', render: (_, r) => renderInput(r, 'amount', 'Amount', 'number') },
     { title: 'Main Color', width: w.mainColor, render: (_, r) => renderInput(r, 'mainColor', 'Color') },
     { title: 'LOC', width: w.loc, render: (_, r) => renderInput(r, 'loc', 'LOC') },
-    { title: 'Lab', width: w.lab, render: (_, r) => renderInput(r, 'lab', 'Lab') },
-    { title: 'Report No', width: w.reportNo, render: (_, r) => renderInput(r, 'reportNo', 'Report') },
+    {
+      title: 'Lab',
+      width: w.lab,
+      render: (_, r) => (
+        <Select
+          value={r.lab || 'GIA'}
+          onChange={(val) => handleUpdateCell(r.key, 'lab', val)}
+          style={{ width: '100%' }}
+          options={[
+            { value: 'GIA', label: 'GIA' },
+            { value: 'IGI', label: 'IGI' },
+            { value: 'HRD', label: 'HRD' },
+            { value: 'NONE', label: 'None' },
+          ]}
+        />
+      ),
+    },
+    {
+      title: 'Report No',
+      width: wideLineFields ? 220 : 180,
+      render: (_, r) => {
+        const isFetching = Boolean(fetchingRowKeys[r.key]);
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Input
+              value={r.reportNo}
+              onChange={(e) => handleUpdateCell(r.key, 'reportNo', e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleFetchLabForRow(r);
+                }
+              }}
+              placeholder="Report #"
+              style={{
+                flex: 1,
+                ...(r.changedByLab?.reportNo ? { backgroundColor: '#f0fdf4', borderColor: '#86efac' } : {}),
+              }}
+            />
+            <Button
+              size="small"
+              type="primary"
+              ghost
+              icon={<Sparkles size={13} />}
+              loading={isFetching}
+              onClick={() => handleFetchLabForRow(r)}
+              title="Fetch from Lab registry (or press Enter)"
+              style={{ padding: '0 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            />
+            {r.isMock && (
+              <Tag color="orange" style={{ margin: 0, fontSize: 9, lineHeight: '16px', padding: '0 4px' }} title="Mock Provider Data">
+                MOCK
+              </Tag>
+            )}
+          </div>
+        );
+      },
+    },
     { title: 'Shape', width: w.shape, render: (_, r) => renderInput(r, 'shape', 'Shape') },
     { title: 'Clarity', width: w.clarity, render: (_, r) => renderInput(r, 'clarity', 'Clarity') },
     {

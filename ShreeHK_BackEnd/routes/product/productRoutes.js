@@ -899,9 +899,15 @@ productRouter.post("/product/export", authenticateToken, async (req, res) => {
       });
     }
 
+    const userContext = buildUserContext(req);
+    const branchCompanyIds = userContext.isSuperAdmin
+      ? null
+      : await resolveListCompanyIds(userContext, userContext.companyId);
+
     const exportFile = await exportInventoryService.exportInventoryGrid({
       ids: validation.ids,
       sheetName: validation.sheetName,
+      companyIds: branchCompanyIds,
     });
 
     const downloadName = `${validation.fileName}.${exportFile.extension}`;
@@ -960,9 +966,15 @@ productRouter.post("/product/i-export", authenticateToken, async (req, res) => {
       });
     }
 
+    const userContext = buildUserContext(req);
+    const branchCompanyIds = userContext.isSuperAdmin
+      ? null
+      : await resolveListCompanyIds(userContext, userContext.companyId);
+
     const exportFile = await iExportService.exportInventoryFull({
       ids: validation.ids,
       format: validation.format,
+      companyIds: branchCompanyIds,
     });
 
     const downloadName = `${validation.fileName}.${exportFile.extension}`;

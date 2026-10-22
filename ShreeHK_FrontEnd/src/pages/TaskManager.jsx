@@ -16,7 +16,8 @@ import {
     Empty,
     Progress,
     Tooltip,
-    Checkbox
+    Checkbox,
+    Spin
 } from 'antd';
 import {
     NotebookPen,
@@ -64,7 +65,7 @@ export default function TaskManager() {
     const user = useAuthStore((state) => state.user);
     const isSuperAdmin = user?.roll === 1 || Number(user?.roll) === 1;
 
-    const { data: apiResponse, isLoading, refetch, dataUpdatedAt } = useFetchApi(
+    const { data: apiResponse, isLoading, isFetching, refetch, dataUpdatedAt } = useFetchApi(
         'quickNotes',
         ENDPOINTS.quickNotes.list,
         {},
@@ -624,7 +625,7 @@ export default function TaskManager() {
                             <Button
                                 icon={<ReloadOutlined />}
                                 onClick={() => refreshTasks()}
-                                loading={isLoading}
+                                loading={isLoading || isFetching}
                                 style={{ borderRadius: 8 }}
                             >
                                 Refresh
@@ -834,7 +835,7 @@ export default function TaskManager() {
                             rowKey="id"
                             columns={columns}
                             dataSource={filteredTasks}
-                            loading={isLoading}
+                            loading={isLoading || isFetching}
                             rowSelection={{
                                 selectedRowKeys,
                                 onChange: setSelectedRowKeys,
@@ -844,14 +845,30 @@ export default function TaskManager() {
                         />
                     </Card>
                 ) : (
-                    <Row gutter={[16, 16]} className="task-board-row" style={{ flex: 1, minHeight: 0, overflowX: 'auto', flexWrap: 'nowrap' }}>
+                    <Spin
+                        spinning={isLoading || isFetching}
+                        wrapperClassName="task-board-spin-wrapper"
+                        style={{ flex: 1, minHeight: 0, height: '100%', display: 'flex', flexDirection: 'column' }}
+                    >
+                    <Row
+                        gutter={[16, 16]}
+                        className="task-board-row"
+                        style={{ flex: 1, height: '100%', minHeight: 0, overflowX: 'auto', flexWrap: 'nowrap' }}
+                    >
                         {[
                             { title: 'Overdue', color: '#dc2626', bg: '#fef2f2', items: boardColumns.overdue },
                             { title: 'Due Today', color: '#0284c7', bg: '#f0f9ff', items: boardColumns.today },
                             { title: 'Upcoming', color: '#d97706', bg: '#fffbeb', items: boardColumns.upcoming },
                             { title: 'Completed', color: '#059669', bg: '#ecfdf5', items: boardColumns.completed },
                         ].map((col, idx) => (
-                            <Col xs={24} sm={12} lg={6} key={idx} className="task-board-col" style={{ height: '100%', display: 'flex', flexDirection: 'column', minWidth: 260 }}>
+                            <Col
+                                xs={24}
+                                sm={12}
+                                lg={6}
+                                key={idx}
+                                className="task-board-col"
+                                style={{ height: '100%', display: 'flex', flexDirection: 'column', minWidth: 260 }}
+                            >
                                 <Card
                                     bordered={false}
                                     className="task-board-card"
@@ -865,6 +882,8 @@ export default function TaskManager() {
                                         height: '100%',
                                         display: 'flex',
                                         flexDirection: 'column',
+                                        flex: 1,
+                                        minHeight: 0,
                                         borderRadius: 16,
                                         background: col.bg,
                                         boxShadow: '0 4px 14px rgba(15, 23, 42, 0.04)',
@@ -873,13 +892,14 @@ export default function TaskManager() {
                                     bodyStyle={{
                                         flex: 1,
                                         minHeight: 0,
+                                        height: '100%',
                                         overflowY: 'auto',
                                         padding: '12px',
                                         display: 'flex',
                                         flexDirection: 'column'
                                     }}
                                 >
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, justifyContent: col.items.length > 0 ? 'flex-start' : 'center' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 0, justifyContent: col.items.length > 0 ? 'flex-start' : 'center' }}>
                                         {col.items.length > 0 ? (
                                             col.items.map(task => (
                                                 <Card
@@ -942,6 +962,7 @@ export default function TaskManager() {
                             </Col>
                         ))}
                     </Row>
+                    </Spin>
                 )}
             </div>
 

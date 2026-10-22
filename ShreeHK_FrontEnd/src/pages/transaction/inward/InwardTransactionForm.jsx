@@ -1,5 +1,5 @@
 import React, { startTransition, useEffect, useMemo, useRef, useState } from 'react';
-import { Form, Input, Button, Table, InputNumber, Typography, Upload, Tag, Spin } from 'antd';
+import { Form, Input, Button, Table, InputNumber, Typography, Upload, Tag, Spin, Switch, Select } from 'antd';
 import {
   ImportOutlined,
   UnorderedListOutlined,
@@ -16,11 +16,12 @@ const INWARD_PAGE_ICONS = {
   memo: FileTextOutlined,
   consign: InboxOutlined,
 };
-import { RefreshCcw, PlusCircle, Trash2, CheckCircle, FileSpreadsheet, Sparkles } from 'lucide-react';
+import { RefreshCcw, PlusCircle, Trash2, CheckCircle, FileSpreadsheet, Sparkles, ShieldCheck } from 'lucide-react';
 import dayjs from 'dayjs';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { toastApiError } from "../../../utils/toastNotify";
+import { api } from '../../../api/client/axiosInstance';
 import DynamicForm from '../../../components/common/ui/DynamicFormField';
 import { useFetchApi, usePostApiRequest } from '../../../api/ApiFunction';
 import { ENDPOINTS } from '../../../api/endpoints';
@@ -29,6 +30,13 @@ import useBranchCompanies from '../../../hooks/useBranchCompanies';
 import useTableBodyScrollHeight from '../../../hooks/useTableBodyScrollHeight';
 import ValidationTableModal from '../../../components/common/modals/ValidationTableModal';
 import AICertificateScannerModal from '../../../components/ai/AICertificateScannerModal';
+import LabBulkDryRunModal from './LabBulkDryRunModal';
+import LabImportMismatchModal from './LabImportMismatchModal';
+import {
+  checkBulkDryRun,
+  executeBulkVerify,
+  compareExcelWithLabSpecs,
+} from './inwardLabVerifyHelper';
 import { parseInwardImportExcel } from './inwardExcelImport';
 
 import defaultStyles from "../../../assets/scss/pages/transaction/inwardpurchase.module.scss";
@@ -159,7 +167,6 @@ const InwardTransactionForm = ({
   showExcelUpload = false,
   skipExistCheck = false,
   initialLineCount = 1,
-  visibleRowCount = 4,
   tableScrollY,
   scrollableTable = false,
 }) => {
@@ -171,6 +178,16 @@ const InwardTransactionForm = ({
   const [checkMessage, setCheckMessage] = useState('');
   const [excelLoading, setExcelLoading] = useState(false);
   const [excelFileName, setExcelFileName] = useState('');
+  const [autoVerifyLab, setAutoVerifyLab] = useState(false);
+  const [fetchingRowKeys, setFetchingRowKeys] = useState({});
+  const [dryRunModalOpen, setDryRunModalOpen] = useState(false);
+  const [dryRunData, setDryRunData] = useState(null);
+  const [isBulkVerifying, setIsBulkVerifying] = useState(false);
+  const [verifyProgress, setVerifyProgress] = useState(0);
+  const [mismatchModalOpen, setMismatchModalOpen] = useState(false);
+  const [discrepancies, setDiscrepancies] = useState([]);
+  const [pendingVerifiedRows, setPendingVerifiedRows] = useState([]);
+  const [rawExcelRows, setRawExcelRows] = useState([]);
   const tableWrapRef = useRef(null);
 
   const handleApplyScanData = (scanData) => {
@@ -208,6 +225,186 @@ const InwardTransactionForm = ({
     removeRow,
     updateTableValue,
   } = useFormHandleChange({}, createInitialLineItems(initialLineCount));
+
+  const handleFetchLabForRow = async (record) => {
+    const reportNo = String(record.reportNo || '').trim();
+    if (!reportNo) {
+      toast.warning('Please enter a Report / Certificate number first.');
+      return;
+    }
+    const lab = record.lab || 'GIA';
+    setFetchingRowKeys((prev) => ({ ...prev, [record.key]: true }));
+    try {
+      const response = await api.post(ENDPOINTS.labIntegration.fetch, {
+        lab,
+        reportNumber: reportNo,
+      });
+
+      const resData = response.data;
+      if (resData.status && resData.data) {
+        const labData = resData.data;
+        const mapped = labData.erpMapped || {};
+        const isMock = Boolean(resData.isMock);
+
+        if (isMock) {
+          // STRICT RULE: Mock responses do NOT auto-fill specs, only display MOCK DATA badge for preview
+          setItems((prevItems) =>
+            prevItems.map((item) => {
+              if (item.key === record.key) {
+                return {
+                  ...item,
+                  isMock: true,
+                  mockPreviewData: labData,
+                };
+              }
+              return item;
+            })
+          );
+          toast.info(`Mock certificate preview received for #${reportNo} (Simulation mode: form values not modified)`);
+          return;
+        }
+
+        const changedMap = {
+          shape: true,
+          color: true,
+          clarity: true,
+          cut: true,
+          polish: true,
+          symm: true,
+          floIntensity: true,
+          tablePer: true,
+          depthPer: true,
+          measurements: true,
+          girdle: true,
+        };
+
+        const newCarat = (!record.pCarat || Number(record.pCarat) === 0) && labData.carat
+          ? Number(labData.carat)
+          : record.pCarat;
+        if (newCarat && newCarat !== record.pCarat) {
+          changedMap.pCarat = true;
+        }
+
+        const price = Number(record.price) || 0;
+        const amount = newCarat > 0 && price > 0 ? Math.round(newCarat * price * 100) / 100 : record.amount;
+
+        setItems((prevItems) =>
+          prevItems.map((item) => {
+            if (item.key === record.key) {
+              return {
+                ...item,
+                lab: labData.lab || item.lab || 'GIA',
+                shape: mapped.shape || item.shape,
+                color: mapped.color || item.color,
+                clarity: mapped.clarity || item.clarity,
+                cut: mapped.cut || item.cut,
+                polish: mapped.polish || item.polish,
+                symm: mapped.symmentry || item.symm,
+                floIntensity: mapped.f_intensity || item.floIntensity,
+                tablePer: mapped.table_pc || item.tablePer,
+                depthPer: mapped.depth_pc || item.depthPer,
+                measurements: mapped.mesurment || item.measurements,
+                girdle: mapped.gridle || item.girdle,
+                pCarat: newCarat,
+                amount,
+                isMock: false,
+                labVerified: true,
+                changedByLab: {
+                  ...(item.changedByLab || {}),
+                  ...changedMap,
+                },
+              };
+            }
+            return item;
+          })
+        );
+
+        toast.success(`Official lab specs loaded for #${reportNo}`);
+      } else {
+        toast.error(resData.message || 'Certificate not found.');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to fetch certificate from lab.');
+    } finally {
+      setFetchingRowKeys((prev) => ({ ...prev, [record.key]: false }));
+    }
+  };
+
+  const handleProceedBulkVerify = async () => {
+    if (!rawExcelRows || rawExcelRows.length === 0) return;
+    setIsBulkVerifying(true);
+    setVerifyProgress(15);
+
+    const certRows = rawExcelRows.filter((r) => String(r.reportNo || '').trim());
+    const itemsToCheck = certRows.map((r) => ({
+      lab: r.lab || 'GIA',
+      reportNumber: String(r.reportNo).trim(),
+    }));
+
+    const progressTimer = setInterval(() => {
+      setVerifyProgress((p) => (p < 85 ? p + 10 : p));
+    }, 400);
+
+    try {
+      const bulkRes = await executeBulkVerify(itemsToCheck, (pct) => {
+        setVerifyProgress((prev) => Math.max(prev, pct));
+      });
+      clearInterval(progressTimer);
+      setVerifyProgress(100);
+
+      const comparison = compareExcelWithLabSpecs(rawExcelRows, bulkRes.results || []);
+
+      setTimeout(() => {
+        setIsBulkVerifying(false);
+        setDryRunModalOpen(false);
+
+        if (comparison.discrepancies && comparison.discrepancies.length > 0) {
+          setDiscrepancies(comparison.discrepancies);
+          setPendingVerifiedRows(comparison.updatedRows);
+          setMismatchModalOpen(true);
+        } else {
+          startTransition(() => {
+            setItems(comparison.updatedRows);
+          });
+          setIsSubmitted(false);
+          toast.success(
+            `Loaded ${comparison.updatedRows.length} stones (${comparison.verifiedCount} verified with lab${comparison.mockCount ? `, ${comparison.mockCount} mock` : ''}).`
+          );
+        }
+      }, 500);
+    } catch (err) {
+      clearInterval(progressTimer);
+      setIsBulkVerifying(false);
+      toast.error(err.response?.data?.message || err.message || 'Bulk lab verification failed.');
+    }
+  };
+
+  const handleSkipVerifyAndLoad = () => {
+    setDryRunModalOpen(false);
+    startTransition(() => {
+      setItems(rawExcelRows);
+    });
+    setIsSubmitted(false);
+    toast.info(`Loaded ${rawExcelRows.length} stones without lab verification.`);
+  };
+
+  const handleAcceptLabSpecs = () => {
+    setMismatchModalOpen(false);
+    startTransition(() => {
+      setItems(pendingVerifiedRows);
+    });
+    setIsSubmitted(false);
+    toast.success('Stones loaded and updated to official lab grading specs!');
+  };
+
+  const handleKeepExcelSpecs = () => {
+    setMismatchModalOpen(false);
+    startTransition(() => {
+      setItems(rawExcelRows);
+    });
+    setIsSubmitted(false);
+    toast.info('Stones loaded keeping original Excel specifications.');
+  };
 
   const measuredScrollY = useTableBodyScrollHeight(tableWrapRef, [
     items.length,
@@ -303,6 +500,39 @@ const InwardTransactionForm = ({
         ...normalizeLineItem(row),
         key: Date.now() + index,
       }));
+
+      // Check Auto-verify with Lab toggle
+      if (autoVerifyLab) {
+        const certRows = mappedRows.filter((r) => String(r.reportNo || '').trim());
+        if (certRows.length > 0) {
+          toast.dismiss(loadingToastId);
+          setExcelLoading(false);
+          setRawExcelRows(mappedRows);
+          setExcelFileName(file.name || 'Excel file');
+
+          // Call dry-run check
+          const itemsToCheck = certRows.map((r) => ({
+            lab: r.lab || 'GIA',
+            reportNumber: String(r.reportNo).trim(),
+          }));
+
+          try {
+            const dryRunRes = await checkBulkDryRun(itemsToCheck);
+            setDryRunData({
+              total: dryRunRes.total || certRows.length,
+              cachedCount: dryRunRes.cachedCount || 0,
+              estimatedLiveLookups: dryRunRes.estimatedLiveLookups || 0,
+              dailyCap: dryRunRes.dailyCap || 500,
+              dailyLookupsRemaining: dryRunRes.dailyLookupsRemaining || 500,
+            });
+            setDryRunModalOpen(true);
+            return;
+          } catch (dryRunErr) {
+            toast.error(dryRunErr.response?.data?.message || 'Failed to check lab lookup quota.');
+            // Fall through to loading normally
+          }
+        }
+      }
 
       toast.loading(`Loading ${mappedRows.length} row(s) into the table…`, {
         id: loadingToastId,
@@ -425,6 +655,16 @@ const InwardTransactionForm = ({
                   </div>
                 </div>
                 <div className={styles.excelUploadActions}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginRight: 8 }}>
+                    <Switch
+                      size="small"
+                      checked={autoVerifyLab}
+                      onChange={(checked) => setAutoVerifyLab(checked)}
+                    />
+                    <span style={{ fontSize: 11, fontWeight: 500, color: autoVerifyLab ? '#15803d' : '#64748b' }}>
+                      Auto-verify with Lab
+                    </span>
+                  </div>
                   {excelFileName && !excelLoading ? (
                     <Tag color="success" className={styles.excelUploadTag} title={excelFileName}>
                       {filledLineCount} row{filledLineCount === 1 ? '' : 's'}
@@ -462,36 +702,41 @@ const InwardTransactionForm = ({
     excelFileName,
     excelLoading,
     filledLineCount,
+    autoVerifyLab,
   ]);
 
   const handleUpdateCell = (key, field, value) => {
     updateTableValue(key, field, value, (item) => {
+      let updatedItem = { ...item };
+      if (updatedItem.changedByLab && updatedItem.changedByLab[field]) {
+        updatedItem.changedByLab = { ...updatedItem.changedByLab, [field]: false };
+      }
       if (field === 'rPcs') {
         return {
-          ...item,
+          ...updatedItem,
           rPcs: value,
         };
       }
       if (field === 'pPcs') {
         return {
-          ...item,
+          ...updatedItem,
           pPcs: value,
         };
       }
       if (field === 'pCarat' || field === 'price') {
-        const carat = field === 'pCarat' ? (value || 0) : (item.pCarat || 0);
-        const price = field === 'price' ? (value || 0) : (item.price || 0);
-        return { ...item, amount: Math.round(carat * price * 100) / 100 };
+        const carat = field === 'pCarat' ? (value || 0) : (updatedItem.pCarat || 0);
+        const price = field === 'price' ? (value || 0) : (updatedItem.price || 0);
+        return { ...updatedItem, amount: Math.round(carat * price * 100) / 100 };
       }
       if (field === 'amount') {
         const amount = value || 0;
-        const price = item.price || 0;
+        const price = updatedItem.price || 0;
         if (price > 0 && amount > 0) {
-          return { ...item, amount, pCarat: Math.round((amount / price) * 10000) / 10000 };
+          return { ...updatedItem, amount, pCarat: Math.round((amount / price) * 10000) / 10000 };
         }
-        return { ...item, amount };
+        return { ...updatedItem, amount };
       }
-      return item;
+      return updatedItem;
     });
   };
 
@@ -537,15 +782,29 @@ const InwardTransactionForm = ({
       shouldValidateRow &&
       isRequiredFieldEmpty(record, field);
 
+    const isLabFilled = Boolean(record.changedByLab?.[field]);
     const width = widthOverride ?? (type === 'number' ? 80 : 90);
+
+    const baseStyle = {
+      width,
+      ...(isLabFilled
+        ? {
+            backgroundColor: '#f0fdf4',
+            borderColor: '#86efac',
+            color: '#15803d',
+            transition: 'background-color 0.3s ease, border-color 0.3s ease',
+          }
+        : {}),
+    };
+
     const errorStyle = hasError
       ? {
-          width,
+          ...baseStyle,
           border: '0.5px solid var(--color-error, #dc3d43)',
           boxShadow: 'none',
           outline: 'none',
         }
-      : { width };
+      : baseStyle;
 
     return type === 'number' ? (
       <InputNumber
@@ -607,8 +866,64 @@ const InwardTransactionForm = ({
     },
     { title: 'Main Color', width: 150, render: (_, r) => renderInput(r, 'mainColor', 'Color', 'text', '100%') },
     { title: 'LOC', width: 100, render: (_, r) => renderInput(r, 'loc', 'LOC') },
-    { title: 'Lab', width: 100, render: (_, r) => renderInput(r, 'lab', 'Lab') },
-    { title: 'Report No', width: 170, render: (_, r) => renderInput(r, 'reportNo', 'Report', 'text', '100%') },
+    {
+      title: 'Lab',
+      width: 100,
+      render: (_, r) => (
+        <Select
+          value={r.lab || 'GIA'}
+          onChange={(val) => handleUpdateCell(r.key, 'lab', val)}
+          style={{ width: '100%' }}
+          options={[
+            { value: 'GIA', label: 'GIA' },
+            { value: 'IGI', label: 'IGI' },
+            { value: 'HRD', label: 'HRD' },
+            { value: 'NONE', label: 'None' },
+          ]}
+        />
+      ),
+    },
+    {
+      title: 'Report No',
+      width: 220,
+      render: (_, r) => {
+        const isFetching = Boolean(fetchingRowKeys[r.key]);
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Input
+              value={r.reportNo}
+              onChange={(e) => handleUpdateCell(r.key, 'reportNo', e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleFetchLabForRow(r);
+                }
+              }}
+              placeholder="Report #"
+              style={{
+                flex: 1,
+                ...(r.changedByLab?.reportNo ? { backgroundColor: '#f0fdf4', borderColor: '#86efac' } : {}),
+              }}
+            />
+            <Button
+              size="small"
+              type="primary"
+              ghost
+              icon={<Sparkles size={13} />}
+              loading={isFetching}
+              onClick={() => handleFetchLabForRow(r)}
+              title="Fetch from Lab registry (or press Enter)"
+              style={{ padding: '0 6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            />
+            {r.isMock && (
+              <Tag color="orange" style={{ margin: 0, fontSize: 9, lineHeight: '16px', padding: '0 4px' }} title="Mock Provider Data">
+                MOCK
+              </Tag>
+            )}
+          </div>
+        );
+      },
+    },
     { title: 'Shape', width: 140, render: (_, r) => renderInput(r, 'shape', 'Shape', 'text', '100%') },
     { title: 'Clarity', width: 140, render: (_, r) => renderInput(r, 'clarity', 'Clarity', 'text', '100%') },
     {
@@ -619,7 +934,10 @@ const InwardTransactionForm = ({
           value={r.measurements}
           onChange={(e) => handleUpdateCell(r.key, 'measurements', e.target.value)}
           placeholder="Measurement"
-          style={{ width: '240px' }}
+          style={{
+            width: '240px',
+            ...(r.changedByLab?.measurements ? { backgroundColor: '#f0fdf4', borderColor: '#86efac', color: '#15803d' } : {}),
+          }}
         />
       ),
     },
@@ -637,7 +955,7 @@ const InwardTransactionForm = ({
 
   // Virtual + fixed columns is unreliable in antd — drop fixed only for large lists
   const columns = useVirtualTable
-    ? columnsRaw.map(({ fixed, ...col }) => col)
+    ? columnsRaw.map((col) => (col.fixed ? { ...col, fixed: undefined } : col))
     : columnsRaw;
 
   const tableBodyScrollY = useMemo(() => {
@@ -739,6 +1057,7 @@ const InwardTransactionForm = ({
 
       setItems(normalizedItems);
 
+      const filledItems = normalizedItems.filter((i) => String(i.sku || '').trim());
       const operatingCompanyId = form.getFieldValue('operating_company_id');
       const checkPayload = {
         products: formatProductsPayload(filledItems),
@@ -901,6 +1220,24 @@ const InwardTransactionForm = ({
         open={aiOcrModalOpen}
         onClose={() => setAiOcrModalOpen(false)}
         onApplyScanData={handleApplyScanData}
+      />
+
+      <LabBulkDryRunModal
+        isOpen={dryRunModalOpen}
+        onClose={() => setDryRunModalOpen(false)}
+        dryRunData={dryRunData}
+        onConfirmVerify={handleProceedBulkVerify}
+        onSkipVerify={handleSkipVerifyAndLoad}
+        isVerifying={isBulkVerifying}
+        progress={verifyProgress}
+      />
+
+      <LabImportMismatchModal
+        isOpen={mismatchModalOpen}
+        onClose={() => setMismatchModalOpen(false)}
+        discrepancies={discrepancies}
+        onAcceptLabSpecs={handleAcceptLabSpecs}
+        onKeepExcelSpecs={handleKeepExcelSpecs}
       />
 
       {!skipExistCheck ? (

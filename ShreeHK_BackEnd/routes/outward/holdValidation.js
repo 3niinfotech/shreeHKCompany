@@ -28,8 +28,9 @@ function validateHoldBody(body) {
     errors.push("status must be 0 or 1");
   }
 
-  if (body?.date != null && body.date !== "") {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(body.date))) {
+  const dateVal = body?.date != null && body.date !== "" ? body.date : (body?.holdUntil != null && body.holdUntil !== "" ? body.holdUntil : null);
+  if (dateVal != null) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateVal))) {
       errors.push("date must be YYYY-MM-DD");
     }
   }
@@ -42,11 +43,16 @@ function validateHoldBodyMiddleware(req, res, next) {
   if (errors.length) {
     return res.status(400).json({ status: false, message: errors[0] });
   }
+  const dateVal = req.body.date || req.body.holdUntil || "";
+  const descVal = req.body.description != null
+    ? String(req.body.description)
+    : (req.body.remarks != null ? String(req.body.remarks) : "");
+
   req.validatedHold = {
     ids,
     status: parseInt(req.body.status, 10),
-    date: req.body.date || "",
-    description: req.body.description != null ? String(req.body.description) : "",
+    date: dateVal,
+    description: descVal,
   };
   next();
 }

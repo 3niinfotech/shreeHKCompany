@@ -2,8 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { Tag, Button, Input, Table, Tooltip, Empty } from 'antd';
 import {
     Network, Box, Boxes, Layers, Gem, ArrowDown, ArrowRight,
-    ExternalLink, Search, RefreshCw, CheckCircle2,
-    Tag as TagIcon, ShieldCheck, ArrowUpRight, Info
+    ExternalLink, Search, RefreshCw, GitCommit, CheckCircle2,
+    Calendar, User, Tag as TagIcon, ShieldCheck, ArrowUpRight, Info
 } from 'lucide-react';
 import styles from '../../assets/scss/pages/report/stoneHistory.module.scss';
 
@@ -18,44 +18,10 @@ const formatNum = (val, dp = 3) => {
 const getStatusColor = (status) => {
     const s = String(status || '').toLowerCase().trim();
     if (!s || s === 'available') return 'green';
-    if (s === 'sale') return 'green';
-    if (s === 'export') return 'blue';
-    if (s === 'memo') return 'orange';
-    if (s === 'consign') return 'magenta';
-    if (s === 'lab') return 'blue';
-    if (s.includes('import')) return 'cyan';
-    if (s === 'purchase') return 'purple';
-    return 'default';
-};
-
-const renderStatusBadge = (status, outward) => {
-    const s = String(outward || status || 'AVAILABLE').toUpperCase().trim();
-    if (s === 'AVAILABLE') {
-        return (
-            <span className={styles.statusPillAvailable}>
-                AVAILABLE
-            </span>
-        );
-    }
-    if (s === 'SALE' || s === 'EXPORT') {
-        return (
-            <span className={styles.statusPillSale}>
-                {s}
-            </span>
-        );
-    }
-    if (s === 'MEMO' || s === 'CONSIGN') {
-        return (
-            <span className={styles.statusPillMemo}>
-                {s}
-            </span>
-        );
-    }
-    return (
-        <span className={styles.statusPillDefault}>
-            {s}
-        </span>
-    );
+    if (s === 'sale' || s === 'export') return 'magenta';
+    if (s === 'memo' || s === 'consign') return 'orange';
+    if (s === 'lab') return 'purple';
+    return 'blue';
 };
 
 const getGroupTypeBadge = (groupType) => {
@@ -63,20 +29,20 @@ const getGroupTypeBadge = (groupType) => {
     if (gt === 'box') {
         return (
             <span className={`${styles.groupTypePill} ${styles.groupTypeBox}`}>
-                <Boxes size={14} /> Box Container
+                <Boxes size={12} /> Box Container
             </span>
         );
     }
     if (gt === 'parcel') {
         return (
             <span className={`${styles.groupTypePill} ${styles.groupTypeParcel}`}>
-                <Layers size={14} /> Parcel Container
+                <Layers size={12} /> Parcel Container
             </span>
         );
     }
     return (
         <span className={`${styles.groupTypePill} ${styles.groupTypeSingle}`}>
-            <Gem size={14} /> Single Diamond
+            <Gem size={12} /> Single Diamond
         </span>
     );
 };
@@ -184,6 +150,34 @@ const LineageTreePanel = ({ lineage, currentDetail, onNavigateSku }) => {
 
     return (
         <div className={styles.lineagePanelWrap}>
+            {/* Top Bar Summary do not uncomment this striclty ok*/}
+            {/* <div className={styles.lineageTopBar}>
+                <div className={styles.lineageTitleMeta}>
+                    <div className={styles.lineageIconWrap}>
+                        <Network size={18} />
+                    </div>
+                    <div>
+                        <div className={styles.lineageHeading}>
+                            Stone Lineage & Hierarchy Tree
+                        </div>
+                        <div className={styles.lineageSubheading}>
+                            Complete lineage showing Box, Parcel, Single transformations, parent containers, and child stones.
+                        </div>
+                    </div>
+                </div>
+                <div className={styles.lineageBadgeRow}>
+                    {getGroupTypeBadge(current.group_type)}
+                    <Tag color={getStatusColor(current.outward || current.status)} style={{ fontWeight: 600 }}>
+                        {current.outward ? String(current.outward).toUpperCase() : (current.status ? String(current.status).toUpperCase() : 'AVAILABLE')}
+                    </Tag>
+                    {parent ? (
+                        <Tag color="geekblue" style={{ fontWeight: 600 }}>
+                            Part of Box/Parcel {parent.sku}
+                        </Tag>
+                    ) : null}
+                </div>
+            </div> */}
+
             {/* Visual Tree Section */}
             <div className={styles.visualTreeContainer}>
                 <div className={styles.treeSectionTitle}>
@@ -232,157 +226,127 @@ const LineageTreePanel = ({ lineage, currentDetail, onNavigateSku }) => {
                         </div>
                     ) : null}
 
-                    {/* Level 2: Current Stone Card */}
-                    <div className={styles.treeNodeGroup}>
-                        <div className={`${styles.treeCard} ${styles.treeCardCurrent}`}>
-                            {/* Top Row: Icon, Title, Subtitle + Status Pill, Container Badge */}
-                            <div className={styles.treeCardHeader}>
-                                <div className={styles.treeSkuGroup}>
-                                    <div className={styles.skuIconBadge}>
-                                        <Gem size={22} />
-                                    </div>
-                                    <div className={styles.skuTitleBlock}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                            <span className={styles.treeSkuTitle}>{current.sku}</span>
-                                            {renderStatusBadge(current.status, current.outward)}
-                                        </div>
-                                        <div className={styles.treeNodeSubtitle}>
-                                            {parent ? 'Constituent Stone' : (rawChildren.length > 0 ? 'Container Unit' : '')}
-                                        </div>
-                                    </div>
+                    {/* Level 2: Current Stone Row */}
+                    <div className={styles.treeRowContainer}>
+                        <div className={styles.treeCurrentRowBar}>
+                            <div className={styles.rowIdentityGroup}>
+                                <div className={styles.rowSkuIconBadge}>
+                                    <Gem size={18} />
                                 </div>
-                                <div className={styles.treeHeaderBadges}>
+                                <div className={styles.rowSkuMeta}>
+                                    <span className={styles.rowSkuTitle}>{current.sku}</span>
+                                    <span className={styles.rowSkuSubtitle}>
+                                        {parent ? 'Constituent Stone' : (rawChildren.length > 0 ? 'Container Unit' : 'Active Stone')}
+                                    </span>
+                                </div>
+                                <div className={styles.rowBadges}>
                                     {getGroupTypeBadge(current.group_type)}
+                                    <Tag color={getStatusColor(current.outward || current.status)} style={{ fontWeight: 700, margin: 0, textTransform: 'uppercase', borderRadius: 4 }}>
+                                        {current.outward ? String(current.outward).toUpperCase() : (current.status ? String(current.status).toUpperCase() : 'AVAILABLE')}
+                                    </Tag>
                                 </div>
                             </div>
 
-                            {/* Middle Row: All Metrics & Attributes in a Single Horizontal Row */}
-                            <div className={styles.heroSingleRowBar}>
-                                <div className={styles.heroMetricItem}>
-                                    <div className={styles.heroMetricMeta}>
-                                        <div className={styles.heroMetricLabel}>CARAT</div>
-                                        <div className={styles.heroMetricValue}>
-                                            {formatNum(current.polish_carat)} <span className={styles.heroMetricUnit}>ct</span>
-                                        </div>
-                                    </div>
+                            <div className={styles.rowSectionDivider} />
+
+                            <div className={styles.rowSpecsWrap}>
+                                <div className={styles.rowSpecItem}>
+                                    <span className={styles.rowSpecLabel}>Carat</span>
+                                    <span className={styles.rowSpecVal}>{formatNum(current.polish_carat)} <small>ct</small></span>
                                 </div>
 
-                                <div className={styles.heroMetricDivider} />
+                                <div className={styles.rowSpecDivider} />
 
-                                <div className={styles.heroMetricItem}>
-                                    <div className={styles.heroMetricMeta}>
-                                        <div className={styles.heroMetricLabel}>PCS</div>
-                                        <div className={styles.heroMetricValue}>
-                                            {formatNum(current.polish_pcs, 0)} <span className={styles.heroMetricUnit}>pcs</span>
-                                        </div>
-                                    </div>
+                                <div className={styles.rowSpecItem}>
+                                    <span className={styles.rowSpecLabel}>Pcs</span>
+                                    <span className={styles.rowSpecVal}>{formatNum(current.polish_pcs, 0)} <small>pcs</small></span>
                                 </div>
 
-                                <div className={styles.heroMetricDivider} />
+                                <div className={styles.rowSpecDivider} />
 
-                                <div className={styles.heroMetricItem}>
-                                    <div className={styles.heroMetricMeta}>
-                                        <div className={styles.heroMetricLabel}>PRICE / CT</div>
-                                        <div className={styles.heroMetricValue}>
-                                            ${formatNum(current.price, 2)}
-                                        </div>
-                                    </div>
+                                <div className={styles.rowSpecItem}>
+                                    <span className={styles.rowSpecLabel}>Price / Ct</span>
+                                    <span className={styles.rowSpecVal}>${formatNum(current.price, 2)}</span>
                                 </div>
 
-                                <div className={styles.heroMetricDivider} />
+                                <div className={styles.rowSpecDivider} />
 
-                                <div className={styles.heroMetricItem}>
-                                    <div className={styles.heroMetricMeta}>
-                                        <div className={styles.heroMetricLabel}>TOTAL AMOUNT</div>
-                                        <div className={`${styles.heroMetricValue} ${styles.heroMetricValueAmount}`}>
-                                            ${formatNum(current.amount, 2)}
-                                        </div>
-                                    </div>
+                                <div className={`${styles.rowSpecItem} ${styles.rowSpecItemAmount}`}>
+                                    <span className={styles.rowSpecLabel}>Total Amount</span>
+                                    <span className={styles.rowSpecVal}>${formatNum(current.amount, 2)}</span>
                                 </div>
 
                                 {current.shape ? (
                                     <>
-                                        <div className={styles.heroMetricDivider} />
-                                        <div className={styles.heroMetricItem}>
-                                            <div className={styles.heroMetricMeta}>
-                                                <div className={styles.heroMetricLabel}>SHAPE</div>
-                                                <div className={styles.heroMetricValue}>
-                                                    {String(current.shape).toUpperCase()}
-                                                </div>
-                                            </div>
+                                        <div className={styles.rowSpecDivider} />
+                                        <div className={styles.rowSpecItem}>
+                                            <span className={styles.rowSpecLabel}>Shape</span>
+                                            <span className={styles.rowSpecVal}>{String(current.shape).toUpperCase()}</span>
                                         </div>
                                     </>
                                 ) : null}
 
                                 {current.color ? (
                                     <>
-                                        <div className={styles.heroMetricDivider} />
-                                        <div className={styles.heroMetricItem}>
-                                            <div className={styles.heroMetricMeta}>
-                                                <div className={styles.heroMetricLabel}>COLOUR</div>
-                                                <div className={styles.heroMetricValue}>
-                                                    {String(current.color).toUpperCase()}
-                                                </div>
-                                            </div>
+                                        <div className={styles.rowSpecDivider} />
+                                        <div className={styles.rowSpecItem}>
+                                            <span className={styles.rowSpecLabel}>Color</span>
+                                            <span className={styles.rowSpecVal}>{String(current.color).toUpperCase()}</span>
                                         </div>
                                     </>
                                 ) : null}
 
                                 {current.clarity ? (
                                     <>
-                                        <div className={styles.heroMetricDivider} />
-                                        <div className={styles.heroMetricItem}>
-                                            <div className={styles.heroMetricMeta}>
-                                                <div className={styles.heroMetricLabel}>CLARITY</div>
-                                                <div className={styles.heroMetricValue}>
-                                                    {String(current.clarity).toUpperCase()}
-                                                </div>
-                                            </div>
+                                        <div className={styles.rowSpecDivider} />
+                                        <div className={styles.rowSpecItem}>
+                                            <span className={styles.rowSpecLabel}>Clarity</span>
+                                            <span className={styles.rowSpecVal}>{String(current.clarity).toUpperCase()}</span>
                                         </div>
                                     </>
                                 ) : null}
 
                                 {current.cut ? (
                                     <>
-                                        <div className={styles.heroMetricDivider} />
-                                        <div className={styles.heroMetricItem}>
-                                            <div className={styles.heroMetricMeta}>
-                                                <div className={styles.heroMetricLabel}>CUT</div>
-                                                <div className={styles.heroMetricValue}>
-                                                    {String(current.cut).toUpperCase()}
-                                                </div>
-                                            </div>
+                                        <div className={styles.rowSpecDivider} />
+                                        <div className={styles.rowSpecItem}>
+                                            <span className={styles.rowSpecLabel}>Cut</span>
+                                            <span className={styles.rowSpecVal}>{String(current.cut).toUpperCase()}</span>
                                         </div>
                                     </>
                                 ) : null}
 
                                 {current.lab ? (
                                     <>
-                                        <div className={styles.heroMetricDivider} />
-                                        <div className={styles.heroMetricItem}>
-                                            <div className={styles.heroMetricMeta}>
-                                                <div className={styles.heroMetricLabel}>LAB</div>
-                                                <div className={styles.heroMetricValue}>
-                                                    {String(current.lab).toUpperCase()}
-                                                </div>
-                                            </div>
+                                        <div className={styles.rowSpecDivider} />
+                                        <div className={styles.rowSpecItem}>
+                                            <span className={styles.rowSpecLabel}>Lab</span>
+                                            <span className={styles.rowSpecVal}>{String(current.lab).toUpperCase()}</span>
                                         </div>
                                     </>
                                 ) : null}
                             </div>
-
-                            {/* Fourth Row: Bottom Info Note */}
-                            <div className={styles.heroStandaloneNote}>
-                                <Info size={15} className={styles.heroNoteIcon} />
-                                <span>
-                                    {!parent && rawChildren.length === 0
-                                        ? 'Independent stock item · Not partitioned into child stones · Not packed in a parcel container'
-                                        : parent
-                                            ? `Constituent child stone of parent ${parent.group_type || 'container'} (${parent.sku})`
-                                            : `Container unit partitioned into ${rawChildren.length} constituent child stones`}
-                                </span>
-                            </div>
                         </div>
+
+                        {/* do not uncomment this strictly ok 
+                        {!parent && rawChildren.length === 0 ? (
+                            <div className={styles.treeStandaloneNote} style={{ width: '100%', marginTop: 8 }}>
+                                <Info size={13} />
+                                <span>Independent stock item · Not partitioned into child stones · Not part of a parent container</span>
+                            </div>
+                        ) : null} */}
+
+                        {/* If current stone contains children */}
+                        {rawChildren.length > 0 ? (
+                            <div className={styles.treeConnectorDown}>
+                                <div className={styles.treeLineVertical} />
+                                <div className={styles.connectorBadge}>
+                                    <ArrowDown size={12} />
+                                    <span>Contains {rawChildren.length} Constituent Child Stones</span>
+                                </div>
+                                <div className={styles.treeLineVertical} />
+                            </div>
+                        ) : null}
                     </div>
 
                     {/* Level 3: Children Stones (if current is Box or Parcel container) */}
@@ -465,8 +429,72 @@ const LineageTreePanel = ({ lineage, currentDetail, onNavigateSku }) => {
                 ) : null}
             </div>
 
+            {/* Transformation & Life Cycle Timeline */}
+            {transformations.length > 0 ? (
+                <div className={styles.timelineSection}>
+                    <div className={styles.treeSectionTitle}>
+                        <GitCommit size={14} />
+                        <span>Stone Transformation & Life Cycle Timeline</span>
+                    </div>
+                    <div className={styles.timelineFlow}>
+                        {transformations.map((t, idx) => (
+                            <div key={t.id || idx} className={styles.timelineItem}>
+                                <div className={styles.timelineMarker}>
+                                    <div className={`${styles.timelineDot} ${t.is_from_memo ? styles.dotMemo : ''}`} />
+                                    {idx < transformations.length - 1 ? <div className={styles.timelineConnectorLine} /> : null}
+                                </div>
+                                <div className={styles.timelineContentCard}>
+                                    <div className={styles.timelineHeader}>
+                                        <div className={styles.timelineTypeBadge}>
+                                            <Tag color={getActionTagColor(t.action)} style={{ fontWeight: 600 }}>
+                                                {t.type_label}
+                                            </Tag>
+                                            {t.is_from_memo ? (
+                                                <Tag color="gold" style={{ fontSize: '11px', fontWeight: 700 }}>
+                                                    From Memo
+                                                </Tag>
+                                            ) : null}
+                                        </div>
+                                        <div className={styles.timelineDate}>
+                                            <Calendar size={12} />
+                                            <span>{t.date}</span>
+                                        </div>
+                                    </div>
+                                    <div className={styles.timelineDesc}>
+                                        {t.description || 'Action performed on stone.'}
+                                    </div>
+                                    <div className={styles.timelineMetaRow}>
+                                        {t.party ? <span><b>Party</b>: {t.party}</span> : null}
+                                        {t.invoice ? <span><b>Invoice</b>: {t.invoice}</span> : null}
+                                        {t.carat ? <span><b>Movement</b>: {t.carat} ct ({t.pcs || 0} pcs)</span> : null}
+                                        {t.balance_carat ? <span><b>Balance</b>: {t.balance_carat} ct</span> : null}
+                                        {t.updated_by && t.updated_by !== '—' ? (
+                                            <span className={styles.timelineUser}>
+                                                <User size={11} /> {t.updated_by}
+                                            </span>
+                                        ) : null}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ) : null}
         </div>
     );
+};
+
+const getActionTagColor = (action) => {
+    const a = String(action || '').toLowerCase().trim();
+    if (a === 'memo_return' || a === 'consign_return') return 'cyan';
+    if (a === 'sale_return' || a === 'lab_return' || a === 'purchase_return') return 'green';
+    if (a === 'memo' || a === 'consign') return 'orange';
+    if (a === 'sale' || a === 'export') return 'magenta';
+    if (a === 'box_add' || a === 'to_box' || a === 'boxing') return 'geekblue';
+    if (a === 'unboxing' || a === 'from_box') return 'purple';
+    if (a === 'parcel_add') return 'volcano';
+    if (a === 'sku_change') return 'gold';
+    return 'blue';
 };
 
 export default LineageTreePanel;

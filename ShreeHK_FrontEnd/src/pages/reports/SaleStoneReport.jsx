@@ -25,19 +25,19 @@ const SALE_EXCEL_HEADERS = [
     { title: 'SKU', key: 'sku', width: 14, align: 'center' },
     { title: 'Date', key: 'out_date', width: 14, align: 'center' },
     { title: 'GIA/NOGIA', key: 'lab', width: 12, align: 'center' },
-    { title: 'Invoice No', key: 'invoiceno', width: 14, align: 'center' },
-    { title: 'Pcs', key: 'polish_pcs', width: 8, align: 'center', type: 'n', total: true, decimals: 0 },
+    { title: 'InvoiceNo', key: 'invoiceno', width: 14, align: 'center' },
     { title: 'Detail Of Goods', key: 'detail_of_goods', width: 22, align: 'center', accessor: detailOfGoods },
+    { title: 'PCS', key: 'polish_pcs', width: 8, align: 'center', type: 'n', total: true, decimals: 0 },
     { title: 'Cts', key: 'polish_carat', width: 10, align: 'center', type: 'n', total: true, decimals: 3 },
-    { title: 'Price', key: 'sell_price', width: 12, align: 'center', type: 'n', total: true, decimals: 2 },
-    { title: 'Amount', key: 'sell_amount', width: 14, align: 'center', type: 'n', total: true, decimals: 2 },
-    { title: 'Term', key: 'terms', width: 12, align: 'center' },
-    { title: 'Due Date', key: 'due_date', width: 14, align: 'center' },
+    { title: 'Price', key: 'sell_price', width: 12, align: 'center', type: 'n', total: true, decimals: 2, accessor: (row) => Number(row.sell_price ?? row.purchase_price) || 0 },
+    { title: 'Amount', key: 'sell_amount', width: 14, align: 'center', type: 'n', total: true, decimals: 2, accessor: (row) => Number(row.sell_amount ?? row.purchase_amount) || 0 },
+    { title: 'Terms', key: 'terms', width: 12, align: 'center' },
+    { title: 'DueDate', key: 'due_date', width: 14, align: 'center' },
     { title: 'Party', key: 'party', width: 36, align: 'center', accessor: (row) => String(row.party || '').toUpperCase() },
     { title: 'Rec Amt', key: 'paid_amount', width: 12, align: 'center', type: 'n', total: true, decimals: 2, accessor: (row) => Number(row.paid_amount ?? 0) },
     { title: 'Rec Date', key: 'received_date', width: 14, align: 'center', accessor: (row) => row.received_date || '' },
     { title: 'Rec Book', key: 'received_book', width: 14, align: 'center', accessor: (row) => row.received_book || '' },
-    { title: 'Remarks', key: 'remark', width: 16, align: 'center', accessor: (row) => row.remark || '' },
+    { title: 'Remark', key: 'remark', width: 16, align: 'center', accessor: (row) => row.remark || '' },
 ];
 
 const SaleStoneReport = () => {
@@ -76,12 +76,19 @@ const SaleStoneReport = () => {
     };
 
     const columns = [
-        { title: 'No', dataIndex: 'no', width: 50, align: 'center' },
+        { title: 'No', dataIndex: 'no', width: 50, align: 'center', render: (_, __, idx) => idx + 1 },
         { title: 'SKU', dataIndex: 'sku', width: 140, render: (text, record) => <SkuLink sku={text} record={record} /> },
         {
-            title: 'Lab',
+            title: 'Date',
+            dataIndex: 'out_date',
+            width: 110,
+            align: 'center',
+            render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')),
+        },
+        {
+            title: 'GIA/NOGIA',
             dataIndex: 'lab',
-            width: 70,
+            width: 95,
             align: 'center',
             render: (lab) => {
                 const value = String(lab || '').trim();
@@ -103,32 +110,91 @@ const SaleStoneReport = () => {
                 );
             },
         },
-        { title: 'Pcs', dataIndex: 'polish_pcs', width: 30, align: 'center' },
-        { title: 'Report No', dataIndex: 'report_no', width: 90, align: 'center' },
-        { title: 'Carat', dataIndex: 'polish_carat', width: 50, align: 'center' },
+        { title: 'InvoiceNo', dataIndex: 'invoiceno', width: 105, align: 'center', render: (v) => v || '-' },
+        {
+            title: 'Detail Of Goods',
+            key: 'detail_of_goods',
+            width: 150,
+            align: 'center',
+            render: (_, record) => detailOfGoods(record) || '-',
+        },
+        {
+            title: 'PCS',
+            dataIndex: 'polish_pcs',
+            width: 60,
+            align: 'right',
+            render: (val) => Number(val || 0).toLocaleString(),
+        },
+        {
+            title: 'Cts',
+            dataIndex: 'polish_carat',
+            width: 80,
+            align: 'right',
+            render: (val) => Number(val || 0).toFixed(3),
+        },
         {
             title: 'Price',
             dataIndex: 'sell_price',
-            width: 90,
+            width: 95,
             align: 'right',
-            render: (v) => <span style={{ color: 'var(--color-success-dark)' }}>{v ?? '-'}</span>,
+            render: (v, row) => {
+                const val = v ?? row.purchase_price;
+                return val != null && val !== '' ? (
+                    <span style={{ color: 'var(--color-success-dark)' }}>
+                        {Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                ) : '-';
+            },
         },
         {
             title: 'Amount',
             dataIndex: 'sell_amount',
+            width: 110,
+            align: 'right',
+            render: (v, row) => {
+                const val = v ?? row.purchase_amount;
+                return val != null && val !== '' ? (
+                    <b style={{ color: 'var(--color-primary-dark)' }}>
+                        {Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </b>
+                ) : '-';
+            },
+        },
+        {
+            title: 'Terms',
+            dataIndex: 'terms',
+            width: 85,
+            align: 'center',
+            render: (val) => (val != null && val !== '' ? `${val} Days` : '-'),
+        },
+        {
+            title: 'DueDate',
+            dataIndex: 'due_date',
+            width: 110,
+            align: 'center',
+            render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')),
+        },
+        { title: 'Party', dataIndex: 'party', width: 180, render: (v) => v || '-' },
+        {
+            title: 'Rec Amt',
+            dataIndex: 'paid_amount',
             width: 100,
             align: 'right',
-            render: (v) => <span style={{ color: 'var(--color-primary-dark)' }}>{v ?? '-'}</span>,
+            render: (val) => (
+                <span style={{ color: 'var(--color-success)' }}>
+                    {Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+            ),
         },
-        { title: 'Shape', dataIndex: 'shape', width: 90, align: 'center' },
-        { title: 'Color', dataIndex: 'color', width: 60, align: 'center' },
-        { title: 'Clarity', dataIndex: 'clarity', width: 60, align: 'center' },
-        { title: 'Party', dataIndex: 'party', width: 200 },
-        { title: 'Invoice', dataIndex: 'invoiceno', width: 90, align: 'center' },
-        { title: 'Date', dataIndex: 'out_date', width: 140, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')), align: 'center' },
-        { title: 'Terms', dataIndex: 'terms', width: 25, align: 'center' },
-        { title: 'Due Date', dataIndex: 'due_date', width: 140, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')), align: 'center' },
-        { title: 'Paid', dataIndex: 'paid_amount', width: 90, align: 'center' },
+        {
+            title: 'Rec Date',
+            dataIndex: 'received_date',
+            width: 110,
+            align: 'center',
+            render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')),
+        },
+        { title: 'Rec Book', dataIndex: 'received_book', width: 100, align: 'center', render: (v) => v || '-' },
+        { title: 'Remark', dataIndex: 'remark', width: 140, render: (v) => v || '-' },
     ];
 
     const handleClear = () => {

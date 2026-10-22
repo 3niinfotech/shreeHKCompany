@@ -127,14 +127,14 @@ const CategoryPage = () => {
                 title="Category Management"
                 columns={columns}
                 dataSource={dataSource}
-                loading={isLoading}
+                loading={isLoading || isFetching}
                 onAdd={handleAddClick}
                 onEdit={handleEditClick}
                 onDelete={openDelete}
                 searchValue={search}
                 onSearchChange={handleSearchChange}
                 extraHeaderActions={
-                    <Button icon={<ReloadOutlined />} loading={isFetching} onClick={() => refetch()}>
+                    <Button icon={<ReloadOutlined />} loading={isLoading || isFetching} onClick={() => refetch()}>
                         Refresh
                     </Button>
                 }

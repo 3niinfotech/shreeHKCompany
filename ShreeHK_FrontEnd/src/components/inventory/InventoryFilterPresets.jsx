@@ -77,7 +77,7 @@ const InventoryFilterPresets = ({ pageKey, compactForm, advancedForm, onApply })
       </Button>
       {selectedId ? (
         <Popconfirm title="Delete this saved view?" onConfirm={() => handleDelete(selectedId)}>
-          <Button size="middle" danger icon={<DeleteOutlined />} />
+          <Button size="middle" danger icon={<DeleteOutlined />} className={styles.filterPresetDeleteBtn} />
         </Popconfirm>
       ) : null}
     </div>

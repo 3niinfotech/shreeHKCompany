@@ -1818,22 +1818,25 @@ const DiamondInventoryTable = () => {
     <ConfigProvider
       theme={{
         token: {
-          colorBorder: "#000000",
-          colorTextPlaceholder: "#000000",
-          colorTextQuaternary: "#000000",
+          colorBorder: "#9fa2ae",
+          colorTextPlaceholder: "#3A3F55",
+          colorTextQuaternary: "#64748b",
+          borderRadius: 6,
         },
         components: {
           Select: {
-            colorBorder: "#000000",
-            hoverBorderColor: "#000000",
-            activeBorderColor: "#000000",
-            colorTextPlaceholder: "#000000",
+            colorBorder: "#9fa2ae",
+            hoverBorderColor: "var(--color-primary, #1e3a8a)",
+            activeBorderColor: "var(--color-primary, #1e3a8a)",
+            colorTextPlaceholder: "#3A3F55",
+            borderRadius: 6,
           },
           Input: {
-            colorBorder: "#000000",
-            hoverBorderColor: "#000000",
-            activeBorderColor: "#000000",
-            colorTextPlaceholder: "#000000",
+            colorBorder: "#9fa2ae",
+            hoverBorderColor: "var(--color-primary, #1e3a8a)",
+            activeBorderColor: "var(--color-primary, #1e3a8a)",
+            colorTextPlaceholder: "#3A3F55",
+            borderRadius: 6,
           },
         },
       }}

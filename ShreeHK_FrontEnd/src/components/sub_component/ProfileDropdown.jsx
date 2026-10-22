@@ -495,13 +495,15 @@ const ProfileDropdown = () => {
   const setShowContextPicker = useAuthStore((state) => state.setShowContextPicker);
   const logout = useAuthStore((state) => state.logout);
   const yearId = useAuthStore((state) => state.yearId);
+  const yearLabelStore = useAuthStore((state) => state.yearLabel);
+  const branchShortcutStore = useAuthStore((state) => state.branchShortcut);
   const [lastActiveLabel, setLastActiveLabel] = useState(null);
   const [resolvedBranchName, setResolvedBranchName] = useState(null);
-  const [resolvedYearLabel, setResolvedYearLabel] = useState(null);
+  const [resolvedYearLabel, setResolvedYearLabel] = useState(yearLabelStore || null);
   const userDisplayName = getUserDisplayName(user);
   // Profile chip = branch only (never company name)
-  const displayBranch = branchName || resolvedBranchName || null;
-  const displayYear = resolvedYearLabel || null;
+  const displayBranch = branchShortcutStore || branchName || resolvedBranchName || null;
+  const displayYear = yearLabelStore || resolvedYearLabel || null;
   const userInitial = user?.first_name
     ? user.first_name.charAt(0).toUpperCase()
     : (user?.user_name || userDisplayName).charAt(0).toUpperCase();
@@ -611,7 +613,11 @@ const ProfileDropdown = () => {
         const years = res.data?.Years || res.data?.years || [];
         const match = years.find((y) => String(y.yearId) === String(yearId));
         const label = match?.yearLabel || match?.year || null;
-        if (!cancelled) setResolvedYearLabel(label || String(yearId));
+        if (!cancelled) {
+          const finalYear = label || String(yearId);
+          setResolvedYearLabel(finalYear);
+          useAuthStore.getState().setSessionContext({ yearLabel: finalYear });
+        }
       } catch {
         if (!cancelled) setResolvedYearLabel(String(yearId));
       }

@@ -23,7 +23,10 @@ const PAGE_ENTRIES = [
   { key: "master.import_format", label: "Import Format", path: "/master/import-format", moduleKey: "master", apiPrefixes: [], legacyKeys: ["attribute"] },
   { key: "master.attribute", label: "Attribute", path: "/master/attribute", moduleKey: "master", apiPrefixes: ["/master/attribute", "/attribute/"], legacyKeys: ["attribute"] },
   { key: "master.refresh_stock", label: "Refresh Stock", path: "/master/refresh-stock", moduleKey: "master", apiPrefixes: ["/integration/refresh-rapnet-stock"], legacyKeys: ["rap_net"] },
-  { key: "master.integrations", label: "Integrations", path: "/master/integrations", moduleKey: "master", apiPrefixes: ["/integration/"], legacyKeys: ["rap_net"] },
+  { key: "master.integrations", label: "Integrations", path: "/master/integrations", moduleKey: "master", apiPrefixes: ["/integration/", "/api/lab/"], legacyKeys: ["rap_net"] },
+  { key: "lab.fetch", label: "Lab Certificate Fetch", path: "/transaction/inward", moduleKey: "transaction", apiPrefixes: ["/api/lab/fetch", "/api/lab/pdf-proxy"], legacyKeys: ["purchase", "inventory", "sale"] },
+  { key: "lab.fetch.bulk", label: "Lab Bulk Fetch", path: "/transaction/inward/import", moduleKey: "transaction", apiPrefixes: ["/api/lab/fetch-bulk"], legacyKeys: ["purchase", "bulk"] },
+  { key: "lab.manage", label: "Lab Integrations & Credentials", path: "/master/integrations", moduleKey: "master", apiPrefixes: ["/api/lab/providers/"], legacyKeys: ["rap_net"] },
 
   // Inventory
   { key: "inventory.my_inventory", label: "My Inventory", path: "/inventory/my-inventory", moduleKey: "inventory", apiPrefixes: ["/product/inventory", "/product/detail", "/product/save", "/product/update-remark", "/product/change-price", "/product/holdDetail", "/product/history", "/product/package/", "/product/pair/", "/product/export", "/product/i-export", "/product/mail", "/product/label", "/product/label-a4", "/outward/sendTo", "/outward/hold", "/integration/refresh-rapnet-stock", "/integration/website-sync", "/ai/stock-alert", "/ai/barcode-lookup"], legacyKeys: ["inventory"] },
@@ -97,8 +100,8 @@ const LEGACY_MODULE_MAP = {
   lab: ["master.lab"],
   ems: PAGE_ENTRIES.filter((p) => p.moduleKey === "inventory").map((p) => p.key),
   pacage: PAGE_ENTRIES.filter((p) => p.moduleKey === "inventory").map((p) => p.key),
-  purchase: ["transaction.inward", "transaction.purchase_stock"],
-  sale: ["transaction.stone_update", "outward.main", "transaction.sale_stock"],
+  purchase: ["transaction.inward", "transaction.purchase_stock", "lab.fetch", "lab.fetch.bulk"],
+  sale: ["transaction.stone_update", "outward.main", "transaction.sale_stock", "lab.fetch"],
   import_consignment: ["transaction.inward"],
   export: ["outward.main", "transaction.sale_stock"],
   import_memo: ["transaction.inward", "transaction.in_memo"],
@@ -111,11 +114,11 @@ const LEGACY_MODULE_MAP = {
   account_report: PAGE_ENTRIES.filter((p) => p.moduleKey === "reports").map((p) => p.key),
   stock_report: ["inventory.on_hand_stock", "reports.group_report"],
   report_transaction: ["reports.transaction"],
-  gia: ["transaction.gia_memo", "reports.stone_history"],
+  gia: ["transaction.gia_memo", "reports.stone_history", "lab.fetch"],
   i_memo: ["transaction.in_memo"],
   o_memo: ["transaction.out_memo"],
   stone_report: ["reports.stone_history", "reports.transfer_history"],
-  rap_net: ["master.rapnet"],
+  rap_net: ["master.rapnet", "lab.manage"],
 };
 
 const MODULE_TREE = [

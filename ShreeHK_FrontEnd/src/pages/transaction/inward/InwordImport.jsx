@@ -1,4 +1,3 @@
-import React from 'react';
 import InwardTransactionForm from './InwardTransactionForm';
 import modernStyles from '../../../assets/scss/pages/transaction/inwardModern.module.scss';
 
