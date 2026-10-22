@@ -43,6 +43,18 @@ const normalizeCompanyIds = (company) => {
   return [];
 };
 
+const ROLE_TAG_PALETTE = ['blue', 'purple', 'cyan', 'magenta', 'geekblue', 'green', 'orange'];
+
+const getRoleTagColor = (role, permCount, index = 0) => {
+  if (permCount === 0) return 'default';
+  const roleName = String(role?.name || '').toLowerCase();
+  if (role?.id === 1 || roleName.includes('admin')) {
+    return 'gold';
+  }
+  const paletteIndex = Math.max(0, index - 1);
+  return ROLE_TAG_PALETTE[paletteIndex % ROLE_TAG_PALETTE.length];
+};
+
 const AdvancedRollPage = () => {
   const [form] = Form.useForm();
   const [newRoleForm] = Form.useForm();
@@ -384,10 +396,11 @@ const AdvancedRollPage = () => {
                     {filteredRoles.length === 0 ? (
                       <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No roles found" />
                     ) : (
-                      filteredRoles.map((role) => {
+                      filteredRoles.map((role, idx) => {
                         const isSelected = role.id === selectedRoleId;
                         const isSuper = role.id === 1;
                         const permCount = getPermissionCount(role);
+                        const tagColor = getRoleTagColor(role, permCount, idx);
 
                         return (
                           <button
@@ -402,7 +415,7 @@ const AdvancedRollPage = () => {
                               </span>
                             </div>
                             <div className={styles.roleName} title={role.name}>{role.name}</div>
-                            <Tag className={styles.permTag}>{permCount} permissions</Tag>
+                            <Tag color={tagColor} className={styles.permTag}>{permCount} permissions</Tag>
                             {isSelected ? <CheckCircleOutlined className={styles.selectedMark} /> : <span className={styles.selectedMark} aria-hidden />}
                           </button>
                         );
@@ -443,7 +456,12 @@ const AdvancedRollPage = () => {
                     <Space>
                       <BankOutlined />
                       Company Access
-                      <Tag className={styles.companyCountTag}>{companyIds.length} selected</Tag>
+                      <Tag
+                        color={companyIds.length > 0 ? 'success' : 'default'}
+                        className={styles.companyCountTag}
+                      >
+                        {companyIds.length} selected
+                      </Tag>
                     </Space>
                   )}>
                     <div className={styles.companyGrid}>
@@ -555,7 +573,7 @@ const AdvancedRollPage = () => {
         maskClosable={false}
         mask={{ closable: false }}
         className={styles.createModal}
-        width="min(520px, calc(100vw - 32px))"
+        width="min(800px, calc(100vw - 32px))"
       >
         <Form form={newRoleForm} layout="vertical" onFinish={handleCreateRole} className={styles.createForm}>
           <Form.Item

@@ -162,7 +162,7 @@ const SingleToParcel = () => {
           columns={tableColumns}
           dataSource={skeletonData}
           rowKey={showSkeleton ? "_skeletonKey" : "id"}
-          loading={tableLoading}
+          loading={showSkeleton ? false : Boolean(tableLoading || isLoading || isFetchingMore)}
           size="small"
           bordered
           className={styles.modernTable}

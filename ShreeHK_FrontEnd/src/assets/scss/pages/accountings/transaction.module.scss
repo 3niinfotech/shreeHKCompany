@@ -123,10 +123,26 @@
     overflow: hidden;
 
     :global(.ant-table-thead > tr > th) {
-        background-color: var(--color-primary-light) !important;
-        font-weight: 600;
-        color: var(--color-navy) !important;
-        border-bottom: 0.5px solid var(--color-border) !important;
+        padding: 4px 8px !important;
+        height: 38px !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.03em !important;
+        text-transform: uppercase !important;
+        color: #334155 !important;
+        background-color: #f2f6f9 !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        white-space: nowrap !important;
+        vertical-align: middle !important;
+        line-height: 1.35 !important;
+
+        &::before {
+            display: none !important;
+        }
+
+        &:hover {
+            background-color: #e2e8f0 !important;
+        }
     }
 
     :global(.ant-table-tbody > tr > td) {

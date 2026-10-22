@@ -40,8 +40,8 @@ const buildCsvBuffer = (headers, rows) => {
   return Buffer.from(lines.join("\r\n"), "utf-8");
 };
 
-const exportInventoryFull = async ({ ids, format = "xlsx" }) => {
-  const products = await repository.getExportInventoryByIds(ids);
+const exportInventoryFull = async ({ ids, format = "xlsx", companyIds = null }) => {
+  const products = await repository.getExportInventoryByIds(ids, companyIds);
   if (!products.length) {
     const error = new Error("No product found for selected items");
     error.statusCode = 404;

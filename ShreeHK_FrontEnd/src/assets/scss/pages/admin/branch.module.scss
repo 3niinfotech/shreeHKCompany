@@ -35,8 +35,9 @@
 .branchTitleRow {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  justify-content: space-between;
   gap: 8px;
+  width: 100%;
 }
 
 .branchName {
@@ -47,7 +48,7 @@
 }
 
 .statusBadge {
-  margin-left: auto;
+  margin: 0 0 0 auto !important;
   flex-shrink: 0;
 }
 

@@ -379,7 +379,7 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
                         dataSource={filteredData}
                         rowKey="id"
                         rowSelection={rowSelection}
-                        loading={isFetching && offset === 0}
+                        loading={(isFetching || isRefetching) && offset === 0}
                         pagination={false}
                         bordered
                         size="small"

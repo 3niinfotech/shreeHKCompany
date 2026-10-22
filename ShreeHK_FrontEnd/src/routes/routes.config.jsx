@@ -262,19 +262,18 @@ export const allProtectedRoutes = [
         name: "Advance",
         path: "/accounting/advance-menu",
         children: [
-          { path: "/accounting/advance", name: "Advance Payment", element: <AdvancePayment />, permissionKey: "accounting.advance" },
+          { path: "/accounting/advance", name: "Advance Entry", element: <AdvancePayment />, permissionKey: "accounting.advance" },
           { path: "/accounting/advance/table-data", name: "Advance List", element: <AdvanceTableData />, permissionKey: "accounting.advance_list" },
+          { path: "/accounting/advance-transaction", name: "Adv Transaction", element: <AdvanceTransaction />, permissionKey: "accounting.advance_transaction" },
         ],
       },
       { path: "/accounting/my-balance", name: "My Balance", element: <MyBalance />, permissionKey: "accounting.my_balance" },
       { path: "/accounting/account-transaction", name: "Transactions", element: <Transaction />, permissionKey: "accounting.transactions" },
-      { path: "/accounting/advance-transaction", name: "Adv Transaction", element: <AdvanceTransaction />, permissionKey: "accounting.advance_transaction" },
       {
         name: "Party",
         path: "/accounting/party-menu",
         children: [
           { path: "/accounting/party", name: "Accounting Party", element: <AccParty />, permissionKey: "accounting.party" },
-          { path: "/accounting/party-wise-transaction", name: "Party Wise Transaction", element: <PartyWiseTransaction />, permissionKey: "accounting.party_wise" },
           { path: "/accounting/party-report", name: "Party Report", element: <AccPartyReport />, permissionKey: "accounting.party_report" },
         ],
       },
@@ -369,4 +368,5 @@ export const allProtectedRoutes = [
   { path: "/module/inventory/stonedetail.php", name: "Stone Detail", element: <StoneDetailAlias />, alwaysAllow: true, hideFromNav: true },
   { path: "/dai/module/inventory/stonedetail.php", name: "Stone Detail", element: <StoneDetailAlias />, alwaysAllow: true, hideFromNav: true },
   { path: "/inventory/stonedetail", name: "Stone Detail", element: <StoneDetailAlias />, alwaysAllow: true, hideFromNav: true },
+  { path: "/accounting/party-wise-transaction", name: "Accounting Party", element: <AccParty />, permissionKey: "accounting.party", hideFromNav: true },
 ];

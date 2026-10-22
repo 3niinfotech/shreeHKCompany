@@ -35,6 +35,15 @@ export const ENDPOINTS = {
         save: "/lab/post",
         delete: "/lab/delete",
     },
+    labIntegration: {
+        fetch: "/api/lab/fetch",
+        fetchBulk: "/api/lab/fetch-bulk",
+        providerStatuses: "/api/lab/providers/status",
+        saveCredential: "/api/lab/providers/credential",
+        testConnection: "/api/lab/providers/test",
+        applyToStone: "/api/lab/apply-to-stone",
+        pdfProxy: "/api/lab/pdf-proxy",
+    },
     category: {
         list: "/master/category",
         save: "/category/save",

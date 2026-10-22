@@ -3,7 +3,8 @@ import { useLocation } from "react-router-dom";
 import { Form, Button, Divider, Row, Col, Empty, Input } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
 import { SearchOutlined } from '@ant-design/icons';
-import { Save, Box } from "lucide-react";
+import { Save, Box, ShieldCheck } from "lucide-react";
+import LabComparisonModal from './components/LabComparisonModal';
 import AIPriceSuggestBlock from '../../components/ai/AIPriceSuggestBlock';
 import { toastApiSuccess, toastApiError } from '../../utils/toastNotify';
 
@@ -35,6 +36,20 @@ const StoneUpdate = () => {
 
     const [searchValue, setSearchValue] = useState(skuFromUpdate);
     const [showForm, setShowForm] = useState(false);
+    const [labModalOpen, setLabModalOpen] = useState(false);
+
+    const activeStoneData = useMemo(() => {
+        const formVals = form.getFieldsValue();
+        const rawStone = apiResponse?.Data || {};
+        return {
+            ...rawStone,
+            ...formVals,
+            id: formVals.id || rawStone.id,
+            sku: formVals.sku || rawStone.sku || searchValue,
+            report_no: formVals.report_no || rawStone.report_no,
+            lab: formVals.lab || rawStone.lab,
+        };
+    }, [form, apiResponse, searchValue]);
 
     const categories = useMemo(() => [
         { id: 1, name: "Natural Diamond" },
@@ -212,10 +227,27 @@ const StoneUpdate = () => {
                                 ))}
                             </div>
                             {/* <AIPriceSuggestBlock getFormValues={() => form.getFieldsValue()} /> */}
-                            <Button type="primary" htmlType="submit" className={styles.saveBtn}
-                                icon={<Save size={18} />} loading={saveMutation.isPending}>
-                                Save Stone Data
-                            </Button>
+                            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                                <Button
+                                    type="default"
+                                    onClick={() => setLabModalOpen(true)}
+                                    icon={<ShieldCheck size={16} color="#0284c7" />}
+                                    style={{
+                                        borderColor: "#0284c7",
+                                        color: "#0284c7",
+                                        fontWeight: 600,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 6,
+                                    }}
+                                >
+                                    Verify with Lab (GIA/IGI)
+                                </Button>
+                                <Button type="primary" htmlType="submit" className={styles.saveBtn}
+                                    icon={<Save size={18} />} loading={saveMutation.isPending}>
+                                    Save Stone Data
+                                </Button>
+                            </div>
                         </div>
 
                         <div className={styles.formBody}>
@@ -231,6 +263,15 @@ const StoneUpdate = () => {
                         </div>
                     </Form>
                 ) : renderEmpty()}
+
+            <LabComparisonModal
+                isOpen={labModalOpen}
+                onClose={() => setLabModalOpen(false)}
+                stoneData={activeStoneData}
+                onAppliedSuccess={() => {
+                    fetchStone();
+                }}
+            />
         </div>
     );
 };

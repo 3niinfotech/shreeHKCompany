@@ -1104,10 +1104,29 @@ inwardRouter.get("/inward/", authenticateToken, (req, res) => {
   }
 
   try {
-    const query = `SELECT i.*, p.name AS party_name, p.address AS party_address, p.pincode AS party_pincode, p.country AS party_country, p.contact_number AS party_contact, p.fax AS party_fax, p.contact_person
-      FROM dai_inward i
-      LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party = p.id OR i.party = p.name)
-      WHERE i.id = ? AND (i.deleted = 0 OR i.deleted IS NULL)`;
+    const query = `SELECT i.*,
+      COALESCE(p.name, comp.name, i.party) AS party_name,
+      COALESCE(p.address, comp.address) AS party_address,
+      COALESCE(p.pincode, comp.pincode) AS party_pincode,
+      COALESCE(p.country, comp.country) AS party_country,
+      COALESCE(p.contact_number, comp.number) AS party_contact,
+      p.fax AS party_fax,
+      COALESCE(p.contact_person, comp.partner) AS contact_person,
+      c.name AS company_name,
+      c.address AS company_address,
+      c.city AS company_city,
+      c.state AS company_state,
+      c.pincode AS company_pincode,
+      c.country AS company_country,
+      c.number AS company_number,
+      c.email AS company_email,
+      c.website AS company_website,
+      c.logo AS company_logo
+    FROM dai_inward i
+    LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party = p.id OR i.party = p.name)
+    LEFT JOIN company comp ON (i.party = CAST(comp.id AS CHAR) OR i.party = comp.id OR i.party = comp.name OR i.party = comp.shortcutName)
+    LEFT JOIN company c ON (i.company = c.id)
+    WHERE i.id = ? AND (i.deleted = 0 OR i.deleted IS NULL)`;
 
     connection.query(query, [id], (error, data) => {
       if (error) {

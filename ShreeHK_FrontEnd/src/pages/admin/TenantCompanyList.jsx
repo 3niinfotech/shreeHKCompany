@@ -14,6 +14,8 @@ import {
   TeamOutlined,
   GlobalOutlined,
   CheckCircleFilled,
+  CheckCircleOutlined,
+  AppstoreOutlined,
   ReloadOutlined,
   UploadOutlined,
 } from "@ant-design/icons";
@@ -83,7 +85,7 @@ const TenantCompanyList = () => {
   const sessionBranchId = useAuthStore((s) => s.branchId);
   const setSessionContext = useAuthStore((s) => s.setSessionContext);
 
-  const { data, isLoading, refetch } = useFetchApi(
+  const { data, isLoading, isFetching, refetch } = useFetchApi(
     "tenantCompanies",
     ENDPOINTS.tenantCompany.list
   );
@@ -100,14 +102,25 @@ const TenantCompanyList = () => {
     "tenantCompanies"
   );
 
-  const companies = data?.Data || [];
+  const allCompanies = data?.Data || [];
   const activeCompanyId = companyId != null ? Number(companyId) : null;
   const activeBranchId = sessionBranchId != null ? Number(sessionBranchId) : null;
-  // Login branch ke andar jitni companies hain — sab active / usable
+
+  // Super admin ko bhi only active company hi show hogi
+  const companies = useMemo(() => {
+    if (!allCompanies.length) return [];
+    if (activeCompanyId != null) {
+      const activeMatch = allCompanies.filter((c) => Number(c.id) === activeCompanyId);
+      if (activeMatch.length > 0) return activeMatch;
+    }
+    return allCompanies;
+  }, [allCompanies, activeCompanyId]);
+
+  // Login branch ke andar companies
   const activeBranchCompanies = useMemo(() => {
     if (activeBranchId == null) return [];
-    return companies.filter((c) => Number(c.branch_id) === activeBranchId);
-  }, [companies, activeBranchId]);
+    return allCompanies.filter((c) => Number(c.branch_id) === activeBranchId);
+  }, [allCompanies, activeBranchId]);
   const branchOptions = useMemo(
     () =>
       (branchOptionsData?.Data || []).map((b) => ({
@@ -242,7 +255,7 @@ const TenantCompanyList = () => {
           icon={<BankOutlined />}
           actions={(
             <Space wrap>
-              <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>
+              <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading || isFetching}>
                 Refresh
               </Button>
               <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} className={styles.primaryBtn}>
@@ -254,34 +267,48 @@ const TenantCompanyList = () => {
 
         <section className={styles.statsRow}>
           <div className={styles.statCard}>
-            <strong className={styles.statValue}>{companies.length}</strong>
-            <span className={styles.statLabel}>Total companies</span>
+            <div className={styles.statContent}>
+              <strong className={styles.statValue}>{companies.length}</strong>
+              <span className={styles.statLabel}>Total companies</span>
+            </div>
+            <div className={`${styles.statIconWrap} ${styles.statIconTeal}`}>
+              <BankOutlined />
+            </div>
           </div>
           <div className={styles.statCard}>
-            <strong className={styles.statValue}>{companies.length}</strong>
-            <span className={styles.statLabel}>Showing</span>
+            <div className={styles.statContent}>
+              <strong className={styles.statValue}>{companies.length}</strong>
+              <span className={styles.statLabel}>Showing</span>
+            </div>
+            <div className={`${styles.statIconWrap} ${styles.statIconSlate}`}>
+              <AppstoreOutlined />
+            </div>
           </div>
           <div className={`${styles.statCard} ${styles.activeStatCard}`}>
-            <span className={styles.statLabel}>
-              Active companies{activeBranchCompanies.length ? ` (${activeBranchCompanies.length})` : ""}
-            </span>
-            {activeBranchCompanies.length > 0 ? (
-              <div className={styles.activeCompanyList} title={activeBranchCompanies.map((c) => c.name).join(", ")}>
-                {activeBranchCompanies.map((c) => (
-                  <strong key={c.id} className={styles.statValueActive}>
-                    {c.name}
-                  </strong>
-                ))}
-              </div>
-            ) : (
-              <strong className={styles.statValueActive}>
-                {companyName || "—"}
+            <div className={styles.statContent}>
+              <strong className={`${styles.statValue} ${styles.statValueGreen}`}>
+                {activeBranchCompanies.length || (activeCompanyId ? 1 : 0)}
               </strong>
-            )}
+              <span className={styles.statLabel}>
+                Active companies{activeBranchCompanies.length ? ` (${activeBranchCompanies.length})` : ""}
+              </span>
+              {activeBranchCompanies.length > 0 ? (
+                <span className={styles.statSubText} title={activeBranchCompanies.map((c) => c.name).join(", ")}>
+                  {activeBranchCompanies.map((c) => c.name).join(", ")}
+                </span>
+              ) : companyName ? (
+                <span className={styles.statSubText} title={companyName}>
+                  {companyName}
+                </span>
+              ) : null}
+            </div>
+            <div className={`${styles.statIconWrap} ${styles.statIconGreen}`}>
+              <CheckCircleOutlined />
+            </div>
           </div>
         </section>
 
-        {isLoading ? (
+        {(isLoading || isFetching) ? (
           <div className={styles.companyGrid} aria-busy="true">
             {Array.from({ length: 6 }).map((_, i) => (
               <SkeletonCard key={i} lines={4} withAvatar />
@@ -303,15 +330,16 @@ const TenantCompanyList = () => {
         ) : (
           <div className={styles.companyGrid}>
             {companies.map((item) => {
-              const isBranchActive = activeBranchId != null && Number(item.branch_id) === activeBranchId;
+              const isActive = (activeCompanyId != null && Number(item.id) === activeCompanyId) ||
+                (activeBranchId != null && Number(item.branch_id) === activeBranchId);
               return (
               <article
                 key={item.id}
-                className={`${styles.companyCard} ${isBranchActive ? styles.companyCardActive : ""}`}
+                className={`${styles.companyCard} ${isActive ? styles.companyCardActive : ""}`}
               >
                 <div className={styles.cardTop}>
                   <div
-                    className={`${styles.avatar} ${isBranchActive ? "" : styles.avatarMuted}`}
+                    className={`${styles.avatar} ${isActive ? "" : styles.avatarMuted}`}
                     data-initials={getInitials(item.name)}
                   >
                     {item.logo ? (
@@ -320,7 +348,7 @@ const TenantCompanyList = () => {
                       getInitials(item.name)
                     )}
                   </div>
-                  {isBranchActive ? (
+                  {isActive ? (
                     <Tag icon={<CheckCircleFilled />} className={styles.activeBadge}>
                       Active
                     </Tag>

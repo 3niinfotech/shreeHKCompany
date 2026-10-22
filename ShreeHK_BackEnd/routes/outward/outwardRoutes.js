@@ -151,13 +151,14 @@ outwardRouter.post("/outward/list", authenticateToken, async (req, res) => {
     // Branch-wide: sale/memo saved under operating company must still appear
     const baseFromWhere = `FROM dai_outward o
                    LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name)
+                   LEFT JOIN company comp ON (o.party = CAST(comp.id AS CHAR) OR o.party = comp.id OR o.party = comp.name OR o.party = comp.shortcutName)
                    WHERE o.company IN (${companyPlaceholders})
                    ${typeFilter} ${userFilter} ${party} ${invoiceNo} ${dateFilter}`;
 
     const countParams = [...companyIds, ...filterParams];
 
     // totalPcs/Carat from outward line items (sold qty), NOT product remaining polish_pcs
-    const query = `SELECT o.id, o.entryno, o.type, o.invoiceno, p.name as party, o.reference,
+    const query = `SELECT o.id, o.entryno, o.type, o.invoiceno, COALESCE(p.name, comp.name, o.party) as party, o.reference,
                           DATE_FORMAT(o.invoicedate, '%d-%m-%Y') AS invoicedate,
                           DATE_FORMAT(o.date, '%d-%m-%Y') AS date,
                           COALESCE(NULLIF(o.final_amount, 0), (
@@ -218,7 +219,29 @@ outwardRouter.get("/outward/", authenticateToken, async (req, res) => {
     const companyIds = await resolveListCompanyIds(buildUserContext(req), 1);
     const companyPlaceholders = companyIds.map(() => "?").join(",") || "?";
     const companyParams = companyIds.length ? companyIds : [1];
-    const query = `SELECT * FROM dai_outward WHERE id = ? AND company IN (${companyPlaceholders})`;
+    const query = `SELECT o.*,
+      COALESCE(p.name, comp.name, o.party) AS party_name,
+      COALESCE(p.address, comp.address) AS party_address,
+      COALESCE(p.pincode, comp.pincode) AS party_pincode,
+      COALESCE(p.country, comp.country) AS party_country,
+      COALESCE(p.contact_number, comp.number) AS party_contact,
+      p.fax AS party_fax,
+      COALESCE(p.contact_person, comp.partner) AS contact_person,
+      c.name AS company_name,
+      c.address AS company_address,
+      c.city AS company_city,
+      c.state AS company_state,
+      c.pincode AS company_pincode,
+      c.country AS company_country,
+      c.number AS company_number,
+      c.email AS company_email,
+      c.website AS company_website,
+      c.logo AS company_logo
+    FROM dai_outward o
+    LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name)
+    LEFT JOIN company comp ON (o.party = CAST(comp.id AS CHAR) OR o.party = comp.id OR o.party = comp.name OR o.party = comp.shortcutName)
+    LEFT JOIN company c ON (o.company = c.id)
+    WHERE o.id = ? AND o.company IN (${companyPlaceholders})`;
 
     connection.query(query, [id, ...companyParams], (error, data) => {
       if (error) {

@@ -219,10 +219,22 @@ companyRouter.get("/company/getOption", authenticateToken, (req, res) => {
   connection.query(query, params, (error, data) => {
     if (error) return res.status(500).json({ error: error.message });
 
-    const response = {
-      Data: data,
-    };
-    res.json(response);
+    if (allCompanies || req.query.includeOperating === "1" || req.query.withCompanies === "1") {
+      connection.query(
+        `SELECT id, name, shortcutName, address, city, state, pincode, country, number, email, website, logo, rapnet_id, branch_id
+         FROM company ORDER BY id ASC`,
+        (compErr, compRows) => {
+          res.json({
+            Data: data,
+            operatingCompanies: compErr ? [] : (compRows || []),
+          });
+        }
+      );
+    } else {
+      res.json({
+        Data: data,
+      });
+    }
   });
 });
 

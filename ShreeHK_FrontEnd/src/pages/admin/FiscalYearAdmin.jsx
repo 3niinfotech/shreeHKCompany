@@ -24,7 +24,7 @@ const FiscalYearAdmin = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState(null);
 
-  const { data, isLoading, refetch } = useFetchApi("fiscalYears", ENDPOINTS.portal.years);
+  const { data, isLoading, isFetching, refetch } = useFetchApi("fiscalYears", ENDPOINTS.portal.years);
   const { mutate: createYear, isPending: isCreating } = usePostApiRequest(
     ENDPOINTS.portal.addYear,
     "fiscalYears"
@@ -92,56 +92,65 @@ const FiscalYearAdmin = () => {
       title: "Year",
       dataIndex: "year",
       key: "year",
-      width: 150,
-      render: (val) => <span className={styles.yearCell}>{val}</span>,
+      width: 140,
+      render: (val) => (
+        <span className={styles.yearBadge}>
+          <CalendarOutlined className={styles.yearBadgeIcon} />
+          {val}
+        </span>
+      ),
     },
     {
       title: "From",
       dataIndex: "fromDate",
       key: "fromDate",
-      width: 120,
-      render: (val) => formatDate(val),
+      width: 130,
+      render: (val) => <span className={styles.dateCell}>{formatDate(val)}</span>,
     },
     {
       title: "To",
       dataIndex: "toDate",
       key: "toDate",
-      width: 120,
-      render: (val) => formatDate(val),
+      width: 130,
+      render: (val) => <span className={styles.dateCell}>{formatDate(val)}</span>,
     },
     {
       title: "Action",
       key: "action",
-      width: 100,
+      width: 110,
       fixed: "right",
       align: "center",
       className: styles.actionCol,
       render: (_, record) => (
-        <Space size={4}>
+        <div className={styles.actionWrapper}>
           <Button
             type="text"
             size="small"
             icon={<EditOutlined />}
             onClick={() => openEdit(record)}
             aria-label="Edit financial year"
-            className={styles.actionEdit}
+            className={styles.actionBtnEdit}
+            title="Edit"
           />
           <Popconfirm
             title="Delete this financial year?"
+            description="Are you sure you want to delete this financial year record?"
             onConfirm={() => deleteYear(record.id, { onSuccess: () => refetch() })}
             okText="Delete"
             cancelText="Cancel"
+            okButtonProps={{ danger: true }}
           >
             <Button
               type="text"
               size="small"
-              danger
               icon={<DeleteOutlined />}
               loading={isDeleting}
               aria-label="Delete financial year"
+              className={styles.actionBtnDelete}
+              title="Delete"
             />
           </Popconfirm>
-        </Space>
+        </div>
       ),
     },
   ];
@@ -153,27 +162,22 @@ const FiscalYearAdmin = () => {
         title="Financial Year Management"
         icon={<CalendarOutlined />}
         actions={(
-          <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading}>
+          <Button icon={<ReloadOutlined />} onClick={() => refetch()} loading={isLoading || isFetching}>
             Refresh
           </Button>
         )}
       />
-{/* 
-      <Alert
-        className={styles.infoAlert}
-        type="info"
-        showIcon
-        message="Super admin only. Full database copy/transfer from legacy addYear must be run separately on the server."
-      /> */}
 
       <Row gutter={[16, 16]} className={styles.contentRow} align="stretch">
         <Col xs={24} xl={8} className={styles.formCol}>
           <Card
             title={(
-              <Space>
-                <PlusOutlined />
-                Create Financial Year
-              </Space>
+              <div className={styles.cardHeaderTitle}>
+                <span className={styles.headerIconWrapper}>
+                  <PlusOutlined />
+                </span>
+                <span>Create Financial Year</span>
+              </div>
             )}
             className={styles.formCard}
           >
@@ -190,9 +194,14 @@ const FiscalYearAdmin = () => {
               <Form.Item name="dbName" label="Database Name (optional)">
                 <Input prefix={<DatabaseOutlined />} placeholder="shreehkweb_snj2026" />
               </Form.Item>
-              <Button type="primary" htmlType="submit" loading={isCreating} className={styles.createBtn} block>
+              <Button type="primary" htmlType="submit" loading={isCreating} className={styles.createBtn} block icon={<PlusOutlined />}>
                 Create Financial Year
               </Button>
+
+              <div className={styles.formNote}>
+                <CalendarOutlined className={styles.noteIcon} />
+                <span>Financial years define the active accounting & transaction period across all branches.</span>
+              </div>
             </Form>
           </Card>
         </Col>
@@ -200,11 +209,13 @@ const FiscalYearAdmin = () => {
         <Col xs={24} xl={16} className={styles.tableCol}>
           <Card
             title={(
-              <Space className={styles.tableTitle}>
-                <TableOutlined />
-                Saved Financial Years
+              <div className={styles.cardHeaderTitle}>
+                <span className={styles.headerIconWrapper}>
+                  <TableOutlined />
+                </span>
+                <span>Saved Financial Years</span>
                 <span className={styles.countBadge}>{rows.length}</span>
-              </Space>
+              </div>
             )}
             className={styles.tableCard}
           >
@@ -212,7 +223,7 @@ const FiscalYearAdmin = () => {
               rowKey="id"
               columns={columns}
               dataSource={rows}
-              loading={isLoading}
+              loading={isLoading || isFetching}
               pagination={{ pageSize: 8, size: "small", showSizeChanger: false }}
               locale={{ emptyText: "No financial years created yet." }}
               className={styles.fiscalTable}
@@ -224,7 +235,12 @@ const FiscalYearAdmin = () => {
       </Row>
 
       <Modal
-        title="Edit Financial Year"
+        title={(
+          <Space>
+            <EditOutlined style={{ color: "var(--color-primary)" }} />
+            <span>Edit Financial Year</span>
+          </Space>
+        )}
         open={editOpen}
         rootClassName={styles.editModalRoot}
         onCancel={() => {
@@ -233,7 +249,7 @@ const FiscalYearAdmin = () => {
           editForm.resetFields();
         }}
         footer={[
-          <Button key="cancel" onClick={() => setEditOpen(false)} danger>Cancel</Button>,
+          <Button key="cancel" onClick={() => setEditOpen(false)}>Cancel</Button>,
           <Button
             key="save"
             loading={isUpdating}

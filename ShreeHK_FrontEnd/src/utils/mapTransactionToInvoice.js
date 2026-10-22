@@ -62,8 +62,21 @@ export function mapTransactionToInvoice(record, options = {}) {
   const adjustments = finalAmount - subtotal - vatAmount;
 
   const rawParty = record?.party && typeof record.party === "object" ? record.party : {};
+  const isNumericStr = (v) => typeof v === "string" && v.trim() !== "" && !isNaN(Number(v));
+  const rawPartyName = record?.party_name && !isNumericStr(record.party_name) ? record.party_name : null;
+  const rawPartyParty = typeof record?.party === "string" && !isNumericStr(record.party) ? record.party : null;
+
+  const resolvedPartyName =
+    rawPartyName ||
+    rawParty.name ||
+    rawPartyParty ||
+    record?.p_name ||
+    (record?.party_name && record.party_name.trim()) ||
+    (record?.party != null ? String(record.party) : "") ||
+    "—";
+
   const party = {
-    name: record?.party_name || rawParty.name || (typeof record?.party === "string" ? record.party : "") || record?.p_name || "—",
+    name: resolvedPartyName,
     address: record?.party_address || rawParty.address || record?.address || record?.p_address || "",
     pincode: record?.party_pincode || rawParty.pincode || record?.pincode || record?.p_pincode || "",
     country: record?.party_country || rawParty.country || record?.country || record?.p_country || "",

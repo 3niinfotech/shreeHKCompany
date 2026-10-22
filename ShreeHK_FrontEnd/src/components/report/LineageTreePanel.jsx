@@ -150,8 +150,8 @@ const LineageTreePanel = ({ lineage, currentDetail, onNavigateSku }) => {
 
     return (
         <div className={styles.lineagePanelWrap}>
-            {/* Top Bar Summary */}
-            <div className={styles.lineageTopBar}>
+            {/* Top Bar Summary do not uncomment this striclty ok*/}
+            {/* <div className={styles.lineageTopBar}>
                 <div className={styles.lineageTitleMeta}>
                     <div className={styles.lineageIconWrap}>
                         <Network size={18} />
@@ -165,7 +165,18 @@ const LineageTreePanel = ({ lineage, currentDetail, onNavigateSku }) => {
                         </div>
                     </div>
                 </div>
-            </div>
+                <div className={styles.lineageBadgeRow}>
+                    {getGroupTypeBadge(current.group_type)}
+                    <Tag color={getStatusColor(current.outward || current.status)} style={{ fontWeight: 600 }}>
+                        {current.outward ? String(current.outward).toUpperCase() : (current.status ? String(current.status).toUpperCase() : 'AVAILABLE')}
+                    </Tag>
+                    {parent ? (
+                        <Tag color="geekblue" style={{ fontWeight: 600 }}>
+                            Part of Box/Parcel {parent.sku}
+                        </Tag>
+                    ) : null}
+                </div>
+            </div> */}
 
             {/* Visual Tree Section */}
             <div className={styles.visualTreeContainer}>
@@ -215,84 +226,115 @@ const LineageTreePanel = ({ lineage, currentDetail, onNavigateSku }) => {
                         </div>
                     ) : null}
 
-                    {/* Level 2: Current Stone Card */}
-                    <div className={styles.treeNodeGroup}>
-                        <div className={`${styles.treeCard} ${styles.treeCardCurrent}`}>
-                            <div className={styles.treeCardHeader}>
-                                <div className={styles.treeSkuGroup}>
-                                    <div className={styles.skuIconBadge}>
-                                        <Gem size={17} />
-                                    </div>
-                                    <div>
-                                        <div className={styles.treeSkuTitle}>{current.sku}</div>
-                                        <div className={styles.treeNodeSubtitle}>
-                                            {parent ? 'Constituent Stone' : (rawChildren.length > 0 ? 'Container Unit' : 'Active Stone')}
-                                        </div>
-                                    </div>
+                    {/* Level 2: Current Stone Row */}
+                    <div className={styles.treeRowContainer}>
+                        <div className={styles.treeCurrentRowBar}>
+                            <div className={styles.rowIdentityGroup}>
+                                <div className={styles.rowSkuIconBadge}>
+                                    <Gem size={18} />
                                 </div>
-                                <div className={styles.treeHeaderBadges}>
+                                <div className={styles.rowSkuMeta}>
+                                    <span className={styles.rowSkuTitle}>{current.sku}</span>
+                                    <span className={styles.rowSkuSubtitle}>
+                                        {parent ? 'Constituent Stone' : (rawChildren.length > 0 ? 'Container Unit' : 'Active Stone')}
+                                    </span>
+                                </div>
+                                <div className={styles.rowBadges}>
                                     {getGroupTypeBadge(current.group_type)}
                                     <Tag color={getStatusColor(current.outward || current.status)} style={{ fontWeight: 700, margin: 0, textTransform: 'uppercase', borderRadius: 4 }}>
                                         {current.outward ? String(current.outward).toUpperCase() : (current.status ? String(current.status).toUpperCase() : 'AVAILABLE')}
                                     </Tag>
                                 </div>
                             </div>
-                            <div className={styles.treeCardMain}>
-                                <div className={styles.treeSpecsGrid}>
-                                    <div className={styles.treeSpecTile}>
-                                        <span className={styles.treeSpecLabel}>Carat</span>
-                                        <span className={styles.treeSpecVal}>{formatNum(current.polish_carat)} <small>ct</small></span>
-                                    </div>
-                                    <div className={styles.treeSpecTile}>
-                                        <span className={styles.treeSpecLabel}>Pcs</span>
-                                        <span className={styles.treeSpecVal}>{formatNum(current.polish_pcs, 0)} <small>pcs</small></span>
-                                    </div>
-                                    <div className={styles.treeSpecTile}>
-                                        <span className={styles.treeSpecLabel}>Price / Ct</span>
-                                        <span className={styles.treeSpecVal}>${formatNum(current.price, 2)}</span>
-                                    </div>
-                                    <div className={`${styles.treeSpecTile} ${styles.treeSpecTileAmount}`}>
-                                        <span className={styles.treeSpecLabel}>Total Amount</span>
-                                        <span className={styles.treeSpecVal}>${formatNum(current.amount, 2)}</span>
-                                    </div>
+
+                            <div className={styles.rowSectionDivider} />
+
+                            <div className={styles.rowSpecsWrap}>
+                                <div className={styles.rowSpecItem}>
+                                    <span className={styles.rowSpecLabel}>Carat</span>
+                                    <span className={styles.rowSpecVal}>{formatNum(current.polish_carat)} <small>ct</small></span>
                                 </div>
-                                {(current.shape || current.color || current.clarity || current.cut || current.lab) ? (
-                                    <div className={styles.treeAttributesRow}>
-                                        {current.shape ? (
-                                            <span className={styles.attrPill}>
-                                                <span className={styles.attrPillLabel}>Shape:</span> {current.shape}
-                                            </span>
-                                        ) : null}
-                                        {current.color ? (
-                                            <span className={styles.attrPill}>
-                                                <span className={styles.attrPillLabel}>Color:</span> {current.color}
-                                            </span>
-                                        ) : null}
-                                        {current.clarity ? (
-                                            <span className={styles.attrPill}>
-                                                <span className={styles.attrPillLabel}>Clarity:</span> {current.clarity}
-                                            </span>
-                                        ) : null}
-                                        {current.cut ? (
-                                            <span className={styles.attrPill}>
-                                                <span className={styles.attrPillLabel}>Cut:</span> {current.cut}
-                                            </span>
-                                        ) : null}
-                                        {current.lab ? (
-                                            <span className={styles.attrPill}>
-                                                <span className={styles.attrPillLabel}>Lab:</span> {current.lab}
-                                            </span>
-                                        ) : null}
-                                    </div>
+
+                                <div className={styles.rowSpecDivider} />
+
+                                <div className={styles.rowSpecItem}>
+                                    <span className={styles.rowSpecLabel}>Pcs</span>
+                                    <span className={styles.rowSpecVal}>{formatNum(current.polish_pcs, 0)} <small>pcs</small></span>
+                                </div>
+
+                                <div className={styles.rowSpecDivider} />
+
+                                <div className={styles.rowSpecItem}>
+                                    <span className={styles.rowSpecLabel}>Price / Ct</span>
+                                    <span className={styles.rowSpecVal}>${formatNum(current.price, 2)}</span>
+                                </div>
+
+                                <div className={styles.rowSpecDivider} />
+
+                                <div className={`${styles.rowSpecItem} ${styles.rowSpecItemAmount}`}>
+                                    <span className={styles.rowSpecLabel}>Total Amount</span>
+                                    <span className={styles.rowSpecVal}>${formatNum(current.amount, 2)}</span>
+                                </div>
+
+                                {current.shape ? (
+                                    <>
+                                        <div className={styles.rowSpecDivider} />
+                                        <div className={styles.rowSpecItem}>
+                                            <span className={styles.rowSpecLabel}>Shape</span>
+                                            <span className={styles.rowSpecVal}>{String(current.shape).toUpperCase()}</span>
+                                        </div>
+                                    </>
                                 ) : null}
-                                {!parent && rawChildren.length === 0 ? (
-                                    <div className={styles.treeStandaloneNote}>
-                                        <Info size={13} />
-                                        <span>Independent stock item · Not partitioned into child stones · Not part of a parent container</span>
-                                    </div>
+
+                                {current.color ? (
+                                    <>
+                                        <div className={styles.rowSpecDivider} />
+                                        <div className={styles.rowSpecItem}>
+                                            <span className={styles.rowSpecLabel}>Color</span>
+                                            <span className={styles.rowSpecVal}>{String(current.color).toUpperCase()}</span>
+                                        </div>
+                                    </>
+                                ) : null}
+
+                                {current.clarity ? (
+                                    <>
+                                        <div className={styles.rowSpecDivider} />
+                                        <div className={styles.rowSpecItem}>
+                                            <span className={styles.rowSpecLabel}>Clarity</span>
+                                            <span className={styles.rowSpecVal}>{String(current.clarity).toUpperCase()}</span>
+                                        </div>
+                                    </>
+                                ) : null}
+
+                                {current.cut ? (
+                                    <>
+                                        <div className={styles.rowSpecDivider} />
+                                        <div className={styles.rowSpecItem}>
+                                            <span className={styles.rowSpecLabel}>Cut</span>
+                                            <span className={styles.rowSpecVal}>{String(current.cut).toUpperCase()}</span>
+                                        </div>
+                                    </>
+                                ) : null}
+
+                                {current.lab ? (
+                                    <>
+                                        <div className={styles.rowSpecDivider} />
+                                        <div className={styles.rowSpecItem}>
+                                            <span className={styles.rowSpecLabel}>Lab</span>
+                                            <span className={styles.rowSpecVal}>{String(current.lab).toUpperCase()}</span>
+                                        </div>
+                                    </>
                                 ) : null}
                             </div>
                         </div>
+
+                        {/* do not uncomment this strictly ok 
+                        {!parent && rawChildren.length === 0 ? (
+                            <div className={styles.treeStandaloneNote} style={{ width: '100%', marginTop: 8 }}>
+                                <Info size={13} />
+                                <span>Independent stock item · Not partitioned into child stones · Not part of a parent container</span>
+                            </div>
+                        ) : null} */}
 
                         {/* If current stone contains children */}
                         {rawChildren.length > 0 ? (

@@ -339,16 +339,16 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
           };
       const res = await api.post(ENDPOINTS.session.context, payload);
       const { token: newToken, Data } = res.data || {};
+      const contextPayload = {
+        ...Data,
+        yearLabel: Data?.yearLabel || rawItem?.yearLabel || item?.yearLabel || null,
+        branchShortcut: Data?.branchShortcut || selectedBranch?.shortcutName || selectedBranch?.branchShortcut || selectedBranch?.branchName || null,
+        companyLogo: Data?.companyLogo || null,
+      };
       if (newToken) {
-        login(user, newToken, {
-          ...Data,
-          companyLogo: Data.companyLogo || null,
-        });
+        login(user, newToken, contextPayload);
       } else {
-        setSessionContext({
-          ...Data,
-          companyLogo: Data.companyLogo || null,
-        });
+        setSessionContext(contextPayload);
       }
       try {
         queryClient.clear();

@@ -16,6 +16,7 @@ import { prefetchMasterQueries } from "../../api/prefetchMasterQueries";
 import { PAUSE_BACKGROUND_API } from "../../api/pauseBackgroundApi";
 import { getAuthorizedRouteMeta } from "../../routes/Routes";
 import { prefetchAuthorizedRoutesIdle } from "../../routes/routePrefetch";
+import useActiveSessionContext from "../../hooks/useActiveSessionContext";
 
 const FloatingAIChat = lazy(() => import("../ai/FloatingAIChat"));
 
@@ -28,9 +29,29 @@ const LayoutShell = () => {
   const yearId = useAuthStore((state) => state.yearId);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const userWithPerms = useAuthUser();
+  const { branchShortcut, branchName, yearLabel } = useActiveSessionContext();
   useSessionKeepalive();
   useActivityTracker();
   useCopyableTableIdentifiers();
+
+  // Task 2: Chrome tab title format: "Smart Dia - branch - year"
+  useEffect(() => {
+    if (!isAuthenticated) {
+      document.title = "Smart Dia";
+      return;
+    }
+    const branch = (branchShortcut || branchName || "").trim();
+    const year = yearLabel && String(yearLabel).trim();
+    if (branch && year) {
+      document.title = `Smart Dia - ${branch} - ${year}`;
+    } else if (branch) {
+      document.title = `Smart Dia - ${branch}`;
+    } else if (year) {
+      document.title = `Smart Dia - ${year}`;
+    } else {
+      document.title = "Smart Dia";
+    }
+  }, [isAuthenticated, branchShortcut, branchName, yearLabel]);
 
   // Company optional: Branch + Year is enough (create company after login)
   const contextReady =

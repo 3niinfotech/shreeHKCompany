@@ -15,6 +15,8 @@ import {
   GlobalOutlined,
   ReloadOutlined,
   CheckCircleFilled,
+  CheckCircleOutlined,
+  AppstoreOutlined,
 } from "@ant-design/icons";
 import { useFetchApi, usePostApiRequest } from "../../api/ApiFunction";
 import { ENDPOINTS } from "../../api/endpoints";
@@ -27,15 +29,36 @@ import branchStyles from "../../assets/scss/pages/admin/branch.module.scss";
 const { Content } = Layout;
 const { Title, Text } = Typography;
 
+const EMPTY_PARAMS = Object.freeze({});
+
+const toSafeText = (val, fallback = "") => {
+  if (val == null) return fallback;
+  if (typeof val === "string") return val;
+  if (typeof val === "number" || typeof val === "boolean") return String(val);
+  if (typeof val === "object") {
+    if (typeof val.name === "string") return val.name;
+    if (typeof val.label === "string") return val.label;
+    if (typeof val.title === "string") return val.title;
+    if (typeof val.company_name === "string") return val.company_name;
+    try {
+      return JSON.stringify(val);
+    } catch {
+      return fallback;
+    }
+  }
+  return fallback;
+};
+
 const getInitials = (name = "") => {
-  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  const safeStr = toSafeText(name, "");
+  const parts = safeStr.trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "BR";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
 };
 
 const avatarClassForBranch = (name = "") => {
-  const key = String(name).trim().toLowerCase();
+  const key = toSafeText(name, "").trim().toLowerCase();
   if (key === "hk") return branchStyles.avatarHk;
   if (key === "dubai") return branchStyles.avatarDubai;
   if (key === "surat") return branchStyles.avatarSurat;
@@ -53,7 +76,7 @@ const BranchList = () => {
   const { data, isLoading, refetch, isFetching } = useFetchApi(
     "branches",
     ENDPOINTS.branch.list,
-    {},
+    EMPTY_PARAMS,
     "GET",
     { staleTime: 0, refetchOnMount: "always" }
   );
@@ -66,9 +89,12 @@ const BranchList = () => {
     "branches"
   );
 
-  const branches = data?.Data || [];
+  const branches = useMemo(
+    () => (Array.isArray(data?.Data) ? data.Data : []),
+    [data]
+  );
   const activeCount = useMemo(
-    () => branches.filter((b) => Number(b.status)).length,
+    () => branches.filter((b) => Number(b?.status) === 1).length,
     [branches]
   );
 
@@ -169,20 +195,35 @@ const BranchList = () => {
 
         <section className={styles.statsRow}>
           <div className={styles.statCard}>
-            <strong className={styles.statValue}>{branches.length}</strong>
-            <span className={styles.statLabel}>Total branches</span>
+            <div className={styles.statContent}>
+              <strong className={styles.statValue}>{branches.length}</strong>
+              <span className={styles.statLabel}>Total branches</span>
+            </div>
+            <div className={`${styles.statIconWrap} ${styles.statIconTeal}`}>
+              <ApartmentOutlined />
+            </div>
           </div>
           <div className={styles.statCard}>
-            <strong className={styles.statValue}>{branches.length}</strong>
-            <span className={styles.statLabel}>Showing</span>
+            <div className={styles.statContent}>
+              <strong className={styles.statValue}>{branches.length}</strong>
+              <span className={styles.statLabel}>Showing</span>
+            </div>
+            <div className={`${styles.statIconWrap} ${styles.statIconSlate}`}>
+              <AppstoreOutlined />
+            </div>
           </div>
           <div className={`${styles.statCard} ${styles.activeStatCard}`}>
-            <strong className={styles.statValue}>{activeCount}</strong>
-            <span className={styles.statLabel}>Active (login)</span>
+            <div className={styles.statContent}>
+              <strong className={`${styles.statValue} ${styles.statValueGreen}`}>{activeCount}</strong>
+              <span className={styles.statLabel}>Active (login)</span>
+            </div>
+            <div className={`${styles.statIconWrap} ${styles.statIconGreen}`}>
+              <CheckCircleOutlined />
+            </div>
           </div>
         </section>
 
-        {isLoading ? (
+        {(isLoading || isFetching) ? (
           <div className={styles.companyGrid} aria-busy="true">
             {Array.from({ length: 6 }).map((_, i) => (
               <SkeletonCard key={i} lines={4} withAvatar />
@@ -204,30 +245,36 @@ const BranchList = () => {
         ) : (
           <div className={styles.companyGrid}>
             {branches.map((item) => {
-              const isActive = Boolean(Number(item.status));
-              const linkedNames = Array.isArray(item.company_names)
+              const isActive = Boolean(Number(item?.status));
+              const branchName = toSafeText(item?.name, "Branch");
+              const linkedNames = Array.isArray(item?.company_names)
                 ? item.company_names
                 : [];
+              const addressText = toSafeText(item?.address, "No address added");
+              const locationParts = [
+                toSafeText(item?.city, ""),
+                toSafeText(item?.country, ""),
+              ].filter(Boolean);
+              const locationText = locationParts.join(", ");
+              const phoneText = toSafeText(item?.number, "");
+
               return (
                 <article
-                  key={item.id}
+                  key={item?.id ?? branchName}
                   className={`${styles.companyCard} ${branchStyles.branchCard}`}
                 >
                   <div className={branchStyles.branchHead}>
                     <div
-                      className={`${styles.avatar} ${avatarClassForBranch(item.name)}`}
-                      data-initials={getInitials(item.name)}
+                      className={`${styles.avatar} ${avatarClassForBranch(branchName)}`}
+                      data-initials={getInitials(branchName)}
                     >
-                      {getInitials(item.name)}
+                      {getInitials(branchName)}
                     </div>
                     <div className={branchStyles.branchHeadMain}>
                       <div className={branchStyles.branchTitleRow}>
-                        <Title level={5} className={branchStyles.branchName} title={item.name}>
-                          {item.name}
+                        <Title level={5} className={branchStyles.branchName} title={branchName}>
+                          {branchName}
                         </Title>
-                        {item.shortcutName ? (
-                          <Tag className={styles.typeTag}>{item.shortcutName}</Tag>
-                        ) : null}
                         {isActive ? (
                           <Tag icon={<CheckCircleFilled />} className={`${styles.activeBadge} ${branchStyles.statusBadge}`}>
                             Active
@@ -241,15 +288,18 @@ const BranchList = () => {
 
                   <div className={branchStyles.linkedBlock}>
                     <span className={branchStyles.linkedLabel}>
-                      Linked companies ({linkedNames.length || Number(item.company_count) || 0})
+                      Linked companies ({linkedNames.length || Number(item?.company_count) || 0})
                     </span>
                     {linkedNames.length > 0 ? (
                       <div className={branchStyles.linkedTags}>
-                        {linkedNames.map((name) => (
-                          <Tag key={`${item.id}-${name}`} className={branchStyles.linkedTag} title={name}>
-                            {name}
-                          </Tag>
-                        ))}
+                        {linkedNames.map((entry, idx) => {
+                          const cName = toSafeText(entry, `Company ${idx + 1}`);
+                          return (
+                            <Tag key={`${item?.id || 'branch'}-${cName}-${idx}`} className={branchStyles.linkedTag} title={cName}>
+                              {cName}
+                            </Tag>
+                          );
+                        })}
                       </div>
                     ) : (
                       <span className={branchStyles.linkedEmpty}>No company linked yet</span>
@@ -259,22 +309,20 @@ const BranchList = () => {
                   <div className={styles.metaBlock}>
                     <div className={styles.metaLine}>
                       <EnvironmentOutlined />
-                      <Text type="secondary">{item.address || "No address added"}</Text>
+                      <Text type="secondary">{addressText}</Text>
                     </div>
-                    {(item.city || item.country) && (
+                    {locationText ? (
                       <div className={styles.metaLine}>
                         <GlobalOutlined />
-                        <Text type="secondary">
-                          {[item.city, item.country].filter(Boolean).join(", ")}
-                        </Text>
+                        <Text type="secondary">{locationText}</Text>
                       </div>
-                    )}
-                    {item.number && (
+                    ) : null}
+                    {phoneText ? (
                       <div className={styles.metaLine}>
                         <PhoneOutlined />
-                        <Text type="secondary">{item.number}</Text>
+                        <Text type="secondary">{phoneText}</Text>
                       </div>
-                    )}
+                    ) : null}
                   </div>
 
                   <div className={styles.cardActionsBranch}>
@@ -328,7 +376,6 @@ const BranchList = () => {
           width="min(900px, calc(100vw - 32px))"
           centered
           closable={false}
-          maskClosable={false}
           mask={{ closable: false }}
           destroyOnClose
           className={styles.companyModal}
@@ -363,12 +410,11 @@ const BranchList = () => {
           okButtonProps={{ danger: true, loading: isDeleting }}
           centered
           closable={false}
-          maskClosable={false}
           mask={{ closable: false }}
           className={styles.companyModal}
         >
           <Text>
-            Delete branch <strong>{deleting?.name}</strong>? Linked companies will be moved to
+            Delete branch <strong>{toSafeText(deleting?.name, "this branch")}</strong>? Linked companies will be moved to
             HK / Dubai automatically.
           </Text>
         </Modal>

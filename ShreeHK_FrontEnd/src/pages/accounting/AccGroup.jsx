@@ -74,14 +74,14 @@ const AccGroup = () => {
         title="Accounting Group"
         columns={columns}
         dataSource={filteredData}
-        loading={isLoading}
+        loading={isLoading || isFetching}
         searchValue={search}
         onSearchChange={setSearch}
         onAdd={() => { setEditRecord(null); addModal.openModal(); }}
         onEdit={(r) => { setEditRecord(r); editModal.openModal(); }}
         onDelete={openDelete}
         extraHeaderActions={
-          <Button icon={<ReloadOutlined />} loading={isFetching} onClick={() => refetch()}>
+          <Button icon={<ReloadOutlined />} loading={isLoading || isFetching} onClick={() => refetch()}>
             Refresh
           </Button>
         }

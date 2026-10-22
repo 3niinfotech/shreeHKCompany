@@ -206,7 +206,7 @@ const AccountingMasterTemplate = ({
                         scroll={{ y: tableHeight, x: 'max-content' }}
                         size="small"
                         bordered
-                        loading={tableLoading}
+                        loading={showSkeleton ? false : Boolean(loading || refreshLoading || tableLoading)}
                         onScroll={handleTableScroll}
                         footer={() => (
                             <div style={{ textAlign: 'center', padding: '5px' }}>

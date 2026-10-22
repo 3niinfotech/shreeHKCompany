@@ -15,11 +15,13 @@ const BaseModal = ({
     saveBtnText = "Save",
     cancelBtnText = "Close",
     saveIcon,
+    saveDisabled = false,
     width = 700,
     loading = false,
     variant,
     className,
     rootClassName,
+    footer,
     ...props
 }) => {
     const isEdit = variant === "edit";
@@ -61,44 +63,49 @@ const BaseModal = ({
             mask={{ closable: false }}
             className={modalCls || undefined}
             rootClassName={rootCls || undefined}
-            footer={[
-                <Button
-                    key="cancel"
-                    danger={!isEdit}
-                    className={isEdit ? "master-edit-modal__btn-close" : styles.btnCancel}
-                    onClick={onClose}
-                    style={
-                        isEdit
-                            ? undefined
-                            : {
-                                  backgroundColor: "var(--color-danger, #e53e3e)",
-                                  borderColor: "var(--color-danger, #e53e3e)",
-                                  color: "#fff",
+            footer={
+                footer !== undefined
+                    ? footer
+                    : [
+                          <Button
+                              key="cancel"
+                              danger={!isEdit}
+                              className={isEdit ? "master-edit-modal__btn-close" : styles.btnCancel}
+                              onClick={onClose}
+                              style={
+                                  isEdit
+                                      ? undefined
+                                      : {
+                                            backgroundColor: "var(--color-danger, #e53e3e)",
+                                            borderColor: "var(--color-danger, #e53e3e)",
+                                            color: "#fff",
+                                        }
                               }
-                    }
-                >
-                    {cancelBtnText}
-                </Button>,
-                <Button
-                    key="save"
-                    type="primary"
-                    className={isEdit ? "master-edit-modal__btn-save" : styles.btnSave}
-                    loading={loading}
-                    icon={isEdit ? saveIcon : undefined}
-                    onClick={onSave}
-                    style={
-                        isEdit
-                            ? undefined
-                            : {
-                                  backgroundColor: "var(--color-success, #38a169)",
-                                  borderColor: "var(--color-success, #38a169)",
-                                  color: "#fff",
+                          >
+                              {cancelBtnText}
+                          </Button>,
+                          <Button
+                              key="save"
+                              type="primary"
+                              className={isEdit ? "master-edit-modal__btn-save" : styles.btnSave}
+                              loading={loading}
+                              disabled={saveDisabled}
+                              icon={isEdit ? saveIcon : undefined}
+                              onClick={onSave}
+                              style={
+                                  isEdit
+                                      ? undefined
+                                      : {
+                                            backgroundColor: "var(--color-success, #38a169)",
+                                            borderColor: "var(--color-success, #38a169)",
+                                            color: "#fff",
+                                        }
                               }
-                    }
-                >
-                    {saveBtnText}
-                </Button>,
-            ]}
+                          >
+                              {saveBtnText}
+                          </Button>,
+                      ]
+            }
             {...props}
         >
             <div className={isEdit ? "master-edit-modal__body" : styles.modalBody}>

@@ -20,11 +20,25 @@ function queryAsync(sql, params = []) {
  * @param {number} companyId
  */
 async function getExpensePaymentsByCompany(companyId) {
-  const sql = `SELECT id, party, other_party, date, type, book, cheque, amount, description
-               FROM acc_transaction
-               WHERE company = ?
-               ORDER BY id DESC`;
-  return queryAsync(sql, [companyId]);
+  const sql = `SELECT t.id, t.party, t.other_party, t.date, t.type, t.book, t.cheque, t.amount, t.description,
+                      (
+                        SELECT p.name
+                        FROM dai_party p
+                        WHERE (t.party = CAST(p.id AS CHAR) OR t.party = p.name)
+                          AND (p.company = ? OR p.company IS NULL)
+                        LIMIT 1
+                      ) AS party_name,
+                      (
+                        SELECT bk.book
+                        FROM dai_book bk
+                        WHERE (t.book = CAST(bk.id AS CHAR) OR t.book = bk.book)
+                          AND (bk.company = ? OR bk.company IS NULL)
+                        LIMIT 1
+                      ) AS book_name
+               FROM acc_transaction t
+               WHERE t.company = ?
+               ORDER BY t.id DESC`;
+  return queryAsync(sql, [companyId, companyId, companyId]);
 }
 
 /**

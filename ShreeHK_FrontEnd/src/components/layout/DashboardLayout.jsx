@@ -23,6 +23,7 @@ import { getPostLoginPath } from "../../routes/Routes";
 import { prefetchRoute } from "../../routes/routePrefetch";
 import RoleAccessGuard from "./RoleAccessGuard";
 import { resolveCompanyLogoUrl } from "../../utils/companyLogo";
+import useActiveSessionContext from "../../hooks/useActiveSessionContext";
 import logoHeader from "../../assets/loader/softWare_Header_white.svg";
 import styles from "../../assets/scss/layout/dashboardLayout.module.scss";
 
@@ -44,39 +45,12 @@ const DashboardLayout = () => {
   const authCompanyName = useAuthStore((state) => state.companyName);
   const openTab = useTabsStore((state) => state.openTab);
 
-  const displayShortName = useMemo(() => {
-    // Derive shortcut strictly from Company Name (e.g. "ShreeHK International" -> "SI", "KG Infrastructure" -> "KI")
-    // Never show branch code like "HK"
-    const name = authCompanyName && String(authCompanyName).trim();
-    if (!name) return "SI";
-
-    const cleanWithoutSuffix = name
-      .replace(/\b(Pvt\.?|Ltd\.?|Private|Limited|LLP|Inc\.?|Co\.?|Corp\.?)\b/gi, "")
-      .trim();
-
-    const target = cleanWithoutSuffix || name;
-    const words = target.split(/[\s\-_/]+/).filter(Boolean);
-
-    if (words.length >= 2) {
-      const firstChar = words[0][0].toUpperCase();
-      const secondChar = words[words.length - 1][0].toUpperCase();
-      return `${firstChar}${secondChar}`;
-    }
-
-    if (words.length === 1) {
-      const caps = words[0].replace(/[^A-Z0-9]/g, "");
-      if (caps.length >= 2) {
-        return caps.slice(0, 2).toUpperCase();
-      }
-      return words[0].slice(0, 2).toUpperCase();
-    }
-
-    return "SI";
-  }, [authCompanyName]);
-
-  const displayFullName = useMemo(() => {
-    return authCompanyName || "ShreeHK International";
-  }, [authCompanyName]);
+  const { branchShortcut, yearLabel, companyName } = useActiveSessionContext();
+  const displayShortName = branchShortcut || "HK";
+  const displayYearLabel = yearLabel || "";
+  const fullBrandTitle = companyName
+    ? `${companyName} (${yearLabel || ""})`
+    : (yearLabel ? `${displayShortName} - ${yearLabel}` : displayShortName);
 
   const logoUrl = useMemo(() => resolveCompanyLogoUrl(companyLogo), [companyLogo]);
 
@@ -182,14 +156,13 @@ const DashboardLayout = () => {
           trigger={null}
         >
           <div className={`${styles.brand} ${collapsed ? styles.brandCollapsed : ""}`}>
-            <Link to={homePath} className={styles.brandLink} title={displayFullName}>
-              {collapsed ? (
-                <span className={styles.brandBadgeShort} title={displayFullName}>
-                  {displayShortName}
-                </span>
-              ) : (
-                <span className={styles.brandText} title={displayFullName}>
-                  {displayFullName}
+            <Link to={homePath} className={styles.brandLink} title={fullBrandTitle}>
+              <span className={styles.brandBadgeShort} title={fullBrandTitle}>
+                {displayShortName}
+              </span>
+              {!collapsed && (
+                <span className={styles.brandText} title={fullBrandTitle}>
+                  {displayYearLabel}
                 </span>
               )}
             </Link>

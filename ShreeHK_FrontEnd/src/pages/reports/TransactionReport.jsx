@@ -35,9 +35,9 @@ const TYPE_OPTIONS = [
 
 const PARTY_COLUMNS = [
     { title: 'No', dataIndex: 'no', key: 'no', width: 60, align: 'center' },
-    { title: 'Invoice', dataIndex: 'invoice', key: 'invoice', align: 'center' },
     { title: 'Date', dataIndex: 'date', key: 'date', align: 'center', render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
     { title: 'Company', dataIndex: 'company', key: 'company', align: 'center' },
+    { title: 'Invoice', dataIndex: 'invoice', key: 'invoice', align: 'center' },
     { title: 'Pcs', dataIndex: 'pcs', key: 'pcs', align: 'center' },
     { title: 'Carat', dataIndex: 'carat', key: 'carat', align: 'center' },
     {

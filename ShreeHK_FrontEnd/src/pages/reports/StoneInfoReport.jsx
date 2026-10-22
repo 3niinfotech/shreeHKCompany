@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import dayjs from 'dayjs';
-import { Card, Form, Input, Tag, Typography, Button, Tabs, Space } from 'antd';
+import { Card, Form, Input, Tag, Typography, Button, Tabs, Space, Spin } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import { Layers, Activity, RefreshCw } from 'lucide-react';
 import { api } from '../../api/client/axiosInstance';
@@ -40,7 +40,7 @@ const historyColumns = [
     },
     { title: 'Date', dataIndex: 'date', key: 'date', width: 110, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
     { title: 'Invoice / Ref', dataIndex: 'invoice', key: 'invoice', width: 120, render: (v) => <Text strong>{v || '-'}</Text> },
-    { title: 'Description', dataIndex: 'description', key: 'description', ellipsis: true },
+    { title: 'Description', dataIndex: 'description', key: 'description', width: 160, ellipsis: true },
     { title: 'Pcs', dataIndex: 'pcs', key: 'pcs', width: 70, align: 'right' },
     { title: 'Carat', dataIndex: 'carat', key: 'carat', width: 80, align: 'right' },
     {
@@ -73,7 +73,7 @@ const generalColumns = [
     { title: 'Date', dataIndex: 'date', key: 'date', width: 110, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
     { title: 'Invoice', dataIndex: 'invoice', key: 'invoice', width: 110 },
     { title: 'Party', dataIndex: 'party_name', key: 'party_name', width: 160, render: (v) => v || '-' },
-    { title: 'Description', dataIndex: 'description', key: 'description', ellipsis: true },
+    { title: 'Description', dataIndex: 'description', key: 'description', width: 160, ellipsis: true },
     { title: 'Pcs', dataIndex: 'pcs', key: 'pcs', width: 70, align: 'right' },
     { title: 'Carat', dataIndex: 'carat', key: 'carat', width: 80, align: 'right' },
     {
@@ -271,6 +271,7 @@ const StoneInfoReport = () => {
             )}
 
             {detail && (
+                <Spin spinning={loading}>
                 <Card className={styles.dossier}>
                     <div className={styles.attrGrid}>
                         <div className={styles.attrCol}>
@@ -538,6 +539,7 @@ const StoneInfoReport = () => {
                                                                         pagination={false}
                                                                         bordered
                                                                         rowKey="key"
+                                                                        scroll={{ x: 'max-content' }}
                                                                     />
                                                                 </div>
                                                             ) : null}
@@ -566,6 +568,7 @@ const StoneInfoReport = () => {
                                                                         pagination={false}
                                                                         bordered
                                                                         rowKey="key"
+                                                                        scroll={{ x: 'max-content' }}
                                                                     />
                                                                 </div>
                                                             ) : null}
@@ -594,7 +597,7 @@ const StoneInfoReport = () => {
                                                 pagination={false}
                                                 bordered
                                                 rowKey="key"
-                                                scroll={{ y: 240, x: 1130 }}
+                                                scroll={{ y: 320, x: 'max-content' }}
                                             />
                                         </div>
                                     ),
@@ -617,7 +620,7 @@ const StoneInfoReport = () => {
                                                 pagination={false}
                                                 bordered
                                                 rowKey="key"
-                                                scroll={{ y: 240, x: 1130 }}
+                                                scroll={{ y: 320, x: 'max-content' }}
                                             />
                                         </div>
                                     ),
@@ -626,6 +629,7 @@ const StoneInfoReport = () => {
                         />
                     </div>
                 </Card>
+                </Spin>
             )}
         </div>
     );

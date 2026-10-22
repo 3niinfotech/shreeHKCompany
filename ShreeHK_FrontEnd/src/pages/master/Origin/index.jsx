@@ -94,12 +94,12 @@ const OriginPage = () => {
                 title="Origin Management"
                 columns={columns}
                 dataSource={dataSource}
-                loading={isLoading}
+                loading={isLoading || isFetching}
                 onAdd={handleAddClick}
                 onEdit={handleEditClick}
                 onDelete={openDelete}
                 extraHeaderActions={
-                    <Button icon={<ReloadOutlined />} loading={isFetching} onClick={() => refetch()}>
+                    <Button icon={<ReloadOutlined />} loading={isLoading || isFetching} onClick={() => refetch()}>
                         Refresh
                     </Button>
                 }

@@ -24,8 +24,8 @@ const buildXlsxBuffer = (headers, rows, sheetName) => {
   return XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
 };
 
-const exportInventoryGrid = async ({ ids, sheetName = "Stock List" }) => {
-  const products = await repository.getExportInventoryByIds(ids);
+const exportInventoryGrid = async ({ ids, sheetName = "Stock List", companyIds = null }) => {
+  const products = await repository.getExportInventoryByIds(ids, companyIds);
   if (!products.length) {
     const error = new Error("No product found for selected items");
     error.statusCode = 404;

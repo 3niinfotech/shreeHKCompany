@@ -98,14 +98,14 @@ const ShippingPage = () => {
                 title="Shipping"
                 columns={columns}
                 dataSource={dataSource}
-                loading={isLoading}
+                loading={isLoading || isFetching}
                 onAdd={handleAddClick}
                 onEdit={handleEditClick}
                 onDelete={openDelete}
                 searchValue={search}
                 onSearchChange={handleSearch}
                 extraHeaderActions={
-                    <Button icon={<ReloadOutlined />} loading={isFetching} onClick={() => refetch()}>
+                    <Button icon={<ReloadOutlined />} loading={isLoading || isFetching} onClick={() => refetch()}>
                         Refresh
                     </Button>
                 }

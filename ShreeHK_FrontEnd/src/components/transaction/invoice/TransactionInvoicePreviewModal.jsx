@@ -21,7 +21,7 @@ const TransactionInvoicePreviewModal = ({
   const { data: partyOptionsRes } = useFetchApi(
     "GetCompany",
     ENDPOINTS.company.options,
-    {},
+    { all: "1" },
     "GET",
     { enabled: !!open }
   );
@@ -34,6 +34,11 @@ const TransactionInvoicePreviewModal = ({
     { enabled: !!open }
   );
 
+  const operatingCompanies = useMemo(() => {
+    const list = partyOptionsRes?.operatingCompanies || [];
+    return Array.isArray(list) ? list : [];
+  }, [partyOptionsRes]);
+
   const allParties = useMemo(() => {
     const list1 = partyOptionsRes?.Data || partyOptionsRes?.data || [];
     const list2 = partiesRes?.Data || partiesRes?.data || [];
@@ -41,23 +46,180 @@ const TransactionInvoicePreviewModal = ({
     return combined;
   }, [partyOptionsRes, partiesRes]);
 
+  const resolvedCompany = useMemo(() => {
+    const recCompId =
+      record?.company != null && record?.company !== ""
+        ? String(record.company).trim()
+        : null;
+    const recCompName = String(record?.company_name || "").trim().toLowerCase();
+
+    const matchedComp = operatingCompanies.find(
+      (c) =>
+        (recCompId && String(c.id) === recCompId) ||
+        (recCompName && String(c.name || "").trim().toLowerCase() === recCompName) ||
+        (recCompName && String(c.shortcutName || "").trim().toLowerCase() === recCompName)
+    );
+
+    const base = company || {};
+    const effectiveComp = matchedComp || {};
+
+    return {
+      ...base,
+      ...effectiveComp,
+      name:
+        record?.company_name ||
+        effectiveComp.name ||
+        base.name ||
+        base.company_name ||
+        "Shree International (HK) Ltd",
+      company_name:
+        record?.company_name ||
+        effectiveComp.name ||
+        base.company_name ||
+        base.name ||
+        "Shree International (HK) Ltd",
+      shortcutName: effectiveComp.shortcutName || base.shortcutName,
+      address:
+        record?.company_address ||
+        effectiveComp.address ||
+        base.address ||
+        base.companyAddress,
+      companyAddress:
+        record?.company_address ||
+        effectiveComp.address ||
+        base.companyAddress ||
+        base.address,
+      city: record?.company_city || effectiveComp.city || base.city || base.companyCity,
+      companyCity:
+        record?.company_city || effectiveComp.city || base.companyCity || base.city,
+      state:
+        record?.company_state ||
+        effectiveComp.state ||
+        base.state ||
+        base.companyState,
+      companyState:
+        record?.company_state ||
+        effectiveComp.state ||
+        base.companyState ||
+        base.state,
+      pincode:
+        record?.company_pincode ||
+        effectiveComp.pincode ||
+        base.pincode ||
+        base.companyPincode,
+      companyPincode:
+        record?.company_pincode ||
+        effectiveComp.pincode ||
+        base.companyPincode ||
+        base.pincode,
+      country:
+        record?.company_country ||
+        effectiveComp.country ||
+        base.country ||
+        base.companyCountry,
+      companyCountry:
+        record?.company_country ||
+        effectiveComp.country ||
+        base.companyCountry ||
+        base.country,
+      number:
+        record?.company_number ||
+        effectiveComp.number ||
+        base.number ||
+        base.companyNumber,
+      companyNumber:
+        record?.company_number ||
+        effectiveComp.number ||
+        base.companyNumber ||
+        base.number,
+      email:
+        record?.company_email ||
+        effectiveComp.email ||
+        base.email ||
+        base.companyEmail,
+      companyEmail:
+        record?.company_email ||
+        effectiveComp.email ||
+        base.companyEmail ||
+        base.email,
+      website:
+        record?.company_website ||
+        effectiveComp.website ||
+        base.website ||
+        base.companyWebsite,
+      companyWebsite:
+        record?.company_website ||
+        effectiveComp.website ||
+        base.companyWebsite ||
+        base.website,
+      logo:
+        record?.company_logo ||
+        effectiveComp.logo ||
+        base.logo ||
+        base.logoUrl,
+      logoUrl:
+        record?.company_logo ||
+        effectiveComp.logo ||
+        base.logoUrl ||
+        base.logo,
+    };
+  }, [record, operatingCompanies, company]);
+
   const enrichedRecord = useMemo(() => {
     if (!record) return null;
     const rawParty = record.party && typeof record.party === "object" ? record.party : {};
-    const partyId = String(rawParty.id || record.party || "").trim();
-    const targetPartyName = String(record.party_name || rawParty.name || (typeof record.party === "string" ? record.party : "")).trim().toLowerCase();
 
-    const matched = allParties.find(
+    const rawPartyId = rawParty.id || (record.party && !isNaN(Number(record.party)) ? record.party : "");
+    const partyId = rawPartyId ? String(rawPartyId).trim() : "";
+
+    const candidateName = String(
+      (record.party_name && isNaN(Number(record.party_name)) ? record.party_name : "") ||
+      rawParty.name ||
+      (typeof record.party === "string" && isNaN(Number(record.party)) ? record.party : "")
+    ).trim().toLowerCase();
+
+    // 1. Try matching in dai_party
+    let matched = allParties.find(
       (p) =>
         (partyId && String(p.id) === partyId) ||
-        (targetPartyName && String(p.name || "").trim().toLowerCase() === targetPartyName)
+        (candidateName && String(p.name || "").trim().toLowerCase() === candidateName)
     );
+
+    // 2. If not found in dai_party, match in operating companies (for inter-company / branch parties)
+    if (!matched) {
+      const matchedComp = operatingCompanies.find(
+        (c) =>
+          (partyId && String(c.id) === partyId) ||
+          (candidateName && String(c.name || "").trim().toLowerCase() === candidateName) ||
+          (candidateName && String(c.shortcutName || "").trim().toLowerCase() === candidateName)
+      );
+      if (matchedComp) {
+        matched = {
+          id: matchedComp.id,
+          name: matchedComp.name,
+          address: matchedComp.address,
+          city: matchedComp.city,
+          state: matchedComp.state,
+          pincode: matchedComp.pincode,
+          country: matchedComp.country,
+          contact_number: matchedComp.number,
+          contact_person: matchedComp.partner,
+          email: matchedComp.email,
+        };
+      }
+    }
 
     const baseParty = matched || rawParty;
 
+    const resolvedPartyName =
+      (record.party_name && isNaN(Number(record.party_name)) && record.party_name.trim()) ||
+      baseParty.name ||
+      (typeof record.party === "string" && isNaN(Number(record.party)) ? record.party : "") ||
+      "—";
+
     return {
       ...record,
-      party_name: (record.party_name && record.party_name.trim()) || baseParty.name || (typeof record.party === "string" ? record.party : "") || "—",
+      party_name: resolvedPartyName,
       party_address: (record.party_address && record.party_address.trim()) || baseParty.address || "",
       party_pincode: (record.party_pincode && record.party_pincode.trim()) || baseParty.pincode || "",
       party_country: (record.party_country && record.party_country.trim()) || baseParty.country || "",
@@ -65,17 +227,17 @@ const TransactionInvoicePreviewModal = ({
       party_fax: (record.party_fax && record.party_fax.trim()) || baseParty.fax || "",
       contact_person: (record.contact_person && record.contact_person.trim()) || baseParty.contact_person || baseParty.contactPerson || "",
     };
-  }, [record, allParties]);
+  }, [record, allParties, operatingCompanies]);
 
   const invoiceData = useMemo(() => {
     if (!enrichedRecord) return null;
     return mapTransactionToInvoice(enrichedRecord, {
       invoiceTitle,
       printType,
-      company,
+      company: resolvedCompany,
       productIds: selectedProductIds,
     });
-  }, [enrichedRecord, invoiceTitle, printType, company, selectedProductIds]);
+  }, [enrichedRecord, invoiceTitle, printType, resolvedCompany, selectedProductIds]);
 
   const handlePrint = () => {
     if (!invoiceData) return;

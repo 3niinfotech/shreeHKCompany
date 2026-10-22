@@ -1,5 +1,21 @@
 const API_MESSAGE_KEYS = ["message", "Message", "error", "Error"];
 
+function toSafeString(val) {
+  if (val == null) return "";
+  if (typeof val === "string") return val.trim();
+  if (typeof val === "number" || typeof val === "boolean") return String(val).trim();
+  if (typeof val === "object") {
+    if (typeof val.message === "string") return val.message.trim();
+    if (typeof val.error === "string") return val.error.trim();
+    try {
+      return JSON.stringify(val);
+    } catch {
+      return "";
+    }
+  }
+  return "";
+}
+
 /** Extract user-facing text from API JSON body or error payload */
 export function pickApiMessage(source) {
   if (source == null) return null;
@@ -11,7 +27,8 @@ export function pickApiMessage(source) {
 
   for (const key of API_MESSAGE_KEYS) {
     const value = source[key];
-    if (value != null && String(value).trim()) return String(value).trim();
+    const safe = toSafeString(value);
+    if (safe) return safe;
   }
   return null;
 }

@@ -15,7 +15,9 @@ const CLEARED_AUTH_STATE = {
   companyId: null,
   branchId: null,
   branchName: null,
+  branchShortcut: null,
   yearId: null,
+  yearLabel: null,
   companyName: null,
   companyShortcutName: null,
   companyLogo: null,
@@ -90,7 +92,11 @@ const useAuthStore = create(
             context.branchId !== undefined ? context.branchId : (get().branchId ?? null),
           branchName:
             context.branchName !== undefined ? context.branchName : (get().branchName ?? null),
+          branchShortcut:
+            context.branchShortcut !== undefined ? context.branchShortcut : (get().branchShortcut ?? null),
           yearId: context.yearId !== undefined ? context.yearId : (get().yearId ?? null),
+          yearLabel:
+            context.yearLabel !== undefined ? context.yearLabel : (get().yearLabel ?? null),
           companyName:
             context.companyName !== undefined
               ? context.companyName
@@ -121,7 +127,9 @@ const useAuthStore = create(
           companyId,
           branchId,
           branchName,
+          branchShortcut,
           yearId,
+          yearLabel,
           companyName,
           companyShortcutName,
           companyLogo,
@@ -142,7 +150,9 @@ const useAuthStore = create(
         if (companyId != null) updates.companyId = companyId;
         if (branchId !== undefined) updates.branchId = branchId;
         if (branchName !== undefined) updates.branchName = branchName;
+        if (branchShortcut !== undefined) updates.branchShortcut = branchShortcut;
         if (yearId != null) updates.yearId = yearId;
+        if (yearLabel !== undefined) updates.yearLabel = yearLabel;
         if (companyName != null) updates.companyName = companyName;
         if (companyShortcutName != null) updates.companyShortcutName = companyShortcutName;
         if (companyLogo !== undefined) updates.companyLogo = companyLogo;

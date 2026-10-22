@@ -23,6 +23,8 @@ const ExpanseTableData = () => {
     );
 
     const { data: companyData } = useFetchApi('GetCompany', ENDPOINTS.company.options);
+    const { data: bookApiData } = useFetchApi('accBooks', ENDPOINTS.accountingTxn.books);
+    const { data: balanceData } = useFetchApi('myBalanceBook', ENDPOINTS.balance.list);
 
     const partyOptions = useMemo(() => {
         const list = companyData?.Data || [];
@@ -31,6 +33,23 @@ const ExpanseTableData = () => {
             value: item.id,
         }));
     }, [companyData]);
+
+    const bookOptions = useMemo(() => {
+        const list = balanceData?.Data || [];
+        if (list.length > 0) {
+            return list.map((item) => {
+                const label = item.bank || item.book;
+                return {
+                    label: item.currency ? `${label} - ${item.currency}` : label,
+                    value: String(item.id || label),
+                };
+            });
+        }
+        return (bookApiData?.Data || []).map((b) => ({
+            label: String(b.label ?? b.value ?? b),
+            value: String(b.value ?? b),
+        }));
+    }, [balanceData, bookApiData]);
 
     const partyNameById = useMemo(() => {
         const map = new Map();
@@ -41,10 +60,29 @@ const ExpanseTableData = () => {
         return map;
     }, [companyData]);
 
+    const bookNameById = useMemo(() => {
+        const map = new Map();
+        (balanceData?.Data || []).forEach((item) => {
+            const label = item.bank || item.book;
+            if (item.id != null) map.set(String(item.id), label);
+            if (label) map.set(String(label), label);
+        });
+        (bookApiData?.Data || []).forEach((item) => {
+            if (item.value != null) map.set(String(item.value), item.label || item.value);
+        });
+        return map;
+    }, [balanceData, bookApiData]);
+
     const resolvePartyName = useCallback((party) => {
         if (party == null || party === '') return '-';
         return partyNameById.get(String(party)) || String(party);
     }, [partyNameById]);
+
+    const resolveBookName = useCallback((book, record) => {
+        if (record?.book_name) return record.book_name;
+        if (book == null || book === '') return '-';
+        return bookNameById.get(String(book)) || String(book);
+    }, [bookNameById]);
 
     const { mutate: saveExpanse } = usePostApiRequest(ENDPOINTS.expanse.payment, 'expanseSave');
 
@@ -83,7 +121,8 @@ const ExpanseTableData = () => {
         if (record) {
             setSelectedRecord({
                 ...record,
-                date: record.date ? dayjs(record.date) : null
+                date: record.date ? dayjs(record.date) : null,
+                book: record.book ? String(record.book) : undefined,
             });
         } else {
             setSelectedRecord(null);
@@ -131,19 +170,21 @@ const ExpanseTableData = () => {
     const columns = useMemo(() => [
         { title: 'No.', key: 'index', width: 70, render: (_, __, i) => i + 1 },
         { title: 'Date', dataIndex: 'date', key: 'date', render: (d) => (d && dayjs(d).isValid() ? dayjs(d).format('DD-MM-YYYY') : (d?.split('T')[0] || '-')) },
-        { title: 'Party', dataIndex: 'party', key: 'party', render: (party) => resolvePartyName(party) },
+        { title: 'Party', dataIndex: 'party', key: 'party', render: (party, r) => r.party_name || resolvePartyName(party) },
+        { title: 'Book', dataIndex: 'book', key: 'book', render: (book, r) => resolveBookName(book, r) },
+        { title: 'Type', dataIndex: 'type', key: 'type', render: (type) => (type ? String(type).toUpperCase() : '-') },
         { title: 'Amount', dataIndex: 'amount', key: 'amount', align: 'right' },
-        { title: 'Book Type', dataIndex: 'type', key: 'type' },
         { title: 'Description', dataIndex: 'description', key: 'description', ellipsis: true },
-    ], [resolvePartyName]);
+    ], [resolvePartyName, resolveBookName]);
 
     const expanseFields = useMemo(() => [
         { name: 'date', label: 'Date', type: 'date', required: true, span: 12 },
         { name: 'party', label: 'Party', type: 'select', options: partyOptions, required: true, span: 12 },
-        { name: 'amount', label: 'Amount', type: 'number', required: true, span: 12 },
+        { name: 'book', label: 'Book', type: 'select', options: bookOptions, required: false, span: 12 },
         { name: 'type', label: 'Type', type: 'select', options: [{ label: "DR", value: "dr" }, { label: "CR", value: "cr" }], required: true, span: 12 },
+        { name: 'amount', label: 'Amount', type: 'number', required: true, span: 12 },
         { name: 'description', label: 'Description', type: 'textarea', span: 24 },
-    ], [partyOptions]);
+    ], [partyOptions, bookOptions]);
 
     return (
         <>

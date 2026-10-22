@@ -122,6 +122,10 @@ sessionRouter.post("/session/context", authenticateToken, async (req, res) => {
         });
       }
       const dbName = await resolveYearDbName(yearId);
+      const yearRows = yearId
+        ? await metaQuery("SELECT year FROM company_year WHERE id = ? LIMIT 1", [yearId]).catch(() => [])
+        : [];
+      const resolvedYear = yearRows.length ? yearRows[0].year : (yearId ? String(yearId) : null);
       const branch = branches[0];
       const branchLabel = branch.name || branch.shortcutName || "Branch";
       const { token } = issueSessionToken({
@@ -146,9 +150,12 @@ sessionRouter.post("/session/context", authenticateToken, async (req, res) => {
         Data: {
           companyId: 0,
           yearId,
+          yearLabel: resolvedYear,
+          year: resolvedYear,
           dbName: dbName || connection.META_DB,
           branchId,
           branchName: branchLabel,
+          branchShortcut: branch.shortcutName || branch.name || branchLabel,
           companyName: null,
           companyShortcutName: null,
           companyLogo: null,
@@ -222,6 +229,10 @@ sessionRouter.post("/session/context", authenticateToken, async (req, res) => {
     }
 
     const dbName = yearId ? await resolveYearDbName(yearId) : connection.META_DB;
+    const yearRows = yearId
+      ? await metaQuery("SELECT year FROM company_year WHERE id = ? LIMIT 1", [yearId]).catch(() => [])
+      : [];
+    const resolvedYear = yearRows.length ? yearRows[0].year : (yearId ? String(yearId) : null);
 
     const { token } = issueSessionToken({
       user_id: req.user.user_id,
@@ -255,9 +266,12 @@ sessionRouter.post("/session/context", authenticateToken, async (req, res) => {
       Data: {
         companyId,
         yearId: yearId || null,
+        yearLabel: resolvedYear,
+        year: resolvedYear,
         dbName,
         branchId: comp.branch_id || null,
         branchName: branchLabel,
+        branchShortcut: comp.branch_shortcut || comp.branch_name || branchLabel || null,
         companyName: comp.name,
         companyShortcutName: comp.shortcutName || null,
         companyLogo: comp.logo || null,

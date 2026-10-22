@@ -10,6 +10,7 @@ import {
   postLabelA4Print,
 } from "../api/services/productService";
 import {
+  toastSuccess,
   toastApiSuccess,
   toastApiError,
   toastWarning,
@@ -77,14 +78,20 @@ export function useInventoryActions({ onSuccess } = {}) {
 
   const submitHoldModal = useCallback(
     async (values) => {
-      if (!holdModal.selectedIds.length) return;
+      const ids = holdModal.selectedIds?.length ? holdModal.selectedIds : (values?.ids || []);
+      if (!ids.length) return;
       setHoldLoading(true);
       try {
-        const result = await postProductHold({
-          ids: holdModal.selectedIds.map((id) => Number(id)),
+        const payload = {
+          ids: ids.map((id) => Number(id)),
           status: 1,
-          description: values.description || "",
-        });
+          description: values.description || values.remarks || "",
+        };
+        const dateVal = values.date || values.holdUntil;
+        if (dateVal) {
+          payload.date = typeof dateVal?.format === "function" ? dateVal.format("YYYY-MM-DD") : String(dateVal).slice(0, 10);
+        }
+        const result = await postProductHold(payload);
         if (result?.status) {
           toastApiSuccess(result);
           closeHoldModal();
@@ -214,6 +221,7 @@ export function useInventoryActions({ onSuccess } = {}) {
       try {
         const result = await postInventoryExport({
           ids: selectedIds,
+          fileName: values.fileName,
           sheetName: values.sheetName || "Export",
         });
 
@@ -222,15 +230,35 @@ export function useInventoryActions({ onSuccess } = {}) {
           return false;
         }
 
-        const blob =
-          result instanceof Blob
+        const actualBlob =
+          result?.blob instanceof Blob
+            ? result.blob
+            : result instanceof Blob
             ? result
-            : new Blob([result], {
-                type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-              });
+            : null;
 
-        const defaultFilename = `inventory-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
-        downloadFileBlob(blob, defaultFilename);
+        if (actualBlob && actualBlob.type && actualBlob.type.includes("application/json")) {
+          const text = await actualBlob.text();
+          try {
+            const json = JSON.parse(text);
+            if (json?.status === false || json?.message) {
+              toastApiError({ response: { data: json } });
+              return false;
+            }
+          } catch (_) {}
+        }
+
+        const finalBlob =
+          actualBlob ||
+          new Blob([result?.blob || result], {
+            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          });
+
+        const defaultFilename =
+          result?.fileName ||
+          (values.fileName ? `${values.fileName}.xlsx` : `inventory-export-${new Date().toISOString().slice(0, 10)}.xlsx`);
+        downloadFileBlob(finalBlob, defaultFilename);
+        toastSuccess("File exported successfully");
         onSuccess?.();
         return true;
       } catch (error) {
@@ -255,9 +283,12 @@ export function useInventoryActions({ onSuccess } = {}) {
 
       setIExportLoading(true);
       try {
+        const format = values.format === "csv" ? "csv" : "xlsx";
         const result = await postInventoryIExport({
           ids: selectedIds,
+          fileName: values.fileName,
           sheetName: values.sheetName || "Export",
+          format,
         });
 
         if (result && !(result instanceof Blob) && result.status === false) {
@@ -265,15 +296,38 @@ export function useInventoryActions({ onSuccess } = {}) {
           return false;
         }
 
-        const blob =
-          result instanceof Blob
+        const actualBlob =
+          result?.blob instanceof Blob
+            ? result.blob
+            : result instanceof Blob
             ? result
-            : new Blob([result], {
-                type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-              });
+            : null;
 
-        const defaultFilename = `iexport-${new Date().toISOString().slice(0, 10)}.xlsx`;
-        downloadFileBlob(blob, defaultFilename);
+        if (actualBlob && actualBlob.type && actualBlob.type.includes("application/json")) {
+          const text = await actualBlob.text();
+          try {
+            const json = JSON.parse(text);
+            if (json?.status === false || json?.message) {
+              toastApiError({ response: { data: json } });
+              return false;
+            }
+          } catch (_) {}
+        }
+
+        const finalBlob =
+          actualBlob ||
+          new Blob([result?.blob || result], {
+            type:
+              format === "csv"
+                ? "text/csv; charset=utf-8"
+                : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          });
+
+        const defaultFilename =
+          result?.fileName ||
+          (values.fileName ? `${values.fileName}.${format}` : `iexport-${new Date().toISOString().slice(0, 10)}.${format}`);
+        downloadFileBlob(finalBlob, defaultFilename);
+        toastSuccess("File exported successfully");
         onSuccess?.();
         return true;
       } catch (error) {

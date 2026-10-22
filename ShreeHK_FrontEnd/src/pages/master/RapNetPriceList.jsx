@@ -124,14 +124,14 @@ const RapNetPriceList = () => {
                 title="RapNet Price List"
                 columns={columns}
                 dataSource={dataSource}
-                loading={isLoading}
+                loading={isLoading || isFetching}
                 hideCrudActions
                 rowKey={(record, index) =>
                     record?.id ?? `${record?.shape}-${record?.color}-${record?.clarity}-${record?.low_size}-${index}`
                 }
                 extraHeaderActions={
                     <Space wrap>
-                        <Button icon={<ReloadOutlined />} loading={isFetching} onClick={() => refetch()}>
+                        <Button icon={<ReloadOutlined />} loading={isLoading || isFetching} onClick={() => refetch()}>
                             Refresh
                         </Button>
                         <Button
