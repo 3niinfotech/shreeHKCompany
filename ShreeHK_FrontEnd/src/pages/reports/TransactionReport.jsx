@@ -220,7 +220,7 @@ const TransactionReport = () => {
                 rows: tableData,
                 fileName: isPacket ? 'sku_report' : 'company_report',
                 sheetName: isPacket ? 'SKU Report' : 'Company Report',
-                title: isPacket ? 'SKU Report' : 'Company Report',
+                title: isPacket ? 'Stock Report' : 'Company Report',
                 totals: true,
             });
             toastSuccess('Exported to Excel');

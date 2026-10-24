@@ -435,7 +435,7 @@ function findMemoInLedger(memoLedger, memoRef) {
  * Enriches Memo rows with their full resolution, and Return/Sale rows with direct parent links.
  * Distinguishes initial purchase vs subsequent inward additions to the same SKU.
  */
-function enrichMemoReturnContext(history, memoRefMap = {}) {
+function enrichMemoReturnContext(history, memoRefMap = {}, voucherStonesMap = {}) {
   const rows = Array.isArray(history) ? history : [];
 
   // Pass 1: Build the complete ledger for every memo invoice
@@ -649,6 +649,15 @@ function enrichMemoReturnContext(history, memoRefMap = {}) {
     const memoInfo = invKey ? memoLedger.get(invKey) : null;
     const existingDesc = String(h.description || "").trim();
 
+    const vsList =
+      (voucherStonesMap && (
+        voucherStonesMap[invoice] ||
+        voucherStonesMap[invKey] ||
+        voucherStonesMap[h.entryno] ||
+        (h.entryno && voucherStonesMap[String(h.entryno).toLowerCase()]) ||
+        voucherStonesMap[h.reference]
+      )) || null;
+
     // 1. Inward / Purchase / Import movements
     if (["import", "in_import", "purchase", "in_memo", "in_consign"].includes(action)) {
       inwardCount++;
@@ -704,6 +713,7 @@ function enrichMemoReturnContext(history, memoRefMap = {}) {
         ...h,
         description: desc,
         memo_lifecycle,
+        voucher_stones: vsList,
         impacts_onhand_stock: true,
       };
     }
@@ -792,6 +802,7 @@ function enrichMemoReturnContext(history, memoRefMap = {}) {
       return {
         ...h,
         is_from_memo: false,
+        voucher_stones: vsList,
         impacts_onhand_stock: true,
       };
     }
@@ -828,6 +839,7 @@ function enrichMemoReturnContext(history, memoRefMap = {}) {
 
     return {
       ...h,
+      voucher_stones: vsList || undefined,
       impacts_onhand_stock: !["hold", "unhold", "price_change"].includes(action),
     };
   });
@@ -1900,7 +1912,7 @@ async function getStoneDetail(sku, companyId, userId) {
   const activityCompanyId = detail.company != null ? detail.company : companyId;
   const stockCompanyId = Number(detail.company) || Number(companyId) || 0;
   const allProductIds = [detail.id, ...childIds];
-  const [rawHistory, transfer, partyMap, userMap, activityLogs, companyRows, outwardRefRows, outwardItemRows] = await Promise.all([
+  const [rawHistory, transfer, partyMap, userMap, activityLogs, companyRows, outwardRefRows] = await Promise.all([
     queryAsync(historySql, historyValues),
     getBoxHistoryByProductId(detail.id),
     getPartyMap(),
@@ -1913,21 +1925,49 @@ async function getStoneDetail(sku, companyId, userId) {
         ).catch(() => [])
       : Promise.resolve([]),
     queryAsync(
-      `SELECT invoiceno, type, reference, products FROM dai_outward
+      `SELECT id, invoiceno, entryno, type, reference, products FROM dai_outward
        WHERE (
          FIND_IN_SET(?, products) OR FIND_IN_SET(?, return_products) OR FIND_IN_SET(?, out_product)
          ${childIds.length > 0 ? `OR ${childIds.map(() => "FIND_IN_SET(?, products)").join(" OR ")}` : ""}
-       )
-       AND reference IS NOT NULL AND reference != ''`,
+       )`,
       [detail.id, detail.id, detail.id, ...childIds]
     ).catch(() => []),
-    queryAsync(
-      `SELECT invoice_no, reference, outward_type, product_id FROM dai_outward_item
-       WHERE product_id IN (${allProductIds.map(() => "?").join(",")})
-         AND reference IS NOT NULL AND reference != ''`,
-      allProductIds
-    ).catch(() => []),
   ]);
+
+  const outwardIds = (outwardRefRows || []).map((r) => r.id).filter(Boolean);
+  const outwardItemRows = outwardIds.length > 0
+    ? await queryAsync(
+        `SELECT outward_id, product_id, sku, pcs, carat, price, amount, invoice_no, reference, status, outward_type 
+         FROM dai_outward_item 
+         WHERE outward_id IN (${outwardIds.map(() => "?").join(",")})
+            OR product_id IN (${allProductIds.map(() => "?").join(",")})`,
+        [...outwardIds, ...allProductIds]
+      ).catch(() => [])
+    : [];
+
+  const voucherStonesMap = {};
+  (outwardRefRows || []).forEach((r) => {
+    const co = (outwardItemRows || []).filter(
+      (it) => it.outward_id === r.id && it.product_id !== detail.id && !childIds.includes(it.product_id)
+    );
+    if (co.length > 0) {
+      const coList = co.map((c) => ({
+        sku: c.sku,
+        carat: Number(c.carat) || 0,
+        pcs: Number(c.pcs) || 0,
+        price: Number(c.price) || 0,
+        amount: Number(c.amount) || 0,
+        product_id: c.product_id,
+        status: c.status,
+      }));
+      const keys = [r.invoiceno, r.entryno, r.reference, String(r.id)].filter(Boolean);
+      keys.forEach((k) => {
+        const str = String(k).trim();
+        voucherStonesMap[str] = coList;
+        voucherStonesMap[str.toLowerCase()] = coList;
+      });
+    }
+  });
 
   const memoRefMap = {};
   (outwardRefRows || []).forEach((r) => {
@@ -2069,6 +2109,20 @@ async function getStoneDetail(sku, companyId, userId) {
         ));
 
     if (!isStonePropUpdate) return;
+
+    // Outward stock movements (export, memo, sale, consign) already have their own history entries.
+    // They must NEVER produce a fake "stone_update" row.
+    const isOutwardStockLog =
+      (log.diff_list &&
+        log.diff_list.some((d) => {
+          const f = String(d.field || "").toLowerCase().trim();
+          return f === "sale_type" || f === "outward" || f === "sell_amount";
+        })) ||
+      (log.description &&
+        /\b(?:export|memo|sale|consign|outward)\b/i.test(log.description) &&
+        /\b(?:ct|from|stock|invoice)\b/i.test(log.description));
+
+    if (isOutwardStockLog) return;
 
     const isPriceUpdate = isPurePriceChange(log.diff_list, log.description);
     const isRemarkUpdate =
@@ -2255,6 +2309,17 @@ async function getStoneDetail(sku, companyId, userId) {
   const seenEventKeys = new Set();
 
   (normalizedHistory || []).forEach((h) => {
+    if (h.action === "stone_update") {
+      const desc = String(h.description || "").toLowerCase();
+      if (
+        desc.includes("sale_type") ||
+        desc.includes("sell_amount") ||
+        (h.diff_list && h.diff_list.some((d) => ["sale_type", "outward", "sell_amount"].includes(String(d.field || "").toLowerCase().trim())))
+      ) {
+        return; // Drop fake stone_update created by outward movement!
+      }
+    }
+
     if (h.action === "stone_update" && isPurePriceChange(h.diff_list, h.description)) {
       h.action = "price_change";
       h.action_label = "Price Change";
@@ -2301,7 +2366,7 @@ async function getStoneDetail(sku, companyId, userId) {
 
   const historyWithUsers = await backfillHistoryUsers(normalizedHistory);
   const mappedHistory = mapStoneHistoryRows(historyWithUsers, partyMap, userMap, isContainer, detail);
-  const withMemoContext = enrichMemoReturnContext(mappedHistory, memoRefMap);
+  const withMemoContext = enrichMemoReturnContext(mappedHistory, memoRefMap, voucherStonesMap);
   const enrichedHistory = enrichHistoryDates(withMemoContext, enrichedActivityLogs);
   const lineageTree = await getStoneLineageTree(detail, enrichedHistory, stockCompanyId);
   const stockSummary = computeStockSummary(detail, enrichedHistory);
@@ -2690,11 +2755,28 @@ async function getTransactionPartyRows(outwardRows, report, partyMap, giaSql) {
     });
   });
 
+  const partyIds = [...new Set(rowsData.map((row) => row.party).filter((id) => id != null && id !== ""))];
+  const contactMap = {};
+  if (partyIds.length) {
+    const contactPlaceholders = partyIds.map(() => "?").join(",");
+    const contactRows = await queryAsync(
+      `SELECT id, contact_person FROM dai_party WHERE id IN (${contactPlaceholders})`,
+      partyIds
+    );
+    contactRows.forEach((r) => {
+      contactMap[r.id] = r.contact_person || "";
+    });
+  }
+
   const returnData = {};
   const uniqueReturnIds = [...new Set(returnIds.filter(Boolean))];
   if (uniqueReturnIds.length) {
     const placeholders = uniqueReturnIds.map(() => "?").join(",");
-    const sql = `SELECT r.*, p.id AS product_id
+    const sql = `SELECT r.*, p.id AS product_id,
+        p.sku AS product_sku, p.report_no AS product_report_no,
+        p.shape AS product_shape, p.color AS product_color,
+        p.main_color AS product_main_color, p.clarity AS product_clarity,
+        p.remark AS product_remark
       FROM dai_product AS p
       JOIN dai_product_return AS r ON p.id = r.product_id
       WHERE r.id IN (${placeholders})${giaSql}`;
@@ -2724,6 +2806,8 @@ async function getTransactionPartyRows(outwardRows, report, partyMap, giaSql) {
     let tpc = 0;
     let ta = 0;
 
+    const items = [];
+
     if (
       ["close_memo", "close_sale"].includes(report) &&
       !row.product_ids.length &&
@@ -2732,19 +2816,49 @@ async function getTransactionPartyRows(outwardRows, report, partyMap, giaSql) {
       row.return_ids.forEach((id) => {
         const jData = returnData[parseInt(id, 10)];
         if (!jData) return;
-        tpp += parseFloat(jData.pcs) || 0;
-        tpc += parseFloat(jData.carat) || 0;
-        ta += parseFloat(jData.amount) || 0;
+        const pcs = parseFloat(jData.pcs) || 0;
+        const carat = parseFloat(jData.carat) || 0;
+        const amount = parseFloat(jData.amount) || 0;
+        tpp += pcs;
+        tpc += carat;
+        ta += amount;
+        items.push({
+          sku: jData.product_sku || jData.sku || "",
+          report_no: jData.product_report_no || jData.report_no || jData.certificate || "",
+          polish_pcs: pcs,
+          polish_carat: carat,
+          price: parseFloat(jData.price) || 0,
+          amount,
+          shape: jData.product_shape || jData.shape || "",
+          color: jData.product_color || jData.product_main_color || jData.color || jData.main_color || "",
+          clarity: jData.product_clarity || jData.clarity || "",
+          remark: jData.product_remark || jData.remark || "",
+        });
       });
     } else if (row.product_ids.length) {
       row.product_ids.forEach((id) => {
         const jData = productData[parseInt(id, 10)];
         if (!jData) return;
-        tpp += parseFloat(jData.polish_pcs) || 0;
-        tpc += parseFloat(jData.polish_carat) || 0;
+        const pcs = parseFloat(jData.polish_pcs) || 0;
+        const carat = parseFloat(jData.polish_carat) || 0;
         const amount =
           parseFloat(jData.sell_amount) === 0 ? jData.amount : jData.sell_amount;
-        ta += parseFloat(amount) || 0;
+        const amountNum = parseFloat(amount) || 0;
+        tpp += pcs;
+        tpc += carat;
+        ta += amountNum;
+        items.push({
+          sku: jData.sku || "",
+          report_no: jData.report_no || jData.certificate || "",
+          polish_pcs: pcs,
+          polish_carat: carat,
+          price: parseFloat(jData.sell_price) || parseFloat(jData.price) || 0,
+          amount: amountNum,
+          shape: jData.shape || "",
+          color: jData.color || jData.main_color || "",
+          clarity: jData.clarity || "",
+          remark: jData.remark || "",
+        });
       });
     }
 
@@ -2763,6 +2877,8 @@ async function getTransactionPartyRows(outwardRows, report, partyMap, giaSql) {
       duedate: row.duedate,
       reference: row.reference || "",
       paid_amount: Number(row.paid_amount) || 0,
+      contact_person: contactMap[row.party] || "",
+      items,
     });
   });
 
@@ -2784,6 +2900,8 @@ async function getTransactionPartyRows(outwardRows, report, partyMap, giaSql) {
       reference: row.reference,
       paid_amount: paid,
       due_amount: Number((amount - paid).toFixed(2)),
+      contact_person: row.contact_person || "",
+      items: Array.isArray(row.items) ? row.items : [],
     };
   });
 }

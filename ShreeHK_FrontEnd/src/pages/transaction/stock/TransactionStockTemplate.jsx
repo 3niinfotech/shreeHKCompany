@@ -15,7 +15,8 @@ import {
   ImportOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { toastApiSuccess, toastApiError, toastWarning, toastInfo } from '../../../utils/toastNotify';
+import { toastApiSuccess, toastApiError, toastWarning, toastInfo, toastSuccess } from '../../../utils/toastNotify';
+import { fetchProductDetail } from '../../../api/services/productService';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useFetchApi, useDeleteApiRequest, usePostApiRequest } from '../../../api/ApiFunction';
@@ -761,7 +762,110 @@ const TransactionStockTemplate = ({
     applyEditDetails(record, record.products);
   };
 
+  const skuLookupDebounceTimers = useRef({});
+  const fetchedProductsRef = useRef(fetchedProducts);
+  useEffect(() => {
+    fetchedProductsRef.current = fetchedProducts;
+  }, [fetchedProducts]);
+
+  const handleSkuLookup = useCallback(async (index, rawSku, isSilent = false) => {
+    const trimmed = String(rawSku || '').trim();
+    if (!trimmed) return;
+
+    if (skuLookupDebounceTimers.current[index]) {
+      clearTimeout(skuLookupDebounceTimers.current[index]);
+      delete skuLookupDebounceTimers.current[index];
+    }
+
+    const currentRows = fetchedProductsRef.current || [];
+    const currentRow = currentRows[index];
+
+    // If row already has this exact SKU and valid ID loaded, skip re-fetching
+    if (currentRow?.id && String(currentRow.sku || '').trim().toUpperCase() === trimmed.toUpperCase()) {
+      return;
+    }
+
+    // Check duplicate in same transaction
+    const isDuplicate = currentRows.some(
+      (r, i) => i !== index && String(r.sku || '').trim().toUpperCase() === trimmed.toUpperCase()
+    );
+    if (isDuplicate) {
+      if (!isSilent) {
+        toastWarning(`SKU "${trimmed}" is already added in this transaction`);
+      }
+      return;
+    }
+
+    try {
+      const data = await fetchProductDetail({ id: trimmed, by: 'p.sku' });
+      const p = data?.Data;
+      if (!p?.id) {
+        if (!isSilent) {
+          toastWarning(`SKU "${trimmed}" not found in database`);
+        }
+        return;
+      }
+
+      const price = Number(p.sell_price) === 0 || p.sell_price == null
+        ? (p.purchase_price ?? p.price ?? 0)
+        : p.sell_price;
+      const carat = Number(p.polish_carat ?? p.purchase_carat ?? 0);
+      const pcs = p.polish_pcs ?? p.purchase_pcs ?? 1;
+      const amount = Number(p.sell_amount) === 0 || p.sell_amount == null
+        ? ((carat * Number(price || 0)) || (p.purchase_amount ?? p.amount ?? 0))
+        : p.sell_amount;
+      const formattedAmount = Number(amount || 0).toFixed(2);
+      const cost = p.cost ?? p.purchase_price ?? "";
+
+      setFetchedProducts((prev) => {
+        if (!prev[index]) return prev;
+        const updated = [...prev];
+        updated[index] = {
+          ...updated[index],
+          id: p.id,
+          product_id: p.id,
+          productId: p.id,
+          mfg_code: p.mfg_code ?? "",
+          diamond_no: p.diamond_no ?? p.d_no ?? "",
+          sku: p.sku || trimmed,
+          polish_pcs: pcs,
+          polish_carat: carat,
+          cost: cost,
+          sell_price: price || "",
+          price: price || "",
+          sell_amount: formattedAmount,
+          amount: formattedAmount,
+          location: p.location ?? p.loc ?? "",
+          remark: p.remark ?? "",
+          lab: p.lab ?? "",
+          group_type: p.group_type ?? p.groupType ?? "",
+          report_no: p.report_no ?? p.certificate ?? "",
+          shape: p.shape ?? "",
+          clarity: p.clarity ?? "",
+          intensity: p.intensity ?? "",
+          overtone: p.overtone ?? "",
+          color: p.color ?? p.main_color ?? "",
+        };
+        return updated;
+      });
+
+      toastSuccess(`SKU "${p.sku || trimmed}" details auto-filled`);
+    } catch (err) {
+      if (err?.response?.status === 404) {
+        if (!isSilent) {
+          toastWarning(`SKU "${trimmed}" not found in database`);
+        }
+        return;
+      }
+      if (!isSilent) {
+        toastApiError(err);
+      }
+    }
+  }, []);
+
   const closeEditModal = () => {
+    Object.values(skuLookupDebounceTimers.current).forEach(clearTimeout);
+    skuLookupDebounceTimers.current = {};
     setIsEditModalOpen(false);
     setEditId(null);
     setEditingRecord(null);
@@ -779,10 +883,23 @@ const TransactionStockTemplate = ({
         const price = Number(field === "sell_price" ? value : row.sell_price ?? row.price) || 0;
         const carat = Number(field === "polish_carat" ? value : row.polish_carat) || 0;
         row.sell_amount = (price * carat).toFixed(2);
+        row.amount = row.sell_amount;
       }
       updated[index] = row;
       return updated;
     });
+
+    if (field === "sku") {
+      const trimmed = String(value || "").trim();
+      if (skuLookupDebounceTimers.current[index]) {
+        clearTimeout(skuLookupDebounceTimers.current[index]);
+      }
+      if (trimmed.length >= 2) {
+        skuLookupDebounceTimers.current[index] = setTimeout(() => {
+          handleSkuLookup(index, trimmed, true);
+        }, 500);
+      }
+    }
   };
 
   // Outward edit modals only (Sale / Out Memo / GIA) — not inward or stone-update
@@ -818,6 +935,10 @@ const TransactionStockTemplate = ({
   };
 
   const handleRemoveProductRow = (index) => {
+    if (skuLookupDebounceTimers.current[index]) {
+      clearTimeout(skuLookupDebounceTimers.current[index]);
+      delete skuLookupDebounceTimers.current[index];
+    }
     setFetchedProducts((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -874,6 +995,8 @@ const TransactionStockTemplate = ({
           placeholder={opts.placeholder || ""}
           className={styles.stockEditCellInput}
           onChange={(e) => handleProductFieldChange(idx, field, e.target.value)}
+          onBlur={field === "sku" ? (e) => handleSkuLookup(idx, e.target.value, false) : undefined}
+          onPressEnter={field === "sku" ? (e) => handleSkuLookup(idx, e.target.value, false) : undefined}
         />
       ),
     });
@@ -941,7 +1064,7 @@ const TransactionStockTemplate = ({
       });
     }
     return cols;
-  }, [allowAddProductInEdit, isVenyaSaleEditGrid]);
+  }, [allowAddProductInEdit, isVenyaSaleEditGrid, handleSkuLookup]);
 
   const editProductSkeletonColumns = useMemo(
     () =>
@@ -1440,7 +1563,7 @@ const TransactionStockTemplate = ({
                   }}
                 >
                   <RollbackOutlined />
-                  {displayType === 'export' ? 'Export Close' : (actions.returnBtnText || 'Return')}
+                  {displayType === 'export' ? 'Sale Return' : (actions.returnBtnText || 'Return')}
                 </button>
               )}
               {actions.showMemoToSale && (

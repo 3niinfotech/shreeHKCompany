@@ -17,6 +17,7 @@ import {
   Package,
   CircleCheck,
   Undo2,
+  ArrowRightLeft,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -25,6 +26,7 @@ import {
   fetchContainerChildren,
   postMixingUnbox,
   postMixingSeparate,
+  postMixingTransfer,
 } from "../../api/services/productService";
 import { useFetchApi } from "../../api/ApiFunction";
 import { ENDPOINTS } from "../../api/endpoints";
@@ -34,6 +36,7 @@ import styles from "../../assets/scss/components/inventoryMixingModal.module.scs
 const MODES = [
   { label: "Add to Box", value: "to_box", icon: <Boxes size={14} /> },
   { label: "Add to Parcel", value: "to_parcel", icon: <Package size={14} /> },
+  { label: "Parcel to Box", value: "parcel_to_box", icon: <ArrowRightLeft size={14} /> },
   { label: "Box to Single", value: "box_to_single", icon: <Undo2 size={14} /> },
   { label: "Parcel to Single", value: "parcel_to_single", icon: <Undo2 size={14} /> },
 ];
@@ -43,8 +46,9 @@ const MODES = [
  * Handles exact core diamond business flows:
  * 1. Add to Box (Single -> Box: Add to Existing or Create New Box)
  * 2. Add to Parcel (Single -> Parcel: Add to Existing or Create New Parcel)
- * 3. Box to Single (Box -> Single: Assign/Unbox stones or separate carats back to Single stock)
- * 4. Parcel to Single (Parcel -> Single: Assign/Unbox stones or separate carats back to Single stock)
+ * 3. Parcel to Box (Parcel -> Box: Transfer selected stones or carats into Existing/New Box)
+ * 4. Box to Single (Box -> Single: Assign/Unbox stones or separate carats back to Single stock)
+ * 5. Parcel to Single (Parcel -> Single: Assign/Unbox stones or separate carats back to Single stock)
  */
 const InventoryMixingModal = ({
   open,
@@ -75,7 +79,12 @@ const InventoryMixingModal = ({
   // On open, intelligently pre-select mode & container based on table selection
   useEffect(() => {
     if (open) {
-      if (selectedBoxRow) {
+      if (selectedParcelRow && selectedBoxRow) {
+        setActiveMode("parcel_to_box");
+        setSourceContainerId(selectedParcelRow.id);
+        setTransferTargetBoxId(selectedBoxRow.id);
+        setDestMode("existing");
+      } else if (selectedBoxRow) {
         setActiveMode("box_to_single");
         setSourceContainerId(selectedBoxRow.id);
       } else if (selectedParcelRow) {
@@ -95,6 +104,10 @@ const InventoryMixingModal = ({
       setSourceContainerId(selectedBoxRow?.id || undefined);
     } else if (mode === "parcel_to_single") {
       setSourceContainerId(selectedParcelRow?.id || undefined);
+    } else if (mode === "parcel_to_box") {
+      setSourceContainerId(selectedParcelRow?.id || undefined);
+      setTransferTargetBoxId(selectedBoxRow?.id || undefined);
+      setDestMode("existing");
     }
   };
 
@@ -104,7 +117,10 @@ const InventoryMixingModal = ({
   const [newSku, setNewSku] = useState("");
   const [newRemark, setNewRemark] = useState("");
 
-  // Child stones inside container (for box_to_single and parcel_to_single)
+  // Destination Box for Parcel -> Box transfer (kept separate to avoid picking a Parcel ID)
+  const [transferTargetBoxId, setTransferTargetBoxId] = useState(undefined);
+
+  // Child stones inside container (for box_to_single, parcel_to_single and parcel_to_box)
   const [childStones, setChildStones] = useState([]);
   const [selectedChildKeys, setSelectedChildKeys] = useState([]);
   const [loadingChildren, setLoadingChildren] = useState(false);
@@ -211,7 +227,12 @@ const InventoryMixingModal = ({
   }, []);
 
   useEffect(() => {
-    if (open && (activeMode === "box_to_single" || activeMode === "parcel_to_single")) {
+    if (
+      open &&
+      (activeMode === "box_to_single" ||
+        activeMode === "parcel_to_single" ||
+        activeMode === "parcel_to_box")
+    ) {
       if (sourceContainerId) {
         loadContainerChildren(sourceContainerId);
       } else {
@@ -244,6 +265,73 @@ const InventoryMixingModal = ({
   const handleConfirm = async () => {
     setSubmitting(true);
     try {
+      // Parcel -> Box transfer
+      if (activeMode === "parcel_to_box") {
+        if (!sourceContainerId) {
+          toastWarning("Please select a source Parcel");
+          setSubmitting(false);
+          return;
+        }
+        if (destMode === "existing" && !transferTargetBoxId) {
+          toastWarning("Please select a target Box");
+          setSubmitting(false);
+          return;
+        }
+
+        const basePayload = {
+          sourceContainerId,
+          targetContainerId: destMode === "existing" ? transferTargetBoxId : undefined,
+          mode: destMode,
+          newContainerSku: destMode === "new" ? newSku : undefined,
+          newContainerType: "box",
+        };
+
+        if (childStones.length > 0) {
+          if (!selectedChildKeys.length) {
+            toastWarning("Please select at least one stone to transfer to Box");
+            setSubmitting(false);
+            return;
+          }
+          const res = await postMixingTransfer({
+            ...basePayload,
+            stoneIds: selectedChildKeys,
+          });
+          if (res?.ok) {
+            toastSuccess(res.message || "Parcel stones transferred to Box successfully");
+            finishSuccess();
+          } else {
+            toastError(res?.message || "Failed to transfer Parcel stones to Box");
+          }
+        } else {
+          const numCarat = Number(sepCarat || 0);
+          if (numCarat <= 0) {
+            toastWarning("Please enter a valid carat weight greater than 0");
+            setSubmitting(false);
+            return;
+          }
+          const maxCarat = Number(
+            currentContainer?.polish_carat ?? currentContainer?.polishCarat ?? currentContainer?.carat ?? 0
+          );
+          if (numCarat > maxCarat + 0.001) {
+            toastWarning(`Cannot transfer ${numCarat} ct: Exceeds available parcel carat (${maxCarat} ct)`);
+            setSubmitting(false);
+            return;
+          }
+          const res = await postMixingTransfer({
+            ...basePayload,
+            carat: numCarat,
+            pcs: Number(sepPcs || 1),
+          });
+          if (res?.ok) {
+            toastSuccess(res.message || "Parcel carat transferred to Box successfully");
+            finishSuccess();
+          } else {
+            toastError(res?.message || "Failed to transfer Parcel carat to Box");
+          }
+        }
+        return;
+      }
+
       // 1 & 2: Add to Box / Add to Parcel
       if (activeMode === "to_box" || activeMode === "to_parcel") {
         if (!singleRows.length) {
@@ -400,6 +488,11 @@ const InventoryMixingModal = ({
   const submitButtonLabel = useMemo(() => {
     if (activeMode === "to_box") return "Mix into Box";
     if (activeMode === "to_parcel") return "Mix into Parcel";
+    if (activeMode === "parcel_to_box") {
+      return childStones.length > 0
+        ? `Transfer ${selectedChildKeys.length} Stone(s) to Box`
+        : "Transfer Carat to Box";
+    }
     const label = activeMode === "box_to_single" ? "Box" : "Parcel";
     if (childStones.length > 0) {
       return `Assign ${selectedChildKeys.length} Stone(s) to Single`;
@@ -425,7 +518,7 @@ const InventoryMixingModal = ({
       mask={{ closable: false }}
       className={styles.mixingModal}
     >
-      {/* Operation Segmented Modes — ALL 4 MODES ARE ALWAYS VISIBLE */}
+      {/* Operation Segmented Modes — ALL 5 MODES ARE ALWAYS VISIBLE */}
       <div className={styles.modeTabs}>
         <Segmented
           options={MODES}
@@ -561,6 +654,166 @@ const InventoryMixingModal = ({
                 <div>
                   <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
                     New Parcel SKU:
+                  </div>
+                  <Input
+                    placeholder="Leave blank for auto-generated SKU"
+                    value={newSku}
+                    onChange={(e) => setNewSku(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
+                    Remark:
+                  </div>
+                  <Input
+                    placeholder="Optional remarks"
+                    value={newRemark}
+                    onChange={(e) => setNewRemark(e.target.value)}
+                  />
+                </div>
+              </Space>
+            )}
+          </Space>
+        )}
+
+        {/* MODE: PARCEL TO BOX (Transfer / Mix from Parcel into Box) */}
+        {activeMode === "parcel_to_box" && (
+          <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 6 }}>
+                Select Source Parcel:
+              </div>
+              <Select
+                placeholder="Search & select Parcel SKU to transfer into Box..."
+                style={{ width: "100%" }}
+                showSearch
+                optionFilterProp="label"
+                value={sourceContainerId}
+                onChange={setSourceContainerId}
+                options={parcelOptions}
+              />
+            </div>
+
+            {currentContainer && (
+              <div className={styles.containerBanner}>
+                <div className={styles.bannerMain}>
+                  <span>Source Parcel:</span>
+                  <Tag color="cyan" style={{ fontSize: 13, fontWeight: 700 }}>
+                    {currentContainer.sku}
+                  </Tag>
+                </div>
+                <div className={styles.bannerStats}>
+                  <span>
+                    Available:{" "}
+                    <strong>
+                      {Number(currentContainer.polish_carat ?? currentContainer.polishCarat ?? currentContainer.carat ?? 0).toFixed(2)} ct
+                    </strong>
+                  </span>
+                  <span>
+                    Pcs:{" "}
+                    <strong>
+                      {currentContainer.polish_pcs ?? currentContainer.polishPcs ?? currentContainer.pcs ?? 1}
+                    </strong>
+                  </span>
+                  <span>
+                    Rate: <strong>${Number(currentContainer.price || 0).toLocaleString()}</strong>
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {sourceContainerId && (
+              <>
+                {loadingChildren ? (
+                  <div style={{ textAlign: "center", padding: "30px 0" }}>
+                    <Spin tip="Loading stones inside Parcel..." />
+                  </div>
+                ) : childStones.length > 0 ? (
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "6px 0" }}>
+                      <span style={{ fontSize: 13, fontWeight: 600 }}>Stones inside this Parcel:</span>
+                      <span style={{ fontSize: 12, color: "#64748b" }}>
+                        Selected to Transfer: <b>{selectedChildKeys.length}</b> of {childStones.length} stones
+                      </span>
+                    </div>
+                    <div className={styles.childTableWrap}>
+                      <Table
+                        dataSource={childStones}
+                        columns={childColumns}
+                        rowKey="id"
+                        size="small"
+                        pagination={false}
+                        rowSelection={{
+                          selectedRowKeys: selectedChildKeys,
+                          onChange: setSelectedChildKeys,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className={styles.separateGrid}>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
+                        Carat Weight: *
+                      </div>
+                      <InputNumber
+                        style={{ width: "100%" }}
+                        min={0.01}
+                        max={Number(currentContainer?.polish_carat ?? currentContainer?.polishCarat ?? 999)}
+                        step={0.01}
+                        value={sepCarat}
+                        onChange={setSepCarat}
+                      />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
+                        Pcs:
+                      </div>
+                      <InputNumber
+                        style={{ width: "100%" }}
+                        min={1}
+                        value={sepPcs}
+                        onChange={setSepPcs}
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            <div>
+              <span style={{ fontWeight: 600, marginRight: 12 }}>Destination:</span>
+              <Radio.Group
+                value={destMode}
+                onChange={(e) => setDestMode(e.target.value)}
+                buttonStyle="solid"
+                size="small"
+              >
+                <Radio.Button value="existing">Add to Existing Box</Radio.Button>
+                <Radio.Button value="new">Create New Box</Radio.Button>
+              </Radio.Group>
+            </div>
+
+            {destMode === "existing" ? (
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 6 }}>
+                  Select Target Box:
+                </div>
+                <Select
+                  placeholder="Search & select Box SKU..."
+                  style={{ width: "100%" }}
+                  showSearch
+                  optionFilterProp="label"
+                  value={transferTargetBoxId}
+                  onChange={setTransferTargetBoxId}
+                  options={boxOptions}
+                />
+              </div>
+            ) : (
+              <Space direction="vertical" style={{ width: "100%" }}>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
+                    New Box SKU:
                   </div>
                   <Input
                     placeholder="Leave blank for auto-generated SKU"

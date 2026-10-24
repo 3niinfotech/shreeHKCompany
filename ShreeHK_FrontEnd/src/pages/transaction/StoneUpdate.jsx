@@ -38,6 +38,14 @@ const StoneUpdate = () => {
     const [showForm, setShowForm] = useState(false);
     const [labModalOpen, setLabModalOpen] = useState(false);
 
+    const { data: apiResponse, refetch: fetchStone, isFetching: isSearching } = useFetchApi(
+        ['productDetails', searchValue],
+        ENDPOINTS.product.detail,
+        { by: 'p.sku', id: searchValue },
+        'GET',
+        { enabled: Boolean(skuFromUpdate), retry: false, staleTime: 0 }
+    );
+
     const activeStoneData = useMemo(() => {
         const formVals = form.getFieldsValue();
         const rawStone = apiResponse?.Data || {};
@@ -56,14 +64,6 @@ const StoneUpdate = () => {
         { id: 2, name: "Lab Grown Diamond" },
         { id: 56, name: "Pink Collection" },
     ], []);
-
-    const { data: apiResponse, refetch: fetchStone, isFetching: isSearching } = useFetchApi(
-        ['productDetails', searchValue],
-        ENDPOINTS.product.detail,
-        { by: 'p.sku', id: searchValue },
-        'GET',
-        { enabled: Boolean(skuFromUpdate), retry: false, staleTime: 0 }
-    );
 
     const saveMutation = usePostApiRequest(ENDPOINTS.product.save, 'productDetails');
 

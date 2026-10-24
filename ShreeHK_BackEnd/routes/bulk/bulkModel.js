@@ -20,17 +20,29 @@ async function auditBulkStoneRow({ recordId, sku, oldValue, newValue, descriptio
 }
 
 class BulkModel {
-  constructor(companyId = helper.DEFAULT_COMPANY_ID) {
+  constructor(companyId = helper.DEFAULT_COMPANY_ID, allowedCompanyIds = null, userId = null) {
     this.table_product = "dai_product";
     this.table_product_value = "dai_product_value";
     this.companyId = Number(companyId) || helper.DEFAULT_COMPANY_ID;
+    this.userId = Number(userId) || helper.DEFAULT_USER_ID;
+    if (Array.isArray(allowedCompanyIds) && allowedCompanyIds.length) {
+      this.allowedCompanyIds = allowedCompanyIds.map(Number).filter((id) => id > 0);
+    } else {
+      this.allowedCompanyIds = [this.companyId];
+    }
   }
 
   async getDetailBySku(sku, q = null) {
-    const sql = `SELECT * FROM ${this.table_product} WHERE company=? AND visibility=1 AND sku LIKE ${connection.escape(
-      sku
-    )}`;
-    const rows = q ? await q(sql, [this.companyId]) : await helper.query(sql, [this.companyId]);
+    const trimmed = String(sku || "").trim();
+    if (!trimmed) return {};
+    const companyPlaceholders = this.allowedCompanyIds.map(() => "?").join(",");
+    const sql = `SELECT * FROM ${this.table_product} 
+      WHERE company IN (${companyPlaceholders}) 
+        AND (sku = ? OR TRIM(sku) = ? OR sku LIKE ?) 
+      ORDER BY (company = ?) DESC, visibility DESC 
+      LIMIT 1`;
+    const params = [...this.allowedCompanyIds, trimmed, trimmed, trimmed, this.companyId];
+    const rows = q ? await q(sql, params) : await helper.query(sql, params);
     return rows.length > 0 ? rows[0] : {};
   }
 
@@ -54,15 +66,42 @@ class BulkModel {
       const spid = [];
 
       if (type === "price") {
-        for (let i = 2; i <= arrayCount; i++) {
-          const row = allDataInSheet[i - 1] || {};
-          const sku = String(row.A || "").trim();
-          const price = row.B != null ? String(row.B).trim() : "";
-          const cost = row.C != null ? String(row.C).trim() : "";
-          const rap = row.D != null ? String(row.D).trim() : "";
+        let skuCol = "A";
+        let priceCol = "B";
+        let costCol = "C";
+        let rapCol = "D";
+        let startRowIndex = 1;
+
+        const firstRow = allDataInSheet[0] || {};
+        const firstRowVals = Object.entries(firstRow).map(([k, v]) => ({ col: k, val: String(v || "").trim().toLowerCase() }));
+        const hasHeader = firstRowVals.some(({ val }) => /^(sku|stone|diamond|price|cost|rap)/i.test(val));
+
+        if (hasHeader) {
+          startRowIndex = 1;
+          for (const { col, val } of firstRowVals) {
+            if (/^(sku|stone\s*id|stone_id|diamond_no|item)$/i.test(val)) skuCol = col;
+            else if (/^(price|sell\s*price|base\s*price)$/i.test(val)) priceCol = col;
+            else if (/^(cost|cost\s*price)$/i.test(val)) costCol = col;
+            else if (/^(rap|rap\s*price|rapnet)$/i.test(val)) rapCol = col;
+          }
+        } else {
+          startRowIndex = 0;
+        }
+
+        const notFoundSkus = [];
+        for (let i = startRowIndex; i < arrayCount; i++) {
+          const row = allDataInSheet[i] || {};
+          const sku = String(row[skuCol] || "").trim();
+          const price = row[priceCol] != null ? String(row[priceCol]).trim() : "";
+          const cost = row[costCol] != null ? String(row[costCol]).trim() : "";
+          const rap = row[rapCol] != null ? String(row[rapCol]).trim() : "";
           if (!sku) continue;
+
           const data = await this.getDetailBySku(sku, q);
-          if (!data || !data.id) continue;
+          if (!data || !data.id) {
+            notFoundSkus.push(sku);
+            continue;
+          }
           skuarr.push(sku);
           spid.push(data.id);
           const oldPrice = data.price;
@@ -71,58 +110,73 @@ class BulkModel {
           if (price !== "") {
             const numPrice = parseFloat(price) || 0;
             const numCost = parseFloat(cost) || 0;
-            const amount = parseFloat(data.polish_carat || 0) * numPrice;
+            const carat = parseFloat(data.polish_carat || 0);
+            const amount = carat > 0 ? carat * numPrice : (parseFloat(data.amount || 0) || 0);
             let sql = "";
+            let params = [];
             if (cost === "") {
-              sql = `UPDATE ${this.table_product} SET price=${connection.escape(numPrice)},amount=${connection.escape(amount)},site_upload=0,rapnet_upload=0 WHERE id=${data.id} AND company=${this.companyId}`;
+              sql = `UPDATE ${this.table_product} SET price=?, amount=?, site_upload=0, rapnet_upload=0 WHERE id=? AND company=?`;
+              params = [numPrice, amount, data.id, data.company];
             } else {
-              sql = `UPDATE ${this.table_product} SET cost=${connection.escape(numCost)},price=${connection.escape(numPrice)},amount=${connection.escape(amount)},site_upload=0,rapnet_upload=0 WHERE id=${data.id} AND company=${this.companyId}`;
+              sql = `UPDATE ${this.table_product} SET cost=?, price=?, amount=?, site_upload=0, rapnet_upload=0 WHERE id=? AND company=?`;
+              params = [numCost, numPrice, amount, data.id, data.company];
             }
-            await q(sql);
+            const isPriceChanged = Number(oldPrice) !== Number(numPrice);
+            const isCostChanged = cost !== "" && Number(data.cost || 0) !== Number(numCost);
 
-            const history = {
-              product_id: data.id,
-              action: "price_change",
-              date: new Date().toISOString().slice(0, 19).replace("T", " "),
-              narretion: "cost price or base price are changed.",
-              description: `Old Price :  ${oldPrice} , New Price :  ${numPrice}`,
-              price: numPrice,
-              amount: amount,
-            };
-            const hData = helper.insertString(history);
-            if (hData) await q(`INSERT INTO dai_history (${hData[0]}) VALUES (${hData[1]})`);
+            if (isPriceChanged || isCostChanged) {
+              const history = {
+                product_id: data.id,
+                sku: data.sku,
+                action: "price_change",
+                date: new Date().toISOString().slice(0, 19).replace("T", " "),
+                narretion: "cost price or base price are changed.",
+                description: `Old Price :  ${oldPrice} , New Price :  ${numPrice}`,
+                price: numPrice,
+                amount: amount,
+                user: this.userId || helper.DEFAULT_USER_ID,
+              };
+              const hData = helper.insertString(history);
+              if (hData) await q(`INSERT INTO dai_history (${hData[0]}) VALUES (${hData[1]})`);
 
-            await auditBulkStoneRow({
-              recordId: data.id,
-              sku,
-              oldValue: { price: oldPrice, cost: data.cost },
-              newValue: { price: numPrice, cost: numCost },
-              description: history.description,
-            });
+              await auditBulkStoneRow({
+                recordId: data.id,
+                sku,
+                oldValue: { price: oldPrice, cost: data.cost },
+                newValue: { price: numPrice, cost: numCost },
+                description: history.description,
+              });
+            }
           }
 
           if (rap !== "") {
             const numRap = parseFloat(rap) || 0;
-            const sql = `UPDATE ${this.table_product} SET rap_price=${connection.escape(numRap)},site_upload=0,rapnet_upload=0 WHERE id=${data.id} AND company=${this.companyId}`;
-            await q(sql);
+            const carat = parseFloat(data.polish_carat || 0);
+            const rapAmount = carat > 0 ? carat * numRap : 0;
+            const sql = `UPDATE ${this.table_product} SET rap_price=?, rap_amount=?, site_upload=0, rapnet_upload=0 WHERE id=? AND company=?`;
+            await q(sql, [numRap, rapAmount, data.id, data.company]);
 
-            const history = {
-              product_id: data.id,
-              action: "price_change",
-              date: new Date().toISOString().slice(0, 19).replace("T", " "),
-              narretion: "Rap price or Sell price are changed.",
-              description: `Old Rap :  ${oldRap} , New Rap :  ${numRap}`,
-            };
-            const hData = helper.insertString(history);
-            if (hData) await q(`INSERT INTO dai_history (${hData[0]}) VALUES (${hData[1]})`);
+            if (Number(oldRap || 0) !== Number(numRap)) {
+              const history = {
+                product_id: data.id,
+                sku: data.sku,
+                action: "price_change",
+                date: new Date().toISOString().slice(0, 19).replace("T", " "),
+                narretion: "Rap price or Sell price are changed.",
+                description: `Old Rap :  ${oldRap} , New Rap :  ${numRap}`,
+                user: this.userId || helper.DEFAULT_USER_ID,
+              };
+              const hData = helper.insertString(history);
+              if (hData) await q(`INSERT INTO dai_history (${hData[0]}) VALUES (${hData[1]})`);
 
-            await auditBulkStoneRow({
-              recordId: data.id,
-              sku,
-              oldValue: { rap_price: oldRap },
-              newValue: { rap_price: numRap },
-              description: history.description,
-            });
+              await auditBulkStoneRow({
+                recordId: data.id,
+                sku,
+                oldValue: { rap_price: oldRap },
+                newValue: { rap_price: numRap },
+                description: history.description,
+              });
+            }
           }
         }
         if (spid.length > 0) {
@@ -132,7 +186,7 @@ class BulkModel {
             date: new Date().toISOString().slice(0, 19).replace("T", " "),
             description: `cost price or base price are changed of ${skuarr.join(",")}`,
             company: this.companyId,
-            user: helper.DEFAULT_USER_ID,
+            user: this.userId || helper.DEFAULT_USER_ID,
           };
           try {
             const tData = helper.insertString(track);
@@ -141,13 +195,21 @@ class BulkModel {
             console.error("user_track log error (price):", trackErr?.message || trackErr);
           }
         }
+        if (spid.length === 0) {
+          return notFoundSkus.length
+            ? `No matching stone found for: ${notFoundSkus.slice(0, 3).join(", ")}${notFoundSkus.length > 3 ? "..." : ""}`
+            : "No valid data found in file.";
+        }
+        return { success: true, updatedCount: spid.length, message: `Updated ${spid.length} stone(s) successfully !!!` };
       } else if (type === "location") {
         for (let i = 2; i <= arrayCount; i++) {
           const row = allDataInSheet[i - 1] || {};
-          const sql = `UPDATE ${this.table_product} SET location=${connection.escape(
-            row.B
-          )},site_upload=0,rapnet_upload=0 WHERE sku=${connection.escape(row.A || "")} AND company=${this.companyId}`;
-          await q(sql);
+          const sku = String(row.A || "").trim();
+          if (!sku) continue;
+          const data = await this.getDetailBySku(sku, q);
+          if (!data || !data.id) continue;
+          const sql = `UPDATE ${this.table_product} SET location=?, site_upload=0, rapnet_upload=0 WHERE id=? AND company=?`;
+          await q(sql, [row.B, data.id, data.company]);
         }
       } else if (type === "intensity") {
         for (let i = 2; i <= arrayCount; i++) {
@@ -169,7 +231,7 @@ class BulkModel {
             )},overtone=${connection.escape(over)} WHERE product_id=${data.id}`;
           }
           await q(sql);
-          await q(`UPDATE ${this.table_product} SET site_upload=0,rapnet_upload=0 WHERE id=${data.id} AND company=${this.companyId}`);
+          await q(`UPDATE ${this.table_product} SET site_upload=0,rapnet_upload=0 WHERE id=${data.id} AND company=${data.company}`);
         }
       } else if (type === "package") {
         for (let i = 2; i <= arrayCount; i++) {
@@ -193,7 +255,7 @@ class BulkModel {
           const Newdata = await this.getDetailBySku(newsku, q);
           const oldSku = data.sku;
           if (!data.id || sku === newsku || (Newdata && Newdata.id)) continue;
-          await q(`UPDATE ${this.table_product} SET sku=${connection.escape(newsku)} WHERE id=${data.id} AND company=${this.companyId}`);
+          await q(`UPDATE ${this.table_product} SET sku=${connection.escape(newsku)} WHERE id=${data.id} AND company=${data.company}`);
 
           const history = {
             product_id: data.id,
@@ -201,6 +263,7 @@ class BulkModel {
             date: new Date().toISOString().slice(0, 19).replace("T", " "),
             narretion: "Sku Changed",
             description: `Old Sku :  ${oldSku} , New Sku :  ${newsku}`,
+            user: this.userId || helper.DEFAULT_USER_ID,
           };
           const hData = helper.insertString(history);
           if (hData) await q(`INSERT INTO dai_history (${hData[0]}) VALUES (${hData[1]})`);
@@ -220,7 +283,7 @@ class BulkModel {
             date: new Date().toISOString().slice(0, 19).replace("T", " "),
             description: `Sku Changed of ${skuarr.join(",")}`,
             company: this.companyId,
-            user: helper.DEFAULT_USER_ID,
+            user: this.userId || helper.DEFAULT_USER_ID,
           };
           try {
             const tData = helper.insertString(track);
@@ -239,7 +302,7 @@ class BulkModel {
           const size = String(row.E || "").trim();
           const data = await this.getDetailBySku(sku, q);
           if (!data || !data.id) continue;
-          await q(`UPDATE ${this.table_product} SET main_color=${connection.escape(color)} WHERE id=${data.id} AND company=${this.companyId}`);
+          await q(`UPDATE ${this.table_product} SET main_color=${connection.escape(color)} WHERE id=${data.id} AND company=${data.company}`);
           await q(
             `UPDATE ${this.table_product_value} SET shape=${connection.escape(shape)},color=${connection.escape(
               color
@@ -265,7 +328,7 @@ class BulkModel {
               pcarat
             )}, amount=${connection.escape(
               amount
-            )},outward='',site_upload=0,rapnet_upload=0,is_uploadsite=1,is_uploadrapnet=1,visibility=1 WHERE id=${ProductData.id} AND company=${this.companyId}`
+            )},outward='',site_upload=0,rapnet_upload=0,is_uploadsite=1,is_uploadrapnet=1,visibility=1 WHERE id=${ProductData.id} AND company=${ProductData.company}`
           );
           const attr = await helper.getAttributeField();
           const data = {};
@@ -279,28 +342,57 @@ class BulkModel {
           }
         }
       } else if (type === "rap_price") {
-        for (let i = 2; i <= arrayCount; i++) {
-          const row = allDataInSheet[i - 1] || {};
-          const sku = String(row.A || "").trim();
-          const price = row.B;
+        let skuCol = "A";
+        let priceCol = "B";
+        let startRowIndex = 1;
+
+        const firstRow = allDataInSheet[0] || {};
+        const firstRowVals = Object.entries(firstRow).map(([k, v]) => ({ col: k, val: String(v || "").trim().toLowerCase() }));
+        const hasHeader = firstRowVals.some(({ val }) => /^(sku|stone|diamond|rap|price)/i.test(val));
+
+        if (hasHeader) {
+          startRowIndex = 1;
+          for (const { col, val } of firstRowVals) {
+            if (/^(sku|stone\s*id|stone_id|diamond_no|item)$/i.test(val)) skuCol = col;
+            else if (/^(rap|rap\s*price|rapnet|price)$/i.test(val)) priceCol = col;
+          }
+        } else {
+          startRowIndex = 0;
+        }
+
+        const notFoundSkus = [];
+        for (let i = startRowIndex; i < arrayCount; i++) {
+          const row = allDataInSheet[i] || {};
+          const sku = String(row[skuCol] || "").trim();
+          const price = row[priceCol] != null ? String(row[priceCol]).trim() : "";
+          if (!sku) continue;
           const data = await this.getDetailBySku(sku, q);
+          if (!data || !data.id) {
+            notFoundSkus.push(sku);
+            continue;
+          }
           skuarr.push(sku);
           spid.push(data.id);
           const oldPrice = data.rap_price;
           if (price === "" || Number(price) === 0) continue;
-          const amount = Number(data.polish_carat || 0) * Number(price || 0);
+          const numPrice = parseFloat(price) || 0;
+          const carat = parseFloat(data.polish_carat || 0);
+          const amount = carat * numPrice;
           await q(
-            `UPDATE ${this.table_product} SET rap_price=${price},rap_amount=${amount},site_upload=0,rapnet_upload=0 WHERE id=${data.id} AND company=${this.companyId}`
+            `UPDATE ${this.table_product} SET rap_price=?, rap_amount=?, site_upload=0, rapnet_upload=0 WHERE id=? AND company=?`,
+            [numPrice, amount, data.id, data.company]
           );
 
           const history = {
             product_id: data.id,
+            sku: data.sku,
             action: "price_change",
             date: new Date().toISOString().slice(0, 19).replace("T", " "),
             narretion: "Rap price are changed.",
-            description: `Old Price :  ${oldPrice} , New Price :  ${price}`,
-            price,
+            description: `Old Price :  ${oldPrice} , New Price :  ${numPrice}`,
+            price: numPrice,
             amount,
+            user: this.userId || helper.DEFAULT_USER_ID,
           };
           const hData = helper.insertString(history);
           if (hData) await q(`INSERT INTO dai_history (${hData[0]}) VALUES (${hData[1]})`);
@@ -309,7 +401,7 @@ class BulkModel {
             recordId: data.id,
             sku,
             oldValue: { rap_price: oldPrice },
-            newValue: { rap_price: price },
+            newValue: { rap_price: numPrice },
             description: history.description,
           });
         }
@@ -320,7 +412,7 @@ class BulkModel {
             date: new Date().toISOString().slice(0, 19).replace("T", " "),
             description: `Rap price changed of ${skuarr.join(",")}`,
             company: this.companyId,
-            user: helper.DEFAULT_USER_ID,
+            user: this.userId || helper.DEFAULT_USER_ID,
           };
           try {
             const tData = helper.insertString(track);
@@ -329,6 +421,12 @@ class BulkModel {
             console.error("user_track log error (rap_price):", trackErr?.message || trackErr);
           }
         }
+        if (spid.length === 0) {
+          return notFoundSkus.length
+            ? `No matching stone found for: ${notFoundSkus.slice(0, 3).join(", ")}${notFoundSkus.length > 3 ? "..." : ""}`
+            : "No valid data found in file.";
+        }
+        return { success: true, updatedCount: spid.length, message: `Updated ${spid.length} stone(s) successfully !!!` };
       } else if (type === "group") {
         for (let i = 2; i <= arrayCount; i++) {
           const row = allDataInSheet[i - 1] || {};
@@ -338,9 +436,8 @@ class BulkModel {
           const data = await this.getDetailBySku(sku, q);
           if (!data || !data.id) continue;
           await q(
-            `UPDATE ${this.table_product} SET main_group=${connection.escape(main)},sub_group=${connection.escape(
-              sub
-            )} WHERE id=${connection.escape(data.id)} AND company=${this.companyId}`
+            `UPDATE ${this.table_product} SET main_group=?, sub_group=? WHERE id=? AND company=?`,
+            [main, sub, data.id, data.company]
           );
         }
       } else if (type === "sku-pair") {
@@ -351,17 +448,15 @@ class BulkModel {
           const data = await this.getDetailBySku(sku, q);
           if (data && data.id) {
             await q(
-              `UPDATE ${this.table_product} SET pair=${connection.escape(
-                pair
-              )},site_upload=0,rapnet_upload=0 WHERE id=${connection.escape(data.id)} AND company=${this.companyId}`
+              `UPDATE ${this.table_product} SET pair=?, site_upload=0, rapnet_upload=0 WHERE id=? AND company=?`,
+              [pair, data.id, data.company]
             );
           }
           const data1 = await this.getDetailBySku(pair, q);
           if (data1 && data1.id) {
             await q(
-              `UPDATE ${this.table_product} SET pair=${connection.escape(
-                sku
-              )},site_upload=0,rapnet_upload=0 WHERE id=${connection.escape(data1.id)} AND company=${this.companyId}`
+              `UPDATE ${this.table_product} SET pair=?, site_upload=0, rapnet_upload=0 WHERE id=? AND company=?`,
+              [sku, data1.id, data1.company]
             );
           }
         }
@@ -374,9 +469,8 @@ class BulkModel {
           const data = await this.getDetailBySku(sku, q);
           if (data && data.id) {
             await q(
-              `UPDATE ${this.table_product_value} SET bgm=${connection.escape(
-                bgm
-              )},eyeclean=${connection.escape(eye)} WHERE product_id=${connection.escape(data.id)}`
+              `UPDATE ${this.table_product_value} SET bgm=?, eyeclean=? WHERE product_id=?`,
+              [bgm, eye, data.id]
             );
           }
         }
@@ -386,8 +480,11 @@ class BulkModel {
           const sku = String(row.A || "").trim();
           const cat = String(row.B || "").trim();
           if (sku === "") continue;
+          const data = await this.getDetailBySku(sku, q);
+          if (!data || !data.id) continue;
           await q(
-            `UPDATE ${this.table_product} SET category=${connection.escape(cat)} WHERE sku=${connection.escape(sku)} AND company=${this.companyId}`
+            `UPDATE ${this.table_product} SET category=? WHERE id=? AND company=?`,
+            [cat, data.id, data.company]
           );
         }
       } else if (type === "remark") {
@@ -396,8 +493,11 @@ class BulkModel {
           const sku = String(row.A || "").trim();
           const cat = String(row.B || "").trim();
           if (sku === "") continue;
+          const data = await this.getDetailBySku(sku, q);
+          if (!data || !data.id) continue;
           await q(
-            `UPDATE ${this.table_product} SET remark=${connection.escape(cat)} WHERE sku=${connection.escape(sku)} AND company=${this.companyId}`
+            `UPDATE ${this.table_product} SET remark=? WHERE id=? AND company=?`,
+            [cat, data.id, data.company]
           );
         }
       } else if (type === "argyle") {
@@ -407,10 +507,11 @@ class BulkModel {
           const argyle_color = String(row.B || "").trim();
           const in_house_clarity = String(row.C || "").trim();
           if (sku === "") continue;
+          const data = await this.getDetailBySku(sku, q);
+          if (!data || !data.id) continue;
           await q(
-            `UPDATE ${this.table_product} SET argyle_color=${connection.escape(
-              argyle_color
-            )},in_house_clarity=${connection.escape(in_house_clarity)} WHERE sku=${connection.escape(sku)} AND company=${this.companyId}`
+            `UPDATE ${this.table_product} SET argyle_color=?, in_house_clarity=? WHERE id=? AND company=?`,
+            [argyle_color, in_house_clarity, data.id, data.company]
           );
         }
       } else if (type === "mining") {
@@ -420,10 +521,11 @@ class BulkModel {
           const origin = String(row.B || "").trim();
           const manuf = String(row.C || "").trim();
           if (sku === "") continue;
+          const data = await this.getDetailBySku(sku, q);
+          if (!data || !data.id) continue;
           await q(
-            `UPDATE ${this.table_product} SET origin=${connection.escape(origin)},manufacture_origin=${connection.escape(
-              manuf
-            )} WHERE sku=${connection.escape(sku)} AND company=${this.companyId}`
+            `UPDATE ${this.table_product} SET origin=?, manufacture_origin=? WHERE id=? AND company=?`,
+            [origin, manuf, data.id, data.company]
           );
         }
       } else if (type === "csv-gia") {

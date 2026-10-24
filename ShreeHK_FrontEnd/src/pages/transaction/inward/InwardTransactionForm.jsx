@@ -706,7 +706,8 @@ const InwardTransactionForm = ({
   ]);
 
   const handleUpdateCell = (key, field, value) => {
-    updateTableValue(key, field, value, (item) => {
+    const formattedValue = typeof value === 'string' ? value.toUpperCase() : value;
+    updateTableValue(key, field, formattedValue, (item) => {
       let updatedItem = { ...item };
       if (updatedItem.changedByLab && updatedItem.changedByLab[field]) {
         updatedItem.changedByLab = { ...updatedItem.changedByLab, [field]: false };
@@ -714,22 +715,22 @@ const InwardTransactionForm = ({
       if (field === 'rPcs') {
         return {
           ...updatedItem,
-          rPcs: value,
+          rPcs: formattedValue,
         };
       }
       if (field === 'pPcs') {
         return {
           ...updatedItem,
-          pPcs: value,
+          pPcs: formattedValue,
         };
       }
       if (field === 'pCarat' || field === 'price') {
-        const carat = field === 'pCarat' ? (value || 0) : (updatedItem.pCarat || 0);
-        const price = field === 'price' ? (value || 0) : (updatedItem.price || 0);
+        const carat = field === 'pCarat' ? (formattedValue || 0) : (updatedItem.pCarat || 0);
+        const price = field === 'price' ? (formattedValue || 0) : (updatedItem.price || 0);
         return { ...updatedItem, amount: Math.round(carat * price * 100) / 100 };
       }
       if (field === 'amount') {
-        const amount = value || 0;
+        const amount = formattedValue || 0;
         const price = updatedItem.price || 0;
         if (price > 0 && amount > 0) {
           return { ...updatedItem, amount, pCarat: Math.round((amount / price) * 10000) / 10000 };
@@ -787,6 +788,7 @@ const InwardTransactionForm = ({
 
     const baseStyle = {
       width,
+      ...(type !== 'number' ? { textTransform: 'uppercase' } : {}),
       ...(isLabFilled
         ? {
             backgroundColor: '#f0fdf4',
@@ -817,7 +819,7 @@ const InwardTransactionForm = ({
     ) : (
       <Input
         value={record[field]}
-        onChange={(e) => handleUpdateCell(record.key, field, e.target.value)}
+        onChange={(e) => handleUpdateCell(record.key, field, e.target.value.toUpperCase())}
         placeholder={placeholder}
         status={hasError ? 'error' : undefined}
         className={hasError ? styles.requiredFieldError : undefined}
@@ -892,7 +894,7 @@ const InwardTransactionForm = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <Input
               value={r.reportNo}
-              onChange={(e) => handleUpdateCell(r.key, 'reportNo', e.target.value)}
+              onChange={(e) => handleUpdateCell(r.key, 'reportNo', e.target.value.toUpperCase())}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
@@ -902,6 +904,7 @@ const InwardTransactionForm = ({
               placeholder="Report #"
               style={{
                 flex: 1,
+                textTransform: 'uppercase',
                 ...(r.changedByLab?.reportNo ? { backgroundColor: '#f0fdf4', borderColor: '#86efac' } : {}),
               }}
             />
@@ -932,10 +935,11 @@ const InwardTransactionForm = ({
       render: (_, r) => (
         <Input
           value={r.measurements}
-          onChange={(e) => handleUpdateCell(r.key, 'measurements', e.target.value)}
+          onChange={(e) => handleUpdateCell(r.key, 'measurements', e.target.value.toUpperCase())}
           placeholder="Measurement"
           style={{
             width: '240px',
+            textTransform: 'uppercase',
             ...(r.changedByLab?.measurements ? { backgroundColor: '#f0fdf4', borderColor: '#86efac', color: '#15803d' } : {}),
           }}
         />

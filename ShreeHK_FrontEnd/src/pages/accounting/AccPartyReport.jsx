@@ -248,6 +248,7 @@ const AccPartyReport = () => {
         title,
         fileName,
         sheetName: 'Party Report',
+        omitColumns: ['cheque'],
       });
       toastSuccess('Exported to Excel');
     } catch (err) {

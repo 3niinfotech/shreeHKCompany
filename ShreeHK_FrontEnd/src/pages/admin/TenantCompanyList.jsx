@@ -102,19 +102,12 @@ const TenantCompanyList = () => {
     "tenantCompanies"
   );
 
-  const allCompanies = data?.Data || [];
+  const allCompanies = useMemo(() => data?.Data || [], [data]);
   const activeCompanyId = companyId != null ? Number(companyId) : null;
   const activeBranchId = sessionBranchId != null ? Number(sessionBranchId) : null;
 
-  // Super admin ko bhi only active company hi show hogi
-  const companies = useMemo(() => {
-    if (!allCompanies.length) return [];
-    if (activeCompanyId != null) {
-      const activeMatch = allCompanies.filter((c) => Number(c.id) === activeCompanyId);
-      if (activeMatch.length > 0) return activeMatch;
-    }
-    return allCompanies;
-  }, [allCompanies, activeCompanyId]);
+  // Branch ke andar ki saari active companies dikhti hain — list ko ek company tak narrow mat karo
+  const companies = allCompanies;
 
   // Login branch ke andar companies
   const activeBranchCompanies = useMemo(() => {
@@ -416,7 +409,7 @@ const TenantCompanyList = () => {
                     onClick={() => openDelete(item)}
                     aria-label="Delete company"
                     className={styles.deleteBtn}
-                    disabled={isBranchActive}
+                    disabled={isActive}
                   >
                     Delete
                   </Button>

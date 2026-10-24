@@ -6,7 +6,6 @@ import useInventoryList from "../../hooks/useInventoryList";
 import useInventoryHoldActions from "../../hooks/useInventoryHoldActions";
 import useInventoryChangePriceActions from "../../hooks/useInventoryChangePriceActions";
 import useInventoryLabelActions from "../../hooks/useInventoryLabelActions";
-import useInventoryIExportActions from "../../hooks/useInventoryIExportActions";
 import useInventoryExportActions from "../../hooks/useInventoryExportActions";
 import useInventoryMailActions from "../../hooks/useInventoryMailActions";
 import { resolveDiaPair } from "../../utils/resolveDiaPair";
@@ -32,6 +31,7 @@ import useAiStockAlert from "../../components/ai/useAiStockAlert";
 import { SkuLink } from "../../hooks/useSkuModalAction";
 import InventoryFilterPresets from "../../components/inventory/InventoryFilterPresets";
 import { mapInventoryRowCamel } from "../../utils/inventoryApiFilters";
+import { exportVenyaInventoryExcel } from "../../utils/venyaInventoryExcelExport";
 import { cssVar } from "../../theme";
 
 import "../../assets/scss/pages/inventory/onHand_module.scss";
@@ -189,8 +189,7 @@ const OnHandStock = () => {
         onSuccess: () => { setSelectedRowKeys([]); refresh(); },
     });
     const { printLabel } = useInventoryLabelActions();
-    const { submitIExport } = useInventoryIExportActions();
-    const { exportLoading, submitExport } = useInventoryExportActions({
+    const { exportLoading } = useInventoryExportActions({
         onSuccess: () => { setSelectedRowKeys([]); refresh(); },
     });
     const { mailLoading, submitMail } = useInventoryMailActions({
@@ -257,28 +256,30 @@ const OnHandStock = () => {
     }, [filterForm, printLabel, selectedRowKeys]);
 
     const handleToolbarAction = useCallback(
-        (key) => {
+        async (key) => {
             if (!selectedRowKeys.length) {
                 toastWarning("Please Select Item");
                 return;
             }
-            if (key === "export") {
+            if (key === "export" || key === "iExport") {
                 const selectedSet = new Set(selectedRowKeys.map(String));
                 const exportRows = tableData.filter((row) => selectedSet.has(String(row.id)));
-                submitExport(selectedRowKeys, { sheetName: "Export" }, exportRows);
-                return;
-            }
-            if (key === "iExport") {
-                const selectedSet = new Set(selectedRowKeys.map(String));
-                const exportRows = tableData.filter((row) => selectedSet.has(String(row.id)));
-                submitIExport(selectedRowKeys, { sheetName: "Export" }, exportRows);
+                try {
+                    await exportVenyaInventoryExcel({
+                        rows: exportRows,
+                        mode: key === "iExport" ? "iExport" : "export",
+                        sheetName: key === "iExport" ? "Export" : "Stock List",
+                    });
+                } catch (err) {
+                    toastWarning(err?.message || "Export failed");
+                }
                 return;
             }
             if (key === "mail") {
                 setBulkActionModal({ open: true, actionKey: "mail" });
             }
         },
-        [selectedRowKeys, submitExport, submitIExport, tableData]
+        [selectedRowKeys, tableData]
     );
 
     return (

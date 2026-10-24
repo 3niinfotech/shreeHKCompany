@@ -11,6 +11,9 @@ import dayjs from 'dayjs';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../api/endpoints';
 import AdvancedFilterPanel, { FilterField, filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
+import ExportExcelButton from '../../components/common/ExportExcelButton';
+import { exportPartyReportToExcel } from '../../utils/reportExcelExport';
+import { toastSuccess, toastWarning, toastError } from '../../utils/toastNotify';
 import styles from '../../assets/scss/pages/accountings/transaction.module.scss';
 import useTableBodyScrollHeight, { PAGINATION_MIN_RESERVE } from '../../hooks/useTableBodyScrollHeight';
 
@@ -25,6 +28,7 @@ const Transaction = () => {
     const [toDate, setToDate] = useState(null);
     const [dataSource, setDataSource] = useState([]);
     const [hasSearched, setHasSearched] = useState(false);
+    const [exporting, setExporting] = useState(false);
 
     const { data: bookData } = useFetchApi('accBooks', ENDPOINTS.accountingTxn.books);
     const { data: companyData } = useFetchApi('GetCompany', ENDPOINTS.company.options);
@@ -64,7 +68,7 @@ const Transaction = () => {
 
     const columns = [
         { title: 'No', dataIndex: 'no', key: 'no', width: 50, align: 'center' },
-        { title: 'Date', dataIndex: 'date', key: 'date', width: 100, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
+        { title: 'Date', dataIndex: 'date', key: 'date', width: 120, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
         { title: 'Account', dataIndex: 'account', key: 'account', width: 230 },
         { title: 'Party', dataIndex: 'party', key: 'party', width: 275, render: (v) => resolvePartyName(v) },
         { title: 'Other Party', dataIndex: 'otherParty', key: 'otherParty', width: 120, render: (v) => resolvePartyName(v) },
@@ -93,6 +97,44 @@ const Transaction = () => {
             onSuccess: (res) => setDataSource((res?.data || []).map((r, i) => ({ ...r, key: i }))),
         });
     }, [fetchTxn, selectedBook, party, otherParty, fromDate, toDate]);
+
+    const handleExport = async () => {
+        if (!dataSource.length) {
+            toastWarning('Run search first — no data to export.');
+            return;
+        }
+        setExporting(true);
+        try {
+            const firstRow = dataSource[0] || {};
+            const firstParty = resolvePartyName(firstRow.party);
+            const firstOtherParty = resolvePartyName(firstRow.otherParty);
+            const titleSource = party
+                || otherParty
+                || (firstParty !== '-' ? firstParty : '')
+                || (firstOtherParty !== '-' ? firstOtherParty : '')
+                || '';
+            const title = titleSource ? `${titleSource} Report` : 'Transaction Report';
+            const fileName = titleSource
+                ? `${titleSource.replace(/[^a-zA-Z0-9_-]/g, '_')}_Report`
+                : 'Transaction_Report';
+            const exportRows = dataSource.map((row) => ({
+                ...row,
+                party: resolvePartyName(row.party),
+                otherParty: resolvePartyName(row.otherParty),
+            }));
+            await exportPartyReportToExcel({
+                rows: exportRows,
+                title,
+                fileName,
+                sheetName: titleSource || 'Transaction Report',
+            });
+            toastSuccess('Exported to Excel');
+        } catch (err) {
+            toastError(err.message || 'Export failed');
+        } finally {
+            setExporting(false);
+        }
+    };
 
     const handleClearFilters = () => {
         setSelectedBook('');
@@ -129,9 +171,16 @@ const Transaction = () => {
                 onSearch={() => handleSearch()}
                 searchLoading={isTableLoading}
                 extraActions={(
-                    <Button type="default" icon={<ReloadOutlined />} className={filterPanelStyles.btnClear} onClick={() => handleSearch()} loading={isTableLoading}>
-                        Reload
-                    </Button>
+                    <>
+                        <Button type="default" icon={<ReloadOutlined />} className={filterPanelStyles.btnClear} onClick={() => handleSearch()} loading={isTableLoading}>
+                            Reload
+                        </Button>
+                        <ExportExcelButton
+                            loading={exporting}
+                            onClick={handleExport}
+                            disabled={!dataSource.length}
+                        />
+                    </>
                 )}
             >
                 <FilterField label="Book" icon={<BookOutlined />}>
