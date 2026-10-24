@@ -17,7 +17,7 @@ import styles from '../../assets/scss/pages/master/bulkupdate.module.scss';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/client/axiosInstance';
 import { ENDPOINTS } from '../../api/endpoints';
-import { toastApiSuccess, toastApiError } from '../../utils/toastNotify';
+import { toastApiSuccess, toastApiError, toastWarning } from '../../utils/toastNotify';
 
 const { Text } = Typography;
 const HEADER_BG = "1D3557";
@@ -221,7 +221,14 @@ const BulkUpdate = () => {
         const selectedFileEntry = fileList?.[0];
         const selectedFile = selectedFileEntry?.originFileObj || selectedFileEntry;
 
-        if (!updateType || !selectedFile) return;
+        if (!updateType) {
+            toastWarning("Please select Update Type.");
+            return;
+        }
+        if (!selectedFile) {
+            toastWarning("Please choose an Excel file.");
+            return;
+        }
 
         try {
             const fileContent = await fileToBase64(selectedFileEntry);

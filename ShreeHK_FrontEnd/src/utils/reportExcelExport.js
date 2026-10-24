@@ -220,6 +220,7 @@ export async function exportPartyReportToExcel({
   title = 'Party Report',
   fileName = 'Party_Report',
   sheetName = 'Party Report',
+  omitColumns = [],
 }) {
   if (!rows?.length) {
     throw new Error('No data to export');
@@ -227,7 +228,7 @@ export async function exportPartyReportToExcel({
 
   const XLSX = await import('xlsx-js-style');
 
-  const headers = [
+  const allHeaders = [
     { title: 'Date', key: 'date', width: 14, align: 'left' },
     { title: 'Account', key: 'account', width: 16, align: 'left' },
     { title: 'Party', key: 'party', width: 28, align: 'left' },
@@ -237,6 +238,9 @@ export async function exportPartyReportToExcel({
     { title: 'Debit', key: 'debit', width: 16, align: 'right' },
     { title: 'Balance', key: 'balance', width: 16, align: 'right' },
   ];
+  const headers = omitColumns.length
+    ? allHeaders.filter((h) => !omitColumns.includes(h.key))
+    : allHeaders;
 
   const ws = {};
   const lastCol = headers.length - 1; // 7 (Col H)
@@ -367,18 +371,20 @@ export async function exportPartyReportToExcel({
   const lastBalanceRaw = rows[rows.length - 1]?.balance;
   const lastBalanceNum = parseFloat(lastBalanceRaw);
   const finalBalanceVal = !Number.isNaN(lastBalanceNum) ? Number(lastBalanceNum.toFixed(2)) : (lastBalanceRaw || '');
+  const descriptionColIdx = headers.findIndex((h) => h.key === 'description');
+  const balanceColIdx = headers.findIndex((h) => h.key === 'balance');
 
   for (let c = 0; c <= lastCol; c += 1) {
     let cellVal = '';
     let cellType = 's';
     let align = 'left';
 
-    if (c === 4) {
-      // Column E: Description -> "Total Balance"
+    if (c === descriptionColIdx) {
+      // Description column -> "Total Balance"
       cellVal = 'Total Balance';
       align = 'left';
-    } else if (c === 7) {
-      // Column H: Balance -> Final balance amount
+    } else if (c === balanceColIdx) {
+      // Balance column -> Final balance amount
       cellVal = finalBalanceVal;
       cellType = typeof finalBalanceVal === 'number' ? 'n' : 's';
       align = 'right';

@@ -566,7 +566,7 @@ export const exportVenyaInventoryExcel = async ({
   triggerFileDownload(buffer, fileName);
 
   trackExportAudit({
-    moduleName: isInventoryAttribute ? "Inventory I.Export" : "Inventory Export",
+    moduleName: mode === "export" ? "Inventory Export" : "Inventory I.Export",
     fileName,
     count: rows.length,
     format: "xlsx",

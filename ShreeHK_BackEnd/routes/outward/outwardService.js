@@ -1181,14 +1181,16 @@ async function updateOutward(rawPost) {
       const headerInvoice = post.invoiceno ?? existing.invoiceno;
       const headerNarration = post.narretion ?? post.narration ?? existing.narretion;
 
+      const lookupCompanyIds = await resolveLookupCompanyIds(companyId);
+
       for (const pidStr of saleProducts) {
         if (!pidStr || keptIds.includes(pidStr)) continue;
         const pid = parseInt(pidStr, 10);
-        const pdata = await getProductDetail(q, pid, companyId);
+        const pdata = await getProductDetail(q, pid, lookupCompanyIds);
         if (!pdata) continue;
 
         if (pdata.outward_parent && pdata.outward_parent !== 0) {
-          const edata = await getProductDetail(q, pdata.outward_parent, companyId);
+          const edata = await getProductDetail(q, pdata.outward_parent, lookupCompanyIds);
           if (edata) {
             const parentPcs =
               edata.group_type === "box"
@@ -1254,8 +1256,10 @@ async function updateOutward(rawPost) {
             user: existing.user || DEFAULT_USER_ID,
           });
         }
+        await stockMovement.markOutwardItemReturned(q, id, pid, pdata.polish_pcs, pdata.polish_carat).catch(() => {});
       }
 
+      const invoiceDate = formatDateOnly(post.invoicedate || existing.invoicedate || post.date) || new Date().toISOString().slice(0, 10);
       const updatedProductIds = [];
       let amount = 0;
 
@@ -1275,18 +1279,88 @@ async function updateOutward(rawPost) {
         let BaseData = null;
 
         if (saleProducts.includes(String(pid))) {
-          const oldData = await getProductDetail(q, pid, companyId);
+          // EXISTING STONE in the transaction
+          const oldData = await getProductDetail(q, pid, lookupCompanyIds);
           if (oldData?.outward_parent) {
-            BaseData = await getProductDetail(q, oldData.outward_parent, companyId);
+            BaseData = await getProductDetail(q, oldData.outward_parent, lookupCompanyIds);
             if (BaseData?.group_type === "box") {
               Tpcs = (Number(oldData.polish_pcs) || 0) - (Number(pdata.polish_pcs) || 0);
               BaseData.polish_pcs = (Number(BaseData.polish_pcs) || 0) + Tpcs;
             }
             Tcarat = (Number(oldData.polish_carat) || 0) - (Number(pdata.polish_carat) || 0);
             BaseData.polish_carat = (Number(BaseData.polish_carat) || 0) + Tcarat;
+
+            if (BaseData && BaseData.id) {
+              const baseValues = helper.updateString({
+                polish_pcs: BaseData.polish_pcs,
+                polish_carat: BaseData.polish_carat,
+                onhand_pcs: BaseData.polish_pcs,
+                onhand_carat: BaseData.polish_carat,
+              });
+              if (baseValues) {
+                await q(`UPDATE ${TABLE_PRODUCT} SET ${baseValues} WHERE id = ?`, [BaseData.id]);
+              }
+            }
+          }
+
+          const sprice = Number(pdata.sell_price || pdata.price || oldData?.sell_price || oldData?.price || 0);
+          const samount = Number((pdata.sell_amount || pdata.amount || (sprice * Number(pdata.polish_carat || oldData?.polish_carat || 0))).toFixed(2));
+
+          const productUpdate = {
+            polish_pcs: pdata.polish_pcs,
+            polish_carat: pdata.polish_carat,
+            sell_price: sprice,
+            sell_amount: samount,
+            price: pdata.price,
+            amount: pdata.amount,
+            sku: pdata.sku,
+            outward: otype,
+            site_upload: 0,
+            rapnet_upload: 0,
+          };
+          if (otype === "memo" || otype === "consign") {
+            productUpdate.memo_pcs = pdata.polish_pcs;
+            productUpdate.memo_carat = pdata.polish_carat;
+          } else if (otype === "sale" || otype === "export") {
+            productUpdate.sold_pcs = pdata.polish_pcs;
+            productUpdate.sold_carat = pdata.polish_carat;
+          }
+          const values = helper.updateString(productUpdate);
+          if (values) await q(`UPDATE ${TABLE_PRODUCT} SET ${values} WHERE id = ?`, [pid]);
+          updatedProductIds.push(pid);
+
+          // Update line item in dai_outward_item including pcs and carat
+          await q(
+            `UPDATE dai_outward_item SET pcs = ?, carat = ?, price = ?, amount = ?, party = ?, reference = ?, invoice_no = ? WHERE outward_id = ? AND product_id = ?`,
+            [Number(pdata.polish_pcs) || 0, Number(pdata.polish_carat) || 0, sprice, samount, headerParty, headerRef, headerInvoice, id, pid]
+          ).catch(() => {});
+
+          // Only write to dai_history if price or carat actually changed
+          const priceChanged = oldData && sprice && Number(oldData.sell_price || oldData.price) !== sprice;
+          const caratChanged = oldData && Number(pdata.polish_carat) && Number(oldData.polish_carat) !== Number(pdata.polish_carat);
+          if (priceChanged || caratChanged) {
+            await addHistoryTx(q, {
+              product_id: pid,
+              action: otype,
+              type: "dr",
+              description: `Stone updated in ${otype} (Invoice: ${headerInvoice})`,
+              party: headerParty,
+              narretion: headerNarration,
+              date: invoiceDate,
+              pcs: pdata.polish_pcs,
+              carat: pdata.polish_carat,
+              amount: samount,
+              price: sprice,
+              sku: pdata.sku || oldData?.sku,
+              invoice: headerInvoice,
+              entry_from: "outward",
+              entryno: id,
+              user: existing.user || DEFAULT_USER_ID,
+            });
           }
         } else {
-          const oldData = await getProductDetail(q, pid, companyId);
+          // NEWLY ADDED STONE in the transaction
+          const oldData = await getProductDetail(q, pid, lookupCompanyIds);
           if (
             oldData &&
             (oldData.group_type === "box" || oldData.group_type === "parcel")
@@ -1301,47 +1375,99 @@ async function updateOutward(rawPost) {
               user: post.user ?? DEFAULT_USER_ID,
             });
             if (line && line.productId) {
+              await stockMovement.insertOutwardItem(q, {
+                company: oldData?.company || companyId,
+                outward_id: id,
+                product_id: line.productId,
+                sku: line.sku,
+                party: headerParty || "",
+                outward_type: otype,
+                pcs: line.pcs,
+                carat: line.carat,
+                price: line.price,
+                amount: line.amount,
+                balance_pcs: line.balance_pcs,
+                balance_carat: line.balance_carat,
+                entry_date: invoiceDate,
+                invoice_no: headerInvoice,
+                reference: headerRef || "",
+                narretion: headerNarration || "",
+                status: existing.status || (otype === "memo" ? "on_memo" : otype === "sale" ? "on_sale" : otype),
+                user: existing.user || DEFAULT_USER_ID,
+              });
               updatedProductIds.push(line.productId);
               continue;
             }
             return { ok: false, message: "Failed to process box/parcel outward line" };
           }
+
+          // Single stone outward movement
+          const movePcs = Math.max(1, Number(pdata.polish_pcs || oldData?.polish_pcs || 1));
+          const moveCarat = Number(pdata.polish_carat || oldData?.polish_carat || 0);
+          const sprice = Number(pdata.sell_price || pdata.price || oldData?.sell_price || oldData?.price || 0);
+          const samount = Number((pdata.sell_amount || pdata.amount || (sprice * moveCarat)).toFixed(2));
+          const stoneCompanyId = oldData?.company || companyId;
+
+          const bal = await stockMovement.applyOutwardQty(q, pid, otype, movePcs, moveCarat);
+          const isFullOut = (Number(bal.onhand_carat) || 0) <= 0.0001 && (Number(bal.onhand_pcs) || 0) <= 0.0001;
+
+          await q(
+            `UPDATE ${TABLE_PRODUCT} SET polish_pcs = ?, polish_carat = ?, sell_price = ?, sell_amount = ?, outward = ?, site_upload = 0, rapnet_upload = 0 WHERE id = ?`,
+            [pdata.polish_pcs, pdata.polish_carat, sprice, samount, isFullOut ? otype : '', pid]
+          );
+          updatedProductIds.push(pid);
+
+          await stockMovement.insertOutwardItem(q, {
+            company: stoneCompanyId,
+            outward_id: id,
+            product_id: pid,
+            sku: pdata.sku || oldData?.sku,
+            party: headerParty || "",
+            outward_type: otype,
+            pcs: movePcs,
+            carat: moveCarat,
+            price: sprice,
+            amount: samount,
+            balance_pcs: bal.onhand_pcs,
+            balance_carat: bal.onhand_carat,
+            entry_date: invoiceDate,
+            invoice_no: headerInvoice,
+            reference: headerRef || "",
+            narretion: headerNarration || "",
+            status: existing.status || (otype === "memo" ? "on_memo" : otype === "sale" ? "on_sale" : otype),
+            user: existing.user || DEFAULT_USER_ID,
+          });
+
+          await addHistoryTx(q, {
+            product_id: pid,
+            action: otype,
+            type: "dr",
+            description: `Stone ${otype} with reference no is ${headerRef || headerInvoice || ""}`,
+            party: headerParty,
+            narretion: headerNarration,
+            date: invoiceDate,
+            pcs: movePcs,
+            carat: moveCarat,
+            balance_pcs: bal.onhand_pcs,
+            balance_carat: bal.onhand_carat,
+            amount: samount,
+            price: sprice,
+            sku: pdata.sku || oldData?.sku,
+            invoice: headerInvoice,
+            entry_from: "outward",
+            entryno: id,
+            user: existing.user || DEFAULT_USER_ID,
+          });
+
+          await logAuditInTx(q, {
+            actionType: otype === "sale" ? "STOCK_OUT" : "UPDATE",
+            moduleName: "Diamond Stock",
+            recordId: pid,
+            recordReference: pdata.sku || oldData?.sku,
+            description: `Inventory ${otype} — ${pdata.sku || oldData?.sku} added to ${otype} (invoice ${headerInvoice || headerRef || "—"})`,
+            companyId: stoneCompanyId,
+          }).catch(() => {});
         }
-
-        const productUpdate = {
-          polish_pcs: pdata.polish_pcs,
-          polish_carat: pdata.polish_carat,
-          sell_price: pdata.sell_price,
-          sell_amount: pdata.sell_amount ?? pdata.amount,
-          price: pdata.price,
-          amount: pdata.amount,
-          sku: pdata.sku,
-          outward: otype,
-          site_upload: 0,
-          rapnet_upload: 0,
-        };
-        const values = helper.updateString(productUpdate);
-        if (values) await q(`UPDATE ${TABLE_PRODUCT} SET ${values} WHERE id = ?`, [pid]);
-        updatedProductIds.push(pid);
-
-        await addHistoryTx(q, {
-          product_id: pid,
-          action: otype,
-          type: "dr",
-          description: "Stone updated",
-          party: headerParty,
-          narretion: headerNarration,
-          date: new Date().toISOString().slice(0, 19).replace("T", " "),
-          pcs: pdata.polish_pcs,
-          carat: pdata.polish_carat,
-          amount: pdata.sell_amount == 0 ? pdata.amount : pdata.sell_amount,
-          price: pdata.sell_price == 0 ? pdata.price : pdata.sell_price,
-          sku: pdata.sku,
-          invoice: headerInvoice,
-          entry_from: "outward",
-          entryno: id,
-          user: existing.user || DEFAULT_USER_ID,
-        });
 
         if (BaseData) {
           delete BaseData.record;
@@ -1360,7 +1486,7 @@ async function updateOutward(rawPost) {
                   : `Stone ${otype} return with reference no is ${headerRef}`,
               party: headerParty,
               narretion: headerNarration,
-              date: new Date().toISOString().slice(0, 19).replace("T", " "),
+              date: invoiceDate,
               pcs: Math.abs(Tpcs),
               carat: Math.abs(Tcarat),
               amount: pdata.sell_amount == 0 ? pdata.amount : pdata.sell_amount,
@@ -1381,7 +1507,7 @@ async function updateOutward(rawPost) {
 
       if (!finalProductIds.length) {
         for (const pid of saleProducts) {
-          const p = await getProductDetail(q, parseInt(pid, 10), companyId);
+          const p = await getProductDetail(q, parseInt(pid, 10), lookupCompanyIds);
           if (p) amount += Number(p.sell_amount || p.amount || 0);
         }
       }
@@ -1396,7 +1522,7 @@ async function updateOutward(rawPost) {
 
       const skuList = [];
       for (const ps of finalProductIds) {
-        const skuData = await getProductDetail(q, ps, companyId);
+        const skuData = await getProductDetail(q, ps, lookupCompanyIds);
         if (skuData?.sku) skuList.push(skuData.sku);
       }
 

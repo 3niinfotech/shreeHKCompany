@@ -7,7 +7,7 @@ const connection = require("../../connection.js");
 const helper = require("../../helper.js");
 const { authenticateToken, isSuperAdmin } = require("../../authMiddleware.js");
 const { clearPermissionCache } = require("../../permissionHelper.js");
-const { metaQuery, parseCompanyJson } = require("../../tenantHelper.js");
+const { metaQuery, parseCompanyJson, buildUserContext, getBranchCompanyIds } = require("../../tenantHelper.js");
 
 const tenantCompanyRouter = express.Router();
 tenantCompanyRouter.use(express.json());
@@ -155,10 +155,15 @@ tenantCompanyRouter.get("/admin/tenant-company", authenticateToken, isSuperAdmin
     const params = [];
     const where = [];
 
-    // Filter to only active company context unless explicitly asked for all
+    // Only the companies of the active branch are listed — the branch companies
+    // are all active, so an HK session must show every HK company.
+    // `all=true` returns every tenant company.
     if (!all && sessionCompanyId > 0) {
-      where.push("c.id = ?");
-      params.push(sessionCompanyId);
+      const branchCompanyIds = await getBranchCompanyIds(sessionCompanyId);
+      if (branchCompanyIds.length) {
+        where.push(`c.id IN (${branchCompanyIds.map(() => "?").join(", ")})`);
+        params.push(...branchCompanyIds);
+      }
     }
 
     if (searchInput) {

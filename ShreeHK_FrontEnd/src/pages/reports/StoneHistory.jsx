@@ -467,6 +467,31 @@ const renderDescriptionCell = (value, row, historyRows, oldHistoryRows, onJump, 
                 </span>
             )}
 
+            {/* Voucher Co-Stones (other stones included in this same outward voucher) */}
+            {row?.voucher_stones && row.voucher_stones.length > 0 && (
+                <span className={styles.memoLifecycleWrap} style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>
+                        + Voucher Stones:
+                    </span>
+                    {row.voucher_stones.map((vs) => (
+                        <button
+                            key={`vs-${vs.sku}`}
+                            type="button"
+                            className={styles.historyJumpPill}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (onSearchSku) onSearchSku(vs.sku);
+                            }}
+                            title={`Click to view history for ${vs.sku} (${vs.carat} ct)`}
+                            style={{ borderColor: '#c7d2fe', color: '#4338ca', background: '#eef2ff' }}
+                        >
+                            <span>↳ {vs.sku} ({vs.carat} ct)</span>
+                            <CornerDownRight size={10} className={styles.historyJumpIcon} />
+                        </button>
+                    ))}
+                </span>
+            )}
+
             {/* Box / Container movement pill */}
             {(() => {
                 if (!onSearchSku) return null;
@@ -985,7 +1010,8 @@ const StoneHistory = () => {
         if (!detail) return false;
         form.setFieldsValue(mapDetailToForm(detail));
         setStoneDetail(detail);
-        setHistoryRows((history || []).map((h, i) => ({ ...h, key: h.id != null ? `h-${h.id}` : `h-${i}` })));
+        setHistoryRows((history || [])
+            .map((h, i) => ({ ...h, key: h.id != null ? `h-${h.id}` : `h-${i}` })));
         setOldHistoryRows([]);
         setHighlightedRowKey(null);
         setStatus(st || '');

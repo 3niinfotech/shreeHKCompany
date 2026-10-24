@@ -1,7 +1,7 @@
 const express = require("express");
 const BulkModel = require("./bulkModel.js");
 const { authenticateToken } = require("../../authMiddleware.js");
-const { buildUserContext } = require("../../tenantHelper.js");
+const { buildUserContext, resolveListCompanyIds } = require("../../tenantHelper.js");
 
 const bulkRouter = express.Router();
 bulkRouter.use(express.json({ limit: "20mb" }));
@@ -68,18 +68,22 @@ async function bulkUploadHandler(req, res) {
       return res.status(400).json({ error: 1, message: "Invalid file data." });
     }
 
-    const model = new BulkModel(buildUserContext(req).companyId);
+    const userContext = buildUserContext(req);
+    const allowedCompanyIds = await resolveListCompanyIds(userContext, userContext.companyId);
+    const model = new BulkModel(userContext.companyId, allowedCompanyIds, userContext.userId);
     const result = await model.importData(payload.type, fileBuffer);
 
     const isSuccess =
       result === 1 ||
+      (result && typeof result === "object" && result.success === true) ||
       (result && typeof result === "object" && Object.prototype.hasOwnProperty.call(result, "affectedRows"));
 
     if (isSuccess) {
-      return res.status(200).json({ error: 0, message: "Import Successfully !!!" });
+      const msg = (result && typeof result === "object" && result.message) ? result.message : "Import Successfully !!!";
+      return res.status(200).json({ error: 0, message: msg });
     }
 
-    const failMessage = typeof result === "string" ? result : "Import failed.";
+    const failMessage = typeof result === "string" ? result : (result?.message || "Import failed.");
     return res.status(200).json({ error: 1, message: failMessage });
   } catch (error) {
     return res.status(500).json({ error: 1, message: error.message });

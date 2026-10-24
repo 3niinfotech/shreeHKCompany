@@ -875,7 +875,7 @@ async function separateContainerStones({ containerId, records }, userContext = {
       price,
       amount,
       cost: Number(row.cost || container.cost || 0),
-      group_type: pcs > 1 ? "box" : (pcs === 0 ? "parcel" : "single"),
+      group_type: row.group_type || (pcs > 1 ? "box" : (pcs === 0 ? "parcel" : "single")),
       visibility: 1,
       parent_id: container.id,
       location: row.location || container.location || "",

@@ -7,6 +7,8 @@ import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useFetchApi, usePostApiRequest, useDeleteApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../api/endpoints';
+import { toastSuccess, toastWarning, toastApiError } from '../../utils/toastNotify';
+import { fetchProductDetail } from '../../api/services/productService';
 import useFiltersFormFields from "../../components/common/filters/FilterFormFields";
 import { BaseModal } from "../../components/common/modals";
 import DynamicForm from '../../components/common/ui/DynamicFormField';
@@ -298,12 +300,132 @@ const OutWord = () => {
         { name: 'due_amount', label: 'Due Amount', type: 'number', required: true, span: 6 },
     ], [branchCompanyOptions, partyOptions]);
 
+    const skuLookupDebounceTimers = useRef({});
+    const fetchedProductsRef = useRef(fetchedProducts);
+    useEffect(() => {
+        fetchedProductsRef.current = fetchedProducts;
+    }, [fetchedProducts]);
+
+    const handleSkuLookup = useCallback(async (index, rawSku, isSilent = false) => {
+        const trimmed = String(rawSku || '').trim();
+        if (!trimmed) return;
+
+        if (skuLookupDebounceTimers.current[index]) {
+            clearTimeout(skuLookupDebounceTimers.current[index]);
+            delete skuLookupDebounceTimers.current[index];
+        }
+
+        const currentRows = fetchedProductsRef.current || [];
+        const currentRow = currentRows[index];
+
+        // If row already has this exact SKU and valid ID loaded, skip re-fetching
+        if (currentRow?.id && String(currentRow.sku || '').trim().toUpperCase() === trimmed.toUpperCase()) {
+            return;
+        }
+
+        // Check duplicate in same transaction
+        const isDuplicate = currentRows.some(
+            (r, i) => i !== index && String(r.sku || '').trim().toUpperCase() === trimmed.toUpperCase()
+        );
+        if (isDuplicate) {
+            if (!isSilent) {
+                toastWarning(`SKU "${trimmed}" is already added in this transaction`);
+            }
+            return;
+        }
+
+        try {
+            const data = await fetchProductDetail({ id: trimmed, by: 'p.sku' });
+            const p = data?.Data;
+            if (!p?.id) {
+                if (!isSilent) {
+                    toastWarning(`SKU "${trimmed}" not found in database`);
+                }
+                return;
+            }
+
+            const price = Number(p.sell_price) === 0 || p.sell_price == null
+                ? (p.purchase_price ?? p.price ?? 0)
+                : p.sell_price;
+            const carat = Number(p.polish_carat ?? p.purchase_carat ?? 0);
+            const pcs = p.polish_pcs ?? p.purchase_pcs ?? 1;
+            const amount = Number(p.sell_amount) === 0 || p.sell_amount == null
+                ? ((carat * Number(price || 0)) || (p.purchase_amount ?? p.amount ?? 0))
+                : p.sell_amount;
+            const formattedAmount = Number(amount || 0).toFixed(2);
+            const cost = p.cost ?? p.purchase_price ?? "";
+
+            setFetchedProducts((prev) => {
+                if (!prev[index]) return prev;
+                const updated = [...prev];
+                updated[index] = {
+                    ...updated[index],
+                    id: p.id,
+                    product_id: p.id,
+                    productId: p.id,
+                    mfg_code: p.mfg_code ?? "",
+                    diamond_no: p.diamond_no ?? p.d_no ?? "",
+                    sku: p.sku || trimmed,
+                    polish_pcs: pcs,
+                    polish_carat: carat,
+                    cost: cost,
+                    sell_price: price || "",
+                    price: price || "",
+                    sell_amount: formattedAmount,
+                    amount: formattedAmount,
+                    location: p.location ?? p.loc ?? "",
+                    remark: p.remark ?? "",
+                    lab: p.lab ?? "",
+                    group_type: p.group_type ?? p.groupType ?? "",
+                    report_no: p.report_no ?? p.certificate ?? "",
+                    shape: p.shape ?? "",
+                    clarity: p.clarity ?? "",
+                    intensity: p.intensity ?? "",
+                    overtone: p.overtone ?? "",
+                    color: p.color ?? p.main_color ?? "",
+                };
+                return updated;
+            });
+
+            toastSuccess(`SKU "${p.sku || trimmed}" details auto-filled`);
+        } catch (err) {
+            if (err?.response?.status === 404) {
+                if (!isSilent) {
+                    toastWarning(`SKU "${trimmed}" not found in database`);
+                }
+                return;
+            }
+            if (!isSilent) {
+                toastApiError(err);
+            }
+        }
+    }, []);
+
     const handleProductFieldChange = (index, field, value) => {
         setFetchedProducts(prev => {
             const updated = [...prev];
-            updated[index] = { ...updated[index], [field]: value };
+            const row = { ...updated[index], [field]: value };
+            if (field === "sell_price" || field === "polish_carat") {
+                const price = Number(field === "sell_price" ? value : row.sell_price ?? row.price) || 0;
+                const carat = Number(field === "polish_carat" ? value : row.polish_carat) || 0;
+                row.sell_amount = (price * carat).toFixed(2);
+                row.amount = row.sell_amount;
+            }
+            updated[index] = row;
             return updated;
         });
+
+        if (field === "sku") {
+            const trimmed = String(value || "").trim();
+            if (skuLookupDebounceTimers.current[index]) {
+                clearTimeout(skuLookupDebounceTimers.current[index]);
+            }
+            if (trimmed.length >= 2) {
+                skuLookupDebounceTimers.current[index] = setTimeout(() => {
+                    handleSkuLookup(index, trimmed, true);
+                }, 500);
+            }
+        }
     };
 
     const editProductTotals = useMemo(() => {
@@ -358,6 +480,10 @@ const OutWord = () => {
     };
 
     const handleRemoveProductRow = (index) => {
+        if (skuLookupDebounceTimers.current[index]) {
+            clearTimeout(skuLookupDebounceTimers.current[index]);
+            delete skuLookupDebounceTimers.current[index];
+        }
         setFetchedProducts((prev) => prev.filter((_, i) => i !== index));
     };
 
@@ -654,7 +780,13 @@ const OutWord = () => {
                 headerIcon={<Pencil size={16} strokeWidth={2} />}
                 saveIcon={<CircleCheck size={15} strokeWidth={2.25} />}
                 isOpen={isEditModalOpen}
-                onClose={() => { setIsEditModalOpen(false); setEditId(null); setFetchedProducts([]); }}
+                onClose={() => {
+                    Object.values(skuLookupDebounceTimers.current).forEach(clearTimeout);
+                    skuLookupDebounceTimers.current = {};
+                    setIsEditModalOpen(false);
+                    setEditId(null);
+                    setFetchedProducts([]);
+                }}
                 onSave={handleSaveEdit}
                 className={styles.stockEditModal}
                 content={(
@@ -729,7 +861,7 @@ const OutWord = () => {
                                         { title: 'No', key: 'no', width: 50, fixed: 'left', align: 'center', render: (_v, _r, idx) => idx + 1 },
                                         { title: 'Mfg. code', dataIndex: 'mfg_code', key: 'mfg_code', width: 100, fixed: 'left', render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'mfg_code', e.target.value)} /> },
                                         { title: 'D. No.', dataIndex: 'diamond_no', key: 'diamond_no', width: 90, fixed: 'left', render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'diamond_no', e.target.value)} /> },
-                                        { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 120, fixed: 'left', render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'sku', e.target.value)} /> },
+                                        { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 120, fixed: 'left', render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'sku', e.target.value)} onBlur={(e) => handleSkuLookup(idx, e.target.value, false)} onPressEnter={(e) => handleSkuLookup(idx, e.target.value, false)} /> },
                                         { title: 'Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', width: 80, render: (val, _r, idx) => <Input type="number" value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'polish_pcs', e.target.value)} /> },
                                         { title: 'Carat', dataIndex: 'polish_carat', key: 'polish_carat', width: 90, render: (val, _r, idx) => <Input type="number" value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'polish_carat', e.target.value)} /> },
                                         { title: 'Cost', dataIndex: 'cost', key: 'cost', width: 90, render: (val, _r, idx) => <Input type="number" value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'cost', e.target.value)} /> },

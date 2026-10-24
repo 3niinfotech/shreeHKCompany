@@ -50,6 +50,7 @@ import {
 } from "./useInventorySelection";
 import { measureInventoryTableHeight } from "../../utils/measureInventoryTableHeight";
 import { openLegacyPdf } from "../../utils/legacyPrint";
+import { exportVenyaInventoryExcel } from "../../utils/venyaInventoryExcelExport";
 import "../../assets/scss/pages/inventory/onHand_module.scss";
 import "../../assets/scss/pages/inventory/diamondInventoryTable.scss";
 
@@ -139,6 +140,8 @@ const mapInventoryProductRow = (item, index, offset = 1, baseIndex = 0) => ({
   cost: item.cost,
   price: item.price,
   amount: item.amount,
+  discount: item.discount ?? item.disc ?? item.dis ?? 0,
+  category: item.category ?? "",
   size: item.size,
   fluorescence: item.f_intensity,
   cut: item.cut,
@@ -516,6 +519,8 @@ const DiamondInventoryTable = () => {
   const [tableHeight, setTableHeight] = useState(600);
   const [, setStoneDetailModal] = useState({ open: false, data: null });
   const [bulkActionModal, setBulkActionModal] = useState({ open: false, actionKey: null });
+  const [localIExportLoading, setLocalIExportLoading] = useState(false);
+  const [localExportLoading, setLocalExportLoading] = useState(false);
   const [transferModalOpen, setTransferModalOpen] = useState(false);
   const [mixingModalOpen, setMixingModalOpen] = useState(false);
   const pageModalsRef = useRef(null);
@@ -1620,16 +1625,23 @@ const DiamondInventoryTable = () => {
     if (preset.mode === "iExport") {
       const selectedSet = new Set(selectedRowKeys.map(String));
       const exportRows = tableData.filter((row) => selectedSet.has(String(row.id)));
-      await submitIExport(selectedRowKeys, { fileName: preset.fileName, sheetName: preset.sheetName || "Export", format: "xlsx" }, exportRows);
+      setLocalIExportLoading(true);
+      try {
+        await exportVenyaInventoryExcel({ rows: exportRows, mode: "iExport", sheetName: preset.sheetName || "Export" });
+      } finally {
+        setLocalIExportLoading(false);
+      }
       return;
     }
 
     const selectedSet = new Set(selectedRowKeys.map(String));
     const exportRows = tableData.filter((row) => selectedSet.has(String(row.id)));
-    await submitExport(selectedRowKeys, {
-      fileName: preset.fileName,
-      sheetName: preset.sheetName || "Export",
-    }, exportRows);
+    setLocalExportLoading(true);
+    try {
+      await exportVenyaInventoryExcel({ rows: exportRows, mode: "export", sheetName: preset.sheetName || "Export" });
+    } finally {
+      setLocalExportLoading(false);
+    }
   }, [selectedRowKeys, submitExport, submitIExport, tableData]);
 
   const applyInventoryFilters = useCallback((overrides = {}) => {
@@ -1984,8 +1996,8 @@ const DiamondInventoryTable = () => {
                   onAction={stablePanelAction}
                   menuItems={DOWNLOAD_MENU_ITEMS}
                   handleDownloadMenuClick={stableDownloadMenuClick}
-                  exportLoading={exportLoading}
-                  iExportLoading={iExportLoading}
+                  exportLoading={exportLoading || localExportLoading}
+                  iExportLoading={iExportLoading || localIExportLoading}
                 />
               }
               advancedFilters={advancedFiltersContent}
