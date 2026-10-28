@@ -85,4 +85,103 @@ input[type="number"]::-webkit-inner-spin-button {
 input[type="number"] {
   -moz-appearance: textfield !important;
   appearance: textfield !important;
-} 
+}
+
+// ---------------------------------------------------------------------------
+// Global Unified Form Fields Height
+// Manages: Input, Select, DatePicker, RangePicker, Password, InputNumber
+// Single source of truth: $form-control-height in _variables.scss
+// ---------------------------------------------------------------------------
+.ant-input:not(textarea):not(.ant-input-affix-wrapper > .ant-input),
+.ant-input-affix-wrapper,
+.ant-input-number,
+.ant-picker,
+.ant-select-single:not(.ant-select-customize-input) .ant-select-selector {
+  height: v.$form-control-height !important;
+  min-height: v.$form-control-height !important;
+  box-sizing: border-box !important;
+}
+
+.ant-select-multiple:not(.ant-select-customize-input) .ant-select-selector {
+  min-height: v.$form-control-height !important;
+  box-sizing: border-box !important;
+}
+
+// Select inner alignment
+.ant-select:not(.ant-select-customize-input) .ant-select-selector {
+  display: flex !important;
+  align-items: center !important;
+
+  .ant-select-selection-item,
+  .ant-select-selection-placeholder {
+    display: flex !important;
+    align-items: center !important;
+    line-height: v.$form-control-line-height !important;
+  }
+
+  .ant-select-selection-search {
+    display: flex !important;
+    align-items: center !important;
+
+    .ant-select-selection-search-input {
+      height: 100% !important;
+    }
+  }
+}
+
+// DatePicker & RangePicker alignment
+.ant-picker {
+  display: inline-flex !important;
+  align-items: center !important;
+
+  .ant-picker-input {
+    height: 100% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+
+    > input {
+      height: 100% !important;
+      line-height: v.$form-control-line-height !important;
+    }
+  }
+
+  .ant-picker-range-separator {
+    display: inline-flex !important;
+    align-items: center !important;
+    height: 100% !important;
+  }
+}
+
+// Password & Affix wrapper input alignment
+.ant-input-affix-wrapper {
+  display: inline-flex !important;
+  align-items: center !important;
+
+  > input.ant-input {
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+}
+
+// InputNumber alignment
+.ant-input-number {
+  display: inline-flex !important;
+  align-items: center !important;
+
+  .ant-input-number-input-wrap,
+  .ant-input-number-input {
+    height: 100% !important;
+  }
+}
+
+// Textarea multi-line auto-height preservation
+textarea.ant-input,
+.ant-input[rows] {
+  height: auto !important;
+  min-height: 56px !important;
+}
+ 

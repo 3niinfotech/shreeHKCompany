@@ -134,14 +134,17 @@ const PRODUCT_WITH_VALUE_SELECT = `
   pv.symmentry AS symmentry,
   pv.cut AS cut,
   pv.mesurment AS mesurment,
+  pv.mesurment AS measurement,
   pv.table_pc AS table_pc,
   pv.depth_pc AS depth_pc,
   pv.gridle AS gridle,
+  pv.gridle AS griddle_pc,
   pv.intensity AS intensity,
   pv.overtone AS overtone,
   pv.package AS package,
   pv.bgm AS bgm,
-  pv.eyeclean AS eyeclean
+  pv.eyeclean AS eyeclean,
+  pv.eyeclean AS eye_clean
 `;
 
 async function loadProductsByInwardId(inwardId, filterMemo = true) {
@@ -376,6 +379,7 @@ const PARTY_FIELDS = `
   p.fax AS party_fax,
   COALESCE(p.contact_person, comp.partner) AS contact_person,
   c.name AS company_name,
+  c.shortcutName AS company_shortcut,
   c.address AS company_address,
   c.city AS company_city,
   c.state AS company_state,
@@ -454,6 +458,7 @@ function normalizeInwardRow(row, products) {
     id: row.id,
     company: row.company != null ? Number(row.company) : undefined,
     company_name: row.company_name || "",
+    company_shortcut: row.company_shortcut || "",
     company_address: row.company_address || "",
     company_city: row.company_city || "",
     company_state: row.company_state || "",
@@ -496,6 +501,7 @@ function normalizeOutwardRow(row, products) {
     id: row.id,
     company: row.company != null ? Number(row.company) : undefined,
     company_name: row.company_name || "",
+    company_shortcut: row.company_shortcut || "",
     company_address: row.company_address || "",
     company_city: row.company_city || "",
     company_state: row.company_state || "",
@@ -612,8 +618,9 @@ async function listInwardStock(post, userContext = {}) {
   }
   const companyIds = await resolveListCompanyIds(userContext, DEFAULT_COMPANY_ID);
   let effectiveCompanyIds = companyIds;
-  if (post.company && Number(post.company) > 0) {
-    const requestedComp = Number(post.company);
+  const targetComp = post.toCompany || post.toCompanyId || post.company;
+  if (targetComp && Number(targetComp) > 0) {
+    const requestedComp = Number(targetComp);
     if (companyIds.includes(requestedComp)) {
       effectiveCompanyIds = [requestedComp];
     }
@@ -622,10 +629,11 @@ async function listInwardStock(post, userContext = {}) {
   const userId = userContext.userId || helper.DEFAULT_USER_ID;
   const userFilter = buildUserFilter("i", userId);
   const params = [...companySql.params, ...userFilter.params];
+  const fromComp = post.fromCompany || post.fromCompanyId || post.party;
   let partyClause = "";
-  if (post.party && post.party !== "0" && post.party !== "") {
-    partyClause = " AND i.party = ?";
-    params.push(post.party);
+  if (fromComp && fromComp !== "0" && fromComp !== "") {
+    partyClause = " AND (i.party = ? OR i.party = CAST(? AS CHAR) OR comp.name = ? OR comp.shortcutName = ? OR comp.id = ?)";
+    params.push(fromComp, fromComp, fromComp, fromComp, fromComp);
   }
   let invoiceClause = "";
   if (post.invoice || post.invoiceno) {
@@ -672,8 +680,9 @@ async function listPurchaseStock(post, userContext = {}) {
   }
   const companyIds = await resolveListCompanyIds(userContext, DEFAULT_COMPANY_ID);
   let effectiveCompanyIds = companyIds;
-  if (post.company && Number(post.company) > 0) {
-    const requestedComp = Number(post.company);
+  const targetComp = post.toCompany || post.toCompanyId || post.company;
+  if (targetComp && Number(targetComp) > 0) {
+    const requestedComp = Number(targetComp);
     if (companyIds.includes(requestedComp)) {
       effectiveCompanyIds = [requestedComp];
     }
@@ -684,10 +693,11 @@ async function listPurchaseStock(post, userContext = {}) {
   const limit = parseInt(post.limit, 10) || 10;
   const offset = parseInt(post.start, 10) || (parseInt(post.page, 10) - 1 || 0) * limit;
   const params = [...companySql.params, ...userFilter.params];
+  const fromComp = post.fromCompany || post.fromCompanyId || post.party;
   let partyClause = "";
-  if (post.party && post.party !== "0" && post.party !== "") {
-    partyClause = " AND (i.party = ? OR i.party = CAST(? AS CHAR) OR p.name = ? OR p.id = ?)";
-    params.push(post.party, post.party, post.party, post.party);
+  if (fromComp && fromComp !== "0" && fromComp !== "") {
+    partyClause = " AND (i.party = ? OR i.party = CAST(? AS CHAR) OR p.name = ? OR p.id = ? OR comp.name = ? OR comp.shortcutName = ? OR comp.id = ?)";
+    params.push(fromComp, fromComp, fromComp, fromComp, fromComp, fromComp, fromComp);
   }
   let invoiceClause = "";
   let limitClause = " LIMIT ? OFFSET ?";
@@ -711,6 +721,8 @@ async function listPurchaseStock(post, userContext = {}) {
   const countParams = [...params];
   const countRows = await query(
     `SELECT COUNT(*) AS total FROM dai_inward i
+     LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party = p.id OR i.party = p.name)
+     LEFT JOIN company comp ON (i.party = CAST(comp.id AS CHAR) OR i.party = comp.id OR i.party = comp.name OR i.party = comp.shortcutName)
      WHERE (i.deleted = 0 OR i.deleted IS NULL) AND ${companySql.clause}
      ${typeClause}
      ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${dateClause}`,
@@ -746,8 +758,9 @@ async function listOutwardStock(post, stockType, userContext = {}) {
   }
   const companyIds = await resolveListCompanyIds(userContext, DEFAULT_COMPANY_ID);
   let effectiveCompanyIds = companyIds;
-  if (post.company && Number(post.company) > 0) {
-    const requestedComp = Number(post.company);
+  const sourceComp = post.fromCompany || post.fromCompanyId || post.company;
+  if (sourceComp && Number(sourceComp) > 0) {
+    const requestedComp = Number(sourceComp);
     if (companyIds.includes(requestedComp)) {
       effectiveCompanyIds = [requestedComp];
     }
@@ -784,10 +797,11 @@ async function listOutwardStock(post, stockType, userContext = {}) {
   const excludeTransferClause = (stockType === "inter_transfer" || stockType === "inter_memo")
     ? ""
     : " AND o.type NOT IN ('inter_transfer', 'transfer', 'inter_memo', 'inter_transfer_memo', 'transfer_memo')";
+  const toComp = post.toCompany || post.toCompanyId || post.party;
   let partyClause = "";
-  if (post.party && post.party !== "0" && post.party !== "") {
-    partyClause = " AND (o.party = ? OR o.party = CAST(? AS CHAR) OR p.name = ? OR p.id = ?)";
-    params.push(post.party, post.party, post.party, post.party);
+  if (toComp && toComp !== "0" && toComp !== "") {
+    partyClause = " AND (o.party = ? OR o.party = CAST(? AS CHAR) OR p.name = ? OR p.id = ? OR comp.name = ? OR comp.shortcutName = ? OR comp.id = ?)";
+    params.push(toComp, toComp, toComp, toComp, toComp, toComp, toComp);
   }
   let invoiceClause = "";
   if (post.invoice || post.invoiceno) {
@@ -819,6 +833,8 @@ async function listOutwardStock(post, stockType, userContext = {}) {
   const dateClause = buildDateFilterClause("o", post, params);
   const countRows = await query(
     `SELECT COUNT(*) AS total FROM dai_outward o
+     LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name)
+     LEFT JOIN company comp ON (o.party = CAST(comp.id AS CHAR) OR o.party = comp.id OR o.party = comp.name OR o.party = comp.shortcutName)
      WHERE ${companySql.clause} ${typeClause}
      ${excludeTransferClause}
      ${userFilter.clause} ${partyClause} ${invoiceClause} ${typeFilterClause} ${skuClause} ${dateClause}`,

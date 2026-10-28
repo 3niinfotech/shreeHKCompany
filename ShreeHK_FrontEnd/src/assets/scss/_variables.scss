@@ -51,9 +51,18 @@ $cancel-btn-color: var(--color-btn-cancel-bg);
 $cancel-btn-border: var(--border-width-thin) solid $border-color;
 $reload-btn-color: $info;
 
-// Filter bar controls — 32px inventory / Ant Design button baseline
-$filter-control-height: 32px;
-$filter-control-line-height: 30px;
+// ---------------------------------------------------------------------------
+// Global Form Controls Height & Dimensions (Single Source of Truth)
+// Change $form-control-height here to update ALL form fields project-wide:
+// (Input, Select, DatePicker, RangePicker, Password, InputNumber, Filters)
+// ---------------------------------------------------------------------------
+$form-control-height: 32px !default;
+$form-control-line-height: 30px !default;
+$form-control-font-size: 13px !default;
+
+// Filter bar controls — inherits global form control height baseline
+$filter-control-height: $form-control-height;
+$filter-control-line-height: $form-control-line-height;
 $filter-control-font-size: 12px;
 
 @mixin visually-hidden-label {

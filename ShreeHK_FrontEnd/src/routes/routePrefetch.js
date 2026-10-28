@@ -60,7 +60,6 @@ const routeImporters = {
   "/report/stone-history": () => import("../pages/reports/StoneHistory"),
   "/report/stone-transfer-history": () => import("../pages/reports/TransferHistory"),
   "/report/sale-stock": () => import("../pages/reports/SaleStoneReport"),
-  "/report/stone-info": () => import("../pages/reports/StoneInfoReport"),
   "/admin/branch": () => import("../pages/admin/BranchList"),
   "/admin/tenant-company": () => import("../pages/admin/TenantCompanyList"),
   "/admin/manage-user": () => import("../pages/admin/ManageUser"),

@@ -63,7 +63,6 @@ export const PAGE_ENTRIES = [
   { key: "reports.stone_history", label: "Stone History", path: "/report/stone-history", moduleKey: "reports" },
   { key: "reports.transfer_history", label: "Transfer History", path: "/report/stone-transfer-history", moduleKey: "reports" },
   { key: "reports.sale_stock", label: "Sale Stock Report", path: "/report/sale-stock", moduleKey: "reports" },
-  { key: "reports.stone_info", label: "Party Stone Info", path: "/report/stone-info", moduleKey: "reports" },
 
   { key: "admin.branch", label: "Branch", path: "/admin/branch", moduleKey: "admin" },
   { key: "admin.tenant_company", label: "Company (Tenant)", path: "/admin/tenant-company", moduleKey: "admin" },

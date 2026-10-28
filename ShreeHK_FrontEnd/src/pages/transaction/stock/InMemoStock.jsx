@@ -1,5 +1,5 @@
 import React from 'react';
-import TransactionStockTemplate from './TransactionStockTemplate';
+import TransactionStockTemplate, { defaultProductColumns } from './TransactionStockTemplate';
 import { TRANSACTION_STOCK_KEYS } from '../../../api/services/transactionStockService';
 import { ENDPOINTS } from '../../../api/endpoints';
 
@@ -11,6 +11,8 @@ const InMemoStock = () => (
     listEndpoint={ENDPOINTS.transactionStock.inward.list}
     deleteEndpoint={ENDPOINTS.transactionStock.inward.delete}
     entryPath="/transaction/in-memo/entry"
+    infiniteScroll
+    productColumns={defaultProductColumns}
     typeFilterOptions={[
       { value: 'memo', label: 'Memo' },
       { value: 'consign', label: 'Consign' },
@@ -27,7 +29,6 @@ const InMemoStock = () => (
       editGetEndpoint: ENDPOINTS.inward.getById,
       printType: 'purchase',
     }}
-    infiniteScroll
   />
 );
 

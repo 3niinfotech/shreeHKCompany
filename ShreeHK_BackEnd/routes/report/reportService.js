@@ -2412,6 +2412,30 @@ async function getStoneDetail(sku, companyId, userId) {
   const companyName = companyMeta?.name || "";
   const companyCode = companyMeta?.shortcutName || "";
 
+  // Group history by distinct party for party-wise history
+  const partyIds = await queryAsync(
+    "SELECT DISTINCT party FROM dai_history WHERE product_id = ? AND party IS NOT NULL AND party <> ''",
+    [detail.id]
+  );
+  const memoActions = ["memo", "memo_return", "memo_close", "consign", "consign_return", "consign_close"];
+  const saleActions = ["sale", "sale_return", "sale_close", "export", "export_close"];
+
+  const byParty = [];
+  for (const { party } of partyIds) {
+    let sql = `SELECT * FROM dai_history WHERE product_id = ? AND party = ?`;
+    const vals = [detail.id, party];
+    if (hideUser16(userId)) sql += HISTORY_HIDE_USER16_SQL;
+    sql += " ORDER BY date";
+    const rows = await queryAsync(sql, vals);
+
+    byParty.push({
+      party_id: party,
+      party_name: partyMap[party] || party,
+      memoHistory: rows.filter((r) => memoActions.includes(r.action)),
+      saleHistory: rows.filter((r) => saleActions.includes(r.action)),
+    });
+  }
+
   return {
     detail: {
       ...detail,
@@ -2429,6 +2453,7 @@ async function getStoneDetail(sku, companyId, userId) {
     stock_summary: stockSummary,
     lineage: lineageTree,
     activity_logs: enrichedActivityLogs,
+    byParty,
   };
 }
 
@@ -2473,40 +2498,6 @@ async function getStoneOldHistory(sku, companyId, userId, currentDbName) {
     product_id: detail.id,
     history: enrichMemoReturnContext(mapStoneHistoryRows(rows, partyMap, userMap, false, detail)),
   };
-}
-
-async function getStoneInfoByParty(sku, companyId, userId) {
-  const base = await getStoneDetail(sku, companyId, userId);
-  if (!base) return null;
-
-  // perf: distinct parties and party map are independent reads
-  const [partyIds, partyMap] = await Promise.all([
-    queryAsync(
-      "SELECT DISTINCT party FROM dai_history WHERE product_id = ? AND party IS NOT NULL AND party <> ''",
-      [base.detail.id]
-    ),
-    getPartyMap(),
-  ]);
-  const memoActions = ["memo", "memo_return", "memo_close", "consign", "consign_return", "consign_close"];
-  const saleActions = ["sale", "sale_return", "sale_close", "export", "export_close"];
-
-  const byParty = [];
-  for (const { party } of partyIds) {
-    let sql = `SELECT * FROM dai_history WHERE product_id = ? AND party = ?`;
-    const vals = [base.detail.id, party];
-    if (hideUser16(userId)) sql += HISTORY_HIDE_USER16_SQL;
-    sql += " ORDER BY date";
-    const rows = await queryAsync(sql, vals);
-
-    byParty.push({
-      party_id: party,
-      party_name: partyMap[party] || party,
-      memoHistory: rows.filter((r) => memoActions.includes(r.action)),
-      saleHistory: rows.filter((r) => saleActions.includes(r.action)),
-    });
-  }
-
-  return { ...base, byParty };
 }
 
 async function getFilterOptions(companyId) {
@@ -3106,7 +3097,6 @@ module.exports = {
   getStoneDetail,
   getStoneOldHistory,
   getUserMap,
-  getStoneInfoByParty,
   getFilterOptions,
   getPartyMap,
   getTransferHistory,

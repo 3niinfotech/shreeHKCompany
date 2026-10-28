@@ -615,6 +615,95 @@ async function sendTo(rawPost, userContext = {}) {
     return { ok: false, message: "Please select party" };
   }
 
+  // Inter-Company Transfer Detection for Direct Sell:
+  // If a stone belonging to Company A is sold to Company B (via Company dropdown or Party match),
+  // automatically process as an Inter-Company Transfer with dual Sale Bill + Purchase Bill + Target Stock creation.
+  if (type === "sale") {
+    const qRead = (sql, vals) => helper.query(sql, vals);
+    const ph = productIds.map(() => "?").join(",");
+    const stoneRows = await qRead(
+      `SELECT id, sku, company, polish_pcs, polish_carat, price, amount FROM ${TABLE_PRODUCT} WHERE id IN (${ph})`,
+      productIds
+    );
+
+    const sourceCompanyIds = [...new Set(stoneRows.map((s) => Number(s.company)).filter(Boolean))];
+    const sourceCompanyId = sourceCompanyIds[0] || companyId;
+    let targetCompanyId = Number(companyId);
+
+    // If source company equals target company, check if party matches another branch company
+    if (sourceCompanyId && targetCompanyId === sourceCompanyId && post.party) {
+      const partyStr = String(post.party).trim();
+      const otherComps = await qRead(
+        "SELECT id, name FROM company WHERE id <> ?",
+        [sourceCompanyId]
+      );
+      const matchedComp = otherComps.find(
+        (c) => String(c.id) === partyStr || c.name.toLowerCase() === partyStr.toLowerCase()
+      );
+      if (matchedComp) {
+        targetCompanyId = Number(matchedComp.id);
+      }
+    }
+
+    // Inter-Company Transfer condition: Source Company != Target Company
+    if (sourceCompanyId && targetCompanyId && sourceCompanyId !== targetCompanyId) {
+      if (sourceCompanyIds.length > 1) {
+        return {
+          ok: false,
+          message: "All selected stones must belong to the same source company for inter-company transfer.",
+        };
+      }
+
+      const compRows = await qRead("SELECT id, name FROM company WHERE id IN (?, ?)", [
+        sourceCompanyId,
+        targetCompanyId,
+      ]);
+      const fromComp = compRows.find((c) => Number(c.id) === sourceCompanyId);
+      const toComp = compRows.find((c) => Number(c.id) === targetCompanyId);
+
+      if (fromComp && toComp) {
+        const companyTransferService = require("../../services/transaction/companyTransferService.js");
+
+        const transferPayload = {
+          from_company_id: sourceCompanyId,
+          to_company_id: targetCompanyId,
+          to_party: toComp.name,
+          transfer_date: formatDateOnly(post.date) || formatDateOnly(post.invoicedate) || new Date().toISOString().slice(0, 10),
+          notes: post.narretion || `Direct Sale from Inventory (${fromComp.name} -> ${toComp.name})`,
+          items: recordList.map((r) => {
+            const stone = stoneRows.find((s) => Number(s.id) === Number(r.id));
+            const pcs = Number(r.polish_pcs ?? stone?.polish_pcs ?? 1);
+            const carat = Number(r.polish_carat ?? stone?.polish_carat ?? 0);
+            const price = Number(r.price ?? stone?.price ?? 0);
+            const amount = Number(r.amount ?? (Math.round(carat * price * 100) / 100));
+            return {
+              product_id: Number(r.id),
+              sku: stone?.sku || r.sku,
+              pcs,
+              carat,
+              price,
+              amount,
+            };
+          }),
+        };
+
+        const transferResult = await companyTransferService.executeTransfer(transferPayload, {
+          ...userContext,
+          userId,
+        });
+
+        return {
+          ok: true,
+          message: `Direct Sale to ${toComp.name} processed as Inter-Company Transfer (Transfer No: ${transferResult.transfer_no})`,
+          id: transferResult.source_outward_id,
+          transfer_id: transferResult.transfer_id,
+          transfer_no: transferResult.transfer_no,
+          is_inter_transfer: true,
+        };
+      }
+    }
+  }
+
   try {
     await stockMovement.ensureStockItemSchema(helper.query);
     const outwardId = await withTransaction(async (q) => {

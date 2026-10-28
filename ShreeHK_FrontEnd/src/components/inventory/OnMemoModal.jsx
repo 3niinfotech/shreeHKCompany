@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
-import { Modal, Table, Input, InputNumber, Select, DatePicker, Button, Form, Checkbox } from "antd";
+import { Modal, Table, Input, InputNumber, Select, DatePicker, Button, Form, Checkbox, Tag as AntTag } from "antd";
 import { toastWarning, toastError } from "../../utils/toastNotify";
 import { toast } from "sonner";
 import { DeleteOutlined, PlusOutlined, SendOutlined } from "@ant-design/icons";
@@ -128,6 +128,9 @@ const mapProductToMemoRow = (p, rowKey, { isManual = false } = {}) => {
     rowKey,
     id: p.id,
     sku: p.sku,
+    company: p.company != null ? Number(p.company) : undefined,
+    companyCode: p.company_code || p.companyCode || "",
+    companyName: p.company_name || p.companyName || "",
     shape: p.shape || "",
     color: p.color || p.main_color || "",
     clarity: p.clarity || "",
@@ -181,6 +184,9 @@ const createEmptyManualRow = () => ({
   rowKey: `manual-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
   id: null,
   sku: "",
+  company: undefined,
+  companyCode: "",
+  companyName: "",
   shape: "",
   color: "",
   clarity: "",
@@ -298,6 +304,23 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
   const [lookupRowKey, setLookupRowKey] = useState(null);
   const [form] = Form.useForm();
   const vatPercent = Form.useWatch("vat_percent", form);
+  const selectedOperatingCompany = Form.useWatch("operating_company_id", form);
+
+  const sourceCompanyId = useMemo(() => {
+    const raw = selectedRows?.[0]?.company;
+    return raw != null ? Number(raw) : undefined;
+  }, [selectedRows]);
+
+  const isInterCompanySell = useMemo(() => {
+    return (
+      actionType === "sell" &&
+      Boolean(
+        sourceCompanyId &&
+        selectedOperatingCompany &&
+        Number(selectedOperatingCompany) !== sourceCompanyId
+      )
+    );
+  }, [actionType, sourceCompanyId, selectedOperatingCompany]);
 
   const { data: companyData } = useFetchApi(
     "GetCompany",
@@ -559,6 +582,8 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
         vat_amount: payloadVatAmount,
         finalAmount: +(discountCalc.finalAmount + payloadVatAmount).toFixed(2),
         _submittedRows: resolvedRows,
+        _partyLabel: companyOptions.find((c) => String(c.value) === String(values.company))?.label || "",
+        _operatingCompanyLabel: branchCompanyOptions.find((c) => String(c.value) === String(values.operating_company_id))?.label || "",
         products: resolvedRows.map((r) => ({
           id: r.id,
           sku: r.sku,
@@ -587,8 +612,33 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
 
   const resolvedRowCount = memoRows.filter((row) => row.id && row._resolved !== false).length;
 
+  const companyCodeMap = useMemo(() => {
+    const map = new Map();
+    for (const opt of branchCompanyOptions || []) {
+      map.set(Number(opt.value), opt.code || opt.name || "");
+    }
+    return map;
+  }, [branchCompanyOptions]);
+
   const columns = [
     { title: "No", width: 50, align: "center", render: (_, __, idx) => idx + 1 },
+    {
+      title: "Company",
+      dataIndex: "company",
+      width: 90,
+      align: "center",
+      ellipsis: true,
+      render: (_, record) => {
+        const code =
+          record.companyCode ||
+          record.company_code ||
+          companyCodeMap.get(Number(record.company)) ||
+          record.companyName ||
+          record.company_name ||
+          "—";
+        return code || "—";
+      },
+    },
     {
       title: "SKU",
       dataIndex: "sku",
@@ -720,6 +770,127 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
     },
   ];
 
+  const outwardField = (
+    <Form.Item label="Outward" name="entryno">
+      <Input placeholder="Outward-###" readOnly />
+    </Form.Item>
+  );
+
+  const invoiceField = (
+    <Form.Item label="Invoice" name="invoiceno">
+      <Input placeholder="Invoice No" />
+    </Form.Item>
+  );
+
+  const referenceField = (
+    <Form.Item label="Reference" name="reference">
+      <Input placeholder="#Ref" />
+    </Form.Item>
+  );
+
+  const dateField = (
+    <Form.Item label="Date" name="date" rules={[{ required: true, message: "Date required" }]}>
+      <DatePicker format="DD-MM-YYYY" />
+    </Form.Item>
+  );
+
+  const termsField = (
+    <Form.Item label="Terms" name="terms">
+      <InputNumber placeholder="Days" min={0} />
+    </Form.Item>
+  );
+
+  const dueDateField = (
+    <Form.Item label="Due Date" name="duedate">
+      <DatePicker format="DD-MM-YYYY" />
+    </Form.Item>
+  );
+
+  const companyField = (
+    <Form.Item
+      label="Company"
+      name="operating_company_id"
+      rules={[{ required: true, message: "Please select Company" }]}
+    >
+      <Select
+        options={branchCompanyOptions}
+        placeholder="Select Company (e.g. ShreeHK / KG)"
+        showSearch
+        optionFilterProp="label"
+        loading={isBranchCompanyLoading}
+        allowClear={false}
+        virtual
+      />
+    </Form.Item>
+  );
+
+  const partyField = (
+    <Form.Item label="Party" name="company" rules={[{ required: true, message: "Party required" }]}>
+      <Select options={companyOptions} placeholder="Select Party" allowClear showSearch optionFilterProp="label" virtual />
+    </Form.Item>
+  );
+
+  const otherPartyField = (
+    <Form.Item label="Other Party" name="other_party">
+      <Select options={companyOptions} placeholder="Select other Party" allowClear showSearch optionFilterProp="label" virtual />
+    </Form.Item>
+  );
+
+  const labField = (
+    <Form.Item
+      label="Select lab"
+      name="lab"
+      rules={[{ required: true, message: "Please select lab type" }]}
+    >
+      <Select options={PHP_LAB_OPTIONS} placeholder="Select lab" allowClear />
+    </Form.Item>
+  );
+
+  const shippingField = (
+    <Form.Item label="Shipping" name="shipping_name">
+      <Select options={shippingOptions} placeholder="Select Shipping" allowClear showSearch optionFilterProp="label" />
+    </Form.Item>
+  );
+
+  const originField = (
+    <Form.Item label="Origin" name="origin_of">
+      <Select options={originOptions} placeholder="Select Origin" allowClear showSearch optionFilterProp="label" />
+    </Form.Item>
+  );
+
+  const chargeField = (
+    <Form.Item label="Charge" name="shipping_charge">
+      <InputNumber placeholder="0" min={0} />
+    </Form.Item>
+  );
+
+  const cifField = (
+    <Form.Item label="C.I.F" name="cif">
+      <Input placeholder="C.I.F" />
+    </Form.Item>
+  );
+
+  const vatField = (
+    <Form.Item label="VAT" name="vat_percent">
+      <Select options={VAT_OPTIONS} />
+    </Form.Item>
+  );
+
+  const vatAmtField = (
+    <Form.Item label="VAT Amt">
+      <InputNumber value={vatAmount || null} readOnly />
+    </Form.Item>
+  );
+
+  const renderBankCheckboxes = () => (
+    <div className="memo-form-item memo-form-item--banks">
+      <Form.Item name="boc" valuePropName="checked"><Checkbox>BOC</Checkbox></Form.Item>
+      <Form.Item name="citi" valuePropName="checked"><Checkbox>Citi</Checkbox></Form.Item>
+      <Form.Item name="dbs" valuePropName="checked"><Checkbox>DBS</Checkbox></Form.Item>
+      <Form.Item name="sc" valuePropName="checked"><Checkbox>SC</Checkbox></Form.Item>
+    </div>
+  );
+
   return (
     <Modal
       className={`on-memo-modal ${isSaleLike ? "on-memo-modal--sell" : ""}`}
@@ -740,6 +911,11 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
       title={
         <div className="memo-modal-title">
           <span className="memo-title-text">{config.title}</span>
+          {isInterCompanySell && (
+            <AntTag color="purple" style={{ marginLeft: 8, fontWeight: 600 }}>
+              Inter-Company Transfer
+            </AntTag>
+          )}
           <span className="memo-title-count">
             {resolvedRowCount} diamond(s) — use Add Stone to include more by SKU
           </span>
@@ -750,85 +926,78 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
       <div className="memo-modal-scroll">
       <div className="memo-modal-header">
         <Form form={form} layout="inline" className="memo-header-form" onValuesChange={handleFormValuesChange}>
-          <Form.Item label="Outward" name="entryno">
-            <Input placeholder="Outward-###" readOnly style={{ width: 72 }} />
-          </Form.Item>
-          <Form.Item label="Invoice" name="invoiceno">
-            <Input placeholder="Invoice No" style={{ width: 68 }} />
-          </Form.Item>
-          <Form.Item label="Reference" name="reference">
-            <Input placeholder="#Ref" style={{ width: 90 }} />
-          </Form.Item>
-          <Form.Item label="Date" name="date" rules={[{ required: true, message: "Date required" }]}>
-            <DatePicker format="DD-MM-YYYY" style={{ width: 118 }} />
-          </Form.Item>
-          {isSaleLike && (
+          {actionType === "export" ? (
             <>
-              <Form.Item label="Terms" name="terms">
-                <InputNumber placeholder="Days" min={0} style={{ width: 70 }} />
-              </Form.Item>
-              <Form.Item label="Due Date" name="duedate">
-                <DatePicker format="DD-MM-YYYY" style={{ width: 118 }} />
-              </Form.Item>
+              <div className="memo-grid-row memo-grid-row--cols-8">
+                {outwardField}
+                {invoiceField}
+                {referenceField}
+                {dateField}
+                {termsField}
+                {dueDateField}
+                {companyField}
+                {partyField}
+              </div>
+              <div className="memo-grid-row memo-grid-row--cols-8">
+                {otherPartyField}
+                {shippingField}
+                {originField}
+                {chargeField}
+                {cifField}
+                {vatField}
+                {vatAmtField}
+                {renderBankCheckboxes()}
+              </div>
+            </>
+          ) : actionType === "sell" ? (
+            <>
+              <div className="memo-grid-row memo-grid-row--cols-5">
+                {outwardField}
+                {invoiceField}
+                {referenceField}
+                {dateField}
+                {termsField}
+              </div>
+              <div className="memo-grid-row memo-grid-row--cols-5">
+                {dueDateField}
+                {companyField}
+                {partyField}
+                {otherPartyField}
+                {renderBankCheckboxes()}
+              </div>
+            </>
+          ) : actionType === "lab" ? (
+            <>
+              <div className="memo-grid-row memo-grid-row--cols-4">
+                {outwardField}
+                {invoiceField}
+                {referenceField}
+                {dateField}
+              </div>
+              <div className="memo-grid-row memo-grid-row--cols-5">
+                {companyField}
+                {partyField}
+                {otherPartyField}
+                {labField}
+                {renderBankCheckboxes()}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="memo-grid-row memo-grid-row--cols-4">
+                {outwardField}
+                {invoiceField}
+                {referenceField}
+                {dateField}
+              </div>
+              <div className="memo-grid-row memo-grid-row--cols-4">
+                {companyField}
+                {partyField}
+                {otherPartyField}
+                {renderBankCheckboxes()}
+              </div>
             </>
           )}
-          <Form.Item
-            label="Company"
-            name="operating_company_id"
-            rules={[{ required: true, message: "Please select Company" }]}
-          >
-            <Select
-              options={branchCompanyOptions}
-              placeholder="Select Company (e.g. ShreeHK / KG)"
-              showSearch
-              optionFilterProp="label"
-              loading={isBranchCompanyLoading}
-              allowClear={false}
-              virtual
-              style={{ width: 190 }}
-            />
-          </Form.Item>
-          <Form.Item label="Party" name="company" rules={[{ required: true, message: "Party required" }]}>
-            <Select options={companyOptions} placeholder="Select Party" allowClear showSearch optionFilterProp="label" virtual style={{ width: 150 }} />
-          </Form.Item>
-          <Form.Item label="Other Party" name="other_party">
-            <Select options={companyOptions} placeholder="Select other Party" allowClear showSearch optionFilterProp="label" virtual style={{ width: 150 }} />
-          </Form.Item>
-          <Form.Item name="boc" valuePropName="checked"><Checkbox>BOC</Checkbox></Form.Item>
-          <Form.Item name="citi" valuePropName="checked"><Checkbox>Citi</Checkbox></Form.Item>
-          <Form.Item name="dbs" valuePropName="checked"><Checkbox>DBS</Checkbox></Form.Item>
-          <Form.Item name="sc" valuePropName="checked"><Checkbox>SC</Checkbox></Form.Item>
-          {isLab ? (
-            <Form.Item
-              label="Select lab"
-              name="lab"
-              rules={[{ required: true, message: "Please select lab type" }]}
-            >
-              <Select options={PHP_LAB_OPTIONS} placeholder="Select lab" allowClear style={{ width: 140 }} />
-            </Form.Item>
-          ) : null}
-          {isExport ? (
-            <>
-              <Form.Item label="Shipping" name="shipping_name">
-                <Select options={shippingOptions} placeholder="Select Shipping" allowClear showSearch optionFilterProp="label" style={{ width: 160 }} />
-              </Form.Item>
-              <Form.Item label="Origin" name="origin_of">
-                <Select options={originOptions} placeholder="Select Origin" allowClear showSearch optionFilterProp="label" style={{ width: 160 }} />
-              </Form.Item>
-              <Form.Item label="Charge" name="shipping_charge">
-                <InputNumber placeholder="0" min={0} style={{ width: 90 }} />
-              </Form.Item>
-              <Form.Item label="C.I.F" name="cif">
-                <Input placeholder="C.I.F" style={{ width: 100 }} />
-              </Form.Item>
-              <Form.Item label="VAT" name="vat_percent">
-                <Select options={VAT_OPTIONS} style={{ width: 120 }} />
-              </Form.Item>
-              <Form.Item label="VAT Amt">
-                <InputNumber value={vatAmount || null} readOnly style={{ width: 100 }} />
-              </Form.Item>
-            </>
-          ) : null}
         </Form>
       </div>
 
@@ -995,7 +1164,7 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
               onClick={handleSubmit}
               icon={<SendOutlined />}
             >
-              {config.submitBtn.label}
+              {isInterCompanySell ? "Transfer & Sell" : config.submitBtn.label}
             </Button>
           </div>
         </div>

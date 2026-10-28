@@ -24,7 +24,7 @@ const ColorPickerInput = ({ value, onChange, placeholder, disabled, height }) =>
                 disabled={disabled}
                 style={{
                     width: 36,
-                    height: height || 36,
+                    height: height || 'var(--form-control-height, 32px)',
                     padding: 2,
                     border: '1px solid #d9d9d9',
                     borderRadius: 6,
@@ -42,7 +42,7 @@ const ColorPickerInput = ({ value, onChange, placeholder, disabled, height }) =>
                 placeholder={placeholder || 'e.g. #1e3a8a'}
                 allowClear
                 disabled={disabled}
-                style={{ flex: 1, height: height || 36 }}
+                style={{ flex: 1, height: height || 'var(--form-control-height, 32px)' }}
             />
         </div>
     );
@@ -54,7 +54,7 @@ const DynamicForm = ({ fields, forceFullWidth, layout = 'grid' }) => {
 
     const renderInput = (field) => {
         const inputStyle = {
-            height: field.type === 'textarea' ? 'auto' : (isStack ? '32px' : '36px'),
+            height: field.type === 'textarea' ? 'auto' : 'var(--form-control-height, 32px)',
             width: isStack ? '100%' : (field.width || '100%'),
         };
 
