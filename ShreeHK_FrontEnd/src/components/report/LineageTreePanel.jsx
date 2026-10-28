@@ -88,11 +88,34 @@ const LineageTreePanel = ({ lineage, currentDetail, onNavigateSku }) => {
             ),
         },
         {
+            title: 'Status',
+            dataIndex: 'status',
+            key: 'status',
+            width: 95,
+            render: (st) => (
+                <Tag color={getStatusColor(st)} style={{ margin: 0, fontWeight: 600 }}>
+                    {st || 'AVAILABLE'}
+                </Tag>
+            ),
+        },
+        {
             title: 'Type',
             dataIndex: 'group_type',
             key: 'group_type',
             width: 90,
-            render: (gt) => getGroupTypeBadge(gt),
+            render: (gt) => {
+                const raw = String(gt || 'single').trim();
+                const lower = raw.toLowerCase();
+                const label = raw ? raw.toUpperCase() : 'SINGLE';
+                let pillClass = styles.groupTypeSingle;
+                if (lower === 'box') pillClass = styles.groupTypeBox;
+                else if (lower === 'parcel') pillClass = styles.groupTypeParcel;
+                return (
+                    <span className={`${styles.groupTypePill} ${pillClass}`} style={{ fontWeight: 600, padding: '2px 8px', fontSize: 11 }}>
+                        {label}
+                    </span>
+                );
+            },
         },
         {
             title: 'Shape / Spec',
@@ -125,7 +148,11 @@ const LineageTreePanel = ({ lineage, currentDetail, onNavigateSku }) => {
             key: 'price',
             width: 80,
             align: 'right',
-            render: (v) => formatNum(v, 2),
+            render: (v) => {
+                const val = formatNum(v, 2);
+                if (val === '—') return val;
+                return <span style={{ color: '#16A34A', fontWeight: 600 }}>{val}</span>;
+            },
         },
         {
             title: 'Amount',
@@ -133,18 +160,11 @@ const LineageTreePanel = ({ lineage, currentDetail, onNavigateSku }) => {
             key: 'amount',
             width: 90,
             align: 'right',
-            render: (v) => formatNum(v, 2),
-        },
-        {
-            title: 'Status',
-            dataIndex: 'status',
-            key: 'status',
-            width: 95,
-            render: (st) => (
-                <Tag color={getStatusColor(st)} style={{ margin: 0, fontWeight: 600 }}>
-                    {st || 'AVAILABLE'}
-                </Tag>
-            ),
+            render: (v) => {
+                const val = formatNum(v, 2);
+                if (val === '—') return val;
+                return <span style={{ color: '#16A34A', fontWeight: 600 }}>{val}</span>;
+            },
         },
     ];
 
@@ -339,12 +359,7 @@ const LineageTreePanel = ({ lineage, currentDetail, onNavigateSku }) => {
                         {/* If current stone contains children */}
                         {rawChildren.length > 0 ? (
                             <div className={styles.treeConnectorDown}>
-                                <div className={styles.treeLineVertical} />
-                                <div className={styles.connectorBadge}>
-                                    <ArrowDown size={12} />
-                                    <span>Contains {rawChildren.length} Constituent Child Stones</span>
-                                </div>
-                                <div className={styles.treeLineVertical} />
+                                <div className={styles.treeLineVertical} style={{ height: 18 }} />
                             </div>
                         ) : null}
                     </div>
@@ -352,15 +367,7 @@ const LineageTreePanel = ({ lineage, currentDetail, onNavigateSku }) => {
                     {/* Level 3: Children Stones (if current is Box or Parcel container) */}
                     {rawChildren.length > 0 ? (
                         <div className={styles.treeChildrenCard}>
-                            <div className={styles.childrenCardHeader}>
-                                <div>
-                                    <div className={styles.childrenTitle}>
-                                        Constituent Stones ({rawChildren.length})
-                                    </div>
-                                    <div className={styles.childrenSubtitle}>
-                                        Stones packaged inside this {current.group_type}. Click any child SKU to open its individual history.
-                                    </div>
-                                </div>
+                            <div className={styles.childrenCardHeader} style={{ justifyContent: 'flex-end', marginBottom: 10 }}>
                                 <div className={styles.childrenSearchWrap}>
                                     <Input
                                         placeholder="Search child by SKU, shape, color..."
@@ -377,7 +384,7 @@ const LineageTreePanel = ({ lineage, currentDetail, onNavigateSku }) => {
                                 columns={childColumns}
                                 dataSource={filteredChildren.map((c, i) => ({ ...c, key: c.id || i }))}
                                 size="small"
-                                pagination={{ pageSize: 8, showSizeChanger: false }}
+                                pagination={false}
                                 bordered
                                 className={styles.childTable}
                             />

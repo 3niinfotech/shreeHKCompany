@@ -4,7 +4,7 @@
   .appHeader {
     height: v.$header-height;
     min-height: v.$header-height;
-    background: v.$header-bg !important;
+    background: var(--header-custom-bg, #{v.$header-bg}) !important;
     padding: 0 v.$spacing5;
     display: flex;
     align-items: center;

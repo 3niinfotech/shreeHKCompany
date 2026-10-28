@@ -212,7 +212,7 @@ const TransactionStockTemplate = ({
     listEndpoint,
     payload,
     'POST',
-    { enabled: true, staleTime: 0, refetchOnMount: 'always' }
+    { enabled: true, staleTime: 60 * 1000, placeholderData: (prev) => prev }
   );
 
   const { mutate: deleteRecord, isPending: isDeleting } = useDeleteApiRequest(deleteEndpoint, deleteQueryKey || queryKey, { queryParam: 'deleteId' });
@@ -663,7 +663,7 @@ const TransactionStockTemplate = ({
     }
   }, [infiniteScroll, scrollFetching, isFetching, hasMore]);
 
-  const refreshList = useCallback(async () => {
+  const refreshList = useCallback(async (silent = false) => {
     setIsRefreshing(true);
     setExpandedRowKeys([]);
     setSelectedProducts({});
@@ -695,7 +695,9 @@ const TransactionStockTemplate = ({
       } else {
         setHasMore(true);
       }
-      toastInfo('Data refreshed');
+      if (silent !== true) {
+        toastInfo('Data refreshed');
+      }
     } catch (err) {
       console.error('Refresh error:', err);
       toastApiError(err);
@@ -1749,7 +1751,7 @@ const TransactionStockTemplate = ({
               type="primary"
               icon={<ReloadOutlined />}
               loading={isRefreshing || (isFetching && (!infiniteScroll || offset === 0))}
-              onClick={refreshList}
+              onClick={() => refreshList(false)}
             >
               Refresh
             </Button>
@@ -1942,7 +1944,7 @@ const TransactionStockTemplate = ({
           products={giaReturnModal.record?.products || []}
           onClose={() => setGiaReturnModal({ open: false, record: null, productIds: [] })}
           onSuccess={() => {
-            refreshList();
+            refreshList(true);
             setSelectedProducts({});
             setGiaReturnModal({ open: false, record: null, productIds: [] });
           }}

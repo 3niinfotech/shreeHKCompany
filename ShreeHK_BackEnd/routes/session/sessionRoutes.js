@@ -112,7 +112,7 @@ sessionRouter.post("/session/context", authenticateToken, async (req, res) => {
     // Branch + Year only (no company yet) — user creates company after login
     if (!companyId && branchId && yearId) {
       const branches = await metaQuery(
-        "SELECT id, name, shortcutName FROM branch WHERE id = ? AND status = 1 LIMIT 1",
+        "SELECT id, name, shortcutName, color_code FROM branch WHERE id = ? AND status = 1 LIMIT 1",
         [branchId]
       );
       if (!branches.length) {
@@ -171,6 +171,8 @@ sessionRouter.post("/session/context", authenticateToken, async (req, res) => {
           companyRapnetId: null,
           companySkypeId: null,
           companySkype: null,
+          companyColorCode: null,
+          branchColorCode: branch.color_code || null,
         },
       });
     }
@@ -195,7 +197,8 @@ sessionRouter.post("/session/context", authenticateToken, async (req, res) => {
       companies = await metaQuery(
         `SELECT c.id, c.name, c.shortcutName, c.logo, c.address, c.number, c.city, c.state,
                 c.pincode, c.country, c.email, c.website, c.rapnet_id, c.skype, c.branch_id,
-                b.name AS branch_name, b.shortcutName AS branch_shortcut
+                c.color_code,
+                b.name AS branch_name, b.shortcutName AS branch_shortcut, b.color_code AS branch_color_code
          FROM company c
          LEFT JOIN branch b ON b.id = c.branch_id
          WHERE c.id = ? LIMIT 1`,
@@ -287,6 +290,8 @@ sessionRouter.post("/session/context", authenticateToken, async (req, res) => {
         companyRapnetId: comp.rapnet_id || null,
         companySkypeId: comp.skype || comp.skype_id || comp.skypeId || null,
         companySkype: comp.skype || comp.skype_id || comp.skypeId || null,
+        companyColorCode: comp.color_code || null,
+        branchColorCode: comp.branch_color_code || null,
       },
     });
   } catch (err) {

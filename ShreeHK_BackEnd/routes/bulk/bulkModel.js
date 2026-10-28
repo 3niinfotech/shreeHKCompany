@@ -15,8 +15,42 @@ async function auditBulkStoneRow({ recordId, sku, oldValue, newValue, descriptio
       description,
     });
   } catch (e) {
-    console.error("bulk audit:", e);
+    // ignore audit failure if table doesn't exist
   }
+}
+
+function findHeaderRowAndCols(allDataInSheet, colMatchers) {
+  const maxRowsToCheck = Math.min(3, allDataInSheet.length);
+  let matchedRowIndex = -1;
+  let detectedCols = {};
+
+  for (let r = 0; r < maxRowsToCheck; r++) {
+    const row = allDataInSheet[r] || {};
+    const entries = Object.entries(row).map(([col, val]) => ({
+      col,
+      val: String(val || "").trim().toLowerCase(),
+    }));
+
+    const rowMatches = {};
+    for (const [key, regex] of Object.entries(colMatchers)) {
+      for (const { col, val } of entries) {
+        if (regex.test(val) && !rowMatches[key]) {
+          rowMatches[key] = col;
+        }
+      }
+    }
+
+    if (Object.keys(rowMatches).length > 0) {
+      matchedRowIndex = r;
+      detectedCols = rowMatches;
+      break;
+    }
+  }
+
+  return {
+    startRowIndex: matchedRowIndex >= 0 ? matchedRowIndex + 1 : 0,
+    cols: detectedCols,
+  };
 }
 
 class BulkModel {
@@ -38,12 +72,22 @@ class BulkModel {
     const companyPlaceholders = this.allowedCompanyIds.map(() => "?").join(",");
     const sql = `SELECT * FROM ${this.table_product} 
       WHERE company IN (${companyPlaceholders}) 
-        AND (sku = ? OR TRIM(sku) = ? OR sku LIKE ?) 
+        AND (sku = ? OR TRIM(sku) = ?) 
       ORDER BY (company = ?) DESC, visibility DESC 
       LIMIT 1`;
-    const params = [...this.allowedCompanyIds, trimmed, trimmed, trimmed, this.companyId];
+    const params = [...this.allowedCompanyIds, trimmed, trimmed, this.companyId];
     const rows = q ? await q(sql, params) : await helper.query(sql, params);
-    return rows.length > 0 ? rows[0] : {};
+    if (rows && rows.length > 0) return rows[0];
+
+    // Fallback: If not found in current allowed company scope, search across all companies
+    const fallbackSql = `SELECT * FROM ${this.table_product} 
+      WHERE (sku = ? OR TRIM(sku) = ?) 
+      ORDER BY (company = ?) DESC, visibility DESC 
+      LIMIT 1`;
+    const fallbackRows = q
+      ? await q(fallbackSql, [trimmed, trimmed, this.companyId])
+      : await helper.query(fallbackSql, [trimmed, trimmed, this.companyId]);
+    return fallbackRows && fallbackRows.length > 0 ? fallbackRows[0] : {};
   }
 
   async importData(type, inputFile) {
@@ -61,41 +105,30 @@ class BulkModel {
     const arrayCount = allDataInSheet.length;
 
     return helper.runInTransaction(async (q) => {
-      let rs = 1;
       const skuarr = [];
       const spid = [];
+      const notFoundSkus = [];
 
       if (type === "price") {
-        let skuCol = "A";
-        let priceCol = "B";
-        let costCol = "C";
-        let rapCol = "D";
-        let startRowIndex = 1;
+        const { startRowIndex, cols } = findHeaderRowAndCols(allDataInSheet, {
+          sku: /^(sku|stone\s*id|stone_id|diamond_no|diamond|item|stock\s*id)$/i,
+          price: /^(price|sell\s*price|sale\s*price|base\s*price|rate|price\s*\/.*|unit\s*price|new\s*price)$/i,
+          cost: /^(cost|cost\s*price|purchase\s*price|buy\s*price)$/i,
+          rap: /^(rap|rap\s*price|rapnet|rap\s*rate)$/i,
+        });
 
-        const firstRow = allDataInSheet[0] || {};
-        const firstRowVals = Object.entries(firstRow).map(([k, v]) => ({ col: k, val: String(v || "").trim().toLowerCase() }));
-        const hasHeader = firstRowVals.some(({ val }) => /^(sku|stone|diamond|price|cost|rap)/i.test(val));
+        const skuCol = cols.sku || "A";
+        const priceCol = cols.price || "B";
+        const costCol = cols.cost || "C";
+        const rapCol = cols.rap || "D";
 
-        if (hasHeader) {
-          startRowIndex = 1;
-          for (const { col, val } of firstRowVals) {
-            if (/^(sku|stone\s*id|stone_id|diamond_no|item)$/i.test(val)) skuCol = col;
-            else if (/^(price|sell\s*price|base\s*price)$/i.test(val)) priceCol = col;
-            else if (/^(cost|cost\s*price)$/i.test(val)) costCol = col;
-            else if (/^(rap|rap\s*price|rapnet)$/i.test(val)) rapCol = col;
-          }
-        } else {
-          startRowIndex = 0;
-        }
-
-        const notFoundSkus = [];
         for (let i = startRowIndex; i < arrayCount; i++) {
           const row = allDataInSheet[i] || {};
           const sku = String(row[skuCol] || "").trim();
           const price = row[priceCol] != null ? String(row[priceCol]).trim() : "";
           const cost = row[costCol] != null ? String(row[costCol]).trim() : "";
           const rap = row[rapCol] != null ? String(row[rapCol]).trim() : "";
-          if (!sku) continue;
+          if (!sku || sku.toLowerCase() === "sku") continue;
 
           const data = await this.getDetailBySku(sku, q);
           if (!data || !data.id) {
@@ -108,19 +141,22 @@ class BulkModel {
           const oldRap = data.rap_price;
 
           if (price !== "") {
-            const numPrice = parseFloat(price) || 0;
-            const numCost = parseFloat(cost) || 0;
-            const carat = parseFloat(data.polish_carat || 0);
-            const amount = carat > 0 ? carat * numPrice : (parseFloat(data.amount || 0) || 0);
+            const cleanPrice = String(price).replace(/,/g, "").replace(/[^0-9.]/g, "");
+            const numPrice = parseFloat(cleanPrice) || 0;
+            const cleanCost = String(cost).replace(/,/g, "").replace(/[^0-9.]/g, "");
+            const numCost = parseFloat(cleanCost) || 0;
+            const carat = parseFloat(data.polish_carat || data.onhand_carat || 0);
+            const amount = carat > 0 ? Number((carat * numPrice).toFixed(2)) : (parseFloat(data.amount || 0) || 0);
             let sql = "";
             let params = [];
             if (cost === "") {
-              sql = `UPDATE ${this.table_product} SET price=?, amount=?, site_upload=0, rapnet_upload=0 WHERE id=? AND company=?`;
-              params = [numPrice, amount, data.id, data.company];
+              sql = `UPDATE ${this.table_product} SET price=?, sell_price=?, amount=?, sell_amount=?, site_upload=0, rapnet_upload=0 WHERE id=? AND company=?`;
+              params = [numPrice, numPrice, amount, amount, data.id, data.company];
             } else {
-              sql = `UPDATE ${this.table_product} SET cost=?, price=?, amount=?, site_upload=0, rapnet_upload=0 WHERE id=? AND company=?`;
-              params = [numCost, numPrice, amount, data.id, data.company];
+              sql = `UPDATE ${this.table_product} SET cost=?, price=?, sell_price=?, amount=?, sell_amount=?, site_upload=0, rapnet_upload=0 WHERE id=? AND company=?`;
+              params = [numCost, numPrice, numPrice, amount, amount, data.id, data.company];
             }
+            await q(sql, params);
             const isPriceChanged = Number(oldPrice) !== Number(numPrice);
             const isCostChanged = cost !== "" && Number(data.cost || 0) !== Number(numCost);
 
@@ -147,12 +183,39 @@ class BulkModel {
                 description: history.description,
               });
             }
+          } else if (cost !== "") {
+            const numCost = parseFloat(String(cost).replace(/,/g, "").replace(/[^0-9.]/g, "")) || 0;
+            const sql = `UPDATE ${this.table_product} SET cost=?, site_upload=0, rapnet_upload=0 WHERE id=? AND company=?`;
+            await q(sql, [numCost, data.id, data.company]);
+
+            if (Number(data.cost || 0) !== Number(numCost)) {
+              const history = {
+                product_id: data.id,
+                sku: data.sku,
+                action: "price_change",
+                date: new Date().toISOString().slice(0, 19).replace("T", " "),
+                narretion: "cost price changed.",
+                description: `Old Cost :  ${data.cost} , New Cost :  ${numCost}`,
+                cost: numCost,
+                user: this.userId || helper.DEFAULT_USER_ID,
+              };
+              const hData = helper.insertString(history);
+              if (hData) await q(`INSERT INTO dai_history (${hData[0]}) VALUES (${hData[1]})`);
+
+              await auditBulkStoneRow({
+                recordId: data.id,
+                sku,
+                oldValue: { cost: data.cost },
+                newValue: { cost: numCost },
+                description: history.description,
+              });
+            }
           }
 
           if (rap !== "") {
-            const numRap = parseFloat(rap) || 0;
-            const carat = parseFloat(data.polish_carat || 0);
-            const rapAmount = carat > 0 ? carat * numRap : 0;
+            const numRap = parseFloat(String(rap).replace(/,/g, "").replace(/[^0-9.]/g, "")) || 0;
+            const carat = parseFloat(data.polish_carat || data.onhand_carat || 0);
+            const rapAmount = carat > 0 ? Number((carat * numRap).toFixed(2)) : 0;
             const sql = `UPDATE ${this.table_product} SET rap_price=?, rap_amount=?, site_upload=0, rapnet_upload=0 WHERE id=? AND company=?`;
             await q(sql, [numRap, rapAmount, data.id, data.company]);
 
@@ -202,60 +265,140 @@ class BulkModel {
         }
         return { success: true, updatedCount: spid.length, message: `Updated ${spid.length} stone(s) successfully !!!` };
       } else if (type === "location") {
-        for (let i = 2; i <= arrayCount; i++) {
-          const row = allDataInSheet[i - 1] || {};
-          const sku = String(row.A || "").trim();
-          if (!sku) continue;
+        const { startRowIndex, cols } = findHeaderRowAndCols(allDataInSheet, {
+          sku: /^(sku|stone|stone_id|diamond_no|diamond|item)$/i,
+          loc: /^(loc|location|branch)$/i,
+        });
+        const skuCol = cols.sku || "A";
+        const locCol = cols.loc || "B";
+
+        for (let i = startRowIndex; i < arrayCount; i++) {
+          const row = allDataInSheet[i] || {};
+          const sku = String(row[skuCol] || "").trim();
+          const loc = String(row[locCol] || "").trim();
+          if (!sku || sku.toLowerCase() === "sku") continue;
           const data = await this.getDetailBySku(sku, q);
-          if (!data || !data.id) continue;
-          const sql = `UPDATE ${this.table_product} SET location=?, site_upload=0, rapnet_upload=0 WHERE id=? AND company=?`;
-          await q(sql, [row.B, data.id, data.company]);
-        }
-      } else if (type === "intensity") {
-        for (let i = 2; i <= arrayCount; i++) {
-          const row = allDataInSheet[i - 1] || {};
-          const sku = String(row.A || "").trim();
-          const int = String(row.B || "").trim();
-          const over = String(row.C || "").trim();
-          const color = String(row.D || "").trim();
-          const data = await this.getDetailBySku(sku, q);
-          if (!data || !data.id) continue;
-          let sql = "";
-          if (color !== "") {
-            sql = `UPDATE ${this.table_product_value} SET intensity=${connection.escape(
-              int
-            )},overtone=${connection.escape(over)},color=${connection.escape(color)} WHERE product_id=${data.id}`;
-          } else {
-            sql = `UPDATE ${this.table_product_value} SET intensity=${connection.escape(
-              int
-            )},overtone=${connection.escape(over)} WHERE product_id=${data.id}`;
+          if (!data || !data.id) {
+            notFoundSkus.push(sku);
+            continue;
           }
-          await q(sql);
-          await q(`UPDATE ${this.table_product} SET site_upload=0,rapnet_upload=0 WHERE id=${data.id} AND company=${data.company}`);
+          spid.push(data.id);
+          skuarr.push(sku);
+          const sql = `UPDATE ${this.table_product} SET location=?, site_upload=0, rapnet_upload=0 WHERE id=? AND company=?`;
+          await q(sql, [loc, data.id, data.company]);
         }
-      } else if (type === "package") {
-        for (let i = 2; i <= arrayCount; i++) {
-          const row = allDataInSheet[i - 1] || {};
-          const sku = String(row.A || "").trim();
-          const pkg = String(row.B || "").trim();
+
+        if (spid.length === 0) {
+          return notFoundSkus.length
+            ? `No matching stone found for: ${notFoundSkus.slice(0, 3).join(", ")}${notFoundSkus.length > 3 ? "..." : ""}`
+            : "No valid data found in file.";
+        }
+        return { success: true, updatedCount: spid.length, message: `Updated ${spid.length} stone location(s) successfully !!!` };
+      } else if (type === "intensity") {
+        const { startRowIndex, cols } = findHeaderRowAndCols(allDataInSheet, {
+          sku: /^(sku|stone|diamond)$/i,
+          intensity: /^(intensity|fancy\s*intensity)$/i,
+          overtone: /^(overtone|fancy\s*overtone)$/i,
+          color: /^(color|fancy\s*color)$/i,
+        });
+        const skuCol = cols.sku || "A";
+        const intCol = cols.intensity || "B";
+        const overCol = cols.overtone || "C";
+        const colorCol = cols.color || "D";
+
+        for (let i = startRowIndex; i < arrayCount; i++) {
+          const row = allDataInSheet[i] || {};
+          const sku = String(row[skuCol] || "").trim();
+          const int = String(row[intCol] || "").trim();
+          const over = String(row[overCol] || "").trim();
+          const color = String(row[colorCol] || "").trim();
+          if (!sku || sku.toLowerCase() === "sku") continue;
           const data = await this.getDetailBySku(sku, q);
-          if (!data || !data.id) continue;
+          if (!data || !data.id) {
+            notFoundSkus.push(sku);
+            continue;
+          }
+          spid.push(data.id);
+          skuarr.push(sku);
+
+          if (color !== "") {
+            await q(
+              `UPDATE ${this.table_product_value} SET intensity=?, overtone=?, color=? WHERE product_id=?`,
+              [int, over, color, data.id]
+            );
+          } else {
+            await q(
+              `UPDATE ${this.table_product_value} SET intensity=?, overtone=? WHERE product_id=?`,
+              [int, over, data.id]
+            );
+          }
+          await q(`UPDATE ${this.table_product} SET site_upload=0, rapnet_upload=0 WHERE id=? AND company=?`, [data.id, data.company]);
+        }
+
+        if (spid.length === 0) {
+          return notFoundSkus.length
+            ? `No matching stone found for: ${notFoundSkus.slice(0, 3).join(", ")}${notFoundSkus.length > 3 ? "..." : ""}`
+            : "No valid data found in file.";
+        }
+        return { success: true, updatedCount: spid.length, message: `Updated ${spid.length} stone intensity successfully !!!` };
+      } else if (type === "package") {
+        const { startRowIndex, cols } = findHeaderRowAndCols(allDataInSheet, {
+          sku: /^(sku|stone|diamond)$/i,
+          pkg: /^(package|pkg|lot)$/i,
+        });
+        const skuCol = cols.sku || "A";
+        const pkgCol = cols.pkg || "B";
+
+        for (let i = startRowIndex; i < arrayCount; i++) {
+          const row = allDataInSheet[i] || {};
+          const sku = String(row[skuCol] || "").trim();
+          const pkg = String(row[pkgCol] || "").trim();
+          if (!sku || sku.toLowerCase() === "sku") continue;
+          const data = await this.getDetailBySku(sku, q);
+          if (!data || !data.id) {
+            notFoundSkus.push(sku);
+            continue;
+          }
+          spid.push(data.id);
+          skuarr.push(sku);
           await q(
-            `UPDATE ${this.table_product_value} SET package=${connection.escape(pkg)} WHERE product_id=${data.id}`
+            `UPDATE ${this.table_product_value} SET package=? WHERE product_id=?`,
+            [pkg, data.id]
           );
         }
+
+        if (spid.length === 0) {
+          return notFoundSkus.length
+            ? `No matching stone found for: ${notFoundSkus.slice(0, 3).join(", ")}${notFoundSkus.length > 3 ? "..." : ""}`
+            : "No valid data found in file.";
+        }
+        return { success: true, updatedCount: spid.length, message: `Updated ${spid.length} stone package(s) successfully !!!` };
       } else if (type === "sku") {
-        for (let i = 2; i <= arrayCount; i++) {
-          const row = allDataInSheet[i - 1] || {};
-          const sku = String(row.A || "").trim();
-          const newsku = String(row.B || "").trim();
+        const { startRowIndex, cols } = findHeaderRowAndCols(allDataInSheet, {
+          sku: /^(sku|old\s*sku|stone|stone_id)$/i,
+          newsku: /^(new\s*sku|newsku|target\s*sku)$/i,
+        });
+        const skuCol = cols.sku || "A";
+        const newSkuCol = cols.newsku || "B";
+
+        for (let i = startRowIndex; i < arrayCount; i++) {
+          const row = allDataInSheet[i] || {};
+          const sku = String(row[skuCol] || "").trim();
+          const newsku = String(row[newSkuCol] || "").trim();
+          if (!sku || sku.toLowerCase() === "sku") continue;
           const data = await this.getDetailBySku(sku, q);
+          if (!data || !data.id || sku === newsku) {
+            if (!data || !data.id) notFoundSkus.push(sku);
+            continue;
+          }
+          const Newdata = await this.getDetailBySku(newsku, q);
+          if (Newdata && Newdata.id) continue;
+
           skuarr.push(sku);
           spid.push(data.id);
-          const Newdata = await this.getDetailBySku(newsku, q);
           const oldSku = data.sku;
-          if (!data.id || sku === newsku || (Newdata && Newdata.id)) continue;
-          await q(`UPDATE ${this.table_product} SET sku=${connection.escape(newsku)} WHERE id=${data.id} AND company=${data.company}`);
+
+          await q(`UPDATE ${this.table_product} SET sku=? WHERE id=? AND company=?`, [newsku, data.id, data.company]);
 
           const history = {
             product_id: data.id,
@@ -292,43 +435,100 @@ class BulkModel {
             console.error("user_track log error (sku):", trackErr?.message || trackErr);
           }
         }
-      } else if (type === "shape") {
-        for (let i = 2; i <= arrayCount; i++) {
-          const row = allDataInSheet[i - 1] || {};
-          const sku = String(row.A || "").trim();
-          const shape = String(row.B || "").trim();
-          const color = String(row.C || "").trim();
-          const clarity = String(row.D || "").trim();
-          const size = String(row.E || "").trim();
-          const data = await this.getDetailBySku(sku, q);
-          if (!data || !data.id) continue;
-          await q(`UPDATE ${this.table_product} SET main_color=${connection.escape(color)} WHERE id=${data.id} AND company=${data.company}`);
-          await q(
-            `UPDATE ${this.table_product_value} SET shape=${connection.escape(shape)},color=${connection.escape(
-              color
-            )},clarity=${connection.escape(clarity)},size=${connection.escape(size)} WHERE product_id=${data.id}`
-          );
+
+        if (spid.length === 0) {
+          return notFoundSkus.length
+            ? `No matching stone found for: ${notFoundSkus.slice(0, 3).join(", ")}${notFoundSkus.length > 3 ? "..." : ""}`
+            : "No valid data found in file.";
         }
+        return { success: true, updatedCount: spid.length, message: `Updated ${spid.length} SKU(s) successfully !!!` };
+      } else if (type === "shape") {
+        const { startRowIndex, cols } = findHeaderRowAndCols(allDataInSheet, {
+          sku: /^(sku|stone|diamond)$/i,
+          shape: /^(shape)$/i,
+          clarity: /^(clarity)$/i,
+          color: /^(color|main_color)$/i,
+          size: /^(size)$/i,
+        });
+
+        const isThreeColFormat = !cols.color && !cols.size && Object.keys(cols).length <= 2;
+        const skuCol = cols.sku || "A";
+        const shapeCol = cols.shape || "B";
+        // If 3-column template [Sku, Shape, Clarity], C is clarity!
+        const clarityCol = cols.clarity || (isThreeColFormat ? "C" : "D");
+        const colorCol = cols.color || (isThreeColFormat ? "" : "C");
+        const sizeCol = cols.size || (isThreeColFormat ? "" : "E");
+
+        for (let i = startRowIndex; i < arrayCount; i++) {
+          const row = allDataInSheet[i] || {};
+          const sku = String(row[skuCol] || "").trim();
+          const shape = String(row[shapeCol] || "").trim();
+          const clarity = clarityCol ? String(row[clarityCol] || "").trim() : "";
+          const color = colorCol ? String(row[colorCol] || "").trim() : "";
+          const size = sizeCol ? String(row[sizeCol] || "").trim() : "";
+
+          if (!sku || sku.toLowerCase() === "sku") continue;
+          const data = await this.getDetailBySku(sku, q);
+          if (!data || !data.id) {
+            notFoundSkus.push(sku);
+            continue;
+          }
+          spid.push(data.id);
+          skuarr.push(sku);
+
+          if (color) {
+            await q(`UPDATE ${this.table_product} SET main_color=? WHERE id=? AND company=?`, [color, data.id, data.company]);
+          }
+
+          const setClauses = [];
+          const setParams = [];
+          if (shape) { setClauses.push("shape=?"); setParams.push(shape); }
+          if (clarity) { setClauses.push("clarity=?"); setParams.push(clarity); }
+          if (color) { setClauses.push("color=?"); setParams.push(color); }
+          if (size) { setClauses.push("size=?"); setParams.push(size); }
+
+          if (setClauses.length > 0) {
+            setParams.push(data.id);
+            await q(`UPDATE ${this.table_product_value} SET ${setClauses.join(", ")} WHERE product_id=?`, setParams);
+          }
+          await q(`UPDATE ${this.table_product} SET site_upload=0, rapnet_upload=0 WHERE id=? AND company=?`, [data.id, data.company]);
+        }
+
+        if (spid.length === 0) {
+          return notFoundSkus.length
+            ? `No matching stone found for: ${notFoundSkus.slice(0, 3).join(", ")}${notFoundSkus.length > 3 ? "..." : ""}`
+            : "No valid data found in file.";
+        }
+        return { success: true, updatedCount: spid.length, message: `Updated ${spid.length} stone shape/clarity successfully !!!` };
       } else if (type === "gia") {
-        for (let i = 2; i <= arrayCount; i++) {
-          const row = allDataInSheet[i - 1] || {};
-          const sku = String(row.A || "").trim();
-          const gia = String(row.B || "").trim();
+        const { startRowIndex, cols } = findHeaderRowAndCols(allDataInSheet, {
+          sku: /^(sku|stone|diamond)$/i,
+          gia: /^(cert|cert\s*no|report|report\s*no|gia|gia\s*report)$/i,
+        });
+        const skuCol = cols.sku || "A";
+        const giaCol = cols.gia || "B";
+
+        for (let i = startRowIndex; i < arrayCount; i++) {
+          const row = allDataInSheet[i] || {};
+          const sku = String(row[skuCol] || "").trim();
+          const gia = String(row[giaCol] || "").trim();
+          if (!sku || sku.toLowerCase() === "sku") continue;
           const ProductData = await this.getDetailBySku(sku, q);
-          if (!ProductData || !ProductData.id) continue;
+          if (!ProductData || !ProductData.id) {
+            notFoundSkus.push(sku);
+            continue;
+          }
           const gData = await helper.getGiaReport(gia.trim());
           if (gData.message !== "") continue;
+          spid.push(ProductData.id);
+          skuarr.push(sku);
+
           const color = gData.color;
           const pcarat = gData.weight !== "" && Number(gData.weight) !== 0 ? gData.weight : ProductData.polish_carat;
           const amount = Number(pcarat || 0) * Number(ProductData.price || 0);
           await q(
-            `UPDATE ${this.table_product} SET lab='GIA',main_color=${connection.escape(
-              color
-            )},polish_carat=${connection.escape(
-              pcarat
-            )}, amount=${connection.escape(
-              amount
-            )},outward='',site_upload=0,rapnet_upload=0,is_uploadsite=1,is_uploadrapnet=1,visibility=1 WHERE id=${ProductData.id} AND company=${ProductData.company}`
+            `UPDATE ${this.table_product} SET lab='GIA', main_color=?, polish_carat=?, amount=?, outward='', site_upload=0, rapnet_upload=0, is_uploadsite=1, is_uploadrapnet=1, visibility=1 WHERE id=? AND company=?`,
+            [color, pcarat, amount, ProductData.id, ProductData.company]
           );
           const attr = await helper.getAttributeField();
           const data = {};
@@ -338,34 +538,29 @@ class BulkModel {
           }
           const value = helper.getUpdateString(data);
           if (value) {
-            await q(`UPDATE ${this.table_product_value} SET ${value} WHERE product_id=${ProductData.id}`);
+            await q(`UPDATE ${this.table_product_value} SET ${value} WHERE product_id=?`, [ProductData.id]);
           }
         }
+
+        if (spid.length === 0) {
+          return notFoundSkus.length
+            ? `No matching stone found for: ${notFoundSkus.slice(0, 3).join(", ")}${notFoundSkus.length > 3 ? "..." : ""}`
+            : "No valid data found in file.";
+        }
+        return { success: true, updatedCount: spid.length, message: `Updated ${spid.length} GIA report(s) successfully !!!` };
       } else if (type === "rap_price") {
-        let skuCol = "A";
-        let priceCol = "B";
-        let startRowIndex = 1;
+        const { startRowIndex, cols } = findHeaderRowAndCols(allDataInSheet, {
+          sku: /^(sku|stone|stone_id|diamond_no|item)$/i,
+          price: /^(rap|rap\s*price|rapnet|price)$/i,
+        });
+        const skuCol = cols.sku || "A";
+        const priceCol = cols.price || "B";
 
-        const firstRow = allDataInSheet[0] || {};
-        const firstRowVals = Object.entries(firstRow).map(([k, v]) => ({ col: k, val: String(v || "").trim().toLowerCase() }));
-        const hasHeader = firstRowVals.some(({ val }) => /^(sku|stone|diamond|rap|price)/i.test(val));
-
-        if (hasHeader) {
-          startRowIndex = 1;
-          for (const { col, val } of firstRowVals) {
-            if (/^(sku|stone\s*id|stone_id|diamond_no|item)$/i.test(val)) skuCol = col;
-            else if (/^(rap|rap\s*price|rapnet|price)$/i.test(val)) priceCol = col;
-          }
-        } else {
-          startRowIndex = 0;
-        }
-
-        const notFoundSkus = [];
         for (let i = startRowIndex; i < arrayCount; i++) {
           const row = allDataInSheet[i] || {};
           const sku = String(row[skuCol] || "").trim();
           const price = row[priceCol] != null ? String(row[priceCol]).trim() : "";
-          if (!sku) continue;
+          if (!sku || sku.toLowerCase() === "sku") continue;
           const data = await this.getDetailBySku(sku, q);
           if (!data || !data.id) {
             notFoundSkus.push(sku);
@@ -376,7 +571,7 @@ class BulkModel {
           const oldPrice = data.rap_price;
           if (price === "" || Number(price) === 0) continue;
           const numPrice = parseFloat(price) || 0;
-          const carat = parseFloat(data.polish_carat || 0);
+          const carat = parseFloat(data.polish_carat || data.onhand_carat || 0);
           const amount = carat * numPrice;
           await q(
             `UPDATE ${this.table_product} SET rap_price=?, rap_amount=?, site_upload=0, rapnet_upload=0 WHERE id=? AND company=?`,
@@ -428,29 +623,63 @@ class BulkModel {
         }
         return { success: true, updatedCount: spid.length, message: `Updated ${spid.length} stone(s) successfully !!!` };
       } else if (type === "group") {
-        for (let i = 2; i <= arrayCount; i++) {
-          const row = allDataInSheet[i - 1] || {};
-          const sku = String(row.A || "").trim();
-          const main = String(row.B || "").toUpperCase();
-          const sub = String(row.C || "").toUpperCase();
+        const { startRowIndex, cols } = findHeaderRowAndCols(allDataInSheet, {
+          sku: /^(sku|stone|diamond)$/i,
+          main: /^(main|main\s*group|group)$/i,
+          sub: /^(sub|sub\s*group)$/i,
+        });
+        const skuCol = cols.sku || "A";
+        const mainCol = cols.main || "B";
+        const subCol = cols.sub || "C";
+
+        for (let i = startRowIndex; i < arrayCount; i++) {
+          const row = allDataInSheet[i] || {};
+          const sku = String(row[skuCol] || "").trim();
+          const main = String(row[mainCol] || "").toUpperCase();
+          const sub = String(row[subCol] || "").toUpperCase();
+          if (!sku || sku.toLowerCase() === "sku") continue;
           const data = await this.getDetailBySku(sku, q);
-          if (!data || !data.id) continue;
+          if (!data || !data.id) {
+            notFoundSkus.push(sku);
+            continue;
+          }
+          spid.push(data.id);
+          skuarr.push(sku);
           await q(
             `UPDATE ${this.table_product} SET main_group=?, sub_group=? WHERE id=? AND company=?`,
             [main, sub, data.id, data.company]
           );
         }
+
+        if (spid.length === 0) {
+          return notFoundSkus.length
+            ? `No matching stone found for: ${notFoundSkus.slice(0, 3).join(", ")}${notFoundSkus.length > 3 ? "..." : ""}`
+            : "No valid data found in file.";
+        }
+        return { success: true, updatedCount: spid.length, message: `Updated ${spid.length} stone group(s) successfully !!!` };
       } else if (type === "sku-pair") {
-        for (let i = 2; i <= arrayCount; i++) {
-          const row = allDataInSheet[i - 1] || {};
-          const sku = String(row.A || "").trim();
-          const pair = String(row.B || "").trim();
+        const { startRowIndex, cols } = findHeaderRowAndCols(allDataInSheet, {
+          sku: /^(sku|stone|first\s*sku)$/i,
+          pair: /^(pair|pair\s*sku|second\s*sku)$/i,
+        });
+        const skuCol = cols.sku || "A";
+        const pairCol = cols.pair || "B";
+
+        for (let i = startRowIndex; i < arrayCount; i++) {
+          const row = allDataInSheet[i] || {};
+          const sku = String(row[skuCol] || "").trim();
+          const pair = String(row[pairCol] || "").trim();
+          if (!sku || sku.toLowerCase() === "sku") continue;
           const data = await this.getDetailBySku(sku, q);
           if (data && data.id) {
+            spid.push(data.id);
+            skuarr.push(sku);
             await q(
               `UPDATE ${this.table_product} SET pair=?, site_upload=0, rapnet_upload=0 WHERE id=? AND company=?`,
               [pair, data.id, data.company]
             );
+          } else {
+            notFoundSkus.push(sku);
           }
           const data1 = await this.getDetailBySku(pair, q);
           if (data1 && data1.id) {
@@ -460,90 +689,208 @@ class BulkModel {
             );
           }
         }
-      } else if (type === "bgm-eyeclean") {
-        for (let i = 2; i <= arrayCount; i++) {
-          const row = allDataInSheet[i - 1] || {};
-          const sku = String(row.A || "").trim();
-          const bgm = String(row.B || "").trim();
-          const eye = String(row.C || "").trim();
-          const data = await this.getDetailBySku(sku, q);
-          if (data && data.id) {
-            await q(
-              `UPDATE ${this.table_product_value} SET bgm=?, eyeclean=? WHERE product_id=?`,
-              [bgm, eye, data.id]
-            );
-          }
+
+        if (spid.length === 0) {
+          return notFoundSkus.length
+            ? `No matching stone found for: ${notFoundSkus.slice(0, 3).join(", ")}${notFoundSkus.length > 3 ? "..." : ""}`
+            : "No valid data found in file.";
         }
-      } else if (type === "category") {
-        for (let i = 2; i <= arrayCount; i++) {
-          const row = allDataInSheet[i - 1] || {};
-          const sku = String(row.A || "").trim();
-          const cat = String(row.B || "").trim();
-          if (sku === "") continue;
+        return { success: true, updatedCount: spid.length, message: `Updated ${spid.length} pair(s) successfully !!!` };
+      } else if (type === "bgm-eyeclean") {
+        const { startRowIndex, cols } = findHeaderRowAndCols(allDataInSheet, {
+          sku: /^(sku|stone|diamond)$/i,
+          bgm: /^(bgm)$/i,
+          eye: /^(eye|eyeclean|eye\s*clean)$/i,
+        });
+        const skuCol = cols.sku || "A";
+        const bgmCol = cols.bgm || "B";
+        const eyeCol = cols.eye || "C";
+
+        for (let i = startRowIndex; i < arrayCount; i++) {
+          const row = allDataInSheet[i] || {};
+          const sku = String(row[skuCol] || "").trim();
+          const bgm = String(row[bgmCol] || "").trim();
+          const eye = String(row[eyeCol] || "").trim();
+          if (!sku || sku.toLowerCase() === "sku") continue;
           const data = await this.getDetailBySku(sku, q);
-          if (!data || !data.id) continue;
+          if (!data || !data.id) {
+            notFoundSkus.push(sku);
+            continue;
+          }
+          spid.push(data.id);
+          skuarr.push(sku);
+          await q(
+            `UPDATE ${this.table_product_value} SET bgm=?, eyeclean=? WHERE product_id=?`,
+            [bgm, eye, data.id]
+          );
+        }
+
+        if (spid.length === 0) {
+          return notFoundSkus.length
+            ? `No matching stone found for: ${notFoundSkus.slice(0, 3).join(", ")}${notFoundSkus.length > 3 ? "..." : ""}`
+            : "No valid data found in file.";
+        }
+        return { success: true, updatedCount: spid.length, message: `Updated ${spid.length} stone BGM/Eye Clean successfully !!!` };
+      } else if (type === "category") {
+        const { startRowIndex, cols } = findHeaderRowAndCols(allDataInSheet, {
+          sku: /^(sku|stone|diamond)$/i,
+          cat: /^(cat|category|categoryid|category\s*id)$/i,
+        });
+        const skuCol = cols.sku || "A";
+        const catCol = cols.cat || "B";
+
+        for (let i = startRowIndex; i < arrayCount; i++) {
+          const row = allDataInSheet[i] || {};
+          const sku = String(row[skuCol] || "").trim();
+          const cat = String(row[catCol] || "").trim();
+          if (!sku || sku.toLowerCase() === "sku") continue;
+          const data = await this.getDetailBySku(sku, q);
+          if (!data || !data.id) {
+            notFoundSkus.push(sku);
+            continue;
+          }
+          spid.push(data.id);
+          skuarr.push(sku);
           await q(
             `UPDATE ${this.table_product} SET category=? WHERE id=? AND company=?`,
             [cat, data.id, data.company]
           );
         }
+
+        if (spid.length === 0) {
+          return notFoundSkus.length
+            ? `No matching stone found for: ${notFoundSkus.slice(0, 3).join(", ")}${notFoundSkus.length > 3 ? "..." : ""}`
+            : "No valid data found in file.";
+        }
+        return { success: true, updatedCount: spid.length, message: `Updated ${spid.length} stone category successfully !!!` };
       } else if (type === "remark") {
-        for (let i = 2; i <= arrayCount; i++) {
-          const row = allDataInSheet[i - 1] || {};
-          const sku = String(row.A || "").trim();
-          const cat = String(row.B || "").trim();
-          if (sku === "") continue;
+        const { startRowIndex, cols } = findHeaderRowAndCols(allDataInSheet, {
+          sku: /^(sku|stone|diamond)$/i,
+          remark: /^(remark|remarks|comment|note)$/i,
+        });
+        const skuCol = cols.sku || "A";
+        const remarkCol = cols.remark || "B";
+
+        for (let i = startRowIndex; i < arrayCount; i++) {
+          const row = allDataInSheet[i] || {};
+          const sku = String(row[skuCol] || "").trim();
+          const remark = String(row[remarkCol] || "").trim();
+          if (!sku || sku.toLowerCase() === "sku") continue;
           const data = await this.getDetailBySku(sku, q);
-          if (!data || !data.id) continue;
+          if (!data || !data.id) {
+            notFoundSkus.push(sku);
+            continue;
+          }
+          spid.push(data.id);
+          skuarr.push(sku);
           await q(
             `UPDATE ${this.table_product} SET remark=? WHERE id=? AND company=?`,
-            [cat, data.id, data.company]
+            [remark, data.id, data.company]
           );
         }
+
+        if (spid.length === 0) {
+          return notFoundSkus.length
+            ? `No matching stone found for: ${notFoundSkus.slice(0, 3).join(", ")}${notFoundSkus.length > 3 ? "..." : ""}`
+            : "No valid data found in file.";
+        }
+        return { success: true, updatedCount: spid.length, message: `Updated ${spid.length} stone remark(s) successfully !!!` };
       } else if (type === "argyle") {
-        for (let i = 2; i <= arrayCount; i++) {
-          const row = allDataInSheet[i - 1] || {};
-          const sku = String(row.A || "").trim();
-          const argyle_color = String(row.B || "").trim();
-          const in_house_clarity = String(row.C || "").trim();
-          if (sku === "") continue;
+        const { startRowIndex, cols } = findHeaderRowAndCols(allDataInSheet, {
+          sku: /^(sku|stone|diamond)$/i,
+          argyle: /^(argyle|argyle\s*color)$/i,
+          inhouse: /^(in\s*house\s*clarity|in\s*house|clarity)$/i,
+        });
+        const skuCol = cols.sku || "A";
+        const argyleCol = cols.argyle || "B";
+        // If 4 columns [Sku, Argyle Color, In House, Clarity], D is clarity!
+        const inhouseCol = cols.inhouse || (allDataInSheet[0]?.D != null && allDataInSheet[0]?.D !== "" ? "D" : "C");
+
+        for (let i = startRowIndex; i < arrayCount; i++) {
+          const row = allDataInSheet[i] || {};
+          const sku = String(row[skuCol] || "").trim();
+          const argyle_color = String(row[argyleCol] || "").trim();
+          // If column D has clarity (e.g. from 4-col template), prioritize it
+          const in_house_clarity = String(row[inhouseCol] || row.D || row.C || "").trim();
+          if (!sku || sku.toLowerCase() === "sku") continue;
           const data = await this.getDetailBySku(sku, q);
-          if (!data || !data.id) continue;
+          if (!data || !data.id) {
+            notFoundSkus.push(sku);
+            continue;
+          }
+          spid.push(data.id);
+          skuarr.push(sku);
           await q(
             `UPDATE ${this.table_product} SET argyle_color=?, in_house_clarity=? WHERE id=? AND company=?`,
             [argyle_color, in_house_clarity, data.id, data.company]
           );
         }
+
+        if (spid.length === 0) {
+          return notFoundSkus.length
+            ? `No matching stone found for: ${notFoundSkus.slice(0, 3).join(", ")}${notFoundSkus.length > 3 ? "..." : ""}`
+            : "No valid data found in file.";
+        }
+        return { success: true, updatedCount: spid.length, message: `Updated ${spid.length} stone Argyle/In-House clarity successfully !!!` };
       } else if (type === "mining") {
-        for (let i = 2; i <= arrayCount; i++) {
-          const row = allDataInSheet[i - 1] || {};
-          const sku = String(row.A || "").trim();
-          const origin = String(row.B || "").trim();
-          const manuf = String(row.C || "").trim();
-          if (sku === "") continue;
+        const { startRowIndex, cols } = findHeaderRowAndCols(allDataInSheet, {
+          sku: /^(sku|stone|diamond)$/i,
+          mining: /^(mining|mining\s*origin)$/i,
+          origin: /^(origin|manufacture|manufacturing|manufacturing\s*origin|menufecturing\s*origin)$/i,
+        });
+        const skuCol = cols.sku || "A";
+        const miningCol = cols.mining || "B";
+        const originCol = cols.origin || "C";
+
+        for (let i = startRowIndex; i < arrayCount; i++) {
+          const row = allDataInSheet[i] || {};
+          const sku = String(row[skuCol] || "").trim();
+          const mining = String(row[miningCol] || "").trim();
+          const origin = String(row[originCol] || "").trim();
+          if (!sku || sku.toLowerCase() === "sku") continue;
           const data = await this.getDetailBySku(sku, q);
-          if (!data || !data.id) continue;
+          if (!data || !data.id) {
+            notFoundSkus.push(sku);
+            continue;
+          }
+          spid.push(data.id);
+          skuarr.push(sku);
+          // dai_product columns are `mining` and `origin` (not `manufacture_origin`)
           await q(
-            `UPDATE ${this.table_product} SET origin=?, manufacture_origin=? WHERE id=? AND company=?`,
-            [origin, manuf, data.id, data.company]
+            `UPDATE ${this.table_product} SET mining=?, origin=? WHERE id=? AND company=?`,
+            [mining, origin, data.id, data.company]
           );
         }
+
+        if (spid.length === 0) {
+          return notFoundSkus.length
+            ? `No matching stone found for: ${notFoundSkus.slice(0, 3).join(", ")}${notFoundSkus.length > 3 ? "..." : ""}`
+            : "No valid data found in file.";
+        }
+        return { success: true, updatedCount: spid.length, message: `Updated ${spid.length} stone mining/origin successfully !!!` };
       } else if (type === "csv-gia") {
         for (let i = 2; i <= arrayCount; i++) {
           const row = allDataInSheet[i - 1] || {};
           const sku = String(row.F || "").trim();
           const report = String(row.D || "").trim();
+          if (!sku || sku.toLowerCase() === "sku") continue;
+          spid.push(sku);
           const temp = { sku, report, value: JSON.stringify(row) };
-          const checkRows = await q(`SELECT * FROM dai_gia WHERE sku =${connection.escape(sku)}`);
+          const checkRows = await q(`SELECT * FROM dai_gia WHERE sku =?`, [sku]);
           const gid = checkRows.length > 0 ? checkRows[0].id : "";
           if (gid === "") {
             const data = helper.getInsertString(temp);
             if (data) await q(`INSERT INTO dai_gia (${data[0]}) VALUES (${data[1]})`);
           } else {
             const values = helper.getUpdateString(temp);
-            if (values) await q(`UPDATE dai_gia SET ${values} WHERE id=${gid}`);
+            if (values) await q(`UPDATE dai_gia SET ${values} WHERE id=?`, [gid]);
           }
         }
+
+        if (spid.length === 0) {
+          return "No valid CSV GIA data found in file.";
+        }
+        return { success: true, updatedCount: spid.length, message: `Processed ${spid.length} CSV GIA row(s) successfully !!!` };
       }
 
       return 1;
@@ -552,3 +899,4 @@ class BulkModel {
 }
 
 module.exports = BulkModel;
+

@@ -243,19 +243,27 @@ async function applyInwardItemQtys(inwardId, products) {
   try {
     const items = await stockMovement.getInwardItems(query, inwardId);
     if (!items.length) return products;
-    const byPid = {};
-    for (const it of items) {
-      byPid[String(it.product_id)] = it;
+
+    const productMap = new Map();
+    for (const p of products) {
+      if (p && p.id != null) {
+        productMap.set(String(p.id), p);
+      }
     }
-    return products.map((p) => {
-      const it = byPid[String(p.id)];
-      if (!it) return p;
+
+    const matchedPids = new Set();
+    const result = items.map((it) => {
+      matchedPids.add(String(it.product_id));
+      const p = productMap.get(String(it.product_id)) || {};
       const pcs = Number(it.pcs) || 0;
       const carat = Number(it.carat) || 0;
       const price = Number(it.price) || Number(p.purchase_price) || Number(p.price) || 0;
       const amount = Number(it.amount) || Number((carat * price).toFixed(2));
       return {
         ...p,
+        id: it.id,
+        product_id: p.id || it.product_id,
+        inward_item_id: it.id,
         polish_pcs: pcs,
         polish_carat: carat,
         rought_pcs: pcs,
@@ -267,6 +275,14 @@ async function applyInwardItemQtys(inwardId, products) {
         purchase_carat: carat,
       };
     });
+
+    for (const p of products) {
+      if (!matchedPids.has(String(p.id))) {
+        result.push(p);
+      }
+    }
+
+    return result;
   } catch (err) {
     console.error("applyInwardItemQtys:", err.message);
     return products;
@@ -305,40 +321,46 @@ async function applyOutwardItemQtys(outwardId, products) {
   try {
     const items = await stockMovement.getOutwardItems(query, outwardId);
     if (!items.length) return dedupeProductsById(products);
-    const byPid = {};
-    for (const it of items) {
-      const key = String(it.product_id);
-      if (!byPid[key]) {
-        byPid[key] = {
-          ...it,
-          pcs: 0,
-          carat: 0,
-          amount: 0,
-          price: Number(it.price) || 0,
-        };
+
+    const productMap = new Map();
+    for (const p of products) {
+      if (p && p.id != null) {
+        productMap.set(String(p.id), p);
       }
-      byPid[key].pcs += Number(it.pcs) || 0;
-      byPid[key].carat += Number(it.carat) || 0;
-      byPid[key].amount += Number(it.amount) || 0;
-      if (it.price != null && it.price !== "") byPid[key].price = Number(it.price) || byPid[key].price;
     }
-    return dedupeProductsById(products).map((p) => {
-      const it = byPid[String(p.id)];
-      if (!it) return p;
+
+    const matchedPids = new Set();
+    const result = items.map((it) => {
+      matchedPids.add(String(it.product_id));
+      const p = productMap.get(String(it.product_id)) || {};
       const pcs = Number(it.pcs) || 0;
       const carat = Number(it.carat) || 0;
       const price = Number(it.price) || Number(p.sell_price) || Number(p.price) || 0;
       const amount = Number(it.amount) || Number((carat * price).toFixed(2));
       return {
         ...p,
+        id: it.id, // unique id per line so Antd Table rowKey, checkboxes, and selection are distinct
+        product_id: p.id || it.product_id,
+        outward_item_id: it.id,
+        memo_item_id: it.id,
         polish_pcs: pcs,
         polish_carat: carat,
         sell_price: price,
         sell_amount: amount,
+        price,
+        amount,
         memo_line_pcs: pcs,
         memo_line_carat: carat,
       };
     });
+
+    for (const p of products) {
+      if (!matchedPids.has(String(p.id))) {
+        result.push(p);
+      }
+    }
+
+    return result;
   } catch (err) {
     console.error("applyOutwardItemQtys:", err.message);
     return dedupeProductsById(products);
@@ -909,13 +931,22 @@ async function returnGia(post, userContext = {}) {
 
   const outwardItems = await stockMovement.getOutwardItems(query, outid);
 
-  for (const productId of returnedIds) {
-    const v = record[productId] || record[String(productId)] || {};
-    oProducts = oProducts.filter((id) => id !== String(productId));
+  const processedProductIds = new Set();
+
+  for (const rawId of returnedIds) {
+    const itemMatch = outwardItems.find(
+      (it) => Number(it.id) === Number(rawId) || Number(it.product_id) === Number(rawId)
+    );
+    const productId = itemMatch ? Number(itemMatch.product_id) : Number(rawId);
+    if (processedProductIds.has(productId)) continue;
+    processedProductIds.add(productId);
+
+    const v = record[rawId] || record[String(rawId)] || record[productId] || record[String(productId)] || {};
+    oProducts = oProducts.filter((id) => id !== String(productId) && id !== String(rawId));
     const product = await getProductDetail(productId);
     if (!product) continue;
 
-    const itemForProduct = outwardItems.find(
+    const itemForProduct = itemMatch || outwardItems.find(
       (it) => String(it.product_id) === String(productId)
     );
     let movePcs =
@@ -979,19 +1010,20 @@ async function returnGia(post, userContext = {}) {
     const nextColor = v.color || product.main_color || product.color || "";
     const unitPrice = Number(product.price) || 0;
     const amount = Number(((Number(bal.onhand_carat) || 0) * unitPrice).toFixed(2));
+    const targetLab = lab || product.lab || "GIA";
 
     if (!reportNo) {
       await query(
-        `UPDATE dai_product SET outward='', visibility=1,
+        `UPDATE dai_product SET lab=?, sku=?, mfg_code=?, outward='', visibility=1,
          site_upload=0, rapnet_upload=0, amount=?
          WHERE id = ?`,
-        [amount, productId]
+        [targetLab, nextSku, nextMfg, amount, productId]
       );
       await addHistoryAudited({
         product_id: productId,
         action: "lab_return",
         date: moment().format("YYYY-MM-DD HH:mm:ss"),
-        description: "Lab Return with No Certificate:",
+        description: `Lab Return (${targetLab}) with No Certificate — SKU ${nextSku} (invoice #${oData.invoiceno})`,
         type: "cr",
         pcs: movePcs,
         carat: moveCarat,
@@ -1002,6 +1034,10 @@ async function returnGia(post, userContext = {}) {
         invoice: oData.invoiceno,
         party: oData.party,
         sku: nextSku,
+      }, "GIA Lab Stock", "LAB_RETURN", {
+        oldValue: { outward: "lab", lab: oData.lab, sku: product.sku },
+        newValue: { outward: "", lab: targetLab, sku: nextSku, amount },
+        companyId: product.company || oData.company,
       });
       continue;
     }
@@ -1010,7 +1046,7 @@ async function returnGia(post, userContext = {}) {
       `UPDATE dai_product SET lab=?, sku=?, mfg_code=?, main_color=?, amount=?,
        outward='', site_upload=0, rapnet_upload=0, is_uploadsite=1, is_uploadrapnet=1, visibility=1
        WHERE id = ?`,
-      [lab || product.lab || "gia", nextSku, nextMfg, nextColor, amount, productId]
+      [targetLab, nextSku, nextMfg, nextColor, amount, productId]
     );
     await query(
       `UPDATE dai_product_value SET intensity=?, overtone=?, color=?, report_no=? WHERE product_id = ?`,
@@ -1020,7 +1056,7 @@ async function returnGia(post, userContext = {}) {
       product_id: productId,
       action: "lab_return",
       date: moment().format("YYYY-MM-DD HH:mm:ss"),
-      description: `Lab Return With Certificate no:${reportNo}`,
+      description: `Lab Return (${targetLab}) with Certificate #${reportNo} — SKU ${nextSku} (invoice #${oData.invoiceno})`,
       type: "cr",
       pcs: movePcs,
       carat: moveCarat,
@@ -1031,13 +1067,33 @@ async function returnGia(post, userContext = {}) {
       invoice: oData.invoiceno,
       party: oData.party,
       sku: nextSku,
+    }, "GIA Lab Stock", "LAB_RETURN", {
+      oldValue: { outward: "lab", lab: oData.lab, sku: product.sku },
+      newValue: { outward: "", lab: targetLab, sku: nextSku, report_no: reportNo, amount },
+      companyId: product.company || oData.company,
     });
   }
 
   if (!oProducts.length) {
     await query("UPDATE dai_outward SET products='', status='close_lab' WHERE id = ?", [outid]);
+    await logAudit({
+      actionType: "LAB_RETURN",
+      moduleName: "GIA Lab Stock",
+      recordId: outid,
+      recordReference: String(oData.invoiceno || outid),
+      description: `Lab Memo #${oData.invoiceno} returned from ${targetLab} and closed`,
+      companyId: oData.company,
+    });
   } else {
     await query("UPDATE dai_outward SET products=? WHERE id = ?", [oProducts.join(","), outid]);
+    await logAudit({
+      actionType: "LAB_RETURN",
+      moduleName: "GIA Lab Stock",
+      recordId: outid,
+      recordReference: String(oData.invoiceno || outid),
+      description: `Partial Lab Return from ${targetLab} for Memo #${oData.invoiceno}`,
+      companyId: oData.company,
+    });
   }
 
   try {
@@ -1159,8 +1215,23 @@ async function returnOutwardMemo(post, userContext = {}) {
     outwardType === "inter_transfer" ||
     outwardType === "transfer";
 
+  const returnedItemIds = new Set();
+  const returnedProductIds = new Set();
+  for (const rawId of products) {
+    const itemMatch = outwardItems.find((it) => String(it.id) === String(rawId));
+    if (itemMatch) {
+      returnedItemIds.add(String(itemMatch.id));
+      returnedProductIds.add(String(itemMatch.product_id));
+    } else {
+      returnedProductIds.add(String(rawId));
+    }
+  }
+
   for (const pid of (mdata.products || "").split(",").filter(Boolean)) {
-    if (!products.includes(pid)) {
+    const isSelected =
+      products.includes(pid) ||
+      returnedProductIds.has(String(pid));
+    if (!isSelected) {
       mp.push(pid);
       continue;
     }
@@ -1176,9 +1247,12 @@ async function returnOutwardMemo(post, userContext = {}) {
     const returnAction = isExport ? "export_close" : (isSale ? "sale_return" : "memo_return");
     const returnTypeLabel = isExport ? "Export" : (isSale ? "Sale" : "Memo");
 
-    const itemForProduct = outwardItems.find(
-      (it) => String(it.product_id) === String(pid)
-    );
+    const itemForProduct = outwardItems.find((it) => {
+      if (returnedItemIds.size > 0) {
+        return returnedItemIds.has(String(it.id)) && String(it.product_id) === String(pid);
+      }
+      return String(it.product_id) === String(pid);
+    });
     // New model: memo/sale qty lives on outward_item / balances
     const isMainStockMemoLine =
       !pdata.outward_parent &&
@@ -1203,7 +1277,11 @@ async function returnOutwardMemo(post, userContext = {}) {
       };
     }
 
-    const rec = recordMap[pid] || recordMap[String(pid)] || {};
+    const rec =
+      (itemForProduct ? recordMap[itemForProduct.id] || recordMap[String(itemForProduct.id)] : null) ||
+      recordMap[pid] ||
+      recordMap[String(pid)] ||
+      {};
     // Ceiling: item line → memo/sold bucket → product polish (legacy child rows)
     const memoPcsCeiling =
       Number(itemForProduct?.pcs) ||
@@ -1248,7 +1326,20 @@ async function returnOutwardMemo(post, userContext = {}) {
         retPcs,
         retCarat
       );
-      await stockMovement.markOutwardItemReturned(query, post.id, pid, retPcs, retCarat);
+      if (itemForProduct && returnedItemIds.has(String(itemForProduct.id))) {
+        const leftPcs = Math.max(0, stockPcs - retPcs);
+        const leftCarat = Math.max(0, stockCarat - retCarat);
+        if (leftCarat <= 0.0001 && (stockPcs <= 0 || leftPcs <= 0)) {
+          await query("UPDATE dai_outward_item SET status = 'returned' WHERE id = ?", [itemForProduct.id]);
+        } else {
+          await query(
+            "UPDATE dai_outward_item SET pcs = ?, carat = ?, amount = ? WHERE id = ?",
+            [leftPcs, leftCarat, Number((leftCarat * Number(itemForProduct.price || pdata.price)).toFixed(2)), itemForProduct.id]
+          );
+        }
+      } else {
+        await stockMovement.markOutwardItemReturned(query, post.id, pid, retPcs, retCarat);
+      }
       const leftPcs = Math.max(0, stockPcs - retPcs);
       const leftCarat = Math.max(0, stockCarat - retCarat);
       const hasLeftover =
@@ -1401,15 +1492,36 @@ async function returnOutwardMemo(post, userContext = {}) {
     }
   }
 
+  const stillActive = await query(
+    `SELECT DISTINCT product_id FROM dai_outward_item
+     WHERE outward_id = ? AND (status IS NULL OR status NOT IN ('returned','cancelled'))`,
+    [post.id]
+  );
+  if (stillActive.length > 0) {
+    mp = [...new Set(stillActive.map((r) => String(r.product_id)))];
+  }
+
   // Recalculate remaining final amount on outward memo header
   let remainingFinalAmount = 0;
   if (mp.length > 0) {
-    const placeholders = mp.map(() => "?").join(",");
-    const remainingRows = await query(
-      `SELECT SUM(COALESCE(sell_amount, amount, 0)) AS total_amount FROM dai_product WHERE id IN (${placeholders})`,
-      mp
-    );
-    remainingFinalAmount = Number(remainingRows?.[0]?.total_amount || 0);
+    try {
+      const itemAmtRows = await query(
+        `SELECT SUM(COALESCE(amount, 0)) AS total_amount FROM dai_outward_item
+         WHERE outward_id = ? AND (status IS NULL OR status NOT IN ('returned','cancelled'))`,
+        [post.id]
+      );
+      const itemTotal = Number(itemAmtRows?.[0]?.total_amount);
+      if (Number.isFinite(itemTotal) && itemTotal > 0) {
+        remainingFinalAmount = itemTotal;
+      } else {
+        const placeholders = mp.map(() => "?").join(",");
+        const remainingRows = await query(
+          `SELECT SUM(COALESCE(sell_amount, amount, 0)) AS total_amount FROM dai_product WHERE id IN (${placeholders})`,
+          mp
+        );
+        remainingFinalAmount = Number(remainingRows?.[0]?.total_amount || 0);
+      }
+    } catch (_) {}
   }
 
   returnProduct = [...new Set(returnProduct)];
@@ -1460,6 +1572,15 @@ async function outwardMemoToSale(post, userContext = {}) {
     const products = [...new Set((post.products || []).map(String).filter(Boolean))];
     const record = post.record || {};
     const type = post.type || "sale";
+
+    if (type === "sale") {
+      if (!post.shipping_name || String(post.shipping_name).trim() === "") {
+        throw new Error("Shipping is required");
+      }
+      if (!post.origin_of || String(post.origin_of).trim() === "") {
+        throw new Error("Origin is required");
+      }
+    }
 
     // Sequence: lock counter + never reuse numbers already on dai_outward (fixes stuck #1)
     let seqRows = await q(
@@ -1528,7 +1649,10 @@ async function outwardMemoToSale(post, userContext = {}) {
     await stockMovement.ensureStockItemSchema(q);
     const memoItems = await stockMovement.getOutwardItems(q, memoId);
 
-    for (const pid of products) {
+    for (const rawId of products) {
+      const itemMatch = memoItems.find((it) => String(it.id) === String(rawId));
+      const pid = itemMatch ? itemMatch.product_id : rawId;
+
       let prodRows = await q(
         `SELECT * FROM dai_product WHERE id = ? AND company IN (${companyPlaceholders})`,
         [pid, ...companyParams]
@@ -1541,7 +1665,9 @@ async function outwardMemoToSale(post, userContext = {}) {
       const productCompanyId = Number(pdata.company) || memoCompanyId || companyId;
       soldSkus.push(pdata.sku);
 
-      const itemsForProduct = memoItems.filter((it) => String(it.product_id) === String(pid));
+      const itemsForProduct = itemMatch
+        ? [itemMatch]
+        : memoItems.filter((it) => String(it.product_id) === String(pid));
       const onClassicMemo = pdata.outward === "memo" || pdata.outward === "consign";
       const onMainStockMemo =
         itemsForProduct.length > 0 || Number(pdata.memo_carat) > 0 || Number(pdata.memo_pcs) > 0;
@@ -1560,7 +1686,12 @@ async function outwardMemoToSale(post, userContext = {}) {
       const memoCarat =
         itemsForProduct.length > 0 ? itemCaratSum : Number(pdata.memo_carat) || 0;
 
-      const rec = record[pid] || record[String(pid)] || {};
+      const rec =
+        record[rawId] ||
+        record[String(rawId)] ||
+        record[pid] ||
+        record[String(pid)] ||
+        {};
       const sellPcs =
         rec.polish_pcs != null && rec.polish_pcs !== "" ? Number(rec.polish_pcs) : memoPcs;
       const sellCarat =
@@ -1573,7 +1704,7 @@ async function outwardMemoToSale(post, userContext = {}) {
         );
       }
       const sellPrice =
-        Number(rec.price != null && rec.price !== "" ? rec.price : pdata.sell_price || pdata.price) ||
+        Number(rec.price != null && rec.price !== "" ? rec.price : itemMatch?.price || pdata.sell_price || pdata.price) ||
         0;
 
       if (sellCarat <= 0) {
@@ -1619,10 +1750,27 @@ async function outwardMemoToSale(post, userContext = {}) {
 
       if (useBalanceLedger) {
         bal = await stockMovement.applyOutwardQty(q, pid, type, sellPcs, sellCarat);
-        await stockMovement.markOutwardItemReturned(q, memoId, pid, sellPcs, sellCarat);
+        if (itemMatch) {
+          const itemPcs = Number(itemMatch.pcs) || 0;
+          const itemCarat = Number(itemMatch.carat) || 0;
+          const leftItemPcs = Math.max(0, itemPcs - sellPcs);
+          const leftItemCarat = Math.max(0, itemCarat - sellCarat);
+          if (leftItemCarat <= 0.0001 && (itemPcs <= 0 || leftItemPcs <= 0)) {
+            await q("UPDATE dai_outward_item SET status = 'returned' WHERE id = ?", [itemMatch.id]);
+          } else {
+            await q(
+              "UPDATE dai_outward_item SET pcs = ?, carat = ?, amount = ? WHERE id = ?",
+              [leftItemPcs, leftItemCarat, Number((leftItemCarat * Number(itemMatch.price || sellPrice)).toFixed(2)), itemMatch.id]
+            );
+            remainingOnMemo.push(String(pid));
+          }
+        } else {
+          await stockMovement.markOutwardItemReturned(q, memoId, pid, sellPcs, sellCarat);
+          if (hasLeftover) {
+            remainingOnMemo.push(String(pid));
+          }
+        }
         if (hasLeftover) {
-          // Partial memo qty sold — keep stone on memo (outward stays memo/consign)
-          remainingOnMemo.push(String(pid));
           await q(
             "UPDATE dai_product SET sell_price=?, sell_amount=?, site_upload=0, rapnet_upload=0 WHERE id = ? AND company = ?",
             [sellPrice, sellAmount, pid, productCompanyId]
@@ -1773,40 +1921,49 @@ async function outwardMemoToSale(post, userContext = {}) {
     }
 
     // Mirror returnOutwardMemo: keep partial leftovers on memo; close when empty
-    const soldSet = new Set(products.map(String));
-    const leftoverSet = new Set(remainingOnMemo.map(String));
-    const mp = [
-      ...new Set(
-        (mdata.products || "")
-          .split(",")
-          .map((id) => String(id).trim())
-          .filter(Boolean)
-          .filter((id) => {
-            if (!soldSet.has(id)) return true; // not converted this call
-            return leftoverSet.has(id); // partial qty still on memo
-          })
-      ),
-    ];
+    const stillActiveItems = await q(
+      `SELECT DISTINCT product_id FROM dai_outward_item
+       WHERE outward_id = ? AND (status IS NULL OR status NOT IN ('returned','cancelled'))`,
+      [memoId]
+    );
+    let mp = [];
+    if (stillActiveItems.length > 0) {
+      mp = [...new Set(stillActiveItems.map((r) => String(r.product_id)))];
+    } else {
+      const soldSet = new Set(products.map(String));
+      const leftoverSet = new Set(remainingOnMemo.map(String));
+      mp = [
+        ...new Set(
+          (mdata.products || "")
+            .split(",")
+            .map((id) => String(id).trim())
+            .filter(Boolean)
+            .filter((id) => {
+              if (!soldSet.has(id)) return true;
+              return leftoverSet.has(id);
+            })
+        ),
+      ];
+    }
 
     let remainingFinalAmount = 0;
     if (mp.length > 0) {
-      const placeholders = mp.map(() => "?").join(",");
-      const remainingRows = await q(
-        `SELECT SUM(COALESCE(sell_amount, amount, 0)) AS total_amount FROM dai_product WHERE id IN (${placeholders})`,
-        mp
-      );
-      remainingFinalAmount = Number(remainingRows?.[0]?.total_amount || 0);
-      // Prefer sum of still-active memo line amounts when item table has leftovers
       try {
         const itemAmtRows = await q(
           `SELECT SUM(COALESCE(amount, 0)) AS total_amount FROM dai_outward_item
-           WHERE outward_id = ? AND product_id IN (${placeholders})
-             AND (status IS NULL OR status NOT IN ('returned','cancelled'))`,
-          [memoId, ...mp]
+           WHERE outward_id = ? AND (status IS NULL OR status NOT IN ('returned','cancelled'))`,
+          [memoId]
         );
         const itemTotal = Number(itemAmtRows?.[0]?.total_amount);
         if (Number.isFinite(itemTotal) && itemTotal > 0) {
           remainingFinalAmount = itemTotal;
+        } else {
+          const placeholders = mp.map(() => "?").join(",");
+          const remainingRows = await q(
+            `SELECT SUM(COALESCE(sell_amount, amount, 0)) AS total_amount FROM dai_product WHERE id IN (${placeholders})`,
+            mp
+          );
+          remainingFinalAmount = Number(remainingRows?.[0]?.total_amount || 0);
         }
       } catch (_) {
         /* dai_outward_item may be absent on older DBs */

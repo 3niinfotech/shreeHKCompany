@@ -116,10 +116,12 @@ const recalcFromPcs = (row, pcsValue) => {
 };
 
 const mapProductToMemoRow = (p, rowKey, { isManual = false } = {}) => {
-  const carat = Number(p.polish_carat) || 0;
+  const onhandCarat = Number(p.onhand_carat != null ? p.onhand_carat : p.polish_carat) || 0;
+  const onhandPcs = Number(p.onhand_pcs != null ? p.onhand_pcs : p.polish_pcs) || 1;
+  const carat = onhandCarat > 0 ? onhandCarat : (Number(p.polish_carat) || 0);
+  const polishPcs = onhandPcs > 0 ? onhandPcs : (Number(p.polish_pcs) || 1);
   const rapPrice = Number(p.rapnet_price || p.rap_price) || 0;
   const price = Number(p.sell_price || p.price) || 0;
-  const polishPcs = Number(p.polish_pcs) || 1;
   const basePrice = rapPrice > 0 ? rapPrice : price;
   const disc = rapPrice > 0 ? ((price * 100) / rapPrice - 100) : 0;
   return {
@@ -150,10 +152,12 @@ const mapProductToMemoRow = (p, rowKey, { isManual = false } = {}) => {
 };
 
 const mapSelectedRowToMemoRow = (row) => {
-  const carat = Number(row.polishCarat) || 0;
+  const onhandCarat = Number(row.onhandCarat != null ? row.onhandCarat : (row.onhand_carat != null ? row.onhand_carat : row.polishCarat)) || 0;
+  const onhandPcs = Number(row.onhandPcs != null ? row.onhandPcs : (row.onhand_pcs != null ? row.onhand_pcs : row.polishPcs)) || 1;
+  const carat = onhandCarat > 0 ? onhandCarat : (Number(row.polishCarat) || 0);
+  const polishPcs = onhandPcs > 0 ? onhandPcs : (Number(row.polishPcs) || 1);
   const rapPrice = Number(row.rapPrice) || 0;
   const price = Number(row.price) || 0;
-  const polishPcs = Number(row.polishPcs) || 1;
   const basePrice = rapPrice > 0 ? rapPrice : price;
   const disc = rapPrice > 0 ? ((price * 100) / rapPrice - 100) : 0;
   return {
@@ -165,6 +169,7 @@ const mapSelectedRowToMemoRow = (row) => {
     carat,
     basePrice,
     polishPcs,
+    polishCarat: carat,
     stockPcs: polishPcs,
     stockCarat: carat,
     _isManual: false,
@@ -206,8 +211,15 @@ const getSkuValidationError = (product, actionType) => {
   }
   const outward = String(product.outward || "").toLowerCase();
   if (actionType === "sell") {
-    if (outward !== "memo") {
-      return `SKU ${sku} must be on memo for sale`;
+    if (outward && outward !== "memo" && outward !== "consign") {
+      return `SKU ${sku} is already on ${product.outward}`;
+    }
+    const onhandCarat =
+      Number(product.onhand_carat != null ? product.onhand_carat : product.polish_carat) || 0;
+    const onhandPcs =
+      Number(product.onhand_pcs != null ? product.onhand_pcs : product.polish_pcs) || 0;
+    if (outward !== "memo" && onhandCarat <= 0.0001 && onhandPcs <= 0) {
+      return `SKU ${sku} has no available stock (0 pcs / 0 ct)`;
     }
     return null;
   }
@@ -216,6 +228,16 @@ const getSkuValidationError = (product, actionType) => {
     if (inward === "memo" || inward === "consign") {
       return `SKU ${sku} is IN Memo. Please purchase first`;
     }
+  }
+  if (actionType === "memo" || actionType === "consign") {
+    const onhandCarat =
+      Number(product.onhand_carat != null ? product.onhand_carat : product.polish_carat) || 0;
+    const onhandPcs =
+      Number(product.onhand_pcs != null ? product.onhand_pcs : product.polish_pcs) || 0;
+    if (onhandCarat <= 0.0001 && onhandPcs <= 0) {
+      return `SKU ${sku} has no available stock (0 pcs / 0 ct)`;
+    }
+    return null;
   }
   if (outward) {
     return `SKU ${sku} is already on ${product.outward}`;
@@ -436,7 +458,7 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
 
       setMemoRows((prev) => {
         const duplicate = prev.some((row) => row.id === product.id && row.rowKey !== rowKey);
-        if (duplicate) {
+        if (duplicate && actionType !== "memo" && actionType !== "consign") {
           toastWarning(`SKU ${product.sku} is already in the list`);
           return prev;
         }

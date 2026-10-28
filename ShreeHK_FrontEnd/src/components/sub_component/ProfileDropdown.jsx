@@ -555,11 +555,13 @@ const ProfileDropdown = () => {
           const res = await api.get(ENDPOINTS.portal.branchCompanies);
           const name = res.data?.branchName;
           const bid = res.data?.branchId;
+          const bColor = res.data?.branchColorCode;
           if (cancelled || !name) return;
           setResolvedBranchName(name);
           setSessionContext({
             branchName: name,
             ...(bid != null ? { branchId: bid } : {}),
+            ...(bColor ? { branchColorCode: bColor } : {}),
           });
           return;
         }
@@ -569,24 +571,29 @@ const ProfileDropdown = () => {
         const combos = res.data?.Data || [];
         let name = null;
         let bid = branchId || null;
+        let bColor = null;
         if (bid != null) {
           const b = branches.find((x) => String(x.branchId) === String(bid));
           name = b?.branchName || null;
+          bColor = b?.branchColorCode || b?.color_code || null;
         }
         if (!name && companyId != null) {
           const c = combos.find((x) => String(x.companyId) === String(companyId));
           name = c?.branchName || null;
           bid = c?.branchId ?? bid;
+          bColor = c?.branchColorCode || bColor;
         }
         if (!name && branches.length === 1) {
           name = branches[0]?.branchName || null;
           bid = branches[0]?.branchId ?? bid;
+          bColor = branches[0]?.branchColorCode || branches[0]?.color_code || bColor;
         }
         if (cancelled || !name) return;
         setResolvedBranchName(name);
         setSessionContext({
           branchName: name,
           ...(bid != null ? { branchId: bid } : {}),
+          ...(bColor ? { branchColorCode: bColor } : {}),
         });
       } catch {
         // keep chip empty if branch cannot be resolved

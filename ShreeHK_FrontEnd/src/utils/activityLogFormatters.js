@@ -189,10 +189,11 @@ const UI_ACTIONS = new Set([
 
 const MUTATION_ACTIONS = new Set([
   "CREATE", "UPDATE", "DELETE", "STOCK_IN", "STOCK_OUT", "MEMO_CREATE", "MEMO_RETURN",
-  "TRANSFER", "EXPORT", "PRINT",
+  "SEND_TO_LAB", "LAB", "LAB_RETURN", "TRANSFER", "EXPORT", "PRINT",
 ]);
 
 export function formatActionTypeLabel(actionType) {
+  const at = String(actionType || "").toUpperCase();
   const map = {
     CREATE: "Add",
     UPDATE: "Edit",
@@ -205,14 +206,17 @@ export function formatActionTypeLabel(actionType) {
     STOCK_OUT: "Sale",
     MEMO_CREATE: "Memo Out",
     MEMO_RETURN: "Memo Return",
+    SEND_TO_LAB: "Send to Lab",
+    LAB: "Send to Lab",
+    LAB_RETURN: "Lab Return",
     TRANSFER: "Transfer",
     EXPORT: "Export",
     PRINT: "Print",
     ATTEMPTED: "Attempted",
     API_READ: "Read",
   };
-  if (map[actionType]) return map[actionType];
-  if (String(actionType).startsWith("UI_")) return "Action";
+  if (map[at]) return map[at];
+  if (at.startsWith("UI_")) return "Action";
   return actionType || "—";
 }
 
@@ -623,6 +627,9 @@ export function buildActivityNarrative(record) {
     DELETE: "deleted",
     MEMO_CREATE: "created memo for",
     MEMO_RETURN: "returned memo for",
+    SEND_TO_LAB: "sent to lab",
+    LAB: "sent to lab",
+    LAB_RETURN: "returned from lab",
     STOCK_OUT: "sold / stock out",
     TRANSFER: "transferred",
     EXPORT: "exported",
@@ -648,14 +655,17 @@ export function buildActivityNarrative(record) {
 }
 
 export function getActionTone(actionType) {
-  if (actionType === "CREATE" || actionType === "STOCK_IN") return "add";
-  if (actionType === "STOCK_OUT") return "sale";
-  if (actionType === "DELETE") return "delete";
-  if (actionType === "MEMO_CREATE" || actionType === "MEMO_RETURN") return "memo";
-  if (actionType === "UPDATE" || actionType === "TRANSFER") return "edit";
-  if (actionType === "LOGIN") return "login";
-  if (actionType === "LOGOUT") return "logout";
-  if (actionType === "LOGIN_FAILED") return "failed";
+  const at = String(actionType || "").toUpperCase();
+  if (at === "CREATE" || at === "STOCK_IN") return "add";
+  if (at === "STOCK_OUT") return "sale";
+  if (at === "DELETE") return "delete";
+  if (at === "MEMO_CREATE" || at === "MEMO_RETURN") return "memo";
+  if (at === "SEND_TO_LAB" || at === "LAB") return "lab";
+  if (at === "LAB_RETURN") return "lab-return";
+  if (at === "UPDATE" || at === "TRANSFER") return "edit";
+  if (at === "LOGIN") return "login";
+  if (at === "LOGOUT") return "logout";
+  if (at === "LOGIN_FAILED") return "failed";
   return "default";
 }
 
@@ -744,6 +754,9 @@ export function getActionHeadline(actionType) {
     DELETE: "Record deleted",
     MEMO_CREATE: "Memo created",
     MEMO_RETURN: "Memo returned",
+    SEND_TO_LAB: "Sent to Lab",
+    LAB: "Sent to Lab",
+    LAB_RETURN: "Returned from Lab",
     STOCK_OUT: "Sale / stock out",
     TRANSFER: "Transfer",
     EXPORT: "Export",

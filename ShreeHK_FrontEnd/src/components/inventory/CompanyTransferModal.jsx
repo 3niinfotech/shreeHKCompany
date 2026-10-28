@@ -373,7 +373,7 @@ const CompanyTransferModal = ({
             </span>
             <span>
               <Text type="secondary">Total Amount: </Text>
-              <Text strong style={{ color: "#0284c7", fontSize: 16 }}>
+              <Text strong style={{ color: "#16a34a", fontSize: 16 }}>
                 ${totals.amount.toFixed(2)}
               </Text>
             </span>

@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { postProductHold } from "../api/services/holdService";
+import { exportVenyaInventoryExcel } from "../utils/venyaInventoryExcelExport";
 import {
   postInventoryExport,
   postIExport as postInventoryIExport,
@@ -219,6 +220,23 @@ export function useInventoryActions({ onSuccess } = {}) {
 
       setExportLoading(true);
       try {
+        if (allRows && allRows.length > 0) {
+          const selectedSet = new Set(selectedIds.map(String));
+          const exportRows = allRows.filter((r) =>
+            selectedSet.has(String(r.id ?? r.product_id ?? r.key))
+          );
+          if (exportRows.length > 0) {
+            await exportVenyaInventoryExcel({
+              rows: exportRows,
+              sheetName: values.sheetName || "Export",
+              mode: "export",
+            });
+            toastSuccess("File exported successfully");
+            onSuccess?.();
+            return true;
+          }
+        }
+
         const result = await postInventoryExport({
           ids: selectedIds,
           fileName: values.fileName,
@@ -283,6 +301,23 @@ export function useInventoryActions({ onSuccess } = {}) {
 
       setIExportLoading(true);
       try {
+        if (allRows && allRows.length > 0) {
+          const selectedSet = new Set(selectedIds.map(String));
+          const exportRows = allRows.filter((r) =>
+            selectedSet.has(String(r.id ?? r.product_id ?? r.key))
+          );
+          if (exportRows.length > 0) {
+            await exportVenyaInventoryExcel({
+              rows: exportRows,
+              sheetName: values.sheetName || "Export",
+              mode: "iExport",
+            });
+            toastSuccess("File exported successfully");
+            onSuccess?.();
+            return true;
+          }
+        }
+
         const format = values.format === "csv" ? "csv" : "xlsx";
         const result = await postInventoryIExport({
           ids: selectedIds,

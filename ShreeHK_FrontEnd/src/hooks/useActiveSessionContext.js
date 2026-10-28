@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import useAuthStore from "../store/Auth.Store";
 import { api } from "../api/client/axiosInstance";
 import { ENDPOINTS } from "../api/endpoints";
+import { normalizeHexColor } from "../utils/colorUtils";
 
 export const useActiveSessionContext = () => {
   const companyId = useAuthStore((s) => s.companyId);
@@ -74,6 +75,21 @@ export const useActiveSessionContext = () => {
             setResolvedBranchShortcut(shortcut);
             useAuthStore.getState().setSessionContext({ branchShortcut: shortcut });
           }
+        }
+
+        // 3. Resolve branch color code (e.g. "#D4621A")
+        const currentBranchColor = useAuthStore.getState().branchColorCode;
+        let foundBranchColor = null;
+        if (branchId) {
+          const b = branches.find((x) => String(x.branchId) === String(branchId));
+          foundBranchColor = normalizeHexColor(b?.branchColorCode || b?.color_code);
+        }
+        if (!foundBranchColor && companyId) {
+          const c = combos.find((x) => String(x.companyId) === String(companyId));
+          foundBranchColor = normalizeHexColor(c?.branchColorCode);
+        }
+        if (foundBranchColor && foundBranchColor !== currentBranchColor) {
+          useAuthStore.getState().setSessionContext({ branchColorCode: foundBranchColor });
         }
       })
       .catch(() => {});

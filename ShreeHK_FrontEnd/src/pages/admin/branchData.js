@@ -15,4 +15,5 @@ export const branchFields = [
   { type: "textarea", label: "Address", name: "address", span: 24 },
   { type: "input", label: "City", name: "city", span: 12 },
   { type: "input", label: "Country", name: "country", span: 12 },
+  { type: "color", label: "Header Color Code", name: "color_code", span: 12, placeholder: "#1e3a8a" },
 ];

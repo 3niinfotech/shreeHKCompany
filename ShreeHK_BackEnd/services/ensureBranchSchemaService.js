@@ -45,6 +45,15 @@ const ensureBranchSchema = async () => {
     }
   }
 
+  try {
+    await metaQuery("ALTER TABLE `branch` ADD COLUMN `color_code` VARCHAR(50) NULL DEFAULT NULL");
+  } catch (err) {
+    const msg = String(err?.message || err || "");
+    if (!/duplicate column|ER_DUP_FIELDNAME/i.test(msg)) {
+      console.error("ensureBranchSchema branch.color_code:", msg);
+    }
+  }
+
   for (const b of DEFAULT_BRANCHES) {
     const found = await metaQuery(
       "SELECT id, status FROM branch WHERE LOWER(name) = LOWER(?) LIMIT 1",

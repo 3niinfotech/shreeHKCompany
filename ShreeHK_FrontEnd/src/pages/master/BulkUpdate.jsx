@@ -5,6 +5,7 @@ import {
     Col,
     Form,
     Row,
+    Select,
     Space,
     Typography,
     Upload,
@@ -12,7 +13,6 @@ import {
 } from 'antd';
 import { FileSpreadsheet, Upload as UploadIcon, Download } from 'lucide-react';
 import { loadXlsx } from '../../utils/loadXlsx';
-import DynamicFormField from '../../components/common/ui/DynamicFormField';
 import styles from '../../assets/scss/pages/master/bulkupdate.module.scss';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/client/axiosInstance';
@@ -100,6 +100,7 @@ const fileToBase64 = (fileEntry) =>
 const BulkUpdate = () => {
     const [form] = Form.useForm();
     const [fileList, setFileList] = useState([]);
+    const [uploadKey, setUploadKey] = useState(0);
     const queryClient = useQueryClient();
     const { mutate: saveCompany, isPending } = useMutation({
         mutationFn: async (payload) => {
@@ -110,9 +111,13 @@ const BulkUpdate = () => {
             queryClient.invalidateQueries({ queryKey: ['bulkupdate'] });
             queryClient.invalidateQueries({ queryKey: ['GetProductData'] });
             queryClient.invalidateQueries({ queryKey: ['myInventorySummary'] });
+            queryClient.invalidateQueries({ queryKey: ['InventoryList'] });
+            queryClient.invalidateQueries({ queryKey: ['stoneDetail'] });
+            queryClient.invalidateQueries({ queryKey: ['stone-detail'] });
             if (Number(data?.error) === 0) {
                 toastApiSuccess(data);
                 setFileList([]);
+                setUploadKey((k) => k + 1);
             } else {
                 toastApiError({ response: { data } });
             }
@@ -125,7 +130,7 @@ const BulkUpdate = () => {
     const templateMap = {
         Price: {
             headers: ["Sku", "Price", "Cost"],
-            row: ["H24-58A", "4000", "5000"],
+            row: ["H24-58A", "10000", "8000"],
         },
         Location: {
             headers: ["Sku", "Location"],
@@ -180,11 +185,11 @@ const BulkUpdate = () => {
             row: ["H24-58A", "Test 3ni"],
         },
         "Argyle - In House Clarity": {
-            headers: ["Sku", "Argyle Color", "In House", "Clarity"],
-            row: ["H24-58A", "White", "YES", "VS-2II"],
+            headers: ["Sku", "Argyle Color", "In House Clarity"],
+            row: ["H24-58A", "White", "VS-2II"],
         },
         "Mining - Origin - Manuf": {
-            headers: ["Sku", "Mining Origin", "Menufecturing Origin"],
+            headers: ["Sku", "Mining Origin", "Manufacturing Origin"],
             row: ["H24-58A", "IND", "IND"],
         },
     };
@@ -251,50 +256,62 @@ const BulkUpdate = () => {
     return (
         <div className={`page-shell ${styles.wrapper}`}>
             {/* Control Bar */}
-            <Row gutter={[20, 20]} align="middle" className={styles.topRow}>
-                <Col xs={24} md={10}>
+            <div className={styles.topBar}>
+                <div className={styles.leftControl}>
                     <Form
                         form={form}
                         initialValues={{ updateType: undefined }}
                         className={styles.updateTypeForm}
                     >
-                        <DynamicFormField
-                            forceFullWidth
-                            fields={[
-                                {
-                                    name: 'updateType',
-                                    label: 'Update Type',
-                                    type: 'select',
-                                    width: '100%',
-                                    options: updateTypeOptions
-                                }
-                            ]}
-                        />
+                        <Form.Item
+                            name="updateType"
+                            label={<span className={styles.updateTypeLabel}>Update Type</span>}
+                            className={styles.updateTypeItem}
+                            colon={false}
+                        >
+                            <Select
+                                placeholder="Select Update Type"
+                                options={updateTypeOptions}
+                                showSearch
+                                allowClear
+                                optionFilterProp="label"
+                                className={styles.updateTypeSelect}
+                            />
+                        </Form.Item>
                     </Form>
-                </Col>
+                </div>
 
-                <Col xs={24} md={14} className={styles.rightAlign}>
-                    <div className={styles.actionsRow}>
-                        <div className={styles.uploadWrap}>
-                            <Upload
-                                fileList={fileList}
-                                beforeUpload={() => false}
-                                onChange={({ fileList: nextFileList }) => setFileList(nextFileList.slice(-1))}
-                                onRemove={() => setFileList([])}
-                                accept=".xls,.xlsx"
-                                maxCount={1}
+                <div className={styles.actionsRow}>
+                    <div className={styles.uploadWrap}>
+                        <Upload
+                            key={uploadKey}
+                            fileList={fileList}
+                            beforeUpload={() => false}
+                            onChange={({ fileList: nextFileList }) => setFileList(nextFileList.slice(-1))}
+                            onRemove={() => {
+                                setFileList([]);
+                                setUploadKey((k) => k + 1);
+                            }}
+                            accept=".xls,.xlsx"
+                            maxCount={1}
+                        >
+                            <Button
+                                icon={<UploadIcon size={16} />}
+                                className={styles.chooseButton}
+                                onClick={(e) => {
+                                    const input = e.currentTarget.closest('.ant-upload')?.querySelector('input[type="file"]');
+                                    if (input) input.value = '';
+                                }}
                             >
-                                <Button icon={<UploadIcon size={16} />} className={styles.chooseButton}>
-                                    {fileList.length > 0 ? fileList[0].name : "Choose Excel File"}
-                                </Button>
-                            </Upload>
-                        </div>
-                        <Button type="primary" icon={<UploadIcon size={16} />} className={styles.updateBtn} onClick={handleBulkUpdate} loading={isPending}>
-                            Update Data
-                        </Button>
+                                {fileList.length > 0 ? fileList[0].name : "Choose Excel File"}
+                            </Button>
+                        </Upload>
                     </div>
-                </Col>
-            </Row>
+                    <Button type="primary" icon={<UploadIcon size={16} />} className={styles.updateBtn} onClick={handleBulkUpdate} loading={isPending}>
+                        Update Data
+                    </Button>
+                </div>
+            </div>
 
             <Text className={styles.sectionTitle}>Download Sample Format for Updating</Text>
 

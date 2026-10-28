@@ -17,6 +17,7 @@ import useAuthStore from "../../store/Auth.Store";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { toastApiSuccess, toastApiError } from "../../utils/toastNotify";
 import { SkeletonBlock, SkeletonCard } from "../common/skeleton";
+import { normalizeHexColor } from "../../utils/colorUtils";
 import styles from "../../assets/scss/pages/admin/companyYearPicker.module.scss";
 
 const { Text, Title } = Typography;
@@ -276,13 +277,13 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
 
   const { displayedText: titleText, isTyping: titleTyping } = useTypewriter(
     titleTextTarget,
-    26,
-    open && !loading && !reducedMotion
+    1,
+    false
   );
   const { displayedText: titleSubtext } = useTypewriter(
     titleSubtextTarget,
-    14,
-    open && !loading && !reducedMotion
+    1,
+    false
   );
 
   const resolveYearItemForBranch = (item) => {
@@ -344,6 +345,8 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
         yearLabel: Data?.yearLabel || rawItem?.yearLabel || item?.yearLabel || null,
         branchShortcut: Data?.branchShortcut || selectedBranch?.shortcutName || selectedBranch?.branchShortcut || selectedBranch?.branchName || null,
         companyLogo: Data?.companyLogo || null,
+        companyColorCode: normalizeHexColor(Data?.companyColorCode !== undefined ? Data.companyColorCode : (item?.companyColorCode ?? null)),
+        branchColorCode: normalizeHexColor(Data?.branchColorCode !== undefined ? Data.branchColorCode : (selectedBranch?.branchColorCode ?? item?.branchColorCode ?? null)),
       };
       if (newToken) {
         login(user, newToken, contextPayload);
@@ -351,9 +354,9 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
         setSessionContext(contextPayload);
       }
       try {
-        queryClient.clear();
+        queryClient.invalidateQueries();
       } catch (qcErr) {
-        console.error("Failed to clear query cache:", qcErr);
+        console.error("Failed to invalidate query cache:", qcErr);
       }
       toastApiSuccess(res.data);
       setShowContextPicker(false);
@@ -436,6 +439,7 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
               branchShortcutName: b.branchShortcutName || null,
               branchAddress: b.branchAddress || null,
               branchNumber: b.branchNumber || null,
+              branchColorCode: normalizeHexColor(b.branchColorCode || b.color_code || null),
             };
           })
           .filter(Boolean)
@@ -550,7 +554,14 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
                       {item.branchName}
                     </Title>
 
-                    <span className={styles.companyTag}>
+                    <span
+                      className={styles.companyTag}
+                      style={
+                        item.branchColorCode
+                          ? { backgroundColor: item.branchColorCode, color: "#fff" }
+                          : undefined
+                      }
+                    >
                       <IdcardOutlined />
                       <span>{item.branchShortcutName || "Branch"}</span>
                     </span>
@@ -602,7 +613,10 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
                         onClick={() => handleCompanySelect(item)}
                         aria-label={`Select ${item.companyName}`}
                       >
-                        <span className={styles.companyIcon}>
+                        <span
+                          className={styles.companyIcon}
+                          style={item.companyColorCode ? { backgroundColor: item.companyColorCode, color: "#fff" } : undefined}
+                        >
                           <BankOutlined />
                         </span>
 

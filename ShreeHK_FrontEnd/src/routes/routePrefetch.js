@@ -136,10 +136,7 @@ export const prefetchAuthorizedRoutesIdle = (routes) => {
 };
 
 function scheduleIdle(callback) {
-  if (typeof window.requestIdleCallback === "function") {
-    const idleId = window.requestIdleCallback(callback, { timeout: 2500 });
-    return () => window.cancelIdleCallback(idleId);
-  }
-  const timer = window.setTimeout(callback, 80);
+  const intervalMs = import.meta.env.DEV ? 400 : 100;
+  const timer = window.setTimeout(callback, intervalMs);
   return () => window.clearTimeout(timer);
 }

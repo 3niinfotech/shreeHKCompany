@@ -298,9 +298,9 @@ async function applyOutwardQty(q, productId, type, pcs, carat) {
   let next = { ...b };
 
   if (t === "lab_return" || t === "return_lab") {
-    // Lab send only reduced onhand (not memo_*); restore the same qty
-    next.onhand_pcs = b.onhand_pcs + movePcs;
-    next.onhand_carat = b.onhand_carat + moveCarat;
+    // Restore onhand if it was zeroed or reduced, safely without doubling
+    next.onhand_pcs = Math.max(b.onhand_pcs, movePcs);
+    next.onhand_carat = Math.max(b.onhand_carat, moveCarat);
   } else if (t === "return" || t === "memo_return" || t === "return_memo") {
     next.memo_pcs = Math.max(0, b.memo_pcs - movePcs);
     next.memo_carat = Math.max(0, b.memo_carat - moveCarat);
@@ -339,6 +339,10 @@ async function applyOutwardQty(q, productId, type, pcs, carat) {
     next.onhand_carat = Math.max(0, b.onhand_carat - remainCarat);
     next.sold_pcs = b.sold_pcs + movePcs;
     next.sold_carat = b.sold_carat + moveCarat;
+  } else if (t === "lab") {
+    // Venya PHP: lab transfer preserves carat and pcs so stone stays in inventory with green status
+    next.onhand_pcs = b.onhand_pcs;
+    next.onhand_carat = b.onhand_carat;
   } else {
     if (moveCarat > b.onhand_carat + 0.0001) {
       throw new Error(`Insufficient onhand for SKU ${row.sku}`);

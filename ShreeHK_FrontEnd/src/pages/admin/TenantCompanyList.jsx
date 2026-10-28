@@ -182,6 +182,7 @@ const TenantCompanyList = () => {
           setSessionContext({
             companyLogo: nextLogo,
             companyName: mapped.name || companyName,
+            companyColorCode: mapped.color_code || null,
           });
         }
         setModalOpen(false);
@@ -366,6 +367,20 @@ const TenantCompanyList = () => {
                   ) : null}
                   {item.memo_prefix ? (
                     <Tag color="cyan" title="Out-Memo Prefix">{item.memo_prefix}</Tag>
+                  ) : null}
+                  {item.color_code ? (
+                    <Tag
+                      style={{
+                        backgroundColor: item.color_code,
+                        color: "#fff",
+                        border: "1px solid rgba(0,0,0,0.15)",
+                        fontWeight: 500,
+                        textShadow: "0 1px 2px rgba(0,0,0,0.4)",
+                      }}
+                      title={`Header Theme Color: ${item.color_code}`}
+                    >
+                      {item.color_code}
+                    </Tag>
                   ) : null}
                 </div>
 

@@ -43,8 +43,9 @@ labRouter.get("/master/lab", authenticateToken, async (req, res) => {
 // Post
 labRouter.post("/lab/post", authenticateToken, async (req, res) => {
   const companyId = buildUserContext(req).companyId || 1;
-  const { id, lab, name, date } = req.body;
+  const { id, lab, name, date, reportlink } = req.body;
   const labName = (lab ?? name ?? "").trim();
+  const reportLinkVal = reportlink !== undefined ? String(reportlink).trim() : null;
 
   if (!labName) {
     return res.status(400).json({ error: "Lab name is required" });
@@ -64,7 +65,10 @@ labRouter.post("/lab/post", authenticateToken, async (req, res) => {
       }
 
       if (id == 0) {
-        const result = await q("INSERT INTO dai_lab (lab, date, company) VALUES (?, ?, ?)", [labName, date, companyId]);
+        const result = await q(
+          "INSERT INTO dai_lab (lab, reportlink, date, company) VALUES (?, ?, ?, ?)",
+          [labName, reportLinkVal, date, companyId]
+        );
         const newRows = await q("SELECT * FROM dai_lab WHERE id=? AND company=?", [result.insertId, companyId]);
         await logAuditInTx(q, {
           actionType: "CREATE",
@@ -75,7 +79,11 @@ labRouter.post("/lab/post", authenticateToken, async (req, res) => {
           companyId,
         });
       } else {
-        await q("UPDATE dai_lab SET lab=?, date=? WHERE id=? AND company=?", [labName, date, id, companyId]);
+        const finalReportLink = reportlink !== undefined ? reportLinkVal : oldRow?.reportlink;
+        await q(
+          "UPDATE dai_lab SET lab=?, reportlink=?, date=? WHERE id=? AND company=?",
+          [labName, finalReportLink, date, id, companyId]
+        );
         const newRows = await q("SELECT * FROM dai_lab WHERE id=? AND company=?", [id, companyId]);
         await logAuditInTx(q, {
           actionType: "UPDATE",

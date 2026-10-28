@@ -56,21 +56,39 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 44px;
-        height: 38px;
         min-width: 44px;
-        background: linear-gradient(135deg, #005c3d 0%, #00452e 100%) !important;
+        width: auto;
+        max-width: 76px;
+        height: 38px;
+        padding: 0 6px;
+        background: var(--brand-custom-color, linear-gradient(135deg, #005c3d 0%, #00452e 100%)) !important;
         color: #ffffff !important;
-        font-size: 15px;
+        font-size: 14px;
         font-weight: 800;
-        letter-spacing: 0.8px;
+        letter-spacing: 0.5px;
         border-radius: 8px;
         border: 1px solid rgba(255, 255, 255, 0.15);
         box-shadow: 0 3px 8px rgba(0, 92, 61, 0.35);
         text-transform: uppercase;
         flex-shrink: 0;
         user-select: none;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: clip;
+        line-height: 1;
         transition: transform 0.18s ease, box-shadow 0.18s ease;
+
+        &.brandBadgeMedium {
+          font-size: 12px;
+          letter-spacing: 0.3px;
+          padding: 0 5px;
+        }
+
+        &.brandBadgeLong {
+          font-size: 10.5px;
+          letter-spacing: 0.2px;
+          padding: 0 5px;
+        }
 
         &:hover {
           transform: scale(1.05);

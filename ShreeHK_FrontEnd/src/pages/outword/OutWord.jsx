@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Table, Card, Typography, Space, Button, Tag, Checkbox, Badge, Form, Input, Row, Col, Spin } from 'antd';
 import { EditOutlined, PrinterOutlined, DeleteOutlined, ReloadOutlined, PlusOutlined } from '@ant-design/icons';
 import { Pencil, CircleCheck } from 'lucide-react';
@@ -30,7 +30,7 @@ const ExpandedRowContent = ({ rowId }) => {
         ENDPOINTS.outward.getProducts,
         { id: rowId },
         'POST',
-        { staleTime: 0, refetchOnMount: 'always' }
+        { staleTime: 60 * 1000, placeholderData: (prev) => prev }
     );
 
     const innerColumns = [
@@ -126,7 +126,7 @@ const OutWord = () => {
         ENDPOINTS.company.options,
         {},
         'GET',
-        { staleTime: 0, refetchOnMount: 'always' }
+        { staleTime: 60 * 1000 }
     );
     const { mutate: updateTransaction } = usePostApiRequest(ENDPOINTS.outward.update, 'OutwardList', { showToast: true });
 
@@ -142,7 +142,7 @@ const OutWord = () => {
         ENDPOINTS.outward.list,
         payload,
         'POST',
-        { enabled: true, staleTime: 0, refetchOnMount: 'always' }
+        { enabled: true, staleTime: 60 * 1000, placeholderData: (prev) => prev }
     );
 
     const { data: editDetailData, isLoading: isProductLoading } = useFetchApi(

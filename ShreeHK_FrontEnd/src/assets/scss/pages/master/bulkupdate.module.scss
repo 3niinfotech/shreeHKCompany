@@ -6,24 +6,84 @@
   flex-direction: column;
 }
 
-.topRow {
-  margin-bottom: 10px;
+.topBar {
+  margin-bottom: 12px;
   background: var(--color-card-bg);
-  padding: 10px 14px;
+  padding: 10px 16px;
   border-radius: var(--radius-card);
   border: 0.5px solid var(--color-border);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: nowrap;
+}
+
+.leftControl {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .updateTypeForm {
-  width: 100%;
+  margin: 0;
+}
 
-  :global(.ant-form-item) {
-    margin-bottom: 0 !important;
+.updateTypeItem {
+  margin-bottom: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+
+  :global(.ant-form-item-row) {
+    display: flex !important;
+    align-items: center !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+  }
+
+  :global(.ant-form-item-label) {
+    padding: 0 10px 0 0 !important;
     display: flex;
     align-items: center;
+
+    > label {
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--color-navy);
+      height: 36px;
+      display: flex;
+      align-items: center;
+      margin: 0;
+
+      &::after {
+        content: ':';
+        margin: 0 2px 0 2px;
+      }
+    }
+  }
+
+  :global(.ant-form-item-control) {
+    display: flex;
+    align-items: center;
+  }
+}
+
+.updateTypeLabel {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--color-navy);
+}
+
+.updateTypeSelect {
+  width: 260px !important;
+  height: 36px !important;
+
+  :global(.ant-select-selector) {
+    height: 36px !important;
+    border-radius: var(--radius-control) !important;
+    display: flex !important;
+    align-items: center !important;
   }
 }
 
@@ -32,19 +92,17 @@
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  width: 100%;
-  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .uploadWrap {
   display: flex;
   align-items: center;
-  max-width: min(100%, 280px);
   min-width: 0;
 
   :global(.ant-upload),
   :global(.ant-upload-select) {
-    width: 100% !important;
+    display: flex;
   }
 
   :global(.ant-upload-list) {
@@ -54,6 +112,7 @@
 
 .chooseButton {
   width: 100%;
+  height: 36px;
   max-width: 280px;
   border-radius: var(--radius-control);
   border-style: dashed;
@@ -73,6 +132,7 @@
 
 .updateBtn {
   min-width: 120px;
+  height: 36px;
   flex-shrink: 0;
   border-radius: var(--radius-control);
   font-weight: 600;

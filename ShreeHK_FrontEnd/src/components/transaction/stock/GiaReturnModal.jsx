@@ -126,8 +126,17 @@ const GiaReturnModal = ({ open, record, productIds, products, onClose, onSuccess
 
   const handleSave = () => {
     if (record?.id == null) return;
+    const formattedRecords = { ...records };
+    Object.entries(records).forEach(([idKey, val]) => {
+      const matchedProd = (products || []).find(
+        (p) => String(p.id) === String(idKey) || String(p.outward_item_id) === String(idKey)
+      );
+      if (matchedProd?.product_id) {
+        formattedRecords[matchedProd.product_id] = val;
+      }
+    });
     saveReturn(
-      { outid: record.id, id: record.id, record: records },
+      { outid: record.id, id: record.id, record: formattedRecords },
       { onSuccess: () => onSuccess?.() }
     );
   };

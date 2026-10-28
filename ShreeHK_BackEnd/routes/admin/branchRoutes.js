@@ -11,7 +11,7 @@ const { attachCurrentYearToBranch } = require("../../services/branchYearService.
 const branchRouter = express.Router();
 branchRouter.use(express.json());
 
-const BRANCH_COLUMNS = ["name", "shortcutName", "address", "number", "city", "country", "status"];
+const BRANCH_COLUMNS = ["name", "shortcutName", "address", "number", "city", "country", "status", "color_code"];
 
 const ensureReady = async (_req, _res, next) => {
   try {
@@ -27,7 +27,7 @@ branchRouter.use(ensureReady);
 branchRouter.get("/admin/branch/options", authenticateToken, isSuperAdmin, async (req, res) => {
   try {
     const rows = await metaQuery(
-      "SELECT id, name, shortcutName FROM branch WHERE status = 1 ORDER BY name ASC"
+      "SELECT id, name, shortcutName, color_code FROM branch WHERE status = 1 ORDER BY name ASC"
     );
     res.json({ status: true, Data: rows });
   } catch (err) {
@@ -47,7 +47,7 @@ branchRouter.get("/admin/branch", authenticateToken, isSuperAdmin, async (req, r
 
     const { searchInput = "", activeOnly } = req.query;
     let sql = `
-      SELECT b.id, b.name, b.shortcutName, b.address, b.number, b.city, b.country, b.status, b.created_at,
+      SELECT b.id, b.name, b.shortcutName, b.address, b.number, b.city, b.country, b.status, b.color_code, b.created_at,
         (SELECT COUNT(*) FROM company c WHERE c.branch_id = b.id) AS company_count,
         (SELECT GROUP_CONCAT(c.name ORDER BY c.id SEPARATOR '||')
            FROM company c WHERE c.branch_id = b.id) AS company_names
@@ -121,6 +121,15 @@ branchRouter.post("/admin/branch/save", authenticateToken, isSuperAdmin, async (
       post.status = 1;
     } else {
       post.status = Number(post.status) ? 1 : 0;
+    }
+
+    if (post.color_code && typeof post.color_code === "string") {
+      const trimmed = post.color_code.trim();
+      if (/^[0-9A-Fa-f]{3,8}$/.test(trimmed)) {
+        post.color_code = `#${trimmed}`;
+      } else {
+        post.color_code = trimmed || null;
+      }
     }
 
     const meta = connection.getMetaPool();

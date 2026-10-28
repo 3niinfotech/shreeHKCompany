@@ -96,6 +96,12 @@ const mapInventoryProductRow = (item, index, offset = 1, baseIndex = 0) => ({
   company: item.company != null ? Number(item.company) : undefined,
   companyCode: item.company_code || item.companyCode || "",
   companyName: item.company_name || item.companyName || "",
+  companyAddress: item.company_address || item.companyAddress || "",
+  companyNumber: item.company_number || item.companyNumber || "",
+  companyEmail: item.company_email || item.companyEmail || "",
+  companyWebsite: item.company_website || item.companyWebsite || "",
+  companyRapnetId: item.company_rapnet_id || item.companyRapnetId || "",
+  companySkype: item.company_skype || item.companySkype || "",
   groupType: item.group_type, sku: item.sku, lab: item.lab,
   outward: item.outward ?? "",
   hold: item.hold === 1 || item.hold === true || item.hold === "1",
@@ -750,7 +756,7 @@ const DiamondInventoryTable = () => {
     ENDPOINTS.product.inventory,
     inventoryQueryParams,
     'GET',
-    { placeholderData: (prev) => prev, refetchOnMount: 'always' }
+    { placeholderData: (prev) => prev, staleTime: 60 * 1000 }
   );
 
   const handlePageLimitChange = useCallback((value) => {
@@ -1108,6 +1114,11 @@ const DiamondInventoryTable = () => {
       map.set(Number(opt.value), {
         code: opt.code || "",
         name: opt.name || String(opt.label || "").replace(/\s*\([^)]*\)\s*$/, ""),
+        address: opt.address || "",
+        number: opt.number || "",
+        email: opt.email || "",
+        website: opt.website || "",
+        rapnetId: opt.rapnetId || "",
       });
     }
     return map;
@@ -1119,11 +1130,16 @@ const DiamondInventoryTable = () => {
     if (!Array.isArray(rows) || rows.length === 0) return null;
     return rows.map((item, index) => {
       const mapped = mapInventoryProductRow(item, index, 1, 0);
-      if ((!mapped.companyName || !mapped.companyCode) && mapped.company) {
+      if (mapped.company) {
         const meta = companyMetaById.get(Number(mapped.company));
         if (meta) {
           mapped.companyCode = mapped.companyCode || meta.code || "";
           mapped.companyName = mapped.companyName || meta.name || "";
+          mapped.companyAddress = mapped.companyAddress || meta.address || "";
+          mapped.companyNumber = mapped.companyNumber || meta.number || "";
+          mapped.companyEmail = mapped.companyEmail || meta.email || "";
+          mapped.companyWebsite = mapped.companyWebsite || meta.website || "";
+          mapped.companyRapnetId = mapped.companyRapnetId || meta.rapnetId || "";
         }
       }
       return mapped;
@@ -1196,12 +1212,13 @@ const DiamondInventoryTable = () => {
       ellipsis: true,
       fixed: "left",
       filters: [
+        { text: "Single", value: "single" },
         { text: "Box", value: "box" },
         { text: "Parcel", value: "parcel" },
-        { text: "Single", value: "single" },
       ],
+      filterSearch: true,
       onFilter: (value, record) =>
-        String(record.groupType || "").toLowerCase() === String(value).toLowerCase(),
+        String(record.groupType || "").trim().toLowerCase() === String(value).trim().toLowerCase(),
       render: (text) =>
         text == null || text === ""
           ? "-"
@@ -1214,14 +1231,19 @@ const DiamondInventoryTable = () => {
     {
       title: "Lab", key: "lab", dataIndex: "lab", width: 58, align: "center",
       filters: [
-        { text: 'GIA', value: 'gia' }, { text: 'IGI', value: 'IGI' },
-        { text: 'CGL', value: 'CGL' }, { text: 'AGT', value: 'AGT' },
+        { text: 'GIA', value: 'GIA' },
+        { text: 'IGI', value: 'IGI' },
+        { text: 'HRD', value: 'HRD' },
+        { text: 'CGL', value: 'CGL' },
+        { text: 'AGT', value: 'AGT' },
       ],
-      onFilter: (value, record) => record.lab === value,
+      filterSearch: true,
+      onFilter: (value, record) =>
+        String(record.lab || "").trim().toLowerCase() === String(value).trim().toLowerCase(),
       render: (lab) => {
         if (!lab || !String(lab).trim()) return "-";
-        const colorMap = { GIA: "blue", gia: "blue", IGI: "green", CGL: "orange", AGT: "purple" };
-        return <Tag color={colorMap[lab] || "default"} className="inventory-lab-tag">{lab}</Tag>;
+        const colorMap = { GIA: "blue", gia: "blue", IGI: "green", igi: "green", HRD: "gold", hrd: "gold", CGL: "orange", AGT: "purple" };
+        return <Tag color={colorMap[String(lab).trim()] || "default"} className="inventory-lab-tag">{lab}</Tag>;
       }
     },
     {
@@ -1235,14 +1257,21 @@ const DiamondInventoryTable = () => {
     {
       title: "Shape", key: "shape", dataIndex: "shape", width: 84, ellipsis: true, align: "center",
       filters: [
-        { text: 'Round', value: 'Round' }, { text: 'Cushion', value: 'Cushion' },
-        { text: 'Oval', value: 'Oval' }, { text: 'Heart', value: 'Heart' },
-        { text: 'Marquise', value: 'Marquise' }, { text: 'Emerald', value: 'Emerald' },
-        { text: 'Radiant', value: 'Radiant' }, { text: 'Pear', value: 'Pear' },
-        { text: 'Rose', value: 'Rose' }, { text: 'Princess', value: 'Princess' },
+        { text: 'Round', value: 'Round' },
+        { text: 'Cushion', value: 'Cushion' },
+        { text: 'Oval', value: 'Oval' },
+        { text: 'Heart', value: 'Heart' },
+        { text: 'Marquise', value: 'Marquise' },
+        { text: 'Emerald', value: 'Emerald' },
+        { text: 'Radiant', value: 'Radiant' },
+        { text: 'Pear', value: 'Pear' },
+        { text: 'Rose', value: 'Rose' },
+        { text: 'Princess', value: 'Princess' },
         { text: 'Other', value: 'Other' },
       ],
-      onFilter: (value, record) => record.shape === value,
+      filterSearch: true,
+      onFilter: (value, record) =>
+        String(record.shape || "").trim().toLowerCase() === String(value).trim().toLowerCase(),
     },
     { title: "PCS", key: "polishPcs", dataIndex: "polishPcs", width: 84, ellipsis: true, align: "center" },
     {
@@ -1267,14 +1296,25 @@ const DiamondInventoryTable = () => {
     {
       title: "Clarity", key: "clarity", dataIndex: "clarity", width: 92, ellipsis: true, align: "center",
       filters: [
-        { text: 'FL', value: 'FL' }, { text: 'IF', value: 'IF' },
-        { text: 'VVS1', value: 'VVS1' }, { text: 'VVS2', value: 'VVS2' },
-        { text: 'VS1', value: 'VS1' }, { text: 'VS2', value: 'VS2' },
-        { text: 'SI1', value: 'SI1' }, { text: 'SI2', value: 'SI2' },
-        { text: 'SI3', value: 'SI3' }, { text: 'I1', value: 'I1' },
-        { text: 'I2', value: 'I2' }, { text: 'I3', value: 'I3' },
+        { text: 'FL', value: 'FL' },
+        { text: 'IF', value: 'IF' },
+        { text: 'VVS1', value: 'VVS1' },
+        { text: 'VVS2', value: 'VVS2' },
+        { text: 'VVS', value: 'VVS' },
+        { text: 'VS1', value: 'VS1' },
+        { text: 'VS2', value: 'VS2' },
+        { text: 'VS', value: 'VS' },
+        { text: 'SI1', value: 'SI1' },
+        { text: 'SI2', value: 'SI2' },
+        { text: 'SI3', value: 'SI3' },
+        { text: 'SI', value: 'SI' },
+        { text: 'I1', value: 'I1' },
+        { text: 'I2', value: 'I2' },
+        { text: 'I3', value: 'I3' },
       ],
-      onFilter: (value, record) => record.clarity === value,
+      filterSearch: true,
+      onFilter: (value, record) =>
+        String(record.clarity || "").trim().toLowerCase() === String(value).trim().toLowerCase(),
     },
     {
       title: "Rap",
@@ -1331,10 +1371,63 @@ const DiamondInventoryTable = () => {
       sorter: (a, b) => (Number(a.amount) || 0) - (Number(b.amount) || 0),
     },
     { title: "Size", key: "size", dataIndex: "size", width: 68, ellipsis: true, align: "center" },
-    { title: "Flourescence", key: "fluorescence", dataIndex: "fluorescence", width: 68, ellipsis: true, align: "center" },
-    { title: "Cut", key: "cut", dataIndex: "cut", width: 56, ellipsis: true, align: "center" },
-    { title: "Polish", key: "polish", dataIndex: "polish", width: 52, ellipsis: true, align: "center" },
-    { title: "Symm", key: "symmetry", dataIndex: "symmetry", width: 52, ellipsis: true, align: "center" },
+    {
+      title: "Flourescence", key: "fluorescence", dataIndex: "fluorescence", width: 68, ellipsis: true, align: "center",
+      filters: [
+        { text: 'NON', value: 'NON' },
+        { text: 'FNT', value: 'FNT' },
+        { text: 'MED', value: 'MED' },
+        { text: 'STG', value: 'STG' },
+        { text: 'VST', value: 'VST' },
+      ],
+      filterSearch: true,
+      onFilter: (value, record) => {
+        const val = String(value).trim().toLowerCase();
+        const f = String(record.fluorescence || "").trim().toLowerCase();
+        if (val === 'non') return f === 'non' || f === 'none';
+        if (val === 'fnt') return f === 'fnt' || f === 'faint';
+        if (val === 'med') return f === 'med' || f === 'medium';
+        if (val === 'stg') return f === 'stg' || f === 'strong';
+        if (val === 'vst') return f === 'vst' || f === 'very strong';
+        return f === val;
+      },
+    },
+    {
+      title: "Cut", key: "cut", dataIndex: "cut", width: 56, ellipsis: true, align: "center",
+      filters: [
+        { text: 'EX', value: 'EX' },
+        { text: 'VG', value: 'VG' },
+        { text: 'GD', value: 'GD' },
+        { text: 'FR', value: 'FR' },
+      ],
+      filterSearch: true,
+      onFilter: (value, record) =>
+        String(record.cut || "").trim().toLowerCase() === String(value).trim().toLowerCase(),
+    },
+    {
+      title: "Polish", key: "polish", dataIndex: "polish", width: 52, ellipsis: true, align: "center",
+      filters: [
+        { text: 'EX', value: 'EX' },
+        { text: 'VG', value: 'VG' },
+        { text: 'GD', value: 'GD' },
+        { text: 'FR', value: 'FR' },
+      ],
+      filterSearch: true,
+      onFilter: (value, record) =>
+        String(record.polish || "").trim().toLowerCase() === String(value).trim().toLowerCase(),
+    },
+    {
+      title: "Symm", key: "symmetry", dataIndex: "symmetry", width: 52, ellipsis: true, align: "center",
+      filters: [
+        { text: 'EX', value: 'EX' },
+        { text: 'VG', value: 'VG' },
+        { text: 'GD', value: 'GD' },
+        { text: 'FR', value: 'FR' },
+      ],
+      filterSearch: true,
+      onFilter: (value, record) =>
+        String(record.symmetry || "").trim().toLowerCase() === String(value).trim().toLowerCase(),
+    },
     { title: "Table%", key: "table", dataIndex: "table", width: 68, align: "center", sorter: (a, b) => (Number(a.table) || 0) - (Number(b.table) || 0) },
     { title: "Depth%", key: "depth", dataIndex: "depth", width: 68, align: "center", sorter: (a, b) => (Number(a.depth) || 0) - (Number(b.depth) || 0) },
     { title: "Measurmnt", key: "measurement", dataIndex: "measurement", width: 112, ellipsis: true, align: "center" },
@@ -1344,49 +1437,112 @@ const DiamondInventoryTable = () => {
     {
       title: "Intensity", key: "intensity", dataIndex: "intensity", width: 98, ellipsis: true, align: "center",
       filters: [
-        { text: 'Faint', value: 'Faint' }, { text: 'Very Light', value: 'Very Light' },
-        { text: 'Light', value: 'Light' }, { text: 'Fancy Light', value: 'Fancy Light' },
-        { text: 'Fancy', value: 'Fancy' }, { text: 'Fancy Intense', value: 'Fancy Intense' },
-        { text: 'Fancy Vivid', value: 'Fancy Vivid' }, { text: 'Fancy Deep', value: 'Fancy Deep' },
+        { text: 'Faint', value: 'Faint' },
+        { text: 'Very Light', value: 'Very Light' },
+        { text: 'Light', value: 'Light' },
+        { text: 'Fancy Light', value: 'Fancy Light' },
+        { text: 'Fancy', value: 'Fancy' },
+        { text: 'Fancy Intense', value: 'Fancy Intense' },
+        { text: 'Fancy Vivid', value: 'Fancy Vivid' },
+        { text: 'Fancy Deep', value: 'Fancy Deep' },
         { text: 'Fancy Dark', value: 'Fancy Dark' },
+        { text: 'None', value: 'None' },
       ],
-      onFilter: (value, record) => record.intensity === value,
+      filterSearch: true,
+      onFilter: (value, record) =>
+        String(record.intensity || "").trim().toLowerCase() === String(value).trim().toLowerCase(),
     },
     {
       title: "Overtone", key: "overTone", dataIndex: "overTone", width: 90, ellipsis: true, align: "center",
       filters: [
-        { text: 'Bluish', value: 'Bluish' }, { text: 'Brownish', value: 'Brownish' },
-        { text: 'Grayish', value: 'Grayish' }, { text: 'Greenish', value: 'Greenish' },
-        { text: 'None', value: 'None' }, { text: 'Orangey', value: 'Orangey' },
-        { text: 'Pinkish', value: 'Pinkish' }, { text: 'Purplish', value: 'Purplish' },
-        { text: 'Reddish', value: 'Reddish' }, { text: 'Yellowish', value: 'Yellowish' },
+        { text: 'Bluish', value: 'Bluish' },
+        { text: 'Brownish', value: 'Brownish' },
+        { text: 'Grayish', value: 'Grayish' },
+        { text: 'Greenish', value: 'Greenish' },
+        { text: 'None', value: 'None' },
+        { text: 'Orangey', value: 'Orangey' },
+        { text: 'Pinkish', value: 'Pinkish' },
+        { text: 'Purplish', value: 'Purplish' },
+        { text: 'Reddish', value: 'Reddish' },
+        { text: 'Yellowish', value: 'Yellowish' },
       ],
-      onFilter: (value, record) => record.overTone === value,
+      filterSearch: true,
+      onFilter: (value, record) =>
+        String(record.overTone || "").trim().toLowerCase() === String(value).trim().toLowerCase(),
     },
-    { title: "Color", key: "color", dataIndex: "color", width: 90, ellipsis: true, align: "center" },
-    { title: "Location", key: "location", dataIndex: "location", width: 112, ellipsis: true, render: renderLocationWithFlag, align: "center" },
+    {
+      title: "Color", key: "color", dataIndex: "color", width: 90, ellipsis: true, align: "center",
+      filters: [
+        { text: 'D', value: 'D' }, { text: 'E', value: 'E' },
+        { text: 'F', value: 'F' }, { text: 'G', value: 'G' },
+        { text: 'H', value: 'H' }, { text: 'I', value: 'I' },
+        { text: 'J', value: 'J' }, { text: 'K', value: 'K' },
+        { text: 'L', value: 'L' }, { text: 'M', value: 'M' },
+        { text: 'White', value: 'White' },
+        { text: 'Yellow', value: 'Yellow' },
+        { text: 'Pink', value: 'Pink' },
+        { text: 'Blue', value: 'Blue' },
+        { text: 'Brown', value: 'Brown' },
+        { text: 'Orange', value: 'Orange' },
+        { text: 'Green', value: 'Green' },
+      ],
+      filterSearch: true,
+      onFilter: (value, record) =>
+        String(record.color || "").trim().toLowerCase() === String(value).trim().toLowerCase(),
+    },
+    {
+      title: "Location", key: "location", dataIndex: "location", width: 112, ellipsis: true, render: renderLocationWithFlag, align: "center",
+      filters: [
+        { text: 'HK', value: 'HK' },
+        { text: 'NY', value: 'NY' },
+        { text: 'Mumbai', value: 'Mumbai' },
+        { text: 'Antwerp', value: 'Antwerp' },
+      ],
+      filterSearch: true,
+      onFilter: (value, record) => {
+        const val = String(value).trim().toLowerCase();
+        const loc = String(record.location || "").trim().toLowerCase();
+        if (val === 'hk') return loc === 'hk' || loc.includes('hong kong');
+        if (val === 'ny') return loc === 'ny' || loc.includes('new york');
+        if (val === 'mumbai') return loc.includes('mumbai') || loc.includes('india');
+        if (val === 'antwerp') return loc.includes('antwerp');
+        return loc === val;
+      },
+    },
     {
       title: "Package", key: "package", dataIndex: "package", width: 88, ellipsis: true, align: "center",
       filters: [
-        { text: 'SB', value: 'SB' }, { text: 'BAGS', value: 'BAGS' },
-        { text: 'JEWEL', value: 'JEWEL' }, { text: 'BIG SB', value: 'BIG SB' },
-        { text: 'BRC', value: 'BRC' }, { text: 'SMALL BRC', value: 'SMALL BRC' },
-        { text: 'BOX', value: 'BOX' }, { text: 'BAGS S BOX', value: 'BAGS S BOX' },
+        { text: 'SB', value: 'SB' },
+        { text: 'BAGS', value: 'BAGS' },
+        { text: 'JEWEL', value: 'JEWEL' },
+        { text: 'BIG SB', value: 'BIG SB' },
+        { text: 'BRC', value: 'BRC' },
+        { text: 'SMALL BRC', value: 'SMALL BRC' },
+        { text: 'BOX', value: 'BOX' },
+        { text: 'BAGS S BOX', value: 'BAGS S BOX' },
       ],
-      onFilter: (value, record) => record.package === value,
+      filterSearch: true,
+      onFilter: (value, record) =>
+        String(record.package || "").trim().toLowerCase() === String(value).trim().toLowerCase(),
     },
     { title: "BGM", key: "bgm", dataIndex: "bgm", width: 56, ellipsis: true, align: "center" },
     { title: "Eye Clean", key: "eyeClean", dataIndex: "eyeClean", width: 86, ellipsis: true, align: "center" },
     {
       title: "Main Group", key: "group", dataIndex: "group", width: 114, ellipsis: true, align: "center",
       filters: [
-        { text: 'A+', value: 'A+' }, { text: 'BA', value: 'BA' },
-        { text: 'YELLOW', value: 'YELLOW' }, { text: 'PINK', value: 'PINK' },
-        { text: 'LC', value: 'LC' }, { text: 'DC', value: 'DC' },
-        { text: 'B-E', value: 'B-E' }, { text: 'ROUGH DIA.', value: 'ROUGH DIA.' },
+        { text: 'A+', value: 'A+' },
+        { text: 'BA', value: 'BA' },
+        { text: 'YELLOW', value: 'YELLOW' },
+        { text: 'PINK', value: 'PINK' },
+        { text: 'LC', value: 'LC' },
+        { text: 'DC', value: 'DC' },
+        { text: 'B-E', value: 'B-E' },
+        { text: 'ROUGH DIA.', value: 'ROUGH DIA.' },
         { text: 'GH', value: 'GH' },
       ],
-      onFilter: (value, record) => record.group === value,
+      filterSearch: true,
+      onFilter: (value, record) =>
+        String(record.group || "").trim().toLowerCase() === String(value).trim().toLowerCase(),
     },
     { title: "Sub Group", key: "subGroup", dataIndex: "subGroup", width: 96, ellipsis: true, align: "center" },
     {
@@ -1413,7 +1569,7 @@ const DiamondInventoryTable = () => {
     export: "export",
   };
 
-  const openBulkActionModal = (key) => {
+  const openBulkActionModal = async (key) => {
     const mapped = ACTION_KEY_MAP[key] || key;
     if (mapped === "reset" || key === "reset") {
       setSelectedRowKeys([]);
@@ -1448,11 +1604,17 @@ const DiamondInventoryTable = () => {
         toastWarning("Please select at least one diamond");
         return;
       }
-      const nonMemoRows = selectedRows.filter(
-        (row) => String(row?.outward || "").toLowerCase() !== "memo",
-      );
-      if (nonMemoRows.length) {
-        toastWarning("Sale is allowed only for memo diamonds");
+      const onHoldStones = selectedRows.filter((r) => r?.hold);
+      if (onHoldStones.length) {
+        toastWarning("One of the stones is on Hold. Please unhold first.");
+        return;
+      }
+      const blockedOutward = selectedRows.filter((r) => {
+        const o = String(r?.outward || "").toLowerCase().trim();
+        return o && o !== "memo" && o !== "consign";
+      });
+      if (blockedOutward.length) {
+        toastWarning("One of the stones is already dispatched or sent to Lab.");
         return;
       }
       pageModalsRef.current?.openStock("sell");
@@ -1463,11 +1625,27 @@ const DiamondInventoryTable = () => {
         toastWarning("Please select at least one diamond");
         return;
       }
-      const blocked = selectedRows.filter(
-        (row) => row?.hold || String(row?.outward || "").trim(),
-      );
-      if (blocked.length) {
-        toastWarning("One of the stones is on Memo/Hold. Please return/unhold those stones first.");
+      const onLabStones = selectedRows.filter((r) => String(r?.outward || "").toLowerCase() === "lab");
+      if (onLabStones.length) {
+        toastWarning("Selected stone is already sent to Lab.");
+        return;
+      }
+      const onMemoStones = selectedRows.filter((r) => {
+        const o = String(r?.outward || "").toLowerCase();
+        return o === "memo" || o === "consign" || Number(r?.memoCarat || 0) > 0;
+      });
+      if (onMemoStones.length) {
+        toastWarning("One of the stones is on Memo. Please return from memo first.");
+        return;
+      }
+      const onHoldStones = selectedRows.filter((r) => r?.hold);
+      if (onHoldStones.length) {
+        toastWarning("One of the stones is on Hold. Please unhold first.");
+        return;
+      }
+      const otherOutward = selectedRows.filter((r) => String(r?.outward || "").trim());
+      if (otherOutward.length) {
+        toastWarning("One of the stones is already dispatched or outwarded.");
         return;
       }
       pageModalsRef.current?.openStock("lab");
@@ -1546,7 +1724,12 @@ const DiamondInventoryTable = () => {
       }
       const selectedSet = new Set(selectedRowKeys.map(String));
       const exportRows = tableData.filter((row) => selectedSet.has(String(row.id)));
-      submitExport(selectedRowKeys, { sheetName: "Export" }, exportRows);
+      setLocalExportLoading(true);
+      try {
+        await exportVenyaInventoryExcel({ rows: exportRows, mode: "export", sheetName: "Export" });
+      } finally {
+        setLocalExportLoading(false);
+      }
       return;
     }
     if (key === "iExport" || mapped === "iExport") {
@@ -1556,7 +1739,12 @@ const DiamondInventoryTable = () => {
       }
       const selectedSet = new Set(selectedRowKeys.map(String));
       const exportRows = tableData.filter((row) => selectedSet.has(String(row.id)));
-      submitIExport(selectedRowKeys, { sheetName: "Export" }, exportRows);
+      setLocalIExportLoading(true);
+      try {
+        await exportVenyaInventoryExcel({ rows: exportRows, mode: "iExport", sheetName: "Export" });
+      } finally {
+        setLocalIExportLoading(false);
+      }
       return;
     }
     setBulkActionModal({ open: true, actionKey: mapped });

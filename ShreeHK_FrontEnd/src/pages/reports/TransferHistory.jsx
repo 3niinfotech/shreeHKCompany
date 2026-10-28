@@ -122,7 +122,7 @@ const TransferHistory = () => {
             /> */}
 
             <AdvancedFilterPanel
-                title="Filter Transfer History"
+                title="Transfer History"
                 // subtitle="Search by SKU and date range to load transfer records."
                 activeCount={activeCount}
                 onClear={handleClear}
