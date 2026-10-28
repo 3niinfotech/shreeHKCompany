@@ -34,6 +34,7 @@ import { toastSuccess, toastError, toastWarning } from "../../utils/toastNotify"
 import styles from "../../assets/scss/components/inventoryMixingModal.module.scss";
 
 const MODES = [
+  { label: "Box to Box", value: "box_to_box", icon: <ArrowRightLeft size={14} /> },
   { label: "Add to Box", value: "to_box", icon: <Boxes size={14} /> },
   { label: "Add to Parcel", value: "to_parcel", icon: <Package size={14} /> },
   { label: "Parcel to Box", value: "parcel_to_box", icon: <ArrowRightLeft size={14} /> },
@@ -44,11 +45,12 @@ const MODES = [
 /**
  * Universal Stock Mixing & Packaging Modal
  * Handles exact core diamond business flows:
- * 1. Add to Box (Single -> Box: Add to Existing or Create New Box)
- * 2. Add to Parcel (Single -> Parcel: Add to Existing or Create New Parcel)
- * 3. Parcel to Box (Parcel -> Box: Transfer selected stones or carats into Existing/New Box)
- * 4. Box to Single (Box -> Single: Assign/Unbox stones or separate carats back to Single stock)
- * 5. Parcel to Single (Parcel -> Single: Assign/Unbox stones or separate carats back to Single stock)
+ * 1. Box to Box (Box -> Box: Transfer selected stones or custom pcs & carat into Existing/New Box)
+ * 2. Add to Box (Single -> Box: Add to Existing or Create New Box)
+ * 3. Add to Parcel (Single -> Parcel: Add to Existing or Create New Parcel)
+ * 4. Parcel to Box (Parcel -> Box: Transfer selected stones or carats into Existing/New Box)
+ * 5. Box to Single (Box -> Single: Assign/Unbox stones or separate carats back to Single stock)
+ * 6. Parcel to Single (Parcel -> Single: Assign/Unbox stones or separate carats back to Single stock)
  */
 const InventoryMixingModal = ({
   open,
@@ -59,17 +61,30 @@ const InventoryMixingModal = ({
   const queryClient = useQueryClient();
   const [submitting, setSubmitting] = useState(false);
 
-  // Identify any container row selected in the inventory table
-  const selectedBoxRow = useMemo(
-    () => selectedRows.find((r) => r.groupType && r.groupType.toLowerCase() === "box"),
+  // Helper to reliably read groupType
+  const getRowGroupType = (r) => (r?.groupType || r?.group_type || "").toLowerCase().trim();
+
+  // Identify any container rows selected in the inventory table
+  const selectedBoxRows = useMemo(
+    () => selectedRows.filter((r) => getRowGroupType(r) === "box"),
     [selectedRows]
   );
+  const selectedBoxRow = useMemo(
+    () => selectedBoxRows[0] || null,
+    [selectedBoxRows]
+  );
   const selectedParcelRow = useMemo(
-    () => selectedRows.find((r) => r.groupType && r.groupType.toLowerCase() === "parcel"),
+    () => selectedRows.find((r) => getRowGroupType(r) === "parcel"),
     [selectedRows]
   );
   const singleRows = useMemo(
-    () => selectedRows.filter((r) => !r.groupType || r.groupType.toLowerCase() === "single"),
+    () =>
+      selectedRows.filter(
+        (r) => {
+          const gt = getRowGroupType(r);
+          return !gt || gt === "single" || gt === "parcel";
+        }
+      ),
     [selectedRows]
   );
 
@@ -84,23 +99,54 @@ const InventoryMixingModal = ({
         setSourceContainerId(selectedParcelRow.id);
         setTransferTargetBoxId(selectedBoxRow.id);
         setDestMode("existing");
-      } else if (selectedBoxRow) {
-        setActiveMode("box_to_single");
-        setSourceContainerId(selectedBoxRow.id);
-      } else if (selectedParcelRow) {
+      } else if (selectedBoxRows.length >= 2) {
+        setActiveMode("box_to_box");
+        setSourceContainerId(selectedBoxRows[0].id);
+        setTransferTargetBoxId(selectedBoxRows[1].id);
+        setDestMode("existing");
+      } else if (selectedBoxRows.length === 1 && singleRows.length === 0) {
+        // Single box selected in inventory table -> default to Box to Box with that Box pre-selected
+        setActiveMode("box_to_box");
+        setSourceContainerId(selectedBoxRows[0].id);
+        setTargetContainerId(selectedBoxRows[0].id);
+        setTransferTargetBoxId(undefined);
+        setDestMode("existing");
+      } else if (selectedBoxRow && singleRows.length > 0) {
+        // Singles + Box selected -> Add to Box with that Box pre-selected as destination
+        setActiveMode("to_box");
+        setTargetContainerId(selectedBoxRow.id);
+        setDestMode("existing");
+      } else if (selectedParcelRow && selectedRows.length === 1) {
         setActiveMode("parcel_to_single");
         setSourceContainerId(selectedParcelRow.id);
       } else {
         setActiveMode("to_box");
         setSourceContainerId(undefined);
+        if (selectedBoxRow) {
+          setTargetContainerId(selectedBoxRow.id);
+          setDestMode("existing");
+        } else {
+          setTargetContainerId(undefined);
+        }
       }
     }
-  }, [open, selectedBoxRow, selectedParcelRow]);
+  }, [open, selectedBoxRow, selectedBoxRows, selectedParcelRow, selectedRows.length, singleRows.length]);
 
-  // Mode change handler
+  // Mode change handler - preserves and defaults selected box
   const handleModeChange = (mode) => {
     setActiveMode(mode);
-    if (mode === "box_to_single") {
+    if (mode === "box_to_box") {
+      setSourceContainerId(selectedBoxRows[0]?.id || selectedBoxRow?.id || undefined);
+      if (selectedBoxRows.length >= 2) {
+        setTransferTargetBoxId(selectedBoxRows[1]?.id || undefined);
+      }
+      setDestMode("existing");
+    } else if (mode === "to_box") {
+      if (selectedBoxRow) {
+        setTargetContainerId(selectedBoxRow.id);
+        setDestMode("existing");
+      }
+    } else if (mode === "box_to_single") {
       setSourceContainerId(selectedBoxRow?.id || undefined);
     } else if (mode === "parcel_to_single") {
       setSourceContainerId(selectedParcelRow?.id || undefined);
@@ -117,15 +163,16 @@ const InventoryMixingModal = ({
   const [newSku, setNewSku] = useState("");
   const [newRemark, setNewRemark] = useState("");
 
-  // Destination Box for Parcel -> Box transfer (kept separate to avoid picking a Parcel ID)
+  // Destination Box for Box -> Box and Parcel -> Box transfer
   const [transferTargetBoxId, setTransferTargetBoxId] = useState(undefined);
 
-  // Child stones inside container (for box_to_single, parcel_to_single and parcel_to_box)
+  // Child stones inside container (for box_to_box, box_to_single, parcel_to_single and parcel_to_box)
   const [childStones, setChildStones] = useState([]);
   const [selectedChildKeys, setSelectedChildKeys] = useState([]);
   const [loadingChildren, setLoadingChildren] = useState(false);
+  const [singleMethod, setSingleMethod] = useState("stones"); // "stones" | "custom"
 
-  // State for bulk lot separation into single stone (when childStones is empty)
+  // State for bulk lot separation into single stone or box-to-box transfer
   const [sepCarat, setSepCarat] = useState(1);
   const [sepPcs, setSepPcs] = useState(1);
   const [sepSku, setSepSku] = useState("");
@@ -159,6 +206,11 @@ const InventoryMixingModal = ({
     }));
   }, [boxListData]);
 
+  // Filter box options for target box in box-to-box mode so user cannot select source box as target
+  const targetBoxOptionsForBoxToBox = useMemo(() => {
+    return boxOptions.filter((b) => Number(b.value) !== Number(sourceContainerId));
+  }, [boxOptions, sourceContainerId]);
+
   const parcelOptions = useMemo(() => {
     const rows = parcelListData?.Data || [];
     return rows.map((p) => ({
@@ -171,7 +223,7 @@ const InventoryMixingModal = ({
   // Current selected source container details
   const currentContainer = useMemo(() => {
     if (!sourceContainerId) return null;
-    const isBox = activeMode === "box_to_single";
+    const isBox = activeMode === "box_to_single" || activeMode === "box_to_box";
     const list = isBox ? (boxListData?.Data || []) : (parcelListData?.Data || []);
     const found = list.find((item) => Number(item.id) === Number(sourceContainerId));
     if (found) return found;
@@ -231,7 +283,8 @@ const InventoryMixingModal = ({
       open &&
       (activeMode === "box_to_single" ||
         activeMode === "parcel_to_single" ||
-        activeMode === "parcel_to_box")
+        activeMode === "parcel_to_box" ||
+        activeMode === "box_to_box")
     ) {
       if (sourceContainerId) {
         loadContainerChildren(sourceContainerId);
@@ -265,6 +318,88 @@ const InventoryMixingModal = ({
   const handleConfirm = async () => {
     setSubmitting(true);
     try {
+      // Box -> Box transfer
+      if (activeMode === "box_to_box") {
+        if (!sourceContainerId) {
+          toastWarning("Please select a source Box");
+          setSubmitting(false);
+          return;
+        }
+        if (destMode === "existing" && !transferTargetBoxId) {
+          toastWarning("Please select a target Box");
+          setSubmitting(false);
+          return;
+        }
+        if (destMode === "existing" && Number(sourceContainerId) === Number(transferTargetBoxId)) {
+          toastWarning("Source Box and Target Box cannot be the same");
+          setSubmitting(false);
+          return;
+        }
+
+        const basePayload = {
+          sourceContainerId,
+          targetContainerId: destMode === "existing" ? transferTargetBoxId : undefined,
+          mode: destMode,
+          newContainerSku: destMode === "new" ? newSku : undefined,
+          newContainerType: "box",
+        };
+
+        if (childStones.length > 0) {
+          if (!selectedChildKeys.length) {
+            toastWarning("Please select at least one stone to transfer to the target Box");
+            setSubmitting(false);
+            return;
+          }
+          const res = await postMixingTransfer({
+            ...basePayload,
+            stoneIds: selectedChildKeys,
+          });
+          if (res?.ok) {
+            toastSuccess(res.message || "Box stones transferred to target Box successfully");
+            finishSuccess();
+          } else {
+            toastError(res?.message || "Failed to transfer Box stones");
+          }
+        } else {
+          const numCarat = Number(sepCarat || 0);
+          if (numCarat <= 0) {
+            toastWarning("Please enter a valid carat weight greater than 0");
+            setSubmitting(false);
+            return;
+          }
+          const maxCarat = Number(
+            currentContainer?.polish_carat ?? currentContainer?.polishCarat ?? currentContainer?.carat ?? 0
+          );
+          if (numCarat > maxCarat + 0.001) {
+            toastWarning(`Cannot transfer ${numCarat} ct: Exceeds available Box carat (${maxCarat} ct)`);
+            setSubmitting(false);
+            return;
+          }
+          const numPcs = Number(sepPcs || 1);
+          const maxPcs = Number(
+            currentContainer?.polish_pcs ?? currentContainer?.polishPcs ?? currentContainer?.pcs ?? 0
+          );
+          if (maxPcs > 0 && numPcs > maxPcs) {
+            toastWarning(`Cannot transfer ${numPcs} pcs: Exceeds available Box pcs (${maxPcs} pcs)`);
+            setSubmitting(false);
+            return;
+          }
+
+          const res = await postMixingTransfer({
+            ...basePayload,
+            carat: numCarat,
+            pcs: numPcs,
+          });
+          if (res?.ok) {
+            toastSuccess(res.message || "Box stock transferred to target Box successfully");
+            finishSuccess();
+          } else {
+            toastError(res?.message || "Failed to transfer Box stock");
+          }
+        }
+        return;
+      }
+
       // Parcel -> Box transfer
       if (activeMode === "parcel_to_box") {
         if (!sourceContainerId) {
@@ -335,7 +470,7 @@ const InventoryMixingModal = ({
       // 1 & 2: Add to Box / Add to Parcel
       if (activeMode === "to_box" || activeMode === "to_parcel") {
         if (!singleRows.length) {
-          toastWarning("Please select at least one single diamond from the table");
+          toastWarning("Please select at least one diamond or parcel from the table");
           setSubmitting(false);
           return;
         }
@@ -387,7 +522,9 @@ const InventoryMixingModal = ({
           return;
         }
 
-        if (childStones.length > 0) {
+        const isUnboxStones = childStones.length > 0 && singleMethod === "stones";
+
+        if (isUnboxStones) {
           // Unbox pre-existing child stones
           if (!selectedChildKeys.length) {
             toastWarning("Please select at least one stone to assign to Single stock");
@@ -486,6 +623,11 @@ const InventoryMixingModal = ({
   ];
 
   const submitButtonLabel = useMemo(() => {
+    if (activeMode === "box_to_box") {
+      return childStones.length > 0
+        ? `Transfer ${selectedChildKeys.length} Stone(s) to Target Box`
+        : "Transfer to Target Box";
+    }
     if (activeMode === "to_box") return "Mix into Box";
     if (activeMode === "to_parcel") return "Mix into Parcel";
     if (activeMode === "parcel_to_box") {
@@ -494,17 +636,17 @@ const InventoryMixingModal = ({
         : "Transfer Carat to Box";
     }
     const label = activeMode === "box_to_single" ? "Box" : "Parcel";
-    if (childStones.length > 0) {
+    if (childStones.length > 0 && singleMethod === "stones") {
       return `Assign ${selectedChildKeys.length} Stone(s) to Single`;
     }
     return `Assign Single Stone from ${label}`;
-  }, [activeMode, childStones.length, selectedChildKeys.length]);
+  }, [activeMode, childStones.length, selectedChildKeys.length, singleMethod]);
 
   return (
     <Modal
       open={open}
       onCancel={onClose}
-      width={780}
+      width={820}
       title={
         <span>
           <Boxes size={18} style={{ verticalAlign: "middle", marginRight: 8, color: "#1e3a8a" }} />
@@ -518,7 +660,7 @@ const InventoryMixingModal = ({
       mask={{ closable: false }}
       className={styles.mixingModal}
     >
-      {/* Operation Segmented Modes — ALL 5 MODES ARE ALWAYS VISIBLE */}
+      {/* Operation Segmented Modes — ALL MODES ARE ALWAYS VISIBLE */}
       <div className={styles.modeTabs}>
         <Segmented
           options={MODES}
@@ -560,6 +702,174 @@ const InventoryMixingModal = ({
 
       {/* Form Content Area */}
       <div className={styles.formSection}>
+        {/* MODE: BOX TO BOX (Transfer / Mix from Box into Box) */}
+        {activeMode === "box_to_box" && (
+          <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 6 }}>
+                Select Source Box:
+              </div>
+              <Select
+                placeholder="Search & select Source Box SKU to transfer from..."
+                style={{ width: "100%" }}
+                showSearch
+                optionFilterProp="label"
+                value={sourceContainerId}
+                onChange={setSourceContainerId}
+                options={boxOptions}
+              />
+            </div>
+
+            {currentContainer && (
+              <div className={styles.containerBanner}>
+                <div className={styles.bannerMain}>
+                  <span>Source Box:</span>
+                  <Tag color="blue" style={{ fontSize: 13, fontWeight: 700 }}>
+                    {currentContainer.sku}
+                  </Tag>
+                </div>
+                <div className={styles.bannerStats}>
+                  <span>
+                    Available:{" "}
+                    <strong>
+                      {Number(currentContainer.polish_carat ?? currentContainer.polishCarat ?? currentContainer.carat ?? 0).toFixed(2)} ct
+                    </strong>
+                  </span>
+                  <span>
+                    Pcs:{" "}
+                    <strong>
+                      {currentContainer.polish_pcs ?? currentContainer.polishPcs ?? currentContainer.pcs ?? 1}
+                    </strong>
+                  </span>
+                  <span>
+                    Rate: <strong>${Number(currentContainer.price || 0).toLocaleString()}</strong>
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {sourceContainerId && (
+              <>
+                {loadingChildren ? (
+                  <div style={{ textAlign: "center", padding: "30px 0" }}>
+                    <Spin tip="Loading stones inside Source Box..." />
+                  </div>
+                ) : childStones.length > 0 ? (
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "6px 0" }}>
+                      <span style={{ fontSize: 13, fontWeight: 600 }}>Stones inside Source Box:</span>
+                      <span style={{ fontSize: 12, color: "#64748b" }}>
+                        Selected to Transfer: <b>{selectedChildKeys.length}</b> of {childStones.length} stones
+                      </span>
+                    </div>
+                    <div className={styles.childTableWrap}>
+                      <Table
+                        dataSource={childStones}
+                        columns={childColumns}
+                        rowKey="id"
+                        size="small"
+                        pagination={false}
+                        rowSelection={{
+                          selectedRowKeys: selectedChildKeys,
+                          onChange: setSelectedChildKeys,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "#1e3a8a", marginBottom: 6 }}>
+                      Customize Transfer Quantity (Pcs & Carat):
+                    </div>
+                    <div className={styles.separateGrid}>
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
+                          Transfer Pcs: *
+                        </div>
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          min={1}
+                          max={Number(currentContainer?.polish_pcs ?? currentContainer?.polishPcs ?? currentContainer?.pcs ?? 99999)}
+                          value={sepPcs}
+                          onChange={setSepPcs}
+                          placeholder="e.g. 7"
+                        />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
+                          Transfer Carat Weight: *
+                        </div>
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          min={0.01}
+                          max={Number(currentContainer?.polish_carat ?? currentContainer?.polishCarat ?? 99999)}
+                          step={0.01}
+                          value={sepCarat}
+                          onChange={setSepCarat}
+                          placeholder="e.g. 12"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            <div>
+              <span style={{ fontWeight: 600, marginRight: 12 }}>Destination:</span>
+              <Radio.Group
+                value={destMode}
+                onChange={(e) => setDestMode(e.target.value)}
+                buttonStyle="solid"
+                size="small"
+              >
+                <Radio.Button value="existing">Transfer to Existing Box</Radio.Button>
+                <Radio.Button value="new">Create New Target Box</Radio.Button>
+              </Radio.Group>
+            </div>
+
+            {destMode === "existing" ? (
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 6 }}>
+                  Select Target Box:
+                </div>
+                <Select
+                  placeholder="Search & select Target Box SKU..."
+                  style={{ width: "100%" }}
+                  showSearch
+                  optionFilterProp="label"
+                  value={transferTargetBoxId}
+                  onChange={setTransferTargetBoxId}
+                  options={targetBoxOptionsForBoxToBox}
+                />
+              </div>
+            ) : (
+              <Space direction="vertical" style={{ width: "100%" }}>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
+                    New Box SKU:
+                  </div>
+                  <Input
+                    placeholder="Leave blank for auto-generated SKU"
+                    value={newSku}
+                    onChange={(e) => setNewSku(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
+                    Remark:
+                  </div>
+                  <Input
+                    placeholder="Optional remarks"
+                    value={newRemark}
+                    onChange={(e) => setNewRemark(e.target.value)}
+                  />
+                </div>
+              </Space>
+            )}
+          </Space>
+        )}
+
         {/* MODE: ADD TO BOX */}
         {activeMode === "to_box" && (
           <Space direction="vertical" size="middle" style={{ width: "100%" }}>
@@ -888,88 +1198,112 @@ const InventoryMixingModal = ({
                   <div style={{ textAlign: "center", padding: "30px 0" }}>
                     <Spin tip="Loading stones inside Box..." />
                   </div>
-                ) : childStones.length > 0 ? (
-                  <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "6px 0" }}>
-                      <span style={{ fontSize: 13, fontWeight: 600 }}>Stones inside this Box:</span>
-                      <span style={{ fontSize: 12, color: "#64748b" }}>
-                        Selected to Assign: <b>{selectedChildKeys.length}</b> of {childStones.length} stones
-                      </span>
-                    </div>
-                    <div className={styles.childTableWrap}>
-                      <Table
-                        dataSource={childStones}
-                        columns={childColumns}
-                        rowKey="id"
-                        size="small"
-                        pagination={false}
-                        rowSelection={{
-                          selectedRowKeys: selectedChildKeys,
-                          onChange: setSelectedChildKeys,
-                        }}
-                      />
-                    </div>
-                  </div>
                 ) : (
-                  <div>
-                    <div className={styles.separateGrid}>
+                  <>
+                    {childStones.length > 0 && (
+                      <div style={{ marginBottom: 12 }}>
+                        <Radio.Group
+                          value={singleMethod}
+                          onChange={(e) => setSingleMethod(e.target.value)}
+                          buttonStyle="solid"
+                        >
+                          <Radio.Button value="stones">
+                            Unbox Existing Stones ({childStones.length})
+                          </Radio.Button>
+                          <Radio.Button value="custom">
+                            Create New Single SKU (Custom Pcs & Carat)
+                          </Radio.Button>
+                        </Radio.Group>
+                      </div>
+                    )}
+
+                    {childStones.length > 0 && singleMethod === "stones" ? (
                       <div>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
-                          Carat Weight: *
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "6px 0" }}>
+                          <span style={{ fontSize: 13, fontWeight: 600 }}>Stones inside this Box:</span>
+                          <span style={{ fontSize: 12, color: "#64748b" }}>
+                            Selected to Assign: <b>{selectedChildKeys.length}</b> of {childStones.length} stones
+                          </span>
                         </div>
-                        <InputNumber
-                          style={{ width: "100%" }}
-                          min={0.01}
-                          max={Number(currentContainer?.polish_carat ?? currentContainer?.polishCarat ?? 999)}
-                          step={0.01}
-                          value={sepCarat}
-                          onChange={setSepCarat}
-                        />
+                        <div className={styles.childTableWrap}>
+                          <Table
+                            dataSource={childStones}
+                            columns={childColumns}
+                            rowKey="id"
+                            size="small"
+                            pagination={false}
+                            rowSelection={{
+                              selectedRowKeys: selectedChildKeys,
+                              onChange: setSelectedChildKeys,
+                            }}
+                          />
+                        </div>
                       </div>
+                    ) : (
                       <div>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
-                          Pcs:
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "#1e3a8a", marginBottom: 6 }}>
+                          Separate into New Single Stone:
                         </div>
-                        <InputNumber
-                          style={{ width: "100%" }}
-                          min={1}
-                          value={sepPcs}
-                          onChange={setSepPcs}
-                        />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
-                          New Single SKU:
+                        <div className={styles.separateGrid}>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
+                              Carat Weight: *
+                            </div>
+                            <InputNumber
+                              style={{ width: "100%" }}
+                              min={0.001}
+                              max={Number(currentContainer?.polish_carat ?? currentContainer?.polishCarat ?? 999)}
+                              step={0.01}
+                              value={sepCarat}
+                              onChange={setSepCarat}
+                            />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
+                              Pcs: *
+                            </div>
+                            <InputNumber
+                              style={{ width: "100%" }}
+                              min={1}
+                              value={sepPcs}
+                              onChange={setSepPcs}
+                            />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
+                              New Single SKU:
+                            </div>
+                            <Input
+                              placeholder="Auto-generated if blank"
+                              value={sepSku}
+                              onChange={(e) => setSepSku(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
+                              Price / ct ($):
+                            </div>
+                            <InputNumber
+                              style={{ width: "100%" }}
+                              min={0}
+                              value={sepPrice}
+                              onChange={setSepPrice}
+                            />
+                          </div>
+                          <div style={{ gridColumn: "1 / -1" }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
+                              Remark:
+                            </div>
+                            <Input
+                              placeholder="Optional remarks"
+                              value={sepRemark}
+                              onChange={(e) => setSepRemark(e.target.value)}
+                            />
+                          </div>
                         </div>
-                        <Input
-                          placeholder="Auto-generated if blank"
-                          value={sepSku}
-                          onChange={(e) => setSepSku(e.target.value)}
-                        />
                       </div>
-                      <div>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
-                          Price / ct ($):
-                        </div>
-                        <InputNumber
-                          style={{ width: "100%" }}
-                          min={0}
-                          value={sepPrice}
-                          onChange={setSepPrice}
-                        />
-                      </div>
-                      <div style={{ gridColumn: "1 / -1" }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
-                          Remark:
-                        </div>
-                        <Input
-                          placeholder="Optional remarks"
-                          value={sepRemark}
-                          onChange={(e) => setSepRemark(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -1028,88 +1362,112 @@ const InventoryMixingModal = ({
                   <div style={{ textAlign: "center", padding: "30px 0" }}>
                     <Spin tip="Loading stones inside Parcel..." />
                   </div>
-                ) : childStones.length > 0 ? (
-                  <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "6px 0" }}>
-                      <span style={{ fontSize: 13, fontWeight: 600 }}>Stones inside this Parcel:</span>
-                      <span style={{ fontSize: 12, color: "#64748b" }}>
-                        Selected to Assign: <b>{selectedChildKeys.length}</b> of {childStones.length} stones
-                      </span>
-                    </div>
-                    <div className={styles.childTableWrap}>
-                      <Table
-                        dataSource={childStones}
-                        columns={childColumns}
-                        rowKey="id"
-                        size="small"
-                        pagination={false}
-                        rowSelection={{
-                          selectedRowKeys: selectedChildKeys,
-                          onChange: setSelectedChildKeys,
-                        }}
-                      />
-                    </div>
-                  </div>
                 ) : (
-                  <div>
-                    <div className={styles.separateGrid}>
+                  <>
+                    {childStones.length > 0 && (
+                      <div style={{ marginBottom: 12 }}>
+                        <Radio.Group
+                          value={singleMethod}
+                          onChange={(e) => setSingleMethod(e.target.value)}
+                          buttonStyle="solid"
+                        >
+                          <Radio.Button value="stones">
+                            Unbox Existing Stones ({childStones.length})
+                          </Radio.Button>
+                          <Radio.Button value="custom">
+                            Create New Single SKU (Custom Pcs & Carat)
+                          </Radio.Button>
+                        </Radio.Group>
+                      </div>
+                    )}
+
+                    {childStones.length > 0 && singleMethod === "stones" ? (
                       <div>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
-                          Carat Weight: *
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "6px 0" }}>
+                          <span style={{ fontSize: 13, fontWeight: 600 }}>Stones inside this Parcel:</span>
+                          <span style={{ fontSize: 12, color: "#64748b" }}>
+                            Selected to Assign: <b>{selectedChildKeys.length}</b> of {childStones.length} stones
+                          </span>
                         </div>
-                        <InputNumber
-                          style={{ width: "100%" }}
-                          min={0.01}
-                          max={Number(currentContainer?.polish_carat ?? currentContainer?.polishCarat ?? 999)}
-                          step={0.01}
-                          value={sepCarat}
-                          onChange={setSepCarat}
-                        />
+                        <div className={styles.childTableWrap}>
+                          <Table
+                            dataSource={childStones}
+                            columns={childColumns}
+                            rowKey="id"
+                            size="small"
+                            pagination={false}
+                            rowSelection={{
+                              selectedRowKeys: selectedChildKeys,
+                              onChange: setSelectedChildKeys,
+                            }}
+                          />
+                        </div>
                       </div>
+                    ) : (
                       <div>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
-                          Pcs:
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "#1e3a8a", marginBottom: 6 }}>
+                          Separate into New Single Stone:
                         </div>
-                        <InputNumber
-                          style={{ width: "100%" }}
-                          min={1}
-                          value={sepPcs}
-                          onChange={setSepPcs}
-                        />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
-                          New Single SKU:
+                        <div className={styles.separateGrid}>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
+                              Carat Weight: *
+                            </div>
+                            <InputNumber
+                              style={{ width: "100%" }}
+                              min={0.001}
+                              max={Number(currentContainer?.polish_carat ?? currentContainer?.polishCarat ?? 999)}
+                              step={0.01}
+                              value={sepCarat}
+                              onChange={setSepCarat}
+                            />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
+                              Pcs: *
+                            </div>
+                            <InputNumber
+                              style={{ width: "100%" }}
+                              min={1}
+                              value={sepPcs}
+                              onChange={setSepPcs}
+                            />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
+                              New Single SKU:
+                            </div>
+                            <Input
+                              placeholder="Auto-generated if blank"
+                              value={sepSku}
+                              onChange={(e) => setSepSku(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
+                              Price / ct ($):
+                            </div>
+                            <InputNumber
+                              style={{ width: "100%" }}
+                              min={0}
+                              value={sepPrice}
+                              onChange={setSepPrice}
+                            />
+                          </div>
+                          <div style={{ gridColumn: "1 / -1" }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
+                              Remark:
+                            </div>
+                            <Input
+                              placeholder="Optional remarks"
+                              value={sepRemark}
+                              onChange={(e) => setSepRemark(e.target.value)}
+                            />
+                          </div>
                         </div>
-                        <Input
-                          placeholder="Auto-generated if blank"
-                          value={sepSku}
-                          onChange={(e) => setSepSku(e.target.value)}
-                        />
                       </div>
-                      <div>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
-                          Price / ct ($):
-                        </div>
-                        <InputNumber
-                          style={{ width: "100%" }}
-                          min={0}
-                          value={sepPrice}
-                          onChange={setSepPrice}
-                        />
-                      </div>
-                      <div style={{ gridColumn: "1 / -1" }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
-                          Remark:
-                        </div>
-                        <Input
-                          placeholder="Optional remarks"
-                          value={sepRemark}
-                          onChange={(e) => setSepRemark(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
+                    )}
+                  </>
                 )}
               </>
             )}

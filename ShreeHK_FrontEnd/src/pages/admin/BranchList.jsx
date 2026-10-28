@@ -23,6 +23,7 @@ import { ENDPOINTS } from "../../api/endpoints";
 import DynamicForm from "../../components/common/ui/DynamicFormField";
 import { branchFields } from "./branchData";
 import PageHeroHeader from "../../components/common/PageHeroHeader";
+import useAuthStore from "../../store/Auth.Store";
 import styles from "../../assets/scss/pages/admin/tenantCompany.module.scss";
 import branchStyles from "../../assets/scss/pages/admin/branch.module.scss";
 
@@ -98,6 +99,8 @@ const BranchList = () => {
     [branches]
   );
 
+  const currentBranchId = useAuthStore((s) => s.branchId);
+
   const openCreate = () => {
     setEditing(null);
     form.resetFields();
@@ -110,16 +113,23 @@ const BranchList = () => {
     form.setFieldsValue({
       ...row,
       id: row.id || 0,
+      color_code: row.color_code || undefined,
       status: Number(row.status) ? 1 : 0,
     });
     setModalOpen(true);
   };
 
   const handleSave = (values) => {
+    const rawColor = typeof values.color_code === "string" ? values.color_code.trim() : "";
+    const cleanColor = rawColor
+      ? (/^[0-9A-Fa-f]{3,8}$/.test(rawColor) ? `#${rawColor}` : rawColor)
+      : null;
+
     saveBranch(
       {
         ...values,
         id: editing?.id || 0,
+        color_code: cleanColor,
         status: Number(values.status) ? 1 : 0,
       },
       {
@@ -127,9 +137,16 @@ const BranchList = () => {
           if (res?.status === false) return;
           setModalOpen(false);
           form.resetFields();
+          if (editing?.id && Number(currentBranchId) === Number(editing.id)) {
+            useAuthStore.getState().setSessionContext({
+              branchColorCode: cleanColor,
+            });
+          }
           refetch();
           queryClient.invalidateQueries({ queryKey: ["fiscalYears"] });
           queryClient.invalidateQueries({ queryKey: ["session"] });
+          queryClient.invalidateQueries({ queryKey: ["branchCompanies"] });
+          queryClient.invalidateQueries({ queryKey: ["portalCompanyYears"] });
         },
       }
     );
@@ -275,6 +292,19 @@ const BranchList = () => {
                         <Title level={5} className={branchStyles.branchName} title={branchName}>
                           {branchName}
                         </Title>
+                        {item.color_code ? (
+                          <Tag
+                            style={{
+                              backgroundColor: item.color_code,
+                              color: "#fff",
+                              border: "none",
+                              fontWeight: 600,
+                              borderRadius: 4,
+                            }}
+                          >
+                            {item.color_code}
+                          </Tag>
+                        ) : null}
                         {isActive ? (
                           <Tag icon={<CheckCircleFilled />} className={`${styles.activeBadge} ${branchStyles.statusBadge}`}>
                             Active

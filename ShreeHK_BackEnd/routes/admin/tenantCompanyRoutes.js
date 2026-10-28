@@ -21,6 +21,7 @@ const COMPANY_COLUMNS = [
   "vatno", "vwef", "cstno", "cwef", "period", "startdate", "enddate",
   "rapnet_id", "rapnet_password", "shortcutName", "logo", "branch_id",
   "invoice_prefix", "memo_prefix", "purchase_prefix", "lab_prefix",
+  "color_code",
 ];
 const COMPANY_SAFE_SELECT = ["id", ...COMPANY_COLUMNS.filter((column) => column !== "rapnet_password")]
   .map((column) => `c.\`${column}\``)
@@ -73,6 +74,7 @@ const ensureCompanyPrefixColumns = async () => {
     { name: "memo_prefix", def: "VARCHAR(50) NULL DEFAULT 'MEMO-'" },
     { name: "purchase_prefix", def: "VARCHAR(50) NULL DEFAULT 'PUR-'" },
     { name: "lab_prefix", def: "VARCHAR(50) NULL DEFAULT 'LAB-'" },
+    { name: "color_code", def: "VARCHAR(50) NULL DEFAULT NULL" },
   ];
   for (const c of cols) {
     try {
@@ -243,6 +245,9 @@ tenantCompanyRouter.post(
       } else if (body.branch_id === "" || body.branch_id === null) {
         post.branch_id = null;
       }
+      if (post.color_code !== undefined) {
+        post.color_code = post.color_code && String(post.color_code).trim() ? String(post.color_code).trim() : null;
+      }
       if (!post.date) post.date = new Date().toISOString().slice(0, 10);
 
       if (req.file) {
@@ -262,7 +267,7 @@ tenantCompanyRouter.post(
         const sql = `UPDATE company SET ${data} WHERE id = ?`;
         meta.query(sql, [id], (err) => {
           if (err) return res.status(500).json({ status: false, message: err.message });
-          res.json({ status: true, message: "Successfully Saved !!!", id, logo: post.logo || null });
+          res.json({ status: true, message: "Successfully Saved !!!", id, logo: post.logo || null, color_code: post.color_code || null });
         });
         return;
       }
@@ -291,6 +296,7 @@ tenantCompanyRouter.post(
             message: "Successfully Saved !!!",
             id: newId,
             logo: post.logo || null,
+            color_code: post.color_code || null,
           });
         });
       });

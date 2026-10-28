@@ -222,7 +222,7 @@ const MemoConvertModal = ({
     // One row per product — duplicate ids from JOIN inflate pcs (5+5+5=15)
     const uniqueIds = [...new Set(productIds.map(String))];
     return uniqueIds.map((id) => {
-      const p = products.find((row) => String(row.id) === String(id)) || {};
+      const p = products.find((row) => String(row.id) === String(id) || String(row.product_id) === String(id)) || {};
       // Memo voucher line qty only — never remaining onhand / full stock polish_pcs
       // (using polish_pcs here caused 15 when memo line was 5)
       const linePcs = p.memo_line_pcs != null && p.memo_line_pcs !== "" ? Number(p.memo_line_pcs) : null;
@@ -241,6 +241,8 @@ const MemoConvertModal = ({
       const cost = Number(p.cost) || 0;
       return {
         id: p.id || id,
+        product_id: p.product_id || p.id || id,
+        outward_item_id: p.outward_item_id || p.id || id,
         ...pickAttr(p),
         cost,
         maxPcs: pcs,
@@ -415,6 +417,14 @@ const MemoConvertModal = ({
       toastWarning("Select Company");
       return;
     }
+    if (isSale && !header.shipping_name) {
+      toastWarning("Select Shipping");
+      return;
+    }
+    if (isSale && !header.origin_of) {
+      toastWarning("Select Origin");
+      return;
+    }
 
     const payloadRecord = {};
     const productsOut = [];
@@ -422,6 +432,8 @@ const MemoConvertModal = ({
       productsOut.push(row.id);
       payloadRecord[row.id] = {
         id: row.id,
+        product_id: row.product_id || row.id,
+        outward_item_id: row.outward_item_id || row.id,
         polish_pcs: Number(row.polish_pcs) || 0,
         polish_carat: Number(row.polish_carat) || 0,
         price: Number(row.price) || 0,
@@ -720,7 +732,9 @@ const MemoConvertModal = ({
                       />
                     </div>
                     <div className={`${styles.memoConvertField} ${styles.memoConvertFieldMd}`}>
-                      <label className={styles.memoConvertLbl}>Shipping</label>
+                      <label className={styles.memoConvertLbl}>
+                        Shipping{isSale && <span style={{ color: "#dc2626", marginLeft: 4 }}>*</span>}
+                      </label>
                       <Select
                         allowClear
                         showSearch
@@ -735,7 +749,9 @@ const MemoConvertModal = ({
                   </div>
                   <div className={`${styles.memoConvertHeaderRow} ${styles.memoConvertHeaderRowSingle}`}>
                     <div className={`${styles.memoConvertField} ${styles.memoConvertFieldMd}`}>
-                      <label className={styles.memoConvertLbl}>Origin</label>
+                      <label className={styles.memoConvertLbl}>
+                        Origin{isSale && <span style={{ color: "#dc2626", marginLeft: 4 }}>*</span>}
+                      </label>
                       <Select
                         allowClear
                         showSearch

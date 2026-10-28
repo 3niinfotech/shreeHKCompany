@@ -10,6 +10,13 @@ export const tenantCompanyFields = (branchOptions = []) => [
   },
   { type: "input", label: "Company Name", name: "name", span: 12, required: true },
   { type: "input", label: "Shortcut Name", name: "shortcutName", span: 12 },
+  {
+    type: "color",
+    label: "Header Color Code",
+    name: "color_code",
+    span: 12,
+    placeholder: "e.g. #1e3a8a (Leave blank for default)",
+  },
   { type: "input", label: "Type", name: "type", span: 12 },
   { type: "input", label: "Phone Number", name: "number", span: 12, required: true },
   { type: "textarea", label: "Name of Partner", name: "partner", span: 24 },

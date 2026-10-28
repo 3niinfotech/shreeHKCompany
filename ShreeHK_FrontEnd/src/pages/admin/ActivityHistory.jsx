@@ -18,6 +18,7 @@ import LoginHistoryPanel from "../../components/admin/LoginHistoryPanel";
 import ActivityLogDeleteModal from "../../components/admin/ActivityLogDeleteModal";
 import useAuthUser from "../../hooks/useAuthUser";
 import { hasPagePermission } from "../../config/permissionRegistry";
+import { formatActionTypeLabel } from "../../utils/activityLogFormatters";
 import styles from "../../assets/scss/pages/admin/activityHistory.module.scss";
 
 const { RangePicker } = DatePicker;
@@ -25,7 +26,8 @@ const { RangePicker } = DatePicker;
 const ACTION_TYPES = [
   "CREATE", "UPDATE", "DELETE", "EXPORT", "PRINT",
   "TRANSFER", "STOCK_IN", "STOCK_OUT", "MEMO_CREATE", "MEMO_RETURN",
-].map((v) => ({ value: v, label: v }));
+  "SEND_TO_LAB", "LAB_RETURN",
+].map((v) => ({ value: v, label: formatActionTypeLabel(v) }));
 const LOGIN_ACTION_TYPES = [
   { value: "LOGIN", label: "Successful login" },
   { value: "LOGOUT", label: "Logout" },

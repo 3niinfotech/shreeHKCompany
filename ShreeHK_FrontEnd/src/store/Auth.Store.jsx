@@ -30,6 +30,8 @@ const CLEARED_AUTH_STATE = {
   companyEmail: null,
   companyWebsite: null,
   companyRapnetId: null,
+  companyColorCode: null,
+  branchColorCode: null,
   dbName: null,
   showContextPicker: false,
   lastActiveAt: null,
@@ -115,6 +117,8 @@ const useAuthStore = create(
           companyEmail: context.companyEmail ?? get().companyEmail ?? null,
           companyWebsite: context.companyWebsite ?? get().companyWebsite ?? null,
           companyRapnetId: context.companyRapnetId ?? get().companyRapnetId ?? null,
+          companyColorCode: context.companyColorCode !== undefined ? context.companyColorCode : (get().companyColorCode ?? null),
+          branchColorCode: context.branchColorCode !== undefined ? context.branchColorCode : (get().branchColorCode ?? null),
           dbName: context.dbName ?? get().dbName ?? null,
           showContextPicker: context.showContextPicker ?? get().showContextPicker ?? false,
           lastActiveAt: Date.now(),
@@ -143,6 +147,8 @@ const useAuthStore = create(
           companyEmail,
           companyWebsite,
           companyRapnetId,
+          companyColorCode,
+          branchColorCode,
           dbName,
         } = context;
         const updates = {};
@@ -165,6 +171,8 @@ const useAuthStore = create(
         if (companyEmail !== undefined) updates.companyEmail = companyEmail;
         if (companyWebsite !== undefined) updates.companyWebsite = companyWebsite;
         if (companyRapnetId !== undefined) updates.companyRapnetId = companyRapnetId;
+        if (companyColorCode !== undefined) updates.companyColorCode = companyColorCode;
+        if (branchColorCode !== undefined) updates.branchColorCode = branchColorCode;
         if (dbName != null) updates.dbName = dbName;
         set(updates);
       },

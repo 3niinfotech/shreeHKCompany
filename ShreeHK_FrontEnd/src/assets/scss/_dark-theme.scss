@@ -82,7 +82,7 @@
 // ── Top app header (dashboard + web view) ──
 [data-theme="dark"] [class*="headerStyle"] {
   [class*="appHeader"] {
-    background: var(--color-header-bg) !important;
+    background: var(--header-custom-bg, var(--color-header-bg)) !important;
     border-bottom: var(--border-width-thin) solid var(--color-border);
     box-shadow: var(--shadow-md);
   }

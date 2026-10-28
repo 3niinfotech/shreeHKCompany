@@ -391,13 +391,22 @@ async function separateSale(q, v, edata, type, post) {
   const bal = await stockMovement.applyOutwardQty(q, edata.id, type, tp, tc);
 
   const isFull =
-    Math.abs(availableCarat - tc) < 0.0001 &&
-    (edata.group_type !== "box" || Math.abs(availablePcs - tp) < 0.0001);
+    type === "lab" ||
+    (Math.abs(availableCarat - tc) < 0.0001 &&
+    (edata.group_type !== "box" || Math.abs(availablePcs - tp) < 0.0001));
   if (isFull) {
-    await q(
-      `UPDATE ${TABLE_PRODUCT} SET sell_price = ?, sell_amount = ?, outward = ?, site_upload = 0, rapnet_upload = 0 WHERE id = ?`,
-      [price, sellAmount, type, edata.id]
-    );
+    const labVal = type === "lab" ? (post.lab || v.lab || "GIA") : null;
+    if (labVal) {
+      await q(
+        `UPDATE ${TABLE_PRODUCT} SET sell_price = ?, sell_amount = ?, outward = ?, lab = ?, site_upload = 0, rapnet_upload = 0 WHERE id = ?`,
+        [price, sellAmount, type, labVal, edata.id]
+      );
+    } else {
+      await q(
+        `UPDATE ${TABLE_PRODUCT} SET sell_price = ?, sell_amount = ?, outward = ?, site_upload = 0, rapnet_upload = 0 WHERE id = ?`,
+        [price, sellAmount, type, edata.id]
+      );
+    }
   } else {
     await q(`UPDATE ${TABLE_PRODUCT} SET sell_price = ?, sell_amount = ? WHERE id = ?`, [
       price,
@@ -477,14 +486,15 @@ async function validateProductsForMemo(productIds, companyIdOrIds = DEFAULT_COMP
     if (!edata) {
       return `Product id ${pid} not found`;
     }
-    if (edata.outward === "memo") {
-      return `SKU ${edata.sku} is already on memo`;
-    }
-    if (edata.outward === "consign") {
-      return `SKU ${edata.sku} is already on consign`;
-    }
     if (edata.hold == 1) {
       return `SKU ${edata.sku} is on hold`;
+    }
+    const onhandCarat =
+      Number(edata.onhand_carat != null ? edata.onhand_carat : edata.polish_carat) || 0;
+    const onhandPcs =
+      Number(edata.onhand_pcs != null ? edata.onhand_pcs : edata.polish_pcs) || 0;
+    if (onhandCarat <= 0.0001 && onhandPcs <= 0) {
+      return `SKU ${edata.sku} has no available stock (0 pcs / 0 ct)`;
     }
   }
   return null;
@@ -506,8 +516,16 @@ async function validateProductsForMemoSale(productIds, companyIdOrIds = DEFAULT_
     if (edata.hold == 1) {
       return `SKU ${edata.sku} is on hold`;
     }
-    if (String(edata.outward || "").toLowerCase() !== "memo") {
-      return `SKU ${edata.sku} is not on memo`;
+    const outward = String(edata.outward || "").toLowerCase();
+    if (outward && outward !== "memo" && outward !== "consign") {
+      return `SKU ${edata.sku} is already on ${edata.outward}`;
+    }
+    const onhandCarat =
+      Number(edata.onhand_carat != null ? edata.onhand_carat : edata.polish_carat) || 0;
+    const onhandPcs =
+      Number(edata.onhand_pcs != null ? edata.onhand_pcs : edata.polish_pcs) || 0;
+    if (outward !== "memo" && onhandCarat <= 0.0001 && onhandPcs <= 0) {
+      return `SKU ${edata.sku} has no available stock (0 pcs / 0 ct)`;
     }
   }
   return null;
@@ -633,11 +651,17 @@ async function sendTo(rawPost, userContext = {}) {
             ? Number(rec.polish_carat)
             : null;
         const stockCarat =
-          Number(edata.onhand_carat != null ? edata.onhand_carat : edata.polish_carat) || 0;
+          Number(edata.onhand_carat) > 0
+            ? Number(edata.onhand_carat)
+            : Number(edata.polish_carat) || 0;
         const stockPcs =
-          Number(edata.onhand_pcs != null ? edata.onhand_pcs : edata.polish_pcs) || 0;
+          Number(edata.onhand_pcs) > 0
+            ? Number(edata.onhand_pcs)
+            : Number(edata.polish_pcs) || 0;
 
-        if (rec.group_type && recCarat !== null && recCarat !== stockCarat) {
+        const isContainer =
+          edata.group_type === "box" || edata.group_type === "parcel";
+        if (isContainer && recCarat !== null && recCarat !== stockCarat) {
           if (
             rec.price === "NaN" ||
             rec.price === "" ||
@@ -667,9 +691,13 @@ async function sendTo(rawPost, userContext = {}) {
             ? Number(rec.polish_carat)
             : null;
         const stockCarat =
-          Number(edata.onhand_carat != null ? edata.onhand_carat : edata.polish_carat) || 0;
+          Number(edata.onhand_carat) > 0
+            ? Number(edata.onhand_carat)
+            : Number(edata.polish_carat) || 0;
         const stockPcs =
-          Number(edata.onhand_pcs != null ? edata.onhand_pcs : edata.polish_pcs) || 0;
+          Number(edata.onhand_pcs) > 0
+            ? Number(edata.onhand_pcs)
+            : Number(edata.polish_pcs) || 0;
 
         const isBoxParcelOutward =
           rec.group_type &&
@@ -714,14 +742,23 @@ async function sendTo(rawPost, userContext = {}) {
           const bal = await stockMovement.applyOutwardQty(q, pid, type, movePcs, moveCarat);
           // Same as box/parcel separateSale: flag whole row only when onhand fully consumed
           const isFullOut =
-            (Number(bal.onhand_carat) || 0) <= 0.0001 &&
-            (Number(bal.onhand_pcs) || 0) <= 0.0001;
+            type === "lab" ||
+            ((Number(bal.onhand_carat) || 0) <= 0.0001 &&
+            (Number(bal.onhand_pcs) || 0) <= 0.0001);
           let updateResult;
           if (isFullOut) {
-            updateResult = await q(
-              `UPDATE ${TABLE_PRODUCT} SET sell_price = ?, sell_amount = ?, outward = ?, site_upload = 0, rapnet_upload = 0 WHERE id = ? AND company = ? AND (outward IS NULL OR outward = '' OR outward = 'memo' OR outward = 'consign')`,
-              [sprice, samount, type, pid, productCompanyId]
-            );
+            const labVal = type === "lab" ? (post.lab || rec.lab || "GIA") : null;
+            if (labVal) {
+              updateResult = await q(
+                `UPDATE ${TABLE_PRODUCT} SET sell_price = ?, sell_amount = ?, outward = ?, lab = ?, site_upload = 0, rapnet_upload = 0 WHERE id = ? AND company = ? AND (outward IS NULL OR outward = '' OR outward = 'memo' OR outward = 'consign')`,
+                [sprice, samount, type, labVal, pid, productCompanyId]
+              );
+            } else {
+              updateResult = await q(
+                `UPDATE ${TABLE_PRODUCT} SET sell_price = ?, sell_amount = ?, outward = ?, site_upload = 0, rapnet_upload = 0 WHERE id = ? AND company = ? AND (outward IS NULL OR outward = '' OR outward = 'memo' OR outward = 'consign')`,
+                [sprice, samount, type, pid, productCompanyId]
+              );
+            }
           } else {
             // Remaining onhand must stay visible in inventory (memo qty lives in memo_* balances)
             updateResult = await q(
@@ -768,8 +805,8 @@ async function sendTo(rawPost, userContext = {}) {
             sale_type: type,
           });
           await logAuditInTx(q, {
-            actionType: type === "sale" ? "STOCK_OUT" : "UPDATE",
-            moduleName: "Diamond Stock",
+            actionType: type === "sale" ? "STOCK_OUT" : type === "lab" ? "SEND_TO_LAB" : "UPDATE",
+            moduleName: type === "lab" ? "GIA Lab Stock" : "Diamond Stock",
             recordId: pid,
             recordReference: edata.sku,
             oldValue: stoneBefore,
@@ -778,7 +815,9 @@ async function sendTo(rawPost, userContext = {}) {
             description:
               type === "sale"
                 ? `Inventory sale — ${edata.sku} memo → sale (invoice ${post.invoiceno || post.reference || "—"})`
-                : undefined,
+                : type === "lab"
+                  ? `Stone ${edata.sku} sent to Lab (${post.lab || "GIA"}) — Invoice #${post.invoiceno || post.reference || "—"}`
+                  : `Updated stone ${edata.sku} (${type})`,
             companyId: productCompanyId,
           });
           amount += samount;
@@ -846,8 +885,22 @@ async function sendTo(rawPost, userContext = {}) {
       const outwardRows = await q(`SELECT * FROM ${TABLE_OUTWARD} WHERE id = ?`, [Oid]);
       const saleCtx = buildSaleContext(post);
       await logAuditInTx(q, {
-        actionType: type === "sale" ? "STOCK_OUT" : type === "consign" ? "MEMO_CREATE" : "MEMO_CREATE",
-        moduleName: type === "sale" ? "Sale" : type === "consign" ? "Consignment" : "Memo",
+        actionType:
+          type === "sale"
+            ? "STOCK_OUT"
+            : type === "consign"
+              ? "MEMO_CREATE"
+              : type === "lab"
+                ? "SEND_TO_LAB"
+                : "MEMO_CREATE",
+        moduleName:
+          type === "sale"
+            ? "Sale"
+            : type === "consign"
+              ? "Consignment"
+              : type === "lab"
+                ? "GIA Lab Stock"
+                : "Memo",
         recordId: Oid,
         recordReference: String(post.invoiceno || post.reference || Oid),
         oldValue:
@@ -866,11 +919,15 @@ async function sendTo(rawPost, userContext = {}) {
         changedFields:
           type === "sale"
             ? ["outward_status", "type", "skus", "final_amount"]
-            : undefined,
+            : type === "lab"
+              ? ["lab", "products", "status"]
+              : undefined,
         description:
           type === "sale"
             ? `Inventory sale invoice ${post.invoiceno || post.reference || Oid} — ${Productsku.join(", ")}`
-            : undefined,
+            : type === "lab"
+              ? `Sent ${Productsku.length} stone(s) to Lab (${post.lab || "GIA"}) — Invoice #${post.invoiceno || post.reference || Oid}`
+              : `Created ${type === "consign" ? "Consignment" : "Memo"} #${post.invoiceno || post.reference || Oid}`,
         companyId,
       });
 

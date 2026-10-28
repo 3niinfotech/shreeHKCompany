@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { Modal, Spin, Button } from "antd";
+import { Modal, Button } from "antd";
 import { CloseOutlined } from "@ant-design/icons";
 import {
   Package,
@@ -58,25 +58,29 @@ const statusPillClass = (status) => {
 };
 
 const SkuModalContext = createContext(null);
+const stoneDetailCache = new Map();
 
 export const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
   const navigate = useNavigate();
-  const [apiData, setApiData] = useState(null);
-  const [loading, setLoading] = useState(false);
-
   const sku = skuData?.sku;
   const companyId =
     skuData?.company ?? skuData?.company_id ?? skuData?.companyId;
 
+  const [apiData, setApiData] = useState(() => {
+    return sku && stoneDetailCache.has(sku) ? stoneDetailCache.get(sku) : null;
+  });
+
   useEffect(() => {
     if (!visible || !sku) {
       setApiData(null);
-      setLoading(false);
       return;
     }
 
+    if (stoneDetailCache.has(sku)) {
+      setApiData(stoneDetailCache.get(sku));
+    }
+
     let isMounted = true;
-    setLoading(true);
 
     const params = { sku };
     if (companyId != null && companyId !== "" && Number(companyId) > 0) {
@@ -86,24 +90,15 @@ export const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
     api
       .get(ENDPOINTS.report.stoneDetail, { params })
       .then((res) => {
-        if (isMounted) {
-          if (res?.data?.detail) {
+        if (isMounted && res?.data) {
+          stoneDetailCache.set(sku, res.data);
+          if (res.data.detail) {
             setApiData(res.data);
-          } else {
-            setApiData({ status: "NOT FOUND", notFound: true });
           }
         }
       })
       .catch((err) => {
         console.error("Error fetching stone details for SKU modal:", err);
-        if (isMounted) {
-          setApiData({ status: "NOT FOUND", notFound: true });
-        }
-      })
-      .finally(() => {
-        if (isMounted) {
-          setLoading(false);
-        }
       });
 
     return () => {
@@ -114,7 +109,7 @@ export const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
   if (!skuData) return null;
 
   const detail = apiData?.detail || null;
-  const isNotFound = Boolean(apiData?.notFound || (!detail && !loading && !skuData?.id && !skuData?.polish_carat));
+  const isNotFound = Boolean(apiData?.notFound && !skuData?.id && !skuData?.polish_carat && !skuData?.carat);
 
   const actualStatus = (() => {
     // 1. If backend returned stone detail
@@ -132,7 +127,7 @@ export const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
     }
 
     // 2. If stone record was already passed from table row selection
-    if (skuData?.id || skuData?.polish_carat || skuData?.carat) {
+    if (skuData?.id || skuData?.polish_carat || skuData?.carat || skuData?.outward || skuData?.status) {
       if (skuData?.hold === 1 || skuData?.hold === "1" || skuData?.hold === true) {
         return "ON HOLD";
       }
@@ -145,13 +140,7 @@ export const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
       return "AVAILABLE";
     }
 
-    // 3. While still loading
-    if (loading) {
-      return "CHECKING...";
-    }
-
-    // 4. Non-existent stone in backend / system
-    return "NOT FOUND";
+    return "AVAILABLE";
   })();
 
   const statusClass = statusPillClass(actualStatus);
@@ -341,88 +330,80 @@ export const SkuActionModal = ({ visible, skuData, onClose, onAction }) => {
         </header>
 
         <div className="sku-action-modal__body">
-          {loading ? (
-            <div className="sku-action-modal__loader" aria-busy="true" aria-live="polite">
-              <Spin size="large" />
-            </div>
-          ) : (
-            <>
-              {highlightRows.length > 0 && (
-                <section className="sku-action-modal__metrics" aria-label="Key metrics">
-                  {highlightRows.map((row) => (
-                    <div key={`metric-${row.label}`} className="sku-metric">
-                      <span className="sku-metric__label">{row.label}</span>
-                      <span className="sku-metric__value">{renderFieldValue(row)}</span>
-                    </div>
-                  ))}
-                </section>
-              )}
-
-              <section className="sku-action-modal__detailsPanel" aria-label="Stone details">
-                <div className="sku-action-modal__detailsHead">
-                  <p className="sku-action-modal__sectionLabel">Specifications</p>
-                  <span className={`sku-status-badge sku-status-badge--${statusClass}`}>
-                    {actualStatus}
-                  </span>
+          {highlightRows.length > 0 && (
+            <section className="sku-action-modal__metrics" aria-label="Key metrics">
+              {highlightRows.map((row) => (
+                <div key={`metric-${row.label}`} className="sku-metric">
+                  <span className="sku-metric__label">{row.label}</span>
+                  <span className="sku-metric__value">{renderFieldValue(row)}</span>
                 </div>
-                {gridRows.length > 0 ? (
-                  <ul className="sku-spec-sheet">
-                    {gridRows.map((row) => (
-                      <li key={row.label} className="sku-spec-sheet__row">
-                        <span className="sku-spec-sheet__label">{row.label}</span>
-                        <span className="sku-spec-sheet__value">{renderFieldValue(row)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p
-                    className="sku-spec-sheet__empty"
-                    style={isNotFound ? { color: "#dc2626", fontWeight: 600 } : undefined}
-                  >
-                    {isNotFound ? "Stone not found in system" : "No graded specs available"}
-                  </p>
-                )}
-
-                {hasLocation && (
-                  <div className="sku-meta-strip sku-meta-strip--single">
-                    <div className="sku-meta-card">
-                      <span className="sku-meta-card__icon" aria-hidden>
-                        <MapPin size={15} strokeWidth={2.25} />
-                      </span>
-                      <div className="sku-meta-card__text">
-                        <span className="sku-meta-card__label">Location</span>
-                        <span className="sku-meta-card__value sku-meta-card__value--loc">
-                          {renderFieldValue(locationRow)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </section>
-
-              <section className="sku-action-modal__actions" aria-label="Quick actions">
-                <p className="sku-action-modal__actionsLabel">Quick actions</p>
-                <div className="sku-action-modal__grid">
-                  {actionCards.map((item) => {
-                    const Icon = item.Icon;
-                    return (
-                      <button
-                        key={item.key}
-                        type="button"
-                        className={`sku-action-modal__card sku-action-modal__card--${item.accent}`}
-                        onClick={() => handleCardClick(item)}
-                      >
-                        <span className={`sku-action-icon sku-action-icon--${item.accent}`}>
-                          <Icon size={18} strokeWidth={2.25} />
-                        </span>
-                        <span className="sku-action-modal__cardLabel">{item.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-            </>
+              ))}
+            </section>
           )}
+
+          <section className="sku-action-modal__detailsPanel" aria-label="Stone details">
+            <div className="sku-action-modal__detailsHead">
+              <p className="sku-action-modal__sectionLabel">Specifications</p>
+              <span className={`sku-status-badge sku-status-badge--${statusClass}`}>
+                {actualStatus}
+              </span>
+            </div>
+            {gridRows.length > 0 ? (
+              <ul className="sku-spec-sheet">
+                {gridRows.map((row) => (
+                  <li key={row.label} className="sku-spec-sheet__row">
+                    <span className="sku-spec-sheet__label">{row.label}</span>
+                    <span className="sku-spec-sheet__value">{renderFieldValue(row)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p
+                className="sku-spec-sheet__empty"
+                style={isNotFound ? { color: "#dc2626", fontWeight: 600 } : undefined}
+              >
+                {isNotFound ? "Stone not found in system" : "No graded specs available"}
+              </p>
+            )}
+
+            {hasLocation && (
+              <div className="sku-meta-strip sku-meta-strip--single">
+                <div className="sku-meta-card">
+                  <span className="sku-meta-card__icon" aria-hidden>
+                    <MapPin size={15} strokeWidth={2.25} />
+                  </span>
+                  <div className="sku-meta-card__text">
+                    <span className="sku-meta-card__label">Location</span>
+                    <span className="sku-meta-card__value sku-meta-card__value--loc">
+                      {renderFieldValue(locationRow)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+
+          <section className="sku-action-modal__actions" aria-label="Quick actions">
+            <p className="sku-action-modal__actionsLabel">Quick actions</p>
+            <div className="sku-action-modal__grid">
+              {actionCards.map((item) => {
+                const Icon = item.Icon;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    className={`sku-action-modal__card sku-action-modal__card--${item.accent}`}
+                    onClick={() => handleCardClick(item)}
+                  >
+                    <span className={`sku-action-icon sku-action-icon--${item.accent}`}>
+                      <Icon size={18} strokeWidth={2.25} />
+                    </span>
+                    <span className="sku-action-modal__cardLabel">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
         </div>
 
         <footer className="sku-action-modal__footer">

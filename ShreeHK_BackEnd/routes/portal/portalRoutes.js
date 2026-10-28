@@ -47,15 +47,15 @@ portalRouter.get("/portal/company-years", authenticateToken, async (req, res) =>
       `SELECT id, year, fromDate, toDate, db_name FROM company_year ORDER BY id DESC`
     );
     const companiesRaw = await metaQuery(
-      `SELECT c.id, c.name, c.shortcutName, c.address, c.number, c.branch_id,
-              b.name AS branch_name, b.shortcutName AS branch_shortcut, b.address AS branch_address
+      `SELECT c.id, c.name, c.shortcutName, c.address, c.number, c.branch_id, c.color_code, c.email, c.website, c.rapnet_id,
+              b.name AS branch_name, b.shortcutName AS branch_shortcut, b.address AS branch_address, b.color_code AS branch_color_code
        FROM company c
        LEFT JOIN branch b ON b.id = c.branch_id
        ORDER BY COALESCE(b.name, 'zzz'), c.name ASC`
     );
     // Login Branch step: only active branches (HK / Dubai / Surat). Never company rows.
     const branchesRaw = await metaQuery(
-      `SELECT id, name, shortcutName, address, number
+      `SELECT id, name, shortcutName, address, number, color_code
        FROM branch
        WHERE status = 1
        ORDER BY FIELD(LOWER(name), 'dubai', 'hk', 'surat'), name ASC`
@@ -114,11 +114,16 @@ portalRouter.get("/portal/company-years", authenticateToken, async (req, res) =>
           branchName: c.branch_name || (branchId ? null : "Other"),
           branchShortcutName: c.branch_shortcut || null,
           branchAddress: c.branch_address || null,
+          branchColorCode: c.branch_color_code || null,
           companyId: c.id,
           companyName: c.name,
           companyShortcutName: c.shortcutName || null,
+          companyColorCode: c.color_code || null,
           companyAddress: c.address,
           companyNumber: c.number,
+          companyEmail: c.email || null,
+          companyWebsite: c.website || null,
+          companyRapnetId: c.rapnet_id || null,
           yearId: y.id,
           yearLabel: y.year || String(new Date().getFullYear()),
           fromDate: y.fromDate || null,
@@ -136,6 +141,7 @@ portalRouter.get("/portal/company-years", authenticateToken, async (req, res) =>
         branchShortcutName: b.shortcutName || null,
         branchAddress: b.address || null,
         branchNumber: b.number || null,
+        branchColorCode: b.color_code || null,
       }));
 
     // Global FY list — always includes ensureCurrentFiscalYear (dates as YYYY-MM-DD)
@@ -202,10 +208,11 @@ portalRouter.get("/portal/branch-companies", authenticateToken, async (req, res)
 
     let branchId = null;
     let branchName = null;
+    let branchColorCode = null;
 
     if (sessionCompanyId) {
       const sessionRows = await metaQuery(
-        `SELECT c.id, c.name, c.branch_id, b.name AS branch_name
+        `SELECT c.id, c.name, c.branch_id, b.name AS branch_name, b.color_code AS branch_color_code
          FROM company c
          LEFT JOIN branch b ON b.id = c.branch_id
          WHERE c.id = ? LIMIT 1`,
@@ -216,9 +223,10 @@ portalRouter.get("/portal/branch-companies", authenticateToken, async (req, res)
       }
       branchId = sessionRows[0].branch_id != null ? Number(sessionRows[0].branch_id) : null;
       branchName = sessionRows[0].branch_name || null;
+      branchColorCode = sessionRows[0].branch_color_code || null;
     } else if (sessionBranchId) {
       const branchRows = await metaQuery(
-        `SELECT id, name FROM branch WHERE id = ? LIMIT 1`,
+        `SELECT id, name, color_code FROM branch WHERE id = ? LIMIT 1`,
         [sessionBranchId]
       );
       if (!branchRows.length) {
@@ -226,6 +234,7 @@ portalRouter.get("/portal/branch-companies", authenticateToken, async (req, res)
       }
       branchId = Number(branchRows[0].id);
       branchName = branchRows[0].name || null;
+      branchColorCode = branchRows[0].color_code || null;
     } else {
       return res.status(400).json({ status: false, message: "Select company or branch context first" });
     }
@@ -234,7 +243,8 @@ portalRouter.get("/portal/branch-companies", authenticateToken, async (req, res)
     if (branchId) {
       // All tenant companies linked to this branch (HK → both companies)
       rows = await metaQuery(
-        `SELECT c.id, c.name, c.shortcutName, c.branch_id, b.name AS branch_name
+        `SELECT c.id, c.name, c.shortcutName, c.branch_id, c.color_code, c.address, c.number, c.email, c.website, c.rapnet_id,
+                b.name AS branch_name, b.color_code AS branch_color_code
          FROM company c
          LEFT JOIN branch b ON b.id = c.branch_id
          WHERE c.branch_id = ?
@@ -243,7 +253,8 @@ portalRouter.get("/portal/branch-companies", authenticateToken, async (req, res)
       );
     } else {
       rows = await metaQuery(
-        `SELECT c.id, c.name, c.shortcutName, c.branch_id, NULL AS branch_name
+        `SELECT c.id, c.name, c.shortcutName, c.branch_id, c.color_code, c.address, c.number, c.email, c.website, c.rapnet_id,
+                NULL AS branch_name, NULL AS branch_color_code
          FROM company c
          WHERE c.id = ?
          ORDER BY c.name ASC`,
@@ -269,13 +280,21 @@ portalRouter.get("/portal/branch-companies", authenticateToken, async (req, res)
       status: true,
       branchId,
       branchName,
+      branchColorCode,
       sessionCompanyId,
       Data: data.map((c) => ({
         id: Number(c.id),
         name: c.name,
         shortcutName: c.shortcutName || null,
+        color_code: c.color_code || null,
+        address: c.address || null,
+        number: c.number || null,
+        email: c.email || null,
+        website: c.website || null,
+        rapnet_id: c.rapnet_id || null,
         branchId: c.branch_id != null ? Number(c.branch_id) : null,
         branchName: c.branch_name || branchName,
+        branchColorCode: c.branch_color_code || null,
       })),
     });
   } catch (err) {

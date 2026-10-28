@@ -111,7 +111,7 @@ const ActivityLogFlatTable = ({
       title: "When",
       dataIndex: "createdAt",
       key: "when",
-      width: 138,
+      width: 120,
       fixed: "left",
       render: (val) => (
         val ? (
@@ -136,7 +136,7 @@ const ActivityLogFlatTable = ({
     {
       title: "User",
       key: "who",
-      width: 160,
+      width: 150,
       fixed: "left",
       render: (_, record) => {
         const roleStr = String(record.userRole || "User").trim();
@@ -173,7 +173,7 @@ const ActivityLogFlatTable = ({
       title: "Action",
       dataIndex: "actionType",
       key: "actionType",
-      width: 150,
+      width: 140,
       align: "center",
       render: (type) => {
         const tone = getActionTone(type);
@@ -188,7 +188,7 @@ const ActivityLogFlatTable = ({
       title: "SKU / Ref",
       dataIndex: "recordReference",
       key: "recordReference",
-      width: 260,
+      width: 130,
       render: (val) => (
         val ? <Tag className={styles.refTagCompact}>{val}</Tag> : "—"
       ),
@@ -196,6 +196,7 @@ const ActivityLogFlatTable = ({
     {
       title: "Summary",
       key: "summary",
+      width: 280,
       ellipsis: true,
       render: (_, record) => {
         const msg = (record.description && typeof record.description === "string" && record.description.trim())
@@ -213,7 +214,7 @@ const ActivityLogFlatTable = ({
     {
       title: "Action",
       key: "dataToggle",
-      width: canDelete ? 160 : 90,
+      width: canDelete ? 210 : 120,
       fixed: "right",
       render: (_, record) => {
         const isOpen = expandedRowKeys.includes(record.key);
@@ -321,7 +322,7 @@ const ActivityLogFlatTable = ({
           loading={loading}
           size="small"
           bordered
-          scroll={{ x: showDataColumns ? 1400 : 1000, y: tableHeight }}
+          scroll={{ x: showDataColumns ? 1550 : 1150, y: tableHeight }}
           rowClassName={(record) => styles[`rowTone--${getActionTone(record.actionType)}`]}
           expandable={{
             expandedRowKeys,

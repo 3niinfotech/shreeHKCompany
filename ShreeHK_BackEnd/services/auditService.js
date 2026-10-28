@@ -163,6 +163,11 @@ function buildDescription({
       return `${who} created memo ${ref}`;
     case "MEMO_RETURN":
       return `${who} returned memo ${ref}`;
+    case "SEND_TO_LAB":
+    case "LAB":
+      return `${who} sent ${mod}${ref} to lab`;
+    case "LAB_RETURN":
+      return `${who} returned ${mod}${ref} from lab`;
     case "ATTEMPTED":
       return `${who} attempted restricted action on ${mod}${ref}`;
     case "UI_CLICK":

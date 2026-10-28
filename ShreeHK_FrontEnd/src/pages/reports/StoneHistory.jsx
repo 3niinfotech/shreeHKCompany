@@ -1326,7 +1326,7 @@ const StoneHistory = () => {
             title: 'Date & Time',
             dataIndex: 'date_display',
             key: 'date_display',
-            width: 200,
+            width: 145,
             render: (_, row) => (
                 <span style={{ whiteSpace: 'nowrap' }}>{formatHistoryDateTime(row)}</span>
             ),
@@ -1335,7 +1335,7 @@ const StoneHistory = () => {
             title: 'Party',
             dataIndex: 'party_name',
             key: 'party',
-            width: 320,
+            width: 160,
             ellipsis: true,
             render: (value, row) => {
                 const name = String(value || row.party || '').trim();
@@ -1346,7 +1346,7 @@ const StoneHistory = () => {
             title: 'Invoice',
             dataIndex: 'invoice',
             key: 'invoice',
-            width: 140,
+            width: 125,
             render: (value, row) =>
                 renderInvoiceCell(
                     value,
@@ -1375,7 +1375,7 @@ const StoneHistory = () => {
             title: 'Pcs',
             dataIndex: 'pcs',
             key: 'pcs',
-            width: 70,
+            width: 55,
             align: 'right',
             render: (_, row) => formatQtyCell(signedQty(row, 'pcs', isContainer)),
         },
@@ -1383,7 +1383,7 @@ const StoneHistory = () => {
             title: 'Carat',
             dataIndex: 'carat',
             key: 'carat',
-            width: 95,
+            width: 80,
             align: 'right',
             render: (_, row) => {
                 const val = formatQtyCell(signedQty(row, 'carat', isContainer));
@@ -1404,7 +1404,7 @@ const StoneHistory = () => {
             title: 'B.Pcs',
             dataIndex: 'balance_pcs',
             key: 'balance_pcs',
-            width: 80,
+            width: 65,
             align: 'right',
             onHeaderCell: () => ({
                 className: 'stone-balance-col',
@@ -1420,7 +1420,7 @@ const StoneHistory = () => {
             title: 'B.Carat',
             dataIndex: 'balance_carat',
             key: 'balance_carat',
-            width: 90,
+            width: 80,
             align: 'right',
             onHeaderCell: () => ({
                 className: 'stone-balance-col',

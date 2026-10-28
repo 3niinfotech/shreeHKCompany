@@ -3,6 +3,51 @@ import { PlusOutlined } from '@ant-design/icons';
 
 const { TextArea } = Input;
 
+const ColorPickerInput = ({ value, onChange, placeholder, disabled, height }) => {
+    const rawVal = typeof value === 'string' ? value.trim() : '';
+    const normalizedHex = /^[0-9A-Fa-f]{6}$/i.test(rawVal) ? `#${rawVal}` : rawVal;
+    const validHex = /^#[0-9A-Fa-f]{6}$/i.test(normalizedHex) ? normalizedHex : '#1e3a8a';
+
+    const handleBlur = (e) => {
+        const val = e.target.value?.trim() || '';
+        if (/^[0-9A-Fa-f]{6}$/i.test(val)) {
+            onChange?.(`#${val}`);
+        }
+    };
+
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+            <input
+                type="color"
+                value={validHex}
+                onChange={(e) => onChange?.(e.target.value)}
+                disabled={disabled}
+                style={{
+                    width: 36,
+                    height: height || 36,
+                    padding: 2,
+                    border: '1px solid #d9d9d9',
+                    borderRadius: 6,
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    background: 'transparent',
+                    flexShrink: 0,
+                    boxSizing: 'border-box',
+                }}
+                title="Click to pick color"
+            />
+            <Input
+                value={value ?? ''}
+                onChange={(e) => onChange?.(e.target.value)}
+                onBlur={handleBlur}
+                placeholder={placeholder || 'e.g. #1e3a8a'}
+                allowClear
+                disabled={disabled}
+                style={{ flex: 1, height: height || 36 }}
+            />
+        </div>
+    );
+};
+
 const DynamicForm = ({ fields, forceFullWidth, layout = 'grid' }) => {
     const form = Form.useFormInstance();
     const isStack = layout === 'stack';
@@ -60,6 +105,14 @@ const DynamicForm = ({ fields, forceFullWidth, layout = 'grid' }) => {
                             <div style={{ marginTop: 8 }}>{field.uploadText || 'Upload'}</div>
                         </div>
                     </Upload>
+                );
+            case 'color':
+                return (
+                    <ColorPickerInput
+                        placeholder={field.placeholder || `Enter ${field.label}...`}
+                        height={inputStyle.height}
+                        disabled={field.disabled}
+                    />
                 );
             case 'custom':
                 return typeof field.render === 'function' ? field.render() : field.render;

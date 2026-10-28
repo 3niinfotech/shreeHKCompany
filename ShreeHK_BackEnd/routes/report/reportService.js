@@ -260,7 +260,17 @@ async function backfillHistoryUsers(history) {
 function mapStoneHistoryRows(history, partyMap, userMap = {}, isContainer = false, stoneDetail = null) {
   let runningPcs = 0;
   let runningCarat = 0;
-  let runningPrice = Number(stoneDetail?.price) || Number(stoneDetail?.purchase_price) || 0;
+
+  // Initialize runningPrice from the FIRST chronological history entry that has an explicit price,
+  // so that previous history rows always preserve their historical price and never get retroactively overwritten by future price changes.
+  let initialHistoryPrice = 0;
+  for (const item of (history || [])) {
+    if (item.price != null && item.price !== "" && Number(item.price) > 0) {
+      initialHistoryPrice = Number(item.price);
+      break;
+    }
+  }
+  let runningPrice = initialHistoryPrice > 0 ? initialHistoryPrice : (Number(stoneDetail?.purchase_price) || Number(stoneDetail?.price) || 0);
   let runningAmount = Number(stoneDetail?.amount) || Number(stoneDetail?.purchase_amount) || 0;
 
   return history.map((h, idx) => {
@@ -348,18 +358,29 @@ function mapStoneHistoryRows(history, partyMap, userMap = {}, isContainer = fals
       if (Number.isFinite(pVal) && pVal > 0) {
         runningPrice = pVal;
       }
+    } else if (act === "price_change") {
+      const pMatch = String(h.description || "").match(/New Price\s*:\s*([\d.]+)/i);
+      if (pMatch && Number(pMatch[1]) > 0) {
+        runningPrice = Number(pMatch[1]);
+      }
     }
 
     const hasExplicitPrice = h.price != null && h.price !== "" && Number(h.price) > 0;
     if (hasExplicitPrice) {
-      runningPrice = Number(h.price);
+      if (!["box_add", "unboxing", "to_box", "from_box", "parcel_add", "from_parcel"].includes(act)) {
+        runningPrice = Number(h.price);
+      }
     }
 
-    const rowPrice = hasExplicitPrice
-      ? Number(h.price)
-      : (runningPrice > 0
-          ? runningPrice
-          : (Number(stoneDetail?.price) || Number(stoneDetail?.purchase_price) || null));
+    let rowPrice = hasExplicitPrice ? Number(h.price) : null;
+    if (!rowPrice && Number(h.amount) > 0 && carat > 0 && ["box_add", "unboxing", "to_box", "from_box", "parcel_add", "from_parcel"].includes(act)) {
+      rowPrice = Number((Number(h.amount) / carat).toFixed(2));
+    }
+    if (!rowPrice) {
+      rowPrice = runningPrice > 0
+        ? runningPrice
+        : (Number(stoneDetail?.price) || Number(stoneDetail?.purchase_price) || null);
+    }
 
     if (runningPrice === 0 && rowPrice > 0) {
       runningPrice = rowPrice;
@@ -1420,57 +1441,56 @@ function extractDiffsFromDesc(desc) {
   return diffs;
 }
 
-async function getActivityLogForStone(sku, productId, companyId) {
+async function getActivityLogForStone(sku, productId, companyId, extraSkus = []) {
   try {
-    return await auditQuery(
-      `SELECT id, company_id, action_type, module_name, description, user_name, user_role,
-              changed_fields, old_value, new_value, created_at
-       FROM dai_activity_log
-       WHERE record_reference = ? OR record_id = ?
-       ORDER BY created_at ASC, id ASC`,
-      [sku, String(productId)]
+    const skuSet = new Set(
+      [String(sku || "").trim(), ...extraSkus.map((s) => String(s || "").trim())].filter(Boolean)
     );
+    const skuList = Array.from(skuSet);
+    const params = [String(productId)];
+    let cond = "record_id = ?";
+    if (skuList.length > 0) {
+      cond += ` OR record_reference IN (${skuList.map(() => "?").join(",")})`;
+      params.push(...skuList);
+      cond += ` OR (${skuList.map(() => "description LIKE ?").join(" OR ")})`;
+      params.push(...skuList.map((s) => `%${s}%`));
+    }
+    const rows = await auditQuery(
+      `SELECT id, company_id, action_type, module_name, description, user_name, user_role,
+              changed_fields, old_value, new_value,
+              COALESCE(CONVERT_TZ(created_at, '+00:00', '+05:30'), created_at) AS created_at
+       FROM dai_activity_log
+       WHERE ${cond}
+       ORDER BY id ASC`,
+      params
+    );
+
+    // Filter out rows matched only due to substring (e.g. 'HKDMG-123' substring-matching 'HKDMG-1234')
+    return (rows || []).filter((log) => {
+      const recId = String(log.record_id || "").trim();
+      if (recId && recId === String(productId)) return true;
+      const ref = String(log.record_reference || "").trim();
+      if (ref && skuSet.has(ref)) return true;
+      const desc = String(log.description || "");
+      return skuList.some((s) => {
+        const escaped = s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return new RegExp(`(?:^|[^A-Za-z0-9_-])${escaped}(?:[^A-Za-z0-9_-]|$)`, "i").test(desc);
+      });
+    });
   } catch {
     return [];
   }
 }
 
+
 function enrichHistoryDates(history, activityLogs) {
-  const logsByDay = {};
-  activityLogs.forEach((log) => {
-    const day = moment(log.created_at).format("YYYY-MM-DD");
-    if (!logsByDay[day]) logsByDay[day] = [];
-    logsByDay[day].push(log);
-  });
-
-  const dayIndex = {};
-
   return history.map((h) => {
-    const day = moment(h.date).format("YYYY-MM-DD");
-    const pool = logsByDay[day] || [];
-    const idx = dayIndex[day] || 0;
-    dayIndex[day] = idx + 1;
-    const log = pool[idx];
-    const fromLog = log?.user_name && String(log.user_name).trim();
-    const fromRow =
-      h.updated_by && String(h.updated_by).trim() !== "—"
-        ? String(h.updated_by).trim()
-        : "";
-    const updatedBy = fromLog || fromRow || "—";
-
-    if (log?.created_at) {
-      return {
-        ...h,
-        updated_at: log.created_at,
-        updated_by: updatedBy,
-        date_display: formatStoneDateTime(log.created_at),
-      };
-    }
-
+    const updatedBy =
+      (h.updated_by && String(h.updated_by).trim() !== "—" ? String(h.updated_by).trim() : "") || "—";
     return {
       ...h,
       updated_by: updatedBy,
-      date_display: formatStoneDateTime(h.date),
+      date_display: h.date_display || formatStoneDateTime(h.updated_at || h.date),
     };
   });
 }
@@ -1912,12 +1932,11 @@ async function getStoneDetail(sku, companyId, userId) {
   const activityCompanyId = detail.company != null ? detail.company : companyId;
   const stockCompanyId = Number(detail.company) || Number(companyId) || 0;
   const allProductIds = [detail.id, ...childIds];
-  const [rawHistory, transfer, partyMap, userMap, activityLogs, companyRows, outwardRefRows] = await Promise.all([
+  const [rawHistory, transfer, partyMap, userMap, companyRows, outwardRefRows] = await Promise.all([
     queryAsync(historySql, historyValues),
     getBoxHistoryByProductId(detail.id),
     getPartyMap(),
     getUserMap(),
-    getActivityLogForStone(sku, detail.id, activityCompanyId),
     stockCompanyId > 0
       ? metaQuery(
           "SELECT id, name, shortcutName FROM company WHERE id = ? LIMIT 1",
@@ -1933,6 +1952,17 @@ async function getStoneDetail(sku, companyId, userId) {
       [detail.id, detail.id, detail.id, ...childIds]
     ).catch(() => []),
   ]);
+
+  const knownSkus = Array.from(
+    new Set([
+      detail.sku,
+      sku,
+      ...(rawHistory || []).map((h) => h.sku).filter(Boolean),
+    ])
+  ).filter(Boolean);
+
+  const activityLogs = await getActivityLogForStone(sku, detail.id, activityCompanyId, knownSkus);
+
 
   const outwardIds = (outwardRefRows || []).map((r) => r.id).filter(Boolean);
   const outwardItemRows = outwardIds.length > 0
@@ -1989,7 +2019,20 @@ async function getStoneDetail(sku, companyId, userId) {
     }
   });
 
-  let normalizedHistory = rawHistory || [];
+  const isHoldOrUnholdDesc = (desc) => {
+    if (!desc) return false;
+    const descUpper = String(desc).toUpperCase();
+    return (
+      descUpper.includes("HOLD: 0 → 1") ||
+      descUpper.includes("HOLD: 1 → 0") ||
+      descUpper.includes("STONE PUT UNHOLD") ||
+      descUpper.includes("STONE PUT ON HOLD") ||
+      /\bHOLD:\s*[01]\s*→\s*[01]\b/i.test(descUpper) ||
+      /\b(?:PUT ON HOLD|PUT UNHOLD|SHOW IN INVENTORY)\b/i.test(descUpper)
+    );
+  };
+
+  let normalizedHistory = [];
   if (isContainer) {
     const seenChildAddKeys = new Set();
     // Register container's own box_add/parcel_add entries
@@ -2000,7 +2043,6 @@ async function getStoneDetail(sku, companyId, userId) {
       }
     });
 
-    normalizedHistory = [];
     (rawHistory || []).forEach((h) => {
       const isChildAdd = h.product_id !== detail.id;
       if (isChildAdd) {
@@ -2018,8 +2060,18 @@ async function getStoneDetail(sku, companyId, userId) {
             : `Added 1 stone(s) (${stoneSku})`,
         });
       } else {
+        if (h.action === "stone_update" && isHoldOrUnholdDesc(h.description)) {
+          return;
+        }
         normalizedHistory.push(h);
       }
+    });
+  } else {
+    (rawHistory || []).forEach((h) => {
+      if (h.action === "stone_update" && isHoldOrUnholdDesc(h.description)) {
+        return;
+      }
+      normalizedHistory.push(h);
     });
   }
 
@@ -2082,225 +2134,168 @@ async function getStoneDetail(sku, companyId, userId) {
     }
   });
 
-  // 2. Process enriched activity logs to enrich timestamps or add missing lifecycle events
-  enrichedActivityLogs.forEach((log) => {
-    if (log.action_type !== "UPDATE") return;
-    const mod = String(log.module_name || "").toLowerCase();
-    const isStonePropUpdate =
-      mod === "stone update" ||
-      mod === "diamond stock" ||
-      mod === "inventory remark" ||
-      mod === "stone detail" ||
-      (log.diff_list &&
-        log.diff_list.some((d) =>
-          [
-            "lab",
-            "shape",
-            "color",
-            "clarity",
-            "price",
-            "cost",
-            "cut",
-            "polish",
-            "symm",
-            "remark",
-            "sku",
-          ].includes(String(d.field || "").toLowerCase())
-        ));
+  // 2. Accurate action & invoice matching between dai_history and enrichedActivityLogs
+  const usedLogIds = new Set();
 
-    if (!isStonePropUpdate) return;
+  function logMatchesAction(h, l) {
+    const d = String(l.description || "").toLowerCase();
+    const m = String(l.module_name || "").toLowerCase();
+    const act = String(h.action || "").toLowerCase().trim();
 
-    // Outward stock movements (export, memo, sale, consign) already have their own history entries.
-    // They must NEVER produce a fake "stone_update" row.
-    const isOutwardStockLog =
-      (log.diff_list &&
-        log.diff_list.some((d) => {
-          const f = String(d.field || "").toLowerCase().trim();
-          return f === "sale_type" || f === "outward" || f === "sell_amount";
-        })) ||
-      (log.description &&
-        /\b(?:export|memo|sale|consign|outward)\b/i.test(log.description) &&
-        /\b(?:ct|from|stock|invoice)\b/i.test(log.description));
-
-    if (isOutwardStockLog) return;
-
-    const isPriceUpdate = isPurePriceChange(log.diff_list, log.description);
-    const isRemarkUpdate =
-      mod === "inventory remark" ||
-      (log.diff_list &&
-        log.diff_list.length > 0 &&
-        log.diff_list.every((d) => String(d.field || "").toLowerCase() === "remark"));
-    const isSkuUpdate =
-      (log.diff_list &&
-        log.diff_list.length > 0 &&
-        log.diff_list.every((d) => String(d.field || "").toLowerCase() === "sku")) ||
-      (log.description &&
-        String(log.description).toLowerCase().includes("sku") &&
-        !log.description.toLowerCase().includes("price") &&
-        !log.description.toLowerCase().includes("cost"));
-
-    // Case A: Price Update -> Match existing price_change in normalizedHistory, enrich timestamp, NEVER add duplicate
-    if (isPriceUpdate) {
-      const priceDiff = (log.diff_list || []).find(
-        (d) => String(d.field || "").toLowerCase() === "price"
+    if (act === "unhold") {
+      return (
+        d.includes("unhold") ||
+        (l.diff_list && l.diff_list.some((x) => String(x.field || "").toLowerCase() === "hold" && String(x.new) === "0"))
       );
-      const logNewPrice =
-        priceDiff && priceDiff.new
-          ? Number(String(priceDiff.new).replace(/[^0-9.]/g, ""))
-          : null;
-
-      const existingPriceRow = (normalizedHistory || []).find((h) => {
-        if (h.action !== "price_change") return false;
-        if (h._matchedLog) return false;
-        if (
-          h.description &&
-          log.description &&
-          h.description.replace(/\s+/g, " ").trim().toLowerCase() ===
-            log.description.replace(/\s+/g, " ").trim().toLowerCase()
-        ) {
-          return true;
-        }
-        const sameDay =
-          moment(h.date).format("YYYY-MM-DD") === moment(log.created_at).format("YYYY-MM-DD");
-        if (sameDay && logNewPrice != null && Number(h.price) === logNewPrice) {
-          return true;
-        }
-        return false;
-      });
-
-      if (existingPriceRow) {
-        existingPriceRow._matchedLog = true;
-        existingPriceRow.date = log.created_at;
-        existingPriceRow.updated_at = log.created_at;
-        existingPriceRow.date_display = formatStoneDateTime(log.created_at);
-        existingPriceRow.updated_by = log.user_name || existingPriceRow.updated_by || "—";
-        existingPriceRow.action_label = "Price Change";
-        return; // Prevent duplicate row!
+    }
+    if (act === "hold") {
+      return (
+        d.includes("on hold") ||
+        (d.includes("hold") && !d.includes("unhold")) ||
+        (l.diff_list && l.diff_list.some((x) => String(x.field || "").toLowerCase() === "hold" && String(x.new) === "1"))
+      );
+    }
+    if (act === "lab_return") {
+      return d.includes("lab return") || (m.includes("lab") && d.includes("return"));
+    }
+    if (act === "lab") {
+      return (
+        (d.includes("lab") || m.includes("lab")) &&
+        !d.includes("lab return") &&
+        !d.includes("return")
+      );
+    }
+    if (act === "memo_return") {
+      return d.includes("memo return") || (m.includes("memo") && d.includes("return"));
+    }
+    if (act === "consign_return") {
+      return d.includes("consign return") || (m.includes("consign") && d.includes("return"));
+    }
+    if (act === "consign") {
+      return d.includes("consign") && !d.includes("consign return") && !d.includes("return");
+    }
+    if (act === "export_close") {
+      return (
+        d.includes("export clos") ||
+        (d.includes("export") && (d.includes("closing") || d.includes("deleting")))
+      );
+    }
+    if (act === "export") {
+      return d.includes("export") && !d.includes("closing") && !d.includes("deleting");
+    }
+    if (act === "memo") {
+      return d.includes("memo") && !d.includes("memo return") && !d.includes("return");
+    }
+    if (act === "sale") {
+      return d.includes("sale") || l.action_type === "STOCK_OUT";
+    }
+    if (act === "sku_change") {
+      return d.includes("new sku") || (l.diff_list && l.diff_list.some((x) => String(x.field || "").toLowerCase() === "sku"));
+    }
+    if (act === "price_change") {
+      return d.includes("new price") || isPurePriceChange(l.diff_list, l.description);
+    }
+    if (act === "box_add" || act === "to_box" || act === "parcel_add") {
+      const isBoxAdd = (m.includes("box") || m.includes("parcel")) && (d.includes("added") || d.includes("add"));
+      if (!isBoxAdd) return false;
+      const childMatch = String(h.description || "").match(/\(([^)]+)\)/);
+      if (childMatch && childMatch[1]) {
+        const childSku = childMatch[1].trim().toLowerCase();
+        const lRef = String(l.record_reference || "").toLowerCase();
+        return lRef.includes(childSku) || d.includes(childSku);
       }
-
-      // Check if another price_change row on the same day with same price already exists
-      const hasSamePriceOnDay = (normalizedHistory || []).some((h) => {
-        if (h.action !== "price_change") return false;
-        const sameDay =
-          moment(h.date).format("YYYY-MM-DD") === moment(log.created_at).format("YYYY-MM-DD");
-        return sameDay && logNewPrice != null && Number(h.price) === logNewPrice;
-      });
-      if (hasSamePriceOnDay) return;
+      return true;
     }
-
-    // Case B: SKU Update -> Match existing sku_change in normalizedHistory, enrich timestamp, NEVER add duplicate
-    if (isSkuUpdate) {
-      const existingSkuRow = (normalizedHistory || []).find((h) => {
-        if (h.action !== "sku_change") return false;
-        return true;
-      });
-      if (existingSkuRow) {
-        if (!existingSkuRow._matchedLog) {
-          existingSkuRow._matchedLog = true;
-          existingSkuRow.date = log.created_at;
-          existingSkuRow.updated_at = log.created_at;
-          existingSkuRow.date_display = formatStoneDateTime(log.created_at);
-          existingSkuRow.updated_by = log.user_name || existingSkuRow.updated_by || "—";
-        }
-        return; // Prevent duplicate stone_update row!
+    if (act === "unboxing" || act === "parcel_remove") {
+      const isUnbox = (m.includes("box") || m.includes("parcel")) && (d.includes("unboxed") || d.includes("remove"));
+      if (!isUnbox) return false;
+      const childMatch = String(h.description || "").match(/\(([^)]+)\)/);
+      if (childMatch && childMatch[1]) {
+        const childSku = childMatch[1].trim().toLowerCase();
+        const lRef = String(l.record_reference || "").toLowerCase();
+        return lRef.includes(childSku) || d.includes(childSku);
       }
-      // If no sku_change row existed, check if already added
-      const hasSkuRow = (normalizedHistory || []).some((h) => h.action === "sku_change");
-      if (hasSkuRow) return;
+      return true;
+    }
+    if (act === "in_import") {
+      return (
+        l.action_type === "CREATE" ||
+        d.includes("created") ||
+        d.includes("inward") ||
+        d.includes("import") ||
+        d.includes("purchase")
+      );
+    }
+    return false;
+  }
+
+  // Step 2A: Match each dai_history row to its corresponding activity log
+  (normalizedHistory || []).forEach((h) => {
+    let bestLog = null;
+    const inv = String(h.invoice || "").trim();
+    const hDateStr = moment(h.date).format("YYYY-MM-DD");
+
+    // Priority 1: Match by action AND invoice
+    if (inv && inv !== "null" && inv !== "—") {
+      bestLog = enrichedActivityLogs.find(
+        (l) =>
+          !usedLogIds.has(l.id) &&
+          logMatchesAction(h, l) &&
+          String(l.description || "").toLowerCase().includes(inv.toLowerCase())
+      );
     }
 
-    // Case C: Remark Update -> Match existing remark_change in normalizedHistory, enrich timestamp
-    if (isRemarkUpdate) {
-      const existingRemarkRow = (normalizedHistory || []).find((h) => {
-        if (h.action !== "remark_change") return false;
-        if (h._matchedLog) return false;
-        const sameDay =
-          moment(h.date).format("YYYY-MM-DD") === moment(log.created_at).format("YYYY-MM-DD");
-        return sameDay;
-      });
-      if (existingRemarkRow) {
-        existingRemarkRow._matchedLog = true;
-        existingRemarkRow.date = log.created_at;
-        existingRemarkRow.updated_at = log.created_at;
-        existingRemarkRow.date_display = formatStoneDateTime(log.created_at);
-        existingRemarkRow.updated_by = log.user_name || existingRemarkRow.updated_by || "—";
-        return;
+    // Priority 1.5: If h describes a specific child stone (e.g. TRF-303981), match the log for that stone
+    if (!bestLog) {
+      const childMatch = String(h.description || "").match(/\(([^)]+)\)/);
+      if (childMatch && childMatch[1]) {
+        const childSku = childMatch[1].trim().toLowerCase();
+        bestLog = enrichedActivityLogs.find(
+          (l) =>
+            !usedLogIds.has(l.id) &&
+            logMatchesAction(h, l) &&
+            (String(l.record_reference || "").toLowerCase().includes(childSku) ||
+             String(l.description || "").toLowerCase().includes(childSku))
+        );
       }
     }
 
-    const diffSummary = (log.diff_list || [])
-      .map((d) => `${d.field.toUpperCase()}: ${d.old} → ${d.new}`)
-      .join("; ");
-
-    // For general stone updates, prevent duplicate if already present on same day with same diff or minute
-    const logMinute = moment(log.created_at).format("YYYY-MM-DD HH:mm");
-    const existingSameUpdate = (normalizedHistory || []).find((h) => {
-      if (h.action !== "stone_update") return false;
-      const sameDay =
-        moment(h.date).format("YYYY-MM-DD") === moment(log.created_at).format("YYYY-MM-DD");
-      if (!sameDay) return false;
-      const descA = String(h.description || "").replace(/\s+/g, " ").trim().toLowerCase();
-      const descB = String(diffSummary || log.description || "").replace(/\s+/g, " ").trim().toLowerCase();
-      if (descA && descB && descA.includes(descB)) return true;
-      return moment(h.date).format("YYYY-MM-DD HH:mm") === logMinute;
-    });
-    if (existingSameUpdate) return;
-
-    const priceDiff = (log.diff_list || []).find(
-      (d) => String(d.field || "").toLowerCase() === "price"
-    );
-    const logPrice =
-      priceDiff && priceDiff.new
-        ? Number(String(priceDiff.new).replace(/[^0-9.]/g, ""))
-        : Number(detail.price) || null;
-    const logAmount =
-      logPrice && Number(detail.polish_carat)
-        ? Number((logPrice * Number(detail.polish_carat)).toFixed(2))
-        : Number(detail.amount) || null;
-
-    let rowAction = "stone_update";
-    let rowActionLabel = "Stone Update";
-    let desc = diffSummary
-      ? `Stone Detail Updated: ${diffSummary}`
-      : log.description || "Stone Detail Updated";
-
-    if (isPriceUpdate) {
-      rowAction = "price_change";
-      rowActionLabel = "Price Change";
-      desc = log.description || (diffSummary ? `Price Changed: ${diffSummary}` : "Price Changed");
-    } else if (isSkuUpdate) {
-      rowAction = "sku_change";
-      rowActionLabel = "SKU Renamed";
-      desc = log.description || (diffSummary ? `SKU Renamed: ${diffSummary}` : "SKU Renamed");
-    } else if (isRemarkUpdate) {
-      rowAction = "remark_change";
-      rowActionLabel = "Remark Changed";
+    // Priority 2: Match by action on the same calendar day
+    if (!bestLog) {
+      bestLog = enrichedActivityLogs.find(
+        (l) =>
+          !usedLogIds.has(l.id) &&
+          logMatchesAction(h, l) &&
+          moment(l.created_at).format("YYYY-MM-DD") === hDateStr
+      );
     }
 
-    normalizedHistory.push({
-      id: `audit-${log.id}`,
-      product_id: detail.id,
-      sku: detail.sku,
-      action: rowAction,
-      action_label: rowActionLabel,
-      date: log.created_at,
-      updated_at: log.created_at,
-      date_display: formatStoneDateTime(log.created_at),
-      updated_by: log.user_name || "—",
-      user: log.user_name,
-      description: desc,
-      diff_list: log.diff_list,
-      price: logPrice,
-      amount: logAmount,
-      pcs: null,
-      carat: null,
-      type: "cr",
-      invoice: "—",
-      party: "—",
-      party_name: "—",
-      is_audit_change: true,
-    });
+    // Priority 3: Fallback match by action within 1 day window
+    if (!bestLog) {
+      bestLog = enrichedActivityLogs.find(
+        (l) =>
+          !usedLogIds.has(l.id) &&
+          logMatchesAction(h, l) &&
+          Math.abs(moment(l.created_at).diff(moment(h.date), "days")) <= 1
+      );
+    }
+
+    if (bestLog) {
+      usedLogIds.add(bestLog.id);
+      h._matchedLog = true;
+      h.updated_at = bestLog.created_at;
+      h.date = bestLog.created_at;
+      h.date_display = formatStoneDateTime(bestLog.created_at);
+      h.updated_by =
+        (bestLog.user_name && String(bestLog.user_name).trim()) ||
+        h.updated_by ||
+        "—";
+    }
   });
+
+  // Step 2B: Activity logs are kept separate in the Activity Logs tab / page.
+  // Stone History table strictly displays real ledger records from dai_history table only.
+
 
   // 3. Final deduplication and enforcement pass:
   // - Enforce: any pure price change row MUST have action='price_change' & action_label='Price Change'
@@ -2317,6 +2312,14 @@ async function getStoneDetail(sku, companyId, userId) {
         (h.diff_list && h.diff_list.some((d) => ["sale_type", "outward", "sell_amount"].includes(String(d.field || "").toLowerCase().trim())))
       ) {
         return; // Drop fake stone_update created by outward movement!
+      }
+      if (
+        isHoldOrUnholdDesc(h.description) ||
+        (h.diff_list &&
+          h.diff_list.length > 0 &&
+          h.diff_list.every((d) => ["hold", "site_upload", "rapnet_upload"].includes(String(d.field || "").toLowerCase().trim())))
+      ) {
+        return; // Drop fake stone_update created by hold / unhold!
       }
     }
 
@@ -2348,7 +2351,6 @@ async function getStoneDetail(sku, companyId, userId) {
       seenEventKeys.add(dedupKey);
     }
 
-    delete h._matchedLog;
     cleanFinalHistory.push(h);
   });
 
@@ -2356,18 +2358,48 @@ async function getStoneDetail(sku, companyId, userId) {
 
   // Sort normalizedHistory chronologically so updates sit at exact timeline position
   normalizedHistory.sort((a, b) => {
-    const timeA = new Date(a.date || a.created_at || 0).getTime();
-    const timeB = new Date(b.date || b.created_at || 0).getTime();
+    const dayA = moment(a.updated_at || a.date || a.created_at).format("YYYY-MM-DD");
+    const dayB = moment(b.updated_at || b.date || b.created_at).format("YYYY-MM-DD");
+    if (dayA !== dayB) return dayA.localeCompare(dayB);
+
+    const numIdA = typeof a.id === "number" ? a.id : (typeof a.id === "string" && /^\d+$/.test(a.id) ? Number(a.id) : null);
+    const numIdB = typeof b.id === "number" ? b.id : (typeof b.id === "string" && /^\d+$/.test(b.id) ? Number(b.id) : null);
+
+    if (numIdA != null && numIdB != null) {
+      return numIdA - numIdB;
+    }
+
+    const timeA = new Date(a.date || a.created_at || a.updated_at || 0).getTime();
+    const timeB = new Date(b.date || b.created_at || b.updated_at || 0).getTime();
     if (timeA !== timeB) return timeA - timeB;
-    const idA = typeof a.id === "number" ? a.id : 99999999;
-    const idB = typeof b.id === "number" ? b.id : 99999999;
-    return idA - idB;
+    return 0;
   });
 
   const historyWithUsers = await backfillHistoryUsers(normalizedHistory);
   const mappedHistory = mapStoneHistoryRows(historyWithUsers, partyMap, userMap, isContainer, detail);
   const withMemoContext = enrichMemoReturnContext(mappedHistory, memoRefMap, voucherStonesMap);
   const enrichedHistory = enrichHistoryDates(withMemoContext, enrichedActivityLogs);
+
+  // Clean up _matchedLog and sort enrichedHistory in strict chronological step-by-step sequence
+  enrichedHistory.forEach((h) => delete h._matchedLog);
+  enrichedHistory.sort((a, b) => {
+    const dayA = moment(a.updated_at || a.date || a.created_at).format("YYYY-MM-DD");
+    const dayB = moment(b.updated_at || b.date || b.created_at).format("YYYY-MM-DD");
+    if (dayA !== dayB) return dayA.localeCompare(dayB);
+
+    const numIdA = typeof a.id === "number" ? a.id : (typeof a.id === "string" && /^\d+$/.test(a.id) ? Number(a.id) : null);
+    const numIdB = typeof b.id === "number" ? b.id : (typeof b.id === "string" && /^\d+$/.test(b.id) ? Number(b.id) : null);
+
+    // If both originate from dai_history, their auto-increment ID is the absolute ground truth sequence of operations
+    if (numIdA != null && numIdB != null) {
+      return numIdA - numIdB;
+    }
+
+    const timeA = new Date(a.updated_at || a.date || a.created_at || 0).getTime();
+    const timeB = new Date(b.updated_at || b.date || b.created_at || 0).getTime();
+    if (timeA !== timeB) return timeA - timeB;
+    return 0;
+  });
   const lineageTree = await getStoneLineageTree(detail, enrichedHistory, stockCompanyId);
   const stockSummary = computeStockSummary(detail, enrichedHistory);
 

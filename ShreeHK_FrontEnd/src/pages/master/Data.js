@@ -27,7 +27,7 @@ const originFields = [
 
 const labFields = [
   { type: "input", label: "Lab Name", name: "labname", required: true, span: 12 },
-  { type: "input", label: "Report Link", name: "reportlink", required: true, span: 12 },
+  { type: "input", label: "Report Link", name: "reportlink", required: false, span: 12 },
 ];
 
 const categoryFields = [

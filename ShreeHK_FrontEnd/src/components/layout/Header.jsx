@@ -13,6 +13,7 @@ import useAuthStore from "../../store/Auth.Store";
 import logo from "../../assets/loader/softWare_Header_white.svg";
 import { PAUSE_BACKGROUND_API } from "../../api/pauseBackgroundApi";
 import { prefetchRoute } from "../../routes/routePrefetch";
+import { normalizeHexColor } from "../../utils/colorUtils";
 
 const { Header: AntHeader } = Layout;
 
@@ -139,6 +140,8 @@ const Header = ({
   hideNavBar = false,
   showMenuToggle = false,
   onMenuToggle,
+  bgColor,
+  customBgColor,
 }) => {
   const navigate = useNavigate();
   const searchInputRef = useRef(null);
@@ -150,8 +153,13 @@ const Header = ({
   const previousOnlineRef = useRef(navigator.onLine);
   const offlineTimerRef = useRef(null);
   const reconnectTimerRef = useRef(null);
-  const location = useLocation();
   const authCompanyName = useAuthStore((s) => s.companyName);
+  const companyColorCode = useAuthStore((s) => s.companyColorCode);
+  const branchColorCode = useAuthStore((s) => s.branchColorCode);
+  const activeHeaderBgColor = useMemo(
+    () => normalizeHexColor(bgColor || customBgColor || branchColorCode || companyColorCode || null),
+    [bgColor, customBgColor, branchColorCode, companyColorCode]
+  );
 
   const displayFullName = useMemo(() => {
     return (authCompanyName && String(authCompanyName).trim()) || "ShreeHK International";
@@ -317,9 +325,27 @@ const Header = ({
   };
 
   return (
-    <div className={styles.headerStyle}>
+    <div
+      className={styles.headerStyle}
+      style={
+        activeHeaderBgColor
+          ? {
+              "--header-custom-bg": activeHeaderBgColor,
+              backgroundColor: activeHeaderBgColor,
+            }
+          : undefined
+      }
+    >
       <AntHeader
         className={`${styles.appHeader} ${hideLogo ? styles.appHeaderCompact : ""}`}
+        style={
+          activeHeaderBgColor
+            ? {
+                "--header-custom-bg": activeHeaderBgColor,
+                backgroundColor: activeHeaderBgColor,
+              }
+            : undefined
+        }
       >
         <div className={styles.headerLeft}>
           {showMenuToggle && (

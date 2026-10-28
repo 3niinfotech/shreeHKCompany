@@ -31,6 +31,11 @@ export default function useBranchCompanies() {
       label: c.shortcutName ? `${c.name} (${c.shortcutName})` : c.name,
       name: c.name || "",
       code: c.shortcutName || "",
+      address: c.address || "",
+      number: c.number || "",
+      email: c.email || "",
+      website: c.website || "",
+      rapnetId: c.rapnet_id || "",
     }));
   }, [data]);
 

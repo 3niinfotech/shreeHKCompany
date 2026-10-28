@@ -28,8 +28,9 @@ async function validateSingles(stoneIds) {
       err.statusCode = 404;
       throw err;
     }
-    if (stone.group_type && stone.group_type !== "single") {
-      const err = new Error(`SKU ${stone.sku} is not a single stone`);
+    const gType = (stone.group_type || "single").toLowerCase();
+    if (gType === "box") {
+      const err = new Error(`SKU ${stone.sku} is a Box and cannot be added into another container`);
       err.statusCode = 400;
       throw err;
     }
@@ -83,7 +84,7 @@ async function insertProductValueFromStone(productId, stone) {
   await helper.query(`INSERT INTO dai_product_value (${cols}) VALUES (${vals})`);
 }
 
-async function attachStonesToContainer({ stones, container, containerField, actionLabel }) {
+async function attachStonesToContainer({ stones, container, containerField, actionLabel, userContext = {} }) {
   const productList = String(container.box_products || container.parcel_products || "")
     .split(",")
     .filter(Boolean);
@@ -92,7 +93,7 @@ async function attachStonesToContainer({ stones, container, containerField, acti
   let addAmount = 0;
   const now = new Date().toISOString().slice(0, 19).replace("T", " ");
 
-  const containerCompany = Number(container.company) || helper.resolveCompanyId(userContext.companyId);
+  const containerCompany = Number(container.company) || helper.resolveCompanyId(userContext?.companyId);
 
   for (const stone of stones) {
     addPcs += Number(stone.polish_pcs || 0);
@@ -124,12 +125,16 @@ async function attachStonesToContainer({ stones, container, containerField, acti
   const newPcs = Number(container.polish_pcs || 0) + addPcs;
   const newCarat = Number(container.polish_carat || 0) + addCarat;
   const newAmount = Number(container.amount || 0) + addAmount;
-  const newPrice = newCarat > 0 ? Number((newAmount / newCarat).toFixed(2)) : container.price;
+  const newPrice =
+    Number(container.price) > 0
+      ? Number(container.price)
+      : (newCarat > 0 ? Number((newAmount / newCarat).toFixed(2)) : 0);
+  const finalAmount = Number(container.price) > 0 ? Number((newCarat * newPrice).toFixed(2)) : newAmount;
   const productsField = container.group_type === "parcel" ? "parcel_products" : "box_products";
 
   await helper.query(
-    `UPDATE dai_product SET polish_pcs = ?, polish_carat = ?, amount = ?, price = ?, child_count = ?, ${productsField} = ? WHERE id = ? AND company = ?`,
-    [newPcs, newCarat, newAmount, newPrice, productList.length, productList.join(","), container.id, containerCompany],
+    `UPDATE dai_product SET polish_pcs = ?, polish_carat = ?, onhand_pcs = ?, onhand_carat = ?, amount = ?, price = ?, child_count = ?, ${productsField} = ? WHERE id = ? AND company = ?`,
+    [newPcs, newCarat, newPcs, newCarat, finalAmount, newPrice, productList.length, productList.join(","), container.id, containerCompany],
   );
 
   const stoneSkus = stones.map((s) => s.sku).filter(Boolean);
@@ -236,6 +241,7 @@ async function addSinglesToBox(body, userContext = {}) {
       container: box,
       containerField: "box_id",
       actionLabel: "box_add",
+      userContext,
     });
     return { ok: true, message: "Stones added to box successfully", ...result };
   }
@@ -272,6 +278,7 @@ async function addSinglesToParcel(body, userContext = {}) {
       container: parcel,
       containerField: "parcel_id",
       actionLabel: "parcel_add",
+      userContext,
     });
     return { ok: true, message: "Stones added to parcel successfully", ...result };
   }
@@ -786,8 +793,8 @@ async function unboxStonesFromContainer({ containerId, stoneIds }, userContext =
   const newPrice = newCarat > 0 ? Number((newAmount / newCarat).toFixed(2)) : container.price;
 
   await helper.query(
-    `UPDATE dai_product SET polish_pcs = ?, polish_carat = ?, amount = ?, price = ?, child_count = ?, ${productsField} = ? WHERE id = ? AND company = ?`,
-    [newPcs, newCarat, newAmount, newPrice, updatedProductList.length, updatedProductList.join(","), cid, effectiveCompanyId]
+    `UPDATE dai_product SET polish_pcs = ?, polish_carat = ?, onhand_pcs = ?, onhand_carat = ?, amount = ?, price = ?, child_count = ?, ${productsField} = ? WHERE id = ? AND company = ?`,
+    [newPcs, newCarat, newPcs, newCarat, newAmount, newPrice, updatedProductList.length, updatedProductList.join(","), cid, effectiveCompanyId]
   );
 
   await addHistoryAudited({
@@ -872,6 +879,8 @@ async function separateContainerStones({ containerId, records }, userContext = {
       user: userContext.userId || helper.DEFAULT_USER_ID,
       polish_pcs: pcs,
       polish_carat: carat,
+      onhand_pcs: pcs,
+      onhand_carat: carat,
       price,
       amount,
       cost: Number(row.cost || container.cost || 0),
@@ -922,12 +931,16 @@ async function separateContainerStones({ containerId, records }, userContext = {
   const newPcs = Math.max(0, Number(container.polish_pcs || 0) - totalSepPcs);
   const newCarat = Math.max(0, Number((Number(container.polish_carat || 0) - totalSepCarat).toFixed(3)));
   const newAmount = Math.max(0, Number((Number(container.amount || 0) - totalSepAmount).toFixed(2)));
-  const newPrice = newCarat > 0 ? Number((newAmount / newCarat).toFixed(2)) : container.price;
+  const newPrice =
+    Number(container.price) > 0
+      ? Number(container.price)
+      : (newCarat > 0 ? Number((newAmount / newCarat).toFixed(2)) : 0);
+  const finalAmount = Number(container.price) > 0 ? Number((newCarat * newPrice).toFixed(2)) : newAmount;
 
   const effectiveCompanyId = Number(container.company) || companyId;
   await helper.query(
-    `UPDATE dai_product SET polish_pcs = ?, polish_carat = ?, amount = ?, price = ? WHERE id = ? AND company = ?`,
-    [newPcs, newCarat, newAmount, newPrice, cid, effectiveCompanyId]
+    `UPDATE dai_product SET polish_pcs = ?, polish_carat = ?, onhand_pcs = ?, onhand_carat = ?, amount = ?, price = ? WHERE id = ? AND company = ?`,
+    [newPcs, newCarat, newPcs, newCarat, finalAmount, newPrice, cid, effectiveCompanyId]
   );
 
   await addHistoryAudited({

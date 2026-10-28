@@ -160,6 +160,7 @@ function buildUserContext(req) {
     username: req.user?.username,
     yearId: scope.yearId,
     dbName: scope.dbName,
+    isSuperAdmin: isSuperAdminRoll(req.user?.roll) || req.user?.type === "admin" || Boolean(req.user?.is_admin),
   };
 }
 

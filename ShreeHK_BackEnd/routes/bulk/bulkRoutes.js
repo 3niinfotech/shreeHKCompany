@@ -1,6 +1,7 @@
 const express = require("express");
 const BulkModel = require("./bulkModel.js");
 const { authenticateToken } = require("../../authMiddleware.js");
+const helper = require("../../helper.js");
 const { buildUserContext, resolveListCompanyIds } = require("../../tenantHelper.js");
 
 const bulkRouter = express.Router();
@@ -69,7 +70,15 @@ async function bulkUploadHandler(req, res) {
     }
 
     const userContext = buildUserContext(req);
-    const allowedCompanyIds = await resolveListCompanyIds(userContext, userContext.companyId);
+    const isSuperAdmin =
+      Boolean(userContext.isSuperAdmin) ||
+      isSuperAdminRoll(req.user?.roll) ||
+      req.user?.type === "admin" ||
+      Boolean(req.user?.is_admin);
+
+    const allowedCompanyIds = isSuperAdmin
+      ? (await helper.query("SELECT id FROM company")).map((r) => Number(r.id)).filter((id) => id > 0)
+      : await resolveListCompanyIds(userContext, userContext.companyId);
     const model = new BulkModel(userContext.companyId, allowedCompanyIds, userContext.userId);
     const result = await model.importData(payload.type, fileBuffer);
 

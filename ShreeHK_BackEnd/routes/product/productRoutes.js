@@ -422,7 +422,7 @@ productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
   let query = "";
   // Keep full-memo stones visible: polish_carat syncs to onhand (0) while memo_carat holds qty
   const inventoryBaseFrom =
-    ` FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id WHERE p.company IN (${companyPlaceholders}) and visibility = 1 and (COALESCE(p.polish_carat,0) <> 0 OR COALESCE(p.memo_carat,0) <> 0 OR COALESCE(p.onhand_carat,0) <> 0)`;
+    ` FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id WHERE p.company IN (${companyPlaceholders}) and visibility = 1 and (COALESCE(p.polish_carat,0) <> 0 OR COALESCE(p.memo_carat,0) <> 0 OR COALESCE(p.onhand_carat,0) <> 0 OR p.outward = 'lab')`;
   const inventoryBoxParcel =
     " and (p.box_id='' || p.box_id IS NULL) and (p.parcel_id='' || p.parcel_id IS NULL)";
   let outwardScope = " and (p.outward='' || p.outward IS NULL)";
@@ -495,10 +495,10 @@ productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
   } else {
     if (post.memo) {
       outwardScope =
-        " and ( p.outward = 'memo' || p.outward ='consign' || p.outward ='' || p.outward IS NULL)";
+        " and ( p.outward = 'lab' || p.outward = 'memo' || p.outward ='consign' || p.outward ='' || p.outward IS NULL)";
     } else if (post.type) {
       outwardScope =
-        " and ( p.outward = 'memo' || p.outward ='consign' || p.outward ='' || p.outward IS NULL)";
+        " and ( p.outward = 'lab' || p.outward = 'memo' || p.outward ='consign' || p.outward ='' || p.outward IS NULL)";
     } else {
       outwardScope =
         " and ( p.outward = 'lab' || p.outward = 'memo' || p.outward ='consign' || p.outward ='' || p.outward IS NULL)";
@@ -614,7 +614,7 @@ productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
         if (ids.length) {
           const placeholders = ids.map(() => "?").join(",");
           const companyRows = await metaQuery(
-            `SELECT id, name, shortcutName FROM company WHERE id IN (${placeholders})`,
+            `SELECT id, name, shortcutName, address, number, email, website, rapnet_id FROM company WHERE id IN (${placeholders})`,
             ids
           );
           const byId = {};
@@ -627,6 +627,11 @@ productRouter.get("/product/inventory", authenticateToken, async (req, res) => {
               ...r,
               company_code: c?.shortcutName || "",
               company_name: c?.name || "",
+              company_address: c?.address || "",
+              company_number: c?.number || "",
+              company_email: c?.email || "",
+              company_website: c?.website || "",
+              company_rapnet_id: c?.rapnet_id || "",
             };
           });
         }
@@ -756,9 +761,10 @@ productRouter.post("/product/save", authenticateToken, async (req, res) => {
         changedFields: changed,
       });
 
-      if (changed && changed.length > 0) {
+      const nonHoldChanged = (changed || []).filter((f) => String(f).toLowerCase() !== "hold");
+      if (nonHoldChanged && nonHoldChanged.length > 0) {
         try {
-          const diffSummary = changed.map((f) => {
+          const diffSummary = nonHoldChanged.map((f) => {
             const oldV = oldSnap[f] != null && oldSnap[f] !== "" ? oldSnap[f] : "—";
             const newV = newSnap[f] != null && newSnap[f] !== "" ? newSnap[f] : "—";
             return `${f.toUpperCase()}: ${oldV} → ${newV}`;

@@ -84,7 +84,7 @@ const OUTWARD_TYPE_CONFIG = {
     type: 'sale',
     status: 'on_sale',
     returnPath: '/transaction/sale',
-    requireOnMemo: true,
+    requireOnMemo: false,
     showSaleFields: true,
   },
   export: {
@@ -141,7 +141,10 @@ function recalcLine(item) {
 
 function buildLineFromProduct(row, p) {
   const price = Number(p.sell_price || p.price) || 0;
-  const carat = Number(p.polish_carat) || 0;
+  const onhandCarat = Number(p.onhand_carat != null ? p.onhand_carat : p.polish_carat) || 0;
+  const onhandPcs = Number(p.onhand_pcs != null ? p.onhand_pcs : p.polish_pcs) || 0;
+  const carat = onhandCarat > 0 ? onhandCarat : (Number(p.polish_carat) || 0);
+  const pcs = onhandPcs > 0 ? onhandPcs : (Number(p.polish_pcs) || 0);
   const rap = Number(p.rapnet_price || p.rap_price || 0);
   return recalcLine({
     ...row,
@@ -151,7 +154,7 @@ function buildLineFromProduct(row, p) {
     color: p.color || p.main_color || '',
     clarity: p.clarity || '',
     lab: p.lab || '',
-    polishPcs: Number(p.polish_pcs) || 0,
+    polishPcs: pcs,
     polishCarat: carat,
     rapPrice: rap,
     price,
@@ -163,15 +166,34 @@ function getSkuValidationError(p, trimmed, config) {
   if (!p?.id) {
     return `SKU "${trimmed}" not found`;
   }
+  if (p.hold == 1) {
+    return `SKU ${trimmed} is on hold`;
+  }
   const outward = String(p.outward || '').toLowerCase();
+  if (config.outwardType === 'memo' || config.outwardType === 'consign') {
+    const onhandCarat = Number(p.onhand_carat != null ? p.onhand_carat : p.polish_carat) || 0;
+    const onhandPcs = Number(p.onhand_pcs != null ? p.onhand_pcs : p.polish_pcs) || 0;
+    if (onhandCarat <= 0.0001 && onhandPcs <= 0) {
+      return `SKU ${trimmed} has no available stock (0 pcs / 0 ct)`;
+    }
+    return null;
+  }
+  if (config.outwardType === 'sale') {
+    if (outward && outward !== 'memo' && outward !== 'consign') {
+      return `SKU ${trimmed} is already on ${p.outward}`;
+    }
+    const onhandCarat = Number(p.onhand_carat != null ? p.onhand_carat : p.polish_carat) || 0;
+    const onhandPcs = Number(p.onhand_pcs != null ? p.onhand_pcs : p.polish_pcs) || 0;
+    if (outward !== 'memo' && onhandCarat <= 0.0001 && onhandPcs <= 0) {
+      return `SKU ${trimmed} has no available stock (0 pcs / 0 ct)`;
+    }
+    return null;
+  }
   if (config.requireOnHand && outward) {
     return `SKU ${trimmed} is already on ${p.outward}`;
   }
   if (config.requireOnMemo && outward !== 'memo') {
     return `SKU ${trimmed} must be on memo for sale`;
-  }
-  if (p.hold == 1) {
-    return `SKU ${trimmed} is on hold`;
   }
   return null;
 }

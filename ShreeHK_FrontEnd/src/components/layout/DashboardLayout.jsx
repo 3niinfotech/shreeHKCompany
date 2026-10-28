@@ -24,6 +24,7 @@ import { prefetchRoute } from "../../routes/routePrefetch";
 import RoleAccessGuard from "./RoleAccessGuard";
 import { resolveCompanyLogoUrl } from "../../utils/companyLogo";
 import useActiveSessionContext from "../../hooks/useActiveSessionContext";
+import { normalizeHexColor } from "../../utils/colorUtils";
 import logoHeader from "../../assets/loader/softWare_Header_white.svg";
 import styles from "../../assets/scss/layout/dashboardLayout.module.scss";
 
@@ -46,6 +47,12 @@ const DashboardLayout = () => {
   const openTab = useTabsStore((state) => state.openTab);
 
   const { branchShortcut, yearLabel, companyName } = useActiveSessionContext();
+  const branchColorCode = useAuthStore((state) => state.branchColorCode);
+  const companyColorCode = useAuthStore((state) => state.companyColorCode);
+  const activeColorCode = useMemo(
+    () => normalizeHexColor(branchColorCode || companyColorCode || null),
+    [branchColorCode, companyColorCode]
+  );
   const displayShortName = branchShortcut || "HK";
   const displayYearLabel = yearLabel || "";
   const fullBrandTitle = companyName
@@ -157,7 +164,25 @@ const DashboardLayout = () => {
         >
           <div className={`${styles.brand} ${collapsed ? styles.brandCollapsed : ""}`}>
             <Link to={homePath} className={styles.brandLink} title={fullBrandTitle}>
-              <span className={styles.brandBadgeShort} title={fullBrandTitle}>
+              <span
+                className={`${styles.brandBadgeShort} ${
+                  displayShortName.length >= 5
+                    ? styles.brandBadgeLong
+                    : displayShortName.length >= 3
+                    ? styles.brandBadgeMedium
+                    : ""
+                }`}
+                title={fullBrandTitle}
+                style={
+                  activeColorCode
+                    ? {
+                        "--brand-custom-color": activeColorCode,
+                        background: activeColorCode,
+                        boxShadow: `0 3px 8px ${activeColorCode}55`,
+                      }
+                    : undefined
+                }
+              >
                 {displayShortName}
               </span>
               {!collapsed && (
@@ -231,8 +256,17 @@ const DashboardLayout = () => {
           </div>
         </Sider>
 
-        <Layout className={styles.dashboardMain}>
-          <Header hideLogo hideNavBar showMenuToggle onMenuToggle={() => setCollapsed((c) => !c)} />
+        <Layout
+          className={styles.dashboardMain}
+          style={activeColorCode ? { "--header-custom-bg": activeColorCode } : undefined}
+        >
+          <Header
+            hideLogo
+            hideNavBar
+            showMenuToggle
+            onMenuToggle={() => setCollapsed((c) => !c)}
+            bgColor={activeColorCode}
+          />
           <TabBar />
           <Content className={`${styles.dashboardContent} app-page-root`}>
             <RoleAccessGuard>

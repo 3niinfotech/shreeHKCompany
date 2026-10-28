@@ -1,5 +1,8 @@
 import ExcelJS from "exceljs";
 import { trackExportAudit } from "./auditExportTracker";
+import useAuthStore from "../store/Auth.Store";
+import { api } from "../api/client/axiosInstance";
+import { ENDPOINTS } from "../api/endpoints";
 
 /**
  * Venya PHP inventory Export (fn=exportToExcel) clone using ExcelJS.
@@ -291,31 +294,146 @@ export const exportVenyaInventoryExcel = async ({
     alignment: { horizontal: "left", vertical: "middle" },
   };
 
-  const companyCells = [
-    { cell: "L1", text: "201, 2/F, Chevalier House,45-51 Chatham Road South,Tsim Sha Tsui, Kowloon, Hong Kong" },
-    { cell: "L2", text: "Website : www.shreehk.com" },
-    { cell: "Q2", text: "Email : info@shreehk.com" },
-    { cell: "L3", text: "Contact No : +852 23666047" },
-    { cell: "Q3", text: "WhatsApp : +852 60404708" },
-    { cell: "L4", text: "Rapnet : 91552 (shreehk)" },
-    { cell: "Q4", text: "Skype : shreeintl.hk" },
+  // --- 1. RESOLVE COMPANY INFO HEADER ---
+  // If all selected stones belong to the same company, show that company's address & info.
+  // If stones belong to multiple different companies, hide the address/contact info.
+  const companyIds = [
+    ...new Set(
+      rows
+        .map((r) => r.company ?? r.company_id ?? r.companyId)
+        .filter((id) => id !== undefined && id !== null && id !== "" && Number(id) > 0)
+        .map(Number)
+    ),
   ];
 
-  companyCells.forEach(({ cell, text }) => {
-    const c = ws.getCell(cell);
-    c.value = text;
-    c.font = companyStyle.font;
-    c.alignment = companyStyle.alignment;
-  });
+  let targetCompany = null;
+  const session = useAuthStore.getState();
 
-  // Merges for Company Header
-  ws.mergeCells("L1:T1");
-  ws.mergeCells("L2:P2");
-  ws.mergeCells("Q2:T2");
-  ws.mergeCells("L3:P3");
-  ws.mergeCells("Q3:T3");
-  ws.mergeCells("L4:P4");
-  ws.mergeCells("Q4:T4");
+  if (companyIds.length === 1) {
+    const matchingRow = rows.find(
+      (r) => Number(r.company ?? r.company_id ?? r.companyId) === companyIds[0]
+    );
+    const isCurrentSessionCompany = Number(session.companyId) === companyIds[0];
+
+    targetCompany = {
+      address:
+        matchingRow?.company_address ||
+        matchingRow?.companyAddress ||
+        matchingRow?.address ||
+        (isCurrentSessionCompany ? session.companyAddress : "") ||
+        "",
+      website:
+        matchingRow?.company_website ||
+        matchingRow?.companyWebsite ||
+        (isCurrentSessionCompany ? session.companyWebsite : "") ||
+        "",
+      email:
+        matchingRow?.company_email ||
+        matchingRow?.companyEmail ||
+        (isCurrentSessionCompany ? session.companyEmail : "") ||
+        "",
+      number:
+        matchingRow?.company_number ||
+        matchingRow?.companyNumber ||
+        (isCurrentSessionCompany ? (session.companyNumber || session.companyTel) : "") ||
+        "",
+      whatsapp:
+        matchingRow?.company_whatsapp ||
+        matchingRow?.companyWhatsapp ||
+        matchingRow?.company_number ||
+        matchingRow?.companyNumber ||
+        (isCurrentSessionCompany ? (session.companyNumber || session.companyTel) : "") ||
+        "",
+      rapnet_id:
+        matchingRow?.company_rapnet_id ||
+        matchingRow?.companyRapnetId ||
+        (isCurrentSessionCompany ? session.companyRapnetId : "") ||
+        "",
+      skype:
+        matchingRow?.company_skype ||
+        matchingRow?.companySkype ||
+        (isCurrentSessionCompany ? session.companySkype : "") ||
+        "",
+    };
+  } else if (companyIds.length === 0) {
+    if (session.companyId) {
+      targetCompany = {
+        address: session.companyAddress || "",
+        website: session.companyWebsite || "",
+        email: session.companyEmail || "",
+        number: session.companyNumber || session.companyTel || "",
+        whatsapp: session.companyNumber || session.companyTel || "",
+        rapnet_id: session.companyRapnetId || "",
+        skype: session.companySkype || "",
+      };
+    }
+  } else {
+    // Different companies selected: do not show address / contact info
+    targetCompany = null;
+  }
+
+  // If single company selected but address was not cached on row, fetch from portal combos or branch companies
+  if (companyIds.length === 1 && (!targetCompany?.address && !targetCompany?.email)) {
+    try {
+      const res = await api.get(ENDPOINTS.portal.companyYears);
+      const combos = res.data?.Data || [];
+      const found = combos.find((c) => Number(c.companyId) === companyIds[0]);
+      if (found) {
+        targetCompany = {
+          address: found.companyAddress || "",
+          website: found.companyWebsite || "",
+          email: found.companyEmail || "",
+          number: found.companyNumber || "",
+          whatsapp: found.companyNumber || "",
+          rapnet_id: found.companyRapnetId || "",
+          skype: "",
+        };
+      } else {
+        const branchRes = await api.get(ENDPOINTS.portal.branchCompanies);
+        const branchList = branchRes.data?.Data || [];
+        const bFound = branchList.find((c) => Number(c.id) === companyIds[0]);
+        if (bFound) {
+          targetCompany = {
+            address: bFound.address || "",
+            website: bFound.website || "",
+            email: bFound.email || "",
+            number: bFound.number || "",
+            whatsapp: bFound.number || "",
+            rapnet_id: bFound.rapnet_id || "",
+            skype: "",
+          };
+        }
+      }
+    } catch (_) {}
+  }
+
+  if (targetCompany && (targetCompany.address || targetCompany.email || targetCompany.website || targetCompany.number)) {
+    const companyCells = [
+      { cell: "L1", text: targetCompany.address || "" },
+      { cell: "L2", text: targetCompany.website ? `Website : ${targetCompany.website}` : "" },
+      { cell: "Q2", text: targetCompany.email ? `Email : ${targetCompany.email}` : "" },
+      { cell: "L3", text: targetCompany.number ? `Contact No : ${targetCompany.number}` : "" },
+      { cell: "Q3", text: targetCompany.whatsapp ? `WhatsApp : ${targetCompany.whatsapp}` : "" },
+      { cell: "L4", text: targetCompany.rapnet_id ? `Rapnet : ${targetCompany.rapnet_id}` : "" },
+      { cell: "Q4", text: targetCompany.skype ? `Skype : ${targetCompany.skype}` : "" },
+    ];
+
+    companyCells.forEach(({ cell, text }) => {
+      const c = ws.getCell(cell);
+      c.value = text;
+      c.font = companyStyle.font;
+      c.alignment = companyStyle.alignment;
+    });
+
+    // Merges for Company Header
+    ws.mergeCells("L1:T1");
+    ws.mergeCells("L2:P2");
+    ws.mergeCells("Q2:T2");
+    ws.mergeCells("L3:P3");
+    ws.mergeCells("Q3:T3");
+    ws.mergeCells("L4:P4");
+    ws.mergeCells("Q4:T4");
+  }
 
   // Calculate summary totals
   let totalPcsVal = 0;
