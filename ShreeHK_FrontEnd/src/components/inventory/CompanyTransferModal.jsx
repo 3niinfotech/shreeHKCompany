@@ -60,6 +60,9 @@ const CompanyTransferModal = ({
           key: s.id || `stone-${idx}`,
           product_id: Number(s.id),
           sku: s.sku,
+          company: s.company != null ? Number(s.company) : undefined,
+          companyCode: s.companyCode || s.company_code || "",
+          companyName: s.companyName || s.company_name || "",
           shape: s.shape || "—",
           color: s.color || s.mainColor || "—",
           clarity: s.clarity || "—",
@@ -161,8 +164,32 @@ const CompanyTransferModal = ({
         toastSuccess(
           `Transferred to ${targetCompName} successfully! Sale Bill: ${res.data?.source_invoice_no || "Generated"}, Purchase Bill: ${res.data?.target_invoice_no || "Generated"}`
         );
+        const transferSummary = {
+          transferNo: res.data?.transfer_no || "Generated",
+          sourceCompanyName: sourceCompanyName,
+          targetCompanyName: targetCompName,
+          sourceInvoiceNo: res.data?.source_invoice_no || "",
+          targetInvoiceNo: res.data?.target_invoice_no || "",
+          sourceOutwardId: res.data?.source_outward_id || null,
+          transferDate: values.transfer_date?.format ? values.transfer_date.format("DD-MM-YYYY") : String(values.transfer_date || ""),
+          totalPcs: res.data?.total_pcs || items.reduce((s, i) => s + (Number(i.pcs) || 0), 0),
+          totalCarat: res.data?.total_carat || items.reduce((s, i) => s + (Number(i.carat) || 0), 0),
+          totalAmount: res.data?.total_amount || items.reduce((s, i) => s + (Number(i.amount) || 0), 0),
+          notes: values.notes || "",
+          items: items.map((i) => ({
+            id: i.product_id,
+            sku: i.sku,
+            shape: i.shape,
+            color: i.color,
+            clarity: i.clarity,
+            pcs: Number(i.pcs) || 1,
+            carat: Number(i.carat) || 0,
+            price: Number(i.price) || 0,
+            amount: Number(i.amount) || 0,
+          })),
+        };
         onClose();
-        if (onSuccess) onSuccess();
+        if (onSuccess) onSuccess(transferSummary);
       } else {
         toastError(res?.message || "Failed to transfer stone.");
       }
@@ -174,12 +201,37 @@ const CompanyTransferModal = ({
     }
   };
 
+  const companyCodeMap = useMemo(() => {
+    const map = new Map();
+    for (const opt of branchCompanies || []) {
+      map.set(Number(opt.value), opt.code || opt.name || "");
+    }
+    return map;
+  }, [branchCompanies]);
+
   const columns = [
     {
       title: "No",
       width: 45,
       align: "center",
       render: (_, __, i) => i + 1,
+    },
+    {
+      title: "Company",
+      dataIndex: "company",
+      width: 90,
+      align: "center",
+      ellipsis: true,
+      render: (_, r) => {
+        const code =
+          r.companyCode ||
+          r.company_code ||
+          companyCodeMap.get(Number(r.company)) ||
+          r.companyName ||
+          r.company_name ||
+          "—";
+        return code || "—";
+      },
     },
     {
       title: "SKU",

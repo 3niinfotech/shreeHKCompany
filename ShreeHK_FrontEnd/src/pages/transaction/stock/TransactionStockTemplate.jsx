@@ -49,17 +49,30 @@ const PAGE_SIZE_DEFAULT = 10;
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const SCROLL_LIMIT = 20;
 
-const defaultProductColumns = [
+export const defaultProductColumns = [
+  { title: 'Sr No', key: 'srNo', width: 70, align: 'center', render: (_, __, index) => index + 1 },
   { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 120, render: (text, record) => <SkuLink sku={text} record={record} /> },
-  { title: 'Mfg. Code', dataIndex: 'mfg_code', key: 'mfg_code', width: 110 },
-  { title: 'Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', width: 70, align: 'center' },
-  { title: 'Carat', dataIndex: 'polish_carat', key: 'polish_carat', width: 90, align: 'center' },
-  { title: 'Cost', dataIndex: 'cost', key: 'cost', width: 90, align: 'right', render: (v) => v || '-' },
-  { title: 'Price', dataIndex: 'price', key: 'price', width: 90, align: 'right', render: (v) => v || '-' },
-  { title: 'Amount', dataIndex: 'amount', key: 'amount', width: 100, align: 'right', render: (v) => <Text strong>{v || 0}</Text> },
-  { title: 'Lab', dataIndex: 'lab', key: 'lab', width: 80 },
-  { title: 'LOC', dataIndex: 'location', key: 'location', width: 80 },
-  { title: 'Remark', dataIndex: 'remark', key: 'remark', width: 120, ellipsis: true },
+  { title: 'Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', width: 60, align: 'center', render: (v, row) => (v != null ? Number(v) : (row.pcs ?? row.purchase_pcs ?? row.rought_pcs ?? 0)) },
+  { title: 'Shape', dataIndex: 'shape', key: 'shape', width: 80, align: 'center', render: (v, row) => v || row.shape || '-' },
+  { title: 'Carat', dataIndex: 'polish_carat', key: 'polish_carat', width: 90, align: 'center', render: (v, row) => { const c = v != null && v !== '' ? Number(v) : (row.purchase_carat ?? row.carat ?? row.rought_carat); return c != null && !isNaN(c) ? Number(c).toFixed(2) : '-'; } },
+  { title: 'Color', dataIndex: 'color', key: 'color', width: 90, align: 'center', render: (v, row) => v || row.color || row.main_color || '-' },
+  { title: 'Clarity', dataIndex: 'clarity', key: 'clarity', width: 90, align: 'center', render: (v, row) => v || row.clarity || '-' },
+  { title: 'Cost', dataIndex: 'cost', key: 'cost', width: 90, align: 'right', render: (v, row) => (v != null && v !== '' && v !== 0 ? v : (row.cost || row.purchase_price || '-')) },
+  { title: 'Price', dataIndex: 'sell_price', key: 'sell_price', width: 100, align: 'right', render: (v, row) => { const p = v || row.sell_price || row.purchase_price || row.price; return p != null && p !== '' ? (typeof p === 'number' ? p.toFixed(2) : p) : '-'; } },
+  { title: 'Amount', dataIndex: 'sell_amount', key: 'sell_amount', width: 100, align: 'right', render: (v, row) => { const a = v || row.sell_amount || row.purchase_amount || row.amount; return a != null && a !== '' ? (typeof a === 'number' ? a.toFixed(2) : a) : '-'; } },
+  { title: 'Certificate', dataIndex: 'report_no', key: 'report_no', width: 130, render: (v, row) => v || row.report_no || row.certificate || '-' },
+  { title: 'Lab', dataIndex: 'lab', key: 'lab', width: 80, render: (v, row) => v || row.lab || '-' },
+  { title: 'Location', dataIndex: 'location', key: 'location', width: 100, render: (v, row) => v || row.location || row.loc || '-' },
+  { title: 'Intensity', dataIndex: 'intensity', key: 'intensity', width: 80, align: 'center', render: (v, row) => v || row.intensity || row.f_intensity || '-' },
+  { title: 'Overtone', dataIndex: 'overtone', key: 'overtone', width: 80, align: 'center', render: (v, row) => v || row.overtone || '-' },
+  { title: 'Table%', dataIndex: 'table_pc', key: 'table_pc', width: 80, align: 'center', render: (v, row) => v || row.table_pc || '-' },
+  { title: 'Depth%', dataIndex: 'depth_pc', key: 'depth_pc', width: 80, align: 'center', render: (v, row) => v || row.depth_pc || '-' },
+  { title: 'Gridle', dataIndex: 'griddle_pc', key: 'griddle_pc', width: 80, align: 'center', render: (v, row) => v || row.gridle || row.griddle_pc || row.gridle_pc || '-' },
+  { title: 'BGM', dataIndex: 'bgm', key: 'bgm', width: 80, align: 'center', render: (v, row) => v || row.bgm || '-' },
+  { title: 'EyeClean', dataIndex: 'eye_clean', key: 'eye_clean', width: 80, align: 'center', render: (v, row) => v || row.eyeclean || row.eye_clean || '-' },
+  { title: 'Measurement', dataIndex: 'measurement', key: 'measurement', width: 100, align: 'center', render: (v, row) => v || row.measurement || row.mesurment || '-' },
+  { title: 'Label', dataIndex: 'label', key: 'label', width: 280, ellipsis: true, render: (v, row) => v || row.label || '-' },
+  { title: 'Remark', dataIndex: 'remark', key: 'remark', width: 120, ellipsis: true, render: (v, row) => v || row.remark || '-' },
 ];
 
 const typeColors = {
@@ -117,6 +130,18 @@ const TransactionStockTemplate = ({
   const companyName = useAuthStore((s) => s.companyName);
   const companyLogo = useAuthStore((s) => s.companyLogo);
   const { options: branchCompanies } = useBranchCompanies();
+  const companyMetaMap = useMemo(() => {
+    const map = new Map();
+    (branchCompanies || []).forEach((c) => {
+      map.set(Number(c.value), {
+        name: c.name || '',
+        code: c.code || '',
+        label: c.label || c.name || '',
+      });
+    });
+    return map;
+  }, [branchCompanies]);
+
   const companyMap = useMemo(() => {
     const map = new Map();
     (branchCompanies || []).forEach((c) => {
@@ -125,6 +150,8 @@ const TransactionStockTemplate = ({
     return map;
   }, [branchCompanies]);
   const [selectedCompany, setSelectedCompany] = useState('');
+  const [fromCompany, setFromCompany] = useState('');
+  const [toCompany, setToCompany] = useState('');
   const [party, setParty] = useState('');
   const [invoice, setInvoice] = useState(() => (searchParams.get('invoice') || '').trim());
   const [filterType, setFilterType] = useState(() => (searchParams.get('type') || '').trim());
@@ -187,21 +214,77 @@ const TransactionStockTemplate = ({
   const listLimit = infiniteScroll ? SCROLL_LIMIT : pageSize;
   const listStart = infiniteScroll ? offset : (page - 1) * pageSize;
 
-  const payload = useMemo(() => ({
-    company: selectedCompany || '',
-    party: party || '',
-    invoice: invoice || '',
-    invoiceno: invoice || '',
-    page: infiniteScroll ? Math.floor(listStart / listLimit) + 1 : page,
-    limit: listLimit,
-    start: listStart,
-    ...listPayload,
-    ...(stockType ? { stockType } : {}),
-    ...(filterType ? { type: filterType } : {}),
-    ...(showSkuFilter && skuSearch.trim() ? { sku: skuSearch.trim() } : {}),
-    ...(fromDate ? { fromDate: dayjs(fromDate).format('YYYY-MM-DD') } : {}),
-    ...(toDate ? { toDate: dayjs(toDate).format('YYYY-MM-DD') } : {}),
-  }), [selectedCompany, party, invoice, page, listLimit, listStart, listPayload, stockType, infiniteScroll, filterType, showSkuFilter, skuSearch, fromDate, toDate]);
+  const isInterTransfer =
+    stockType === 'inter_transfer' ||
+    stockType === 'inter_memo' ||
+    listPayload?.stockType === 'inter_transfer' ||
+    listPayload?.stockType === 'inter_memo';
+
+  const isInward =
+    (listEndpoint && String(listEndpoint).includes('/inward/')) ||
+    (listEndpoint && String(listEndpoint).includes('/purchase/')) ||
+    actions?.printType === 'purchase';
+
+  const payload = useMemo(() => {
+    let compVal = selectedCompany || '';
+    let partyVal = party || '';
+
+    if (isInterTransfer) {
+      if (isInward) {
+        if (toCompany) compVal = toCompany;
+        if (fromCompany) {
+          const compObj = (branchCompanies || []).find((c) => String(c.value) === String(fromCompany));
+          partyVal = compObj?.name || compObj?.label || fromCompany;
+        }
+      } else {
+        if (fromCompany) compVal = fromCompany;
+        if (toCompany) {
+          const compObj = (branchCompanies || []).find((c) => String(c.value) === String(toCompany));
+          partyVal = compObj?.name || compObj?.label || toCompany;
+        }
+      }
+    }
+
+    return {
+      company: compVal,
+      party: partyVal,
+      fromCompany: fromCompany || '',
+      fromCompanyId: fromCompany ? Number(fromCompany) : undefined,
+      toCompany: toCompany || '',
+      toCompanyId: toCompany ? Number(toCompany) : undefined,
+      invoice: invoice || '',
+      invoiceno: invoice || '',
+      page: infiniteScroll ? Math.floor(listStart / listLimit) + 1 : page,
+      limit: listLimit,
+      start: listStart,
+      ...listPayload,
+      ...(stockType ? { stockType } : {}),
+      ...(filterType ? { type: filterType } : {}),
+      ...(showSkuFilter && skuSearch.trim() ? { sku: skuSearch.trim() } : {}),
+      ...(fromDate ? { fromDate: dayjs(fromDate).format('YYYY-MM-DD') } : {}),
+      ...(toDate ? { toDate: dayjs(toDate).format('YYYY-MM-DD') } : {}),
+    };
+  }, [
+    isInterTransfer,
+    isInward,
+    fromCompany,
+    toCompany,
+    branchCompanies,
+    selectedCompany,
+    party,
+    invoice,
+    page,
+    listLimit,
+    listStart,
+    listPayload,
+    stockType,
+    infiniteScroll,
+    filterType,
+    showSkuFilter,
+    skuSearch,
+    fromDate,
+    toDate,
+  ]);
 
   const queryClient = useQueryClient();
   const [actionLoading, setActionLoading] = useState(false);
@@ -1401,14 +1484,19 @@ const TransactionStockTemplate = ({
     {
       title: 'Company',
       key: 'company',
-      width: 220,
+      width: 240,
       ellipsis: true,
       render: (_, record) => {
         const compId = record.company != null ? Number(record.company) : null;
-        const compName = record.company_name || companyMap.get(compId) || (compId ? `Company #${compId}` : '—');
+        const meta = compId ? companyMetaMap.get(compId) : null;
+        const baseName = record.company_name || meta?.name || (compId ? `Company #${compId}` : '');
+        const code = record.company_shortcut || record.company_code || meta?.code || '';
+        const compDisplay = code && baseName
+          ? (baseName.includes(`(${code})`) ? baseName : `${baseName} (${code})`)
+          : (meta?.label || baseName || (compId ? `Company #${compId}` : '—'));
         return (
           <Tag color="blue" style={{ fontWeight: 600 }}>
-            {compName}
+            {compDisplay}
           </Tag>
         );
       },
@@ -1722,9 +1810,19 @@ const TransactionStockTemplate = ({
       <AdvancedFilterPanel
         title={`${title}`}
         // subtitle="Filter records by company and invoice number."
-        activeCount={[selectedCompany, party, invoice, filterType, skuSearch, fromDate, toDate].filter(Boolean).length}
+        activeCount={[
+          isInterTransfer ? fromCompany : selectedCompany,
+          isInterTransfer ? toCompany : party,
+          invoice,
+          filterType,
+          skuSearch,
+          fromDate,
+          toDate,
+        ].filter(Boolean).length}
         onClear={() => {
           setSelectedCompany('');
+          setFromCompany('');
+          setToCompany('');
           setParty('');
           setInvoice('');
           setFilterType('');
@@ -1733,7 +1831,17 @@ const TransactionStockTemplate = ({
           setToDate(null);
           resetList();
         }}
-        clearDisabled={!selectedCompany && !party && !invoice && !filterType && !skuSearch && !fromDate && !toDate}
+        clearDisabled={
+          !selectedCompany &&
+          !fromCompany &&
+          !toCompany &&
+          !party &&
+          !invoice &&
+          !filterType &&
+          !skuSearch &&
+          !fromDate &&
+          !toDate
+        }
         showSearch={false}
         extraActions={
           <Space>
@@ -1758,45 +1866,90 @@ const TransactionStockTemplate = ({
           </Space>
         }
       >
-        <FilterField>
-          <Select
-            allowClear
-            showSearch
-            optionFilterProp="label"
-            placeholder="All Company"
-            className={filterPanelStyles.filterControl}
-            value={selectedCompany || undefined}
-            onChange={(v) => { setSelectedCompany(v || ''); resetList(); }}
-            options={branchCompanies}
-            style={{ minWidth: 150, borderRadius: 8 }}
-          />
-        </FilterField>
-        {showSkuFilter && (
-          <FilterField>
-            <Input
-              className={filterPanelStyles.filterControl}
-              value={skuSearch}
-              onChange={(e) => { setSkuSearch(e.target.value); resetList(); }}
-              onPressEnter={refreshList}
-              placeholder="Enter Stone / SKU"
-              allowClear
-            />
-          </FilterField>
+        {isInterTransfer ? (
+          <>
+            <FilterField>
+              <Select
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                placeholder="All From Company"
+                className={filterPanelStyles.filterControl}
+                value={fromCompany || undefined}
+                onChange={(v) => { setSelectedCompany(''); setFromCompany(v || ''); resetList(); }}
+                options={branchCompanies}
+                style={{ minWidth: 150, borderRadius: 8 }}
+              />
+            </FilterField>
+            <FilterField>
+              <Select
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                placeholder="All To Company"
+                className={filterPanelStyles.filterControl}
+                value={toCompany || undefined}
+                onChange={(v) => { setToCompany(v || ''); resetList(); }}
+                options={branchCompanies}
+                style={{ minWidth: 150, borderRadius: 8 }}
+              />
+            </FilterField>
+            {showSkuFilter && (
+              <FilterField>
+                <Input
+                  className={filterPanelStyles.filterControl}
+                  value={skuSearch}
+                  onChange={(e) => { setSkuSearch(e.target.value); resetList(); }}
+                  onPressEnter={refreshList}
+                  placeholder="Enter Stone / SKU"
+                  allowClear
+                />
+              </FilterField>
+            )}
+          </>
+        ) : (
+          <>
+            <FilterField>
+              <Select
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                placeholder="All Company"
+                className={filterPanelStyles.filterControl}
+                value={selectedCompany || undefined}
+                onChange={(v) => { setSelectedCompany(v || ''); resetList(); }}
+                options={branchCompanies}
+                style={{ minWidth: 150, borderRadius: 8 }}
+              />
+            </FilterField>
+            {showSkuFilter && (
+              <FilterField>
+                <Input
+                  className={filterPanelStyles.filterControl}
+                  value={skuSearch}
+                  onChange={(e) => { setSkuSearch(e.target.value); resetList(); }}
+                  onPressEnter={refreshList}
+                  placeholder="Enter Stone / SKU"
+                  allowClear
+                />
+              </FilterField>
+            )}
+            <FilterField>
+              <Select
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                placeholder="All Party Name"
+                className={filterPanelStyles.filterControl}
+                value={party || undefined}
+                onChange={(v) => { setParty(v || ''); resetList(); }}
+                options={partyOptions}
+                style={{ borderRadius: 8 }}
+                virtual
+              />
+            </FilterField>
+          </>
         )}
-        <FilterField>
-          <Select
-            allowClear
-            showSearch
-            optionFilterProp="label"
-            placeholder="All Party Name"
-            className={filterPanelStyles.filterControl}
-            value={party || undefined}
-            onChange={(v) => { setParty(v || ''); resetList(); }}
-            options={partyOptions}
-            style={{ borderRadius: 8 }}
-            virtual
-          />
-        </FilterField>
         {/* <FilterField label="Invoice"> */}
         <FilterField>
           <Input

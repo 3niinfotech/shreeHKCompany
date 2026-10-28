@@ -38,6 +38,8 @@ import { buildInventoryApiFilters } from "../../utils/inventoryApiFilters";
 import useBranchCompanies from "../../hooks/useBranchCompanies";
 import useTableSkeleton from "../../components/common/skeleton/useTableSkeleton";
 import { StoneActionSuccessModal } from "./components/ShopTopActionFilter";
+import SaleSuccessModal from "../../components/inventory/SaleSuccessModal";
+import CompanyTransferSuccessModal from "../../components/inventory/CompanyTransferSuccessModal";
 import CompanyTransferModal from "../../components/inventory/CompanyTransferModal";
 import { ArrowLeftRight } from "lucide-react";
 import InventoryTableSection from "./InventoryTableSection";
@@ -549,6 +551,15 @@ const DiamondInventoryTable = () => {
     count: 0,
     outwardId: null,
   });
+  const [saleSuccessModal, setSaleSuccessModal] = useState({
+    open: false,
+    outwardId: null,
+    data: {},
+  });
+  const [transferSuccessModal, setTransferSuccessModal] = useState({
+    open: false,
+    data: {},
+  });
   const [invoiceModal, setInvoiceModal] = useState({
     open: false,
     record: null,
@@ -638,8 +649,9 @@ const DiamondInventoryTable = () => {
     return "memo";
   };
 
-  const handleSuccessPrint = useCallback(async () => {
-    const outwardId = successModal.outwardId;
+  const handleSuccessPrint = useCallback(async (outwardIdOverride, actionTypeOverride) => {
+    const outwardId = outwardIdOverride || successModal.outwardId;
+    const actionType = actionTypeOverride || successModal.actionType;
     if (!outwardId) {
       toastWarning("No invoice available to print yet.");
       return;
@@ -659,7 +671,7 @@ const DiamondInventoryTable = () => {
       setInvoiceModal({
         open: true,
         record: { ...row, products },
-        printType: printTypeForAction(successModal.actionType),
+        printType: printTypeForAction(actionType),
       });
     } catch (err) {
       toastApiError(err);
@@ -957,10 +969,34 @@ const DiamondInventoryTable = () => {
     const affectedRows = (payload?._submittedRows && payload._submittedRows.length > 0)
       ? payload._submittedRows
       : selectedRows;
-    showSuccessModal("sale", affectedRows, { outwardId: result?.id });
+
+    const totalPcs = affectedRows.reduce((sum, r) => sum + (Number(r.polishPcs ?? r.pcs) || 1), 0);
+    const totalCarat = affectedRows.reduce((sum, r) => sum + (Number(r.polishCarat ?? r.carat) || 0), 0);
+    const totalAmount = payload?.finalAmount != null
+      ? Number(payload.finalAmount)
+      : affectedRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+
+    setSaleSuccessModal({
+      open: true,
+      outwardId: result?.id || null,
+      data: {
+        invoiceNo: payload?.invoiceno || result?.invoice_no || "",
+        entryNo: payload?.entryno || "",
+        date: payload?.date || "",
+        partyName: payload?._partyLabel || "",
+        companyName: payload?._operatingCompanyLabel || companyName || "",
+        items: affectedRows,
+        totalPcs,
+        totalCarat,
+        totalAmount,
+      },
+    });
     setSelectedRowKeys([]);
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.sale] });
+    queryClient.invalidateQueries({ queryKey: ["INTER_TRANSFER_SALE"] });
+    queryClient.invalidateQueries({ queryKey: ["INTER_TRANSFER_PURCHASE"] });
+    queryClient.invalidateQueries({ queryKey: ["companyTransferList"] });
     queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
     queryClient.invalidateQueries({ queryKey: ["myInventorySummary"] });
     queryClient.invalidateQueries({ queryKey: ["OutwardList"] });
@@ -2305,15 +2341,36 @@ const DiamondInventoryTable = () => {
             company={{ name: companyName || "", logo: companyLogo || "" }}
           />
 
+          <SaleSuccessModal
+            open={saleSuccessModal.open}
+            onClose={() => setSaleSuccessModal({ open: false, outwardId: null, data: {} })}
+            data={saleSuccessModal.data}
+            onPrint={() => handleSuccessPrint(saleSuccessModal.outwardId, "sale")}
+          />
+
+          <CompanyTransferSuccessModal
+            open={transferSuccessModal.open}
+            onClose={() => setTransferSuccessModal({ open: false, data: {} })}
+            data={transferSuccessModal.data}
+            onPrint={(sourceOutwardId) => handleSuccessPrint(sourceOutwardId, "sale")}
+          />
+
           <CompanyTransferModal
             open={transferModalOpen}
             onClose={() => setTransferModalOpen(false)}
             selectedStones={selectedRows}
-            onSuccess={async () => {
+            onSuccess={async (transferSummary) => {
               clearSelection();
               queryClient.invalidateQueries({ queryKey: ["GetProductData"] });
               queryClient.invalidateQueries({ queryKey: ["myInventorySummary"] });
+              queryClient.invalidateQueries({ queryKey: ["companyTransferList"] });
               await refetchInventory();
+              if (transferSummary) {
+                setTransferSuccessModal({
+                  open: true,
+                  data: transferSummary,
+                });
+              }
             }}
           />
 

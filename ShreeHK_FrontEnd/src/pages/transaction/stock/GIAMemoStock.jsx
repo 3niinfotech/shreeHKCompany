@@ -1,5 +1,5 @@
 import React from 'react';
-import TransactionStockTemplate from './TransactionStockTemplate';
+import TransactionStockTemplate, { defaultProductColumns } from './TransactionStockTemplate';
 import { TRANSACTION_STOCK_KEYS } from '../../../api/services/transactionStockService';
 import { ENDPOINTS } from '../../../api/endpoints';
 
@@ -11,6 +11,8 @@ const GIAMemoStock = () => (
     listEndpoint={ENDPOINTS.transactionStock.gia.list}
     deleteEndpoint={ENDPOINTS.transactionStock.gia.delete}
     entryPath="/transaction/gia-memo/entry"
+    infiniteScroll
+    productColumns={defaultProductColumns}
     typeFilterOptions={[
       { value: 'lab', label: 'Lab' },
     ]}

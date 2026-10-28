@@ -84,7 +84,6 @@ const GroupReport = React.lazy(() => import("../pages/reports/GroupReport"));
 const StoneHistory = React.lazy(() => import("../pages/reports/StoneHistory"));
 const TransferHistory = React.lazy(() => import("../pages/reports/TransferHistory"));
 const SaleStoneReport = React.lazy(() => import("../pages/reports/SaleStoneReport"));
-const StoneInfoReport = React.lazy(() => import("../pages/reports/StoneInfoReport"));
 
 // --- 6. ADMIN DROPDOWN PAGE ---
 const AdvancedRollPage = React.lazy(() => import("../pages/admin/AdvancedRollPage"));
@@ -305,7 +304,6 @@ export const allProtectedRoutes = [
         hideFromNav: true,
       },
       { path: "/report/sale-stock", name: "Sale Stock Report", element: <SaleStoneReport />, permissionKey: "reports.sale_stock" },
-      { path: "/report/stone-info", name: "Party Stone Info", element: <StoneInfoReport />, permissionKey: "reports.stone_info" },
     ]
   },
   {

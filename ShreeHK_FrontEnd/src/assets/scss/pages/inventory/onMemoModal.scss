@@ -87,31 +87,68 @@
 
     .memo-header-form {
       display: flex !important;
-      flex-wrap: wrap !important;
-      align-items: center;
-      row-gap: 6px;
-      column-gap: 0;
+      flex-direction: column !important;
+      gap: 6px;
       width: 100%;
       max-width: 100%;
 
+      .memo-grid-row {
+        display: grid;
+        width: 100%;
+        align-items: center;
+        gap: 6px 10px;
+
+        &--cols-4 {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        &--cols-5 {
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+        }
+
+        &--cols-8 {
+          grid-template-columns: repeat(8, minmax(0, 1fr));
+          gap: 6px 6px;
+
+          .ant-form-item-label {
+            margin-inline-end: 3px;
+            > label {
+              font-size: 11px;
+            }
+          }
+
+          .memo-form-item--banks {
+            gap: 4px;
+            .ant-checkbox-wrapper {
+              font-size: 11px;
+              padding-inline-start: 1px;
+            }
+          }
+        }
+      }
+
       .ant-form-item {
         margin-bottom: 0 !important;
-        margin-inline-end: 6px !important;
-        flex: 0 1 auto;
-        max-width: 100%;
-        display: inline-flex !important;
+        margin-inline-end: 0 !important;
+        display: flex !important;
         align-items: center;
-        flex-wrap: nowrap;
+        width: 100%;
+        min-width: 0;
       }
 
       .ant-form-item-row {
+        display: flex !important;
+        flex-direction: row !important;
         flex-wrap: nowrap !important;
         align-items: center !important;
+        width: 100%;
+        min-width: 0;
       }
 
       .ant-form-item-label {
+        flex: 0 0 auto !important;
         padding: 0 !important;
-        margin-inline-end: 4px;
+        margin-inline-end: 6px;
 
         > label {
           font-size: 12px;
@@ -123,7 +160,18 @@
       }
 
       .ant-form-item-control {
+        flex: 1 1 auto !important;
         min-width: 0;
+        width: auto;
+      }
+
+      .ant-input,
+      .ant-picker,
+      .ant-select,
+      .ant-select-selector,
+      .ant-input-number {
+        width: 100% !important;
+        height: 30px !important;
         max-width: 100%;
       }
 
@@ -132,8 +180,6 @@
       .ant-select-selector,
       .ant-input-number {
         padding: 4px 6px;
-        height: 30px !important;
-        max-width: 100%;
       }
 
       .ant-input-number {
@@ -146,18 +192,34 @@
         }
       }
 
-      .ant-select {
-        max-width: 100%;
-      }
-
       .ant-select-selector {
         height: 30px !important;
         display: flex;
         align-items: center;
       }
 
-      .ant-checkbox-wrapper {
+      .memo-form-item--banks {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 8px;
+        width: 100%;
+        min-width: 0;
         white-space: nowrap;
+
+        .ant-form-item {
+          margin: 0 !important;
+          width: auto !important;
+          flex: 0 0 auto !important;
+          display: inline-flex !important;
+        }
+
+        .ant-checkbox-wrapper {
+          font-size: 12px;
+          font-weight: 600;
+          margin-inline-start: 0;
+          white-space: nowrap;
+        }
       }
     }
   }
@@ -504,7 +566,7 @@
 
     .memo-header-form {
       .ant-form-item {
-        margin-inline-end: 6px !important;
+        margin-inline-end: 0 !important;
       }
     }
   }

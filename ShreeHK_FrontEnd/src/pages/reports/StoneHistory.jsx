@@ -3,11 +3,12 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, Form, Input, Tag, Button, Switch, Tabs, Tooltip, Badge } from 'antd';
 import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
 import { ReloadOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
 import {
     CircleDot, ScanText, History, BookOpen, Image,
     Pencil, ExternalLink, Link2, BadgeCheck, Tag as TagIcon,
     ShieldAlert, Award, Gem, Network, Info,
-    CornerDownRight,
+    CornerDownRight, Layers, Activity,
 } from 'lucide-react';
 import useFormHandleChange from '../../hooks/useFormHandleChange';
 import DynamicForm from '../../components/common/ui/DynamicFormField';
@@ -163,17 +164,6 @@ const renderInvoiceCell = (invoice, row, allRows, onJump) => {
                 >
                     {value}
                 </button>
-                {to ? (
-                    <Tooltip title="Open invoice page">
-                        <Link
-                            to={to}
-                            onClick={(e) => e.stopPropagation()}
-                            style={{ display: 'inline-flex', alignItems: 'center', color: '#64748b', marginLeft: 4 }}
-                        >
-                            <ExternalLink size={11} />
-                        </Link>
-                    </Tooltip>
-                ) : null}
             </div>
         );
     }
@@ -288,7 +278,6 @@ const renderParsedDescriptionText = (text, row, knownInvoices, onJump) => {
                     title={`Jump to history entry for ${targetInv}`}
                 >
                     <span>{fullMatch}</span>
-                    <CornerDownRight size={11} className={styles.historyJumpIcon} />
                 </button>
             );
         } else {
@@ -927,6 +916,8 @@ const StoneHistory = () => {
     const [status, setStatus] = useState('');
     const [lastUpdated, setLastUpdated] = useState('');
     const [stoneDetail, setStoneDetail] = useState(null);
+    const [byParty, setByParty] = useState([]);
+    const isContainer = Boolean(stoneDetail?.is_container);
     const [stockSummary, setStockSummary] = useState(null);
     const [lineage, setLineage] = useState(null);
     const [activityLogs, setActivityLogs] = useState([]);
@@ -1006,10 +997,11 @@ const StoneHistory = () => {
     };
 
     const applyDetailResponse = async (res) => {
-        const { detail, history, status: st, stock_summary, lineage: lin, activity_logs } = res.data || {};
+        const { detail, history, status: st, stock_summary, lineage: lin, activity_logs, byParty: partyData } = res.data || {};
         if (!detail) return false;
         form.setFieldsValue(mapDetailToForm(detail));
         setStoneDetail(detail);
+        setByParty(partyData || []);
         setHistoryRows((history || [])
             .map((h, i) => ({ ...h, key: h.id != null ? `h-${h.id}` : `h-${i}` })));
         setOldHistoryRows([]);
@@ -1291,14 +1283,70 @@ const StoneHistory = () => {
         return classes.join(' ');
     };
 
-    const isContainer = stoneDetail?.group_type === 'box' || stoneDetail?.group_type === 'parcel' || Boolean(stoneDetail?.is_container);
-
     const handleSearchSku = (targetSku) => {
         if (!targetSku) return;
         searchForm.setFieldsValue({ searchSku: targetSku });
         const companyId = (searchParams.get('companyId') || '').trim();
         navigate(`/report/stone-history?sku=${encodeURIComponent(targetSku)}${companyId ? `&companyId=${encodeURIComponent(companyId)}` : ''}`);
     };
+
+    const getStatusClass = (st) => {
+        const s = (st || '').toUpperCase();
+        if (s.includes('SALE') || s.includes('SOLD')) return styles.status_sale;
+        if (s.includes('MEMO') || s.includes('CONSIGN')) return styles.status_memo;
+        if (s.includes('LAB')) return styles.status_lab;
+        return styles.status_available;
+    };
+
+    const activePartyBlocks = React.useMemo(() => {
+        return (byParty || []).filter(
+            (block) => (block.memoHistory?.length > 0) || (block.saleHistory?.length > 0)
+        );
+    }, [byParty]);
+
+    const partyHistoryColumns = [
+        { title: 'Sr.', key: 'srNo', width: 50, align: 'center', render: (_, __, index) => index + 1 },
+        {
+            title: 'Action',
+            dataIndex: 'action',
+            key: 'action',
+            width: 120,
+            render: (text) => {
+                const act = (text || '').toLowerCase();
+                let color = 'default';
+                if (act.includes('memo')) color = 'orange';
+                else if (act.includes('sale')) color = 'green';
+                else if (act.includes('export')) color = 'blue';
+                else if (act.includes('consign')) color = 'magenta';
+                else if (act.includes('purchase')) color = 'purple';
+                else if (act.includes('import') || act.includes('inward')) color = 'cyan';
+                else if (act.includes('transfer')) color = 'geekblue';
+                else if (act.includes('lab')) color = 'blue';
+                return <Tag color={color} style={{ fontWeight: 600 }}>{String(text || '').replace(/_/g, ' ').toUpperCase().trim()}</Tag>;
+            }
+        },
+        { title: 'Date', dataIndex: 'date', key: 'date', width: 110, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
+        { title: 'Invoice / Ref', dataIndex: 'invoice', key: 'invoice', width: 120, render: (v) => <strong>{v || '-'}</strong> },
+        { title: 'Description', dataIndex: 'description', key: 'description', width: 180, ellipsis: true },
+        { title: 'Pcs', dataIndex: 'pcs', key: 'pcs', width: 65, align: 'right' },
+        { title: 'Carat', dataIndex: 'carat', key: 'carat', width: 80, align: 'right' },
+        {
+            title: 'Price / Rate',
+            dataIndex: 'price',
+            key: 'price',
+            width: 110,
+            align: 'right',
+            render: (v) => (v != null ? <span style={{ color: 'var(--color-success-dark, #15803d)' }}>${Number(v).toLocaleString()}</span> : '-'),
+        },
+        {
+            title: 'Amount',
+            dataIndex: 'amount',
+            key: 'amount',
+            width: 120,
+            align: 'right',
+            render: (v) => (v != null ? <span style={{ color: 'var(--color-primary-dark, #3f2eb5)' }}>${Number(v).toLocaleString()}</span> : '-'),
+        },
+    ];
 
     const historyColumns = [
         {
@@ -1335,7 +1383,7 @@ const StoneHistory = () => {
             title: 'Party',
             dataIndex: 'party_name',
             key: 'party',
-            width: 160,
+            width: 210,
             ellipsis: true,
             render: (value, row) => {
                 const name = String(value || row.party || '').trim();
@@ -1404,7 +1452,7 @@ const StoneHistory = () => {
             title: 'B.Pcs',
             dataIndex: 'balance_pcs',
             key: 'balance_pcs',
-            width: 65,
+            width: 55,
             align: 'right',
             onHeaderCell: () => ({
                 className: 'stone-balance-col',
@@ -1654,6 +1702,7 @@ const StoneHistory = () => {
         setStatus('');
         setLastUpdated('');
         setStoneDetail(null);
+        setByParty([]);
         setStockSummary(null);
         setLineage(null);
         setActivityLogs([]);
@@ -1695,12 +1744,14 @@ const StoneHistory = () => {
                             />
                         </Form.Item>
                     </Form>
-                    {status ? (
+                    {(status || lastUpdated) ? (
                         <div className={styles.headerMeta}>
-                            <span className={styles.headerMetaItem}>
-                                <span className={styles.headerMetaLabel}>Status:</span>
-                                <Tag color="blue" className={styles.headerStatusTag}>{status}</Tag>
-                            </span>
+                            {status ? (
+                                <span className={styles.headerMetaItem}>
+                                    <span className={styles.headerMetaLabel}>Status:</span>
+                                    <Tag color="blue" className={styles.headerStatusTag}>{status}</Tag>
+                                </span>
+                            ) : null}
                             {lastUpdated ? (
                                 <span className={styles.headerMetaItem}>
                                     <span className={styles.headerMetaLabel}>Last Updated:</span>
@@ -1766,16 +1817,18 @@ const StoneHistory = () => {
                                                                     Purchase / Import
                                                                 </Tag>
                                                             </div>
-                                                            <div className={styles.summaryKpiValue}>
-                                                                {formatQtyCell(stockSummary.total_inward_carat || stockSummary.initial_carat)} ct
-                                                            </div>
-                                                            <div className={styles.summaryKpiSub}>
-                                                                <span>{stockSummary.total_inward_pcs || stockSummary.initial_pcs} pcs</span>
-                                                                {stockSummary.additional_inward_carat > 0 && (
-                                                                    <Tag color="cyan" style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>
-                                                                        Initial {stockSummary.initial_carat} ct + {stockSummary.additional_inward_carat} ct add
-                                                                    </Tag>
-                                                                )}
+                                                            <div className={styles.summaryKpiRow}>
+                                                                <div className={styles.summaryKpiValue}>
+                                                                    {formatQtyCell(stockSummary.total_inward_carat || stockSummary.initial_carat)} ct
+                                                                </div>
+                                                                <div className={styles.summaryKpiSub}>
+                                                                    <span>{stockSummary.total_inward_pcs || stockSummary.initial_pcs} pcs</span>
+                                                                    {stockSummary.additional_inward_carat > 0 && (
+                                                                        <Tag color="cyan" style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>
+                                                                            Initial {stockSummary.initial_carat} ct + {stockSummary.additional_inward_carat} ct add
+                                                                        </Tag>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </div>
 
@@ -1786,11 +1839,13 @@ const StoneHistory = () => {
                                                                     In Office / Safe
                                                                 </Tag>
                                                             </div>
-                                                            <div className={styles.summaryKpiValue} style={{ color: '#16a34a' }}>
-                                                                {formatQtyCell(stockSummary.onhand_carat)} ct
-                                                            </div>
-                                                            <div className={styles.summaryKpiSub}>
-                                                                <span>{stockSummary.onhand_pcs} pcs available for sale</span>
+                                                            <div className={styles.summaryKpiRow}>
+                                                                <div className={styles.summaryKpiValue} style={{ color: '#16a34a' }}>
+                                                                    {formatQtyCell(stockSummary.onhand_carat)} ct
+                                                                </div>
+                                                                <div className={styles.summaryKpiSub}>
+                                                                    <span>{stockSummary.onhand_pcs} pcs available for sale</span>
+                                                                </div>
                                                             </div>
                                                         </div>
 
@@ -1807,11 +1862,13 @@ const StoneHistory = () => {
                                                                     </Tag>
                                                                 )}
                                                             </div>
-                                                            <div className={styles.summaryKpiValue} style={{ color: stockSummary.open_memo_carat > 0 ? '#d97706' : 'inherit' }}>
-                                                                {formatQtyCell(stockSummary.open_memo_carat)} ct
-                                                            </div>
-                                                            <div className={styles.summaryKpiSub}>
-                                                                <span>{stockSummary.open_memo_pcs || 0} pcs with party</span>
+                                                            <div className={styles.summaryKpiRow}>
+                                                                <div className={styles.summaryKpiValue} style={{ color: stockSummary.open_memo_carat > 0 ? '#d97706' : 'inherit' }}>
+                                                                    {formatQtyCell(stockSummary.open_memo_carat)} ct
+                                                                </div>
+                                                                <div className={styles.summaryKpiSub}>
+                                                                    <span>{stockSummary.open_memo_pcs || 0} pcs with party</span>
+                                                                </div>
                                                             </div>
                                                         </div>
 
@@ -1822,15 +1879,17 @@ const StoneHistory = () => {
                                                                     Completed Sales
                                                                 </Tag>
                                                             </div>
-                                                            <div className={styles.summaryKpiValue}>
-                                                                {formatQtyCell(stockSummary.total_sold_carat != null ? stockSummary.total_sold_carat : stockSummary.sold_from_memo_carat)} ct
-                                                            </div>
-                                                            <div className={styles.summaryKpiSub}>
-                                                                <span>
-                                                                    {stockSummary.sold_from_memo_carat > 0
-                                                                        ? `From Memo: ${stockSummary.sold_from_memo_carat} ct`
-                                                                        : 'Direct Sale'}
-                                                                </span>
+                                                            <div className={styles.summaryKpiRow}>
+                                                                <div className={styles.summaryKpiValue}>
+                                                                    {formatQtyCell(stockSummary.total_sold_carat != null ? stockSummary.total_sold_carat : stockSummary.sold_from_memo_carat)} ct
+                                                                </div>
+                                                                <div className={styles.summaryKpiSub}>
+                                                                    <span>
+                                                                        {stockSummary.sold_from_memo_carat > 0
+                                                                            ? `From Memo: ${stockSummary.sold_from_memo_carat} ct`
+                                                                            : 'Direct Sale'}
+                                                                    </span>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1855,6 +1914,91 @@ const StoneHistory = () => {
                                                     })}
                                                 />
                                             </div>
+                                        </div>
+                                    ),
+                                },
+                                {
+                                    key: 'party_wise',
+                                    label: (
+                                        <span className={styles.tabLabel}>
+                                            <Layers size={14} />
+                                            Party-Wise History
+                                            {activePartyBlocks.length > 0 && (
+                                                <Badge
+                                                    count={activePartyBlocks.length}
+                                                    style={{ backgroundColor: '#10b981', marginLeft: 4 }}
+                                                />
+                                            )}
+                                        </span>
+                                    ),
+                                    children: (
+                                        <div className={styles.partyWiseTabContent}>
+                                            {activePartyBlocks.length === 0 ? (
+                                                <div style={{ padding: '32px 16px', textAlign: 'center', color: '#64748b' }}>
+                                                    No party transaction history found for this stone.
+                                                </div>
+                                            ) : (
+                                                activePartyBlocks.map((block) => {
+                                                    const hasMemo = block.memoHistory && block.memoHistory.length > 0;
+                                                    const hasSale = block.saleHistory && block.saleHistory.length > 0;
+
+                                                    return (
+                                                        <div key={block.party_id} className={styles.partyBlock}>
+                                                            {hasMemo ? (
+                                                                <div style={{ marginBottom: hasSale ? 12 : 0 }}>
+                                                                    <div className={styles.partyHeaderRow}>
+                                                                        <div className={styles.partyBlockTitle}>
+                                                                            <Activity size={16} />
+                                                                            <span>Party: {block.party_name || `Party ID: ${block.party_id}`}</span>
+                                                                        </div>
+                                                                        <span className={styles.partyHeaderSep}>•</span>
+                                                                        <span className={`${styles.historySubTitle} ${styles.historySubTitleMemo}`}>
+                                                                            Memo / Consign History
+                                                                        </span>
+                                                                    </div>
+                                                                    <SkeletonAwareTable
+                                                                        size="small"
+                                                                        columns={partyHistoryColumns}
+                                                                        dataSource={block.memoHistory.map((r, i) => ({ ...r, key: `memo-${i}` }))}
+                                                                        pagination={false}
+                                                                        bordered
+                                                                        rowKey="key"
+                                                                        scroll={{ x: 'max-content' }}
+                                                                    />
+                                                                </div>
+                                                            ) : null}
+
+                                                            {hasSale ? (
+                                                                <div>
+                                                                    <div className={styles.partyHeaderRow}>
+                                                                        {!hasMemo ? (
+                                                                            <>
+                                                                                <div className={styles.partyBlockTitle}>
+                                                                                    <Activity size={16} />
+                                                                                    <span>Party: {block.party_name || `Party ID: ${block.party_id}`}</span>
+                                                                                </div>
+                                                                                <span className={styles.partyHeaderSep}>•</span>
+                                                                            </>
+                                                                        ) : null}
+                                                                        <span className={`${styles.historySubTitle} ${styles.historySubTitleSale}`}>
+                                                                            Sale / Export History
+                                                                        </span>
+                                                                    </div>
+                                                                    <SkeletonAwareTable
+                                                                        size="small"
+                                                                        columns={partyHistoryColumns}
+                                                                        dataSource={block.saleHistory.map((r, i) => ({ ...r, key: `sale-${i}` }))}
+                                                                        pagination={false}
+                                                                        bordered
+                                                                        rowKey="key"
+                                                                        scroll={{ x: 'max-content' }}
+                                                                    />
+                                                                </div>
+                                                            ) : null}
+                                                        </div>
+                                                    );
+                                                })
+                                            )}
                                         </div>
                                     ),
                                 },

@@ -23,6 +23,7 @@ const InterTransferInMemoStock = () => (
     invoiceTitle="Transfer In Memo Note"
     queryKey="INTER_TRANSFER_IN_MEMO"
     listEndpoint={ENDPOINTS.transactionStock.inward.list}
+    stockType="inter_memo"
     listPayload={{ stockType: 'inter_memo' }}
     deleteEndpoint={ENDPOINTS.transactionStock.inward.delete}
     infiniteScroll

@@ -190,10 +190,12 @@ $btn-font-weight: 600;
 $btn-line-height: 30px;
 $btn-icon-size: 14px;
 
-// Filter bars share the same 32px control height as buttons
+// Filter bars and Form controls share unified control height
 :root {
-  --filter-control-height: #{$btn-height};
-  --filter-control-line-height: #{$btn-line-height};
+  --form-control-height: #{v.$form-control-height};
+  --form-control-line-height: #{v.$form-control-line-height};
+  --filter-control-height: #{v.$form-control-height};
+  --filter-control-line-height: #{v.$form-control-line-height};
   --filter-control-font-size: #{$btn-font-size};
 }
 
@@ -1047,13 +1049,14 @@ $inv-not: ":not(.diamond-inventory-table):not(.custom-ant-table):not(.erp-table)
     }
   }
 
-  .ant-input,
+  .ant-input:not(textarea),
+  .ant-input-affix-wrapper,
   .ant-input-number,
   .ant-select-selector,
   .ant-picker {
     border-radius: 6px !important;
-    min-height: 36px !important;
-    height: 36px !important;
+    min-height: v.$form-control-height !important;
+    height: v.$form-control-height !important;
     font-size: 13px !important;
   }
 
@@ -1061,6 +1064,6 @@ $inv-not: ":not(.diamond-inventory-table):not(.custom-ant-table):not(.erp-table)
   .ant-select-selection-placeholder,
   .ant-picker-input > input {
     font-size: 13px !important;
-    line-height: 34px !important;
+    line-height: v.$form-control-line-height !important;
   }
 }

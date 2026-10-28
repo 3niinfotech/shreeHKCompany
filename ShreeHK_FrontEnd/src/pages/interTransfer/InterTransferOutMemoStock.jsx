@@ -25,6 +25,7 @@ const InterTransferOutMemoStock = () => (
     queryKey="INTER_TRANSFER_OUT_MEMO"
     listEndpoint={ENDPOINTS.transactionStock.outward.list}
     stockType="inter_memo"
+    listPayload={{ stockType: 'inter_memo' }}
     deleteEndpoint={ENDPOINTS.transactionStock.outward.delete}
     infiniteScroll
     showSkuFilter

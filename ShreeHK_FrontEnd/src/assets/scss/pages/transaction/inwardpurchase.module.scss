@@ -60,15 +60,15 @@
     :global(.ant-select-selector),
     :global(.ant-picker) {
       border-radius: 6px !important;
-      min-height: 36px !important;
-      height: 36px !important;
+      min-height: var(--form-control-height, 32px) !important;
+      height: var(--form-control-height, 32px) !important;
     }
 
     :global(.ant-select-selection-item),
     :global(.ant-select-selection-placeholder),
     :global(.ant-picker-input > input) {
       font-size: 13px !important;
-      line-height: 34px !important;
+      line-height: var(--form-control-line-height, 30px) !important;
     }
   }
 

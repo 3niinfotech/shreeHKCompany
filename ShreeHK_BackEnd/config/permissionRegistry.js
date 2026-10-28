@@ -70,7 +70,6 @@ const PAGE_ENTRIES = [
   { key: "reports.stone_history", label: "Stone History", path: "/report/stone-history", moduleKey: "reports", apiPrefixes: ["/report/", "/product/history"], legacyKeys: ["stone_report", "gia", "account_report"] },
   { key: "reports.transfer_history", label: "Transfer History", path: "/report/stone-transfer-history", moduleKey: "reports", apiPrefixes: ["/report/"], legacyKeys: ["stone_report", "account_report"] },
   { key: "reports.sale_stock", label: "Sale Stock Report", path: "/report/sale-stock", moduleKey: "reports", apiPrefixes: ["/report/sale-stock"], legacyKeys: ["transaction", "stock_report"] },
-  { key: "reports.stone_info", label: "Party Stone Info", path: "/report/stone-info", moduleKey: "reports", apiPrefixes: ["/report/stone-info"], legacyKeys: ["stone_report"] },
 
   // Admin
   { key: "admin.branch", label: "Branch", path: "/admin/branch", moduleKey: "admin", apiPrefixes: ["/admin/branch"], legacyKeys: ["company"] },

@@ -1,4 +1,4 @@
-import TransactionStockTemplate from './TransactionStockTemplate';
+import TransactionStockTemplate, { defaultProductColumns } from './TransactionStockTemplate';
 import { TRANSACTION_STOCK_KEYS } from '../../../api/services/transactionStockService';
 import { ENDPOINTS } from '../../../api/endpoints';
 
@@ -11,6 +11,7 @@ const PurchaseStock = () => (
     deleteEndpoint={ENDPOINTS.transactionStock.inward.delete}
     entryPath="/transaction/purchase/entry"
     infiniteScroll
+    productColumns={defaultProductColumns}
     typeFilterOptions={[
       { value: 'purchase', label: 'Purchase' },
       { value: 'import', label: 'Import' },

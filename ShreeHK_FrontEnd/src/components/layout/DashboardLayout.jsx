@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { Layout, Menu, ConfigProvider, Input } from "antd";
 import {
@@ -12,6 +12,12 @@ import {
 import Header from "./Header";
 import Footer from "./Footer";
 import TabBar from "./TabBar";
+import {
+  TabProvider,
+  TabBar as NewTabBar,
+  TabViewport,
+  ENABLE_TABS,
+} from "../../features/tab-manager";
 import useAuthorizedMenuItems from "../../hooks/useAuthorizedMenuItems";
 import useAuthUser from "../../hooks/useAuthUser";
 import useAuthStore from "../../store/Auth.Store";
@@ -33,6 +39,25 @@ const { Sider, Content } = Layout;
 const DashboardLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const isReload = (() => {
+      try {
+        const navEntries = performance.getEntriesByType?.("navigation");
+        if (navEntries && navEntries.length > 0) {
+          return navEntries[0].type === "reload";
+        }
+        return window.performance?.navigation?.type === 1;
+      } catch (e) {
+        return false;
+      }
+    })();
+
+    if (isReload && location.pathname !== "/" && location.pathname !== "/dashboard") {
+      navigate("/", { replace: true });
+    }
+  }, []);
+
   const [collapsed, setCollapsed] = useState(true);
   const [navSearchText, setNavSearchText] = useState("");
   const isDarkMode = useUIStore((state) => state.isDarkMode);
@@ -80,8 +105,10 @@ const DashboardLayout = () => {
       // Submenu folder keys (e.g. /accounting/grouping-menu) are not real pages
       if (!path.startsWith("/") || path.endsWith("-menu")) return;
       prefetchRoute(path);
-      const meta = resolveTabFromPath(path, userWithPerms);
-      openTab({ key: meta.key, label: meta.label, path: meta.path });
+      if (!ENABLE_TABS) {
+        const meta = resolveTabFromPath(path, userWithPerms);
+        openTab({ key: meta.key, label: meta.label, path: meta.path });
+      }
       if (location.pathname !== path) {
         navigate(path);
       }
@@ -152,7 +179,8 @@ const DashboardLayout = () => {
 
   return (
     <ConfigProvider theme={menuTheme}>
-      <Layout className={styles.dashboardLayout}>
+      <TabProvider>
+        <Layout className={styles.dashboardLayout}>
         <Sider
           collapsible
           collapsed={collapsed}
@@ -267,17 +295,18 @@ const DashboardLayout = () => {
             onMenuToggle={() => setCollapsed((c) => !c)}
             bgColor={activeColorCode}
           />
-          <TabBar />
+          {ENABLE_TABS ? <NewTabBar /> : <TabBar />}
           <Content className={`${styles.dashboardContent} app-page-root`}>
             <RoleAccessGuard>
               <div className={styles.pageOutlet}>
-                <Outlet />
+                {ENABLE_TABS ? <TabViewport /> : <Outlet />}
               </div>
             </RoleAccessGuard>
           </Content>
           <Footer />
         </Layout>
       </Layout>
+      </TabProvider>
     </ConfigProvider>
   );
 };

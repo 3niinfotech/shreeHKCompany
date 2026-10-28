@@ -14,6 +14,7 @@ import InventoryBulkActionModal from "../../components/inventory/InventoryBulkAc
 import PairManagementModal from "../../components/inventory/PairManagementModal";
 import { renderLocationWithFlag } from "../../components/inventory/LocationWithFlag";
 import InventoryPageToolbar from "../../components/inventory/InventoryPageToolbar";
+import useBranchCompanies from "../../hooks/useBranchCompanies";
 import {
     BadgeDollarSign,
     Download,
@@ -93,8 +94,37 @@ const OnHandStock = () => {
     const [bulkActionModal, setBulkActionModal] = useState({ open: false, actionKey: null });
     const [searchText, setSearchText] = useState("");
 
+    const { options: branchCompanyOptions } = useBranchCompanies();
+
+    const companyMetaById = useMemo(() => {
+        const map = new Map();
+        for (const opt of branchCompanyOptions || []) {
+            map.set(Number(opt.value), {
+                code: opt.code || "",
+                name: opt.name || String(opt.label || "").replace(/\s*\([^)]*\)\s*$/, ""),
+            });
+        }
+        return map;
+    }, [branchCompanyOptions]);
+
     const columns = useMemo(() => [
         { title: "No.", key: "index", width: 56, fixed: "left", render: (_, __, i) => i + 1 },
+        {
+            title: "Company",
+            key: "company",
+            dataIndex: "company_code",
+            width: 90,
+            align: "center",
+            ellipsis: true,
+            render: (_, record) => {
+                const code =
+                    record.company_code ||
+                    record.companyCode ||
+                    companyMetaById.get(Number(record.company || record.operating_company_id))?.code ||
+                    "";
+                return code || "—";
+            },
+        },
         { title: "Type", dataIndex: "group_type", key: "group_type", width: 90, ellipsis: true },
         {
             title: "Sku", dataIndex: "sku", key: "sku", width: 100, ellipsis: true,
@@ -147,7 +177,7 @@ const OnHandStock = () => {
             width: 72,
             render: (v) => (Number(v) === 1 ? "Yes" : "No"),
         },
-    ], []);
+    ], [companyMetaById]);
     const {
         loading: aiAlertLoading,
         result: aiAlertResult,
