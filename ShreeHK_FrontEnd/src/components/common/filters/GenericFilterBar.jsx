@@ -38,7 +38,7 @@ export const GenericFilterBar = ({
             value={searchValue}
             onChange={(e) => onSearchChange(e.target.value)}
             allowClear
-            style={{ minWidth: "220px", maxWidth: "320px", borderRadius: "6px" }}
+            style={{ minWidth: "220px", maxWidth: "320px", borderRadius: "4px" }}
           />
         )}
         {extraFilters}

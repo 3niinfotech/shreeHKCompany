@@ -145,7 +145,7 @@
     &:global(.ant-input-affix-wrapper),
     &:global(.ant-input),
     &:global(.ant-input-number) {
-        border-radius: 8px !important;
+        border-radius: 4px !important;
         @include filter-control-size;
         display: flex;
         align-items: center;
@@ -224,7 +224,7 @@
     :global(.ant-select-selector),
     :global(.ant-picker),
     :global(.ant-input-affix-wrapper) {
-        border-radius: 8px !important;
+        border-radius: 4px !important;
         @include filter-control-size;
         display: flex;
         align-items: center;
@@ -265,7 +265,7 @@
     :global(.ant-input-affix-wrapper),
     :global(.ant-input) {
         @include filter-control-size;
-        border-radius: 8px !important;
+        border-radius: 4px !important;
         display: flex;
         align-items: center;
     }
@@ -281,7 +281,7 @@
     :global(.ant-picker),
     :global(.ant-input-affix-wrapper),
     :global(.ant-input) {
-        border-radius: 8px !important;
+        border-radius: 4px !important;
     }
 }
 

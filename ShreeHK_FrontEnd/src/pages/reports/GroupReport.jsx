@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { Button, Card, Form, Select, DatePicker } from 'antd';
+import { Button, Card, Form, Select, DatePicker, Tag } from 'antd';
 import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
 import dayjs from 'dayjs';
 import useFormHandleChange from '../../hooks/useFormHandleChange';
@@ -13,6 +13,7 @@ import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTa
 import styles from '../../assets/scss/pages/report/groupReport.module.scss';
 import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
 import { SkuLink } from '../../hooks/useSkuModalAction';
+import useBranchCompanies from '../../hooks/useBranchCompanies';
 
 const REPORT_TYPES = [
     { value: 'memo', label: 'Memo' },
@@ -30,7 +31,19 @@ const GroupReport = () => {
 
     const { data: filterOpts } = useFetchApi('reportFilterOpts', ENDPOINTS.report.filterOptions);
     const { data: companyData } = useFetchApi('GetCompany', ENDPOINTS.company.options);
+    const { options: branchCompanies } = useBranchCompanies();
     const { mutate: fetchGroup, isPending: tableLoading } = usePostApiRequest(ENDPOINTS.report.group, 'groupReport', { showToast: false });
+
+    const companyMetaMap = useMemo(() => {
+        const map = new Map();
+        for (const opt of branchCompanies || []) {
+            map.set(Number(opt.value), {
+                code: opt.code || '',
+                name: opt.name || '',
+            });
+        }
+        return map;
+    }, [branchCompanies]);
 
     const companyOptions = useMemo(() => {
         const list = companyData?.Data || [];
@@ -69,6 +82,25 @@ const GroupReport = () => {
 
     const columns = [
         { title: 'No', dataIndex: 'no', key: 'no', width: 60, align: 'center', fixed: 'left' },
+        {
+            title: 'Company',
+            key: 'operating_company',
+            width: 90,
+            align: 'center',
+            ellipsis: true,
+            render: (_, record) => {
+                const compId = record.company_id != null && record.company_id !== ''
+                    ? Number(record.company_id)
+                    : (record.operating_company_id != null ? Number(record.operating_company_id) : null);
+                const meta = compId ? companyMetaMap.get(compId) : null;
+                const code = meta?.code || meta?.name || (compId ? `Company #${compId}` : '—');
+                return (
+                    <Tag color="blue" title={meta?.name || undefined} style={{ fontWeight: 600 }}>
+                        {code}
+                    </Tag>
+                );
+            },
+        },
         { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 100, render: (text, record) => <SkuLink sku={text} record={record} /> },
         { title: 'Party', dataIndex: 'company', key: 'company', width: 220, fixed: 'left' },
         { title: 'Date', dataIndex: 'date', key: 'date', width: 100, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },

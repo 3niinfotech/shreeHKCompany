@@ -107,8 +107,8 @@ const mapInventoryProductRow = (item, index, offset = 1, baseIndex = 0) => ({
   groupType: item.group_type, sku: item.sku, lab: item.lab,
   outward: item.outward ?? "",
   hold: item.hold === 1 || item.hold === true || item.hold === "1",
-  certificate: item.report_no, shape: item.shape, polishPcs: item.polish_pcs,
-  polishCarat: item.polish_carat,
+  certificate: item.report_no, shape: item.shape, polishPcs: Number(item.onhand_pcs != null && Number(item.onhand_pcs) > 0 ? item.onhand_pcs : item.polish_pcs) || 0, onhandPcs: Number(item.onhand_pcs != null ? item.onhand_pcs : item.polish_pcs) || 0,
+  polishCarat: Number(item.onhand_carat != null && Number(item.onhand_carat) > 0 ? item.onhand_carat : item.polish_carat) || 0, onhandCarat: Number(item.onhand_carat != null ? item.onhand_carat : item.polish_carat) || 0,
   memoCarat: Number(item.memo_carat) || 0,
   memoItems: (item.memo_items || []).map((memoItem) => ({
     id: memoItem.id,
@@ -2057,7 +2057,7 @@ const DiamondInventoryTable = () => {
           colorBorder: "#9fa2ae",
           colorTextPlaceholder: "#3A3F55",
           colorTextQuaternary: "#64748b",
-          borderRadius: 6,
+          borderRadius: 4,
         },
         components: {
           Select: {
@@ -2065,14 +2065,14 @@ const DiamondInventoryTable = () => {
             hoverBorderColor: "var(--color-primary, #1e3a8a)",
             activeBorderColor: "var(--color-primary, #1e3a8a)",
             colorTextPlaceholder: "#3A3F55",
-            borderRadius: 6,
+            borderRadius: 4,
           },
           Input: {
             colorBorder: "#9fa2ae",
             hoverBorderColor: "var(--color-primary, #1e3a8a)",
             activeBorderColor: "var(--color-primary, #1e3a8a)",
             colorTextPlaceholder: "#3A3F55",
-            borderRadius: 6,
+            borderRadius: 4,
           },
         },
       }}

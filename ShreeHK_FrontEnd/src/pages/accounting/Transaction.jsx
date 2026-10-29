@@ -15,7 +15,7 @@ import ExportExcelButton from '../../components/common/ExportExcelButton';
 import { exportPartyReportToExcel } from '../../utils/reportExcelExport';
 import { toastSuccess, toastWarning, toastError } from '../../utils/toastNotify';
 import styles from '../../assets/scss/pages/accountings/transaction.module.scss';
-import useTableBodyScrollHeight, { PAGINATION_MIN_RESERVE } from '../../hooks/useTableBodyScrollHeight';
+import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
 
 const { Option } = Select;
 const { Text } = Typography;
@@ -158,7 +158,7 @@ const Transaction = () => {
     const tableHeight = useTableBodyScrollHeight(
         tableRef,
         [dataSource.length, isTableLoading, hasSearched],
-        { paginationReserve: PAGINATION_MIN_RESERVE },
+        { hasPagination: false }
     );
 
     return (
@@ -263,7 +263,7 @@ const Transaction = () => {
                                 ? 'No transactions found'
                                 : 'Select filters and click Search to load transactions',
                         }}
-                        pagination={{ pageSize: 50, showSizeChanger: true }}
+                        pagination={false}
                         bordered
                         size="small"
                         scroll={{ x: 'max-content', y: tableHeight }}

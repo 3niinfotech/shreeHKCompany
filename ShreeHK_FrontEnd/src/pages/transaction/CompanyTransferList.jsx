@@ -22,6 +22,7 @@ import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import AdvancedFilterPanel, { FilterField, filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
 import TransactionInvoicePreviewModal from '../../components/transaction/invoice/TransactionInvoicePreviewModal';
+import MemoConvertModal from '../../components/transaction/stock/MemoConvertModal';
 import { SkuLink } from '../../hooks/useSkuModalAction';
 import useAuthStore from '../../store/Auth.Store';
 import useBranchCompanies from '../../hooks/useBranchCompanies';
@@ -66,6 +67,21 @@ const childColumns = [
         </Space>
       );
     },
+  },
+  {
+    title: 'Status',
+    dataIndex: 'status',
+    key: 'status',
+    width: 110,
+    align: 'center',
+    render: (status) => (
+      <Tag
+        color={status === 'transferred' ? 'success' : 'purple'}
+        style={{ textTransform: 'uppercase', fontWeight: 600 }}
+      >
+        {status || 'transferred'}
+      </Tag>
+    ),
   },
   {
     title: 'Shape',
@@ -150,21 +166,6 @@ const childColumns = [
       </Text>
     ),
   },
-  {
-    title: 'Status',
-    dataIndex: 'status',
-    key: 'status',
-    width: 110,
-    align: 'center',
-    render: (status) => (
-      <Tag
-        color={status === 'transferred' ? 'success' : 'purple'}
-        style={{ textTransform: 'uppercase', fontWeight: 600 }}
-      >
-        {status || 'transferred'}
-      </Tag>
-    ),
-  },
 ];
 
 const CompanyTransferList = () => {
@@ -172,6 +173,16 @@ const CompanyTransferList = () => {
   const currentCompanyName = useAuthStore((s) => s.companyName) || 'Company';
 
   const { options: branchCompanies } = useBranchCompanies();
+
+  const companyMetaMap = useMemo(() => {
+    const map = new Map();
+    (branchCompanies || []).forEach((c) => {
+      if (c.value != null) {
+        map.set(Number(c.value), c);
+      }
+    });
+    return map;
+  }, [branchCompanies]);
 
   // Filter state (matches AdvancedFilterPanel pattern)
   const [skuSearch, setSkuSearch] = useState('');
@@ -198,6 +209,14 @@ const CompanyTransferList = () => {
     invoiceTitle: 'Sale Invoice',
     printType: 'sale',
     company: {},
+  });
+
+  // Sale Return Modal state
+  const [returnModal, setReturnModal] = useState({
+    open: false,
+    record: null,
+    productIds: [],
+    products: [],
   });
 
   const tableRef = useRef(null);
@@ -275,10 +294,14 @@ const CompanyTransferList = () => {
     const items = record.items || [];
     const invoiceRecord = {
       id: record.source_outward_id,
-      invoice_no: record.source_invoice_no || `OUT-${record.source_outward_id}`,
+      invoiceno: record.source_invoice_no || record.transfer_no || `TRF-${record.id}`,
+      invoice_no: record.source_invoice_no || record.transfer_no || `TRF-${record.id}`,
       date: record.transfer_date,
+      invoicedate: record.transfer_date,
       party_name: record.to_company_name || record.to_party || `Company #${record.to_company_id}`,
       party: record.to_party || record.to_company_name,
+      company: record.from_company_id,
+      company_name: record.from_company_name,
       final_amount: Number(record.total_amount || 0),
       products: items.map((item) => ({
         id: item.source_product_id,
@@ -298,7 +321,11 @@ const CompanyTransferList = () => {
       record: invoiceRecord,
       invoiceTitle: 'Sale Invoice',
       printType: 'sale',
-      company: { name: record.from_company_name || currentCompanyName },
+      company: {
+        id: record.from_company_id,
+        name: record.from_company_name || currentCompanyName,
+        company_name: record.from_company_name || currentCompanyName,
+      },
     });
   };
 
@@ -307,10 +334,14 @@ const CompanyTransferList = () => {
     const items = record.items || [];
     const billRecord = {
       id: record.target_inward_id,
-      invoice_no: record.target_invoice_no || `IN-${record.target_inward_id}`,
+      invoiceno: record.target_invoice_no || record.transfer_no || `TRF-${record.id}`,
+      invoice_no: record.target_invoice_no || record.transfer_no || `TRF-${record.id}`,
       date: record.transfer_date,
+      invoicedate: record.transfer_date,
       party_name: record.from_company_name || `Company #${record.from_company_id}`,
       party: record.from_company_name,
+      company: record.to_company_id,
+      company_name: record.to_company_name,
       final_amount: Number(record.total_amount || 0),
       products: items.map((item) => ({
         id: item.target_product_id,
@@ -330,24 +361,65 @@ const CompanyTransferList = () => {
       record: billRecord,
       invoiceTitle: 'Purchase Bill',
       printType: 'purchase',
-      company: { name: record.to_company_name || 'Target Company' },
+      company: {
+        id: record.to_company_id,
+        name: record.to_company_name || 'Target Company',
+        company_name: record.to_company_name || 'Target Company',
+      },
     });
   };
 
-  // Execute Sale Return
-  const handleExecuteSaleReturn = async (record) => {
-    setReturnSubmittingId(record.id);
+  // Open Sale Return Modal
+  const handleOpenSaleReturn = (record) => {
+    const transferItems = record.items || [];
+    const formattedProducts = transferItems.map((item) => ({
+      ...item,
+      id: item.id,
+      product_id: item.target_product_id || item.id,
+      sku: item.sku || item.source_sku,
+      memo_line_pcs: item.pcs,
+      memo_line_carat: item.carat,
+      polish_pcs: item.pcs,
+      polish_carat: item.carat,
+      sell_price: item.price,
+      price: item.price,
+      amount: item.amount,
+    }));
+
+    const formattedRecord = {
+      ...record,
+      id: record.id,
+      invoiceno: record.transfer_no ? `TRF-${record.transfer_no}` : record.source_invoice_no,
+      party: record.to_company_name || `Company #${record.to_company_id}`,
+      products: formattedProducts,
+    };
+
+    setReturnModal({
+      open: true,
+      record: formattedRecord,
+      productIds: transferItems.map((it) => it.id),
+      products: formattedProducts,
+    });
+  };
+
+  // Confirm Sale Return from Modal
+  const handleConfirmSaleReturn = async (payload) => {
+    const targetRecord = returnModal.record;
+    if (!targetRecord) return;
+    setReturnSubmittingId(targetRecord.id);
     try {
       const res = await executeTransferSaleReturn({
-        transfer_id: record.id,
-        return_notes: 'Returned via Inter-Company Stone Transfer',
+        transfer_id: targetRecord.id,
+        return_notes: payload?.narretion || 'Returned via Inter-Company Stone Transfer',
+        items: payload?.record,
       });
 
       if (res?.status) {
         toastSuccess(
           res.message ||
-          `Sale return processed successfully. Stock returned to ${record.from_company_name || 'source company'}.`
+          `Sale return processed successfully. Stock returned to ${targetRecord.from_company_name || 'source company'}.`
         );
+        setReturnModal({ open: false, record: null, productIds: [], products: [] });
         loadTransfers();
       } else {
         toastError(res?.message || 'Failed to process sale return.');
@@ -363,9 +435,14 @@ const CompanyTransferList = () => {
   const pageStats = useMemo(() => {
     return transfers.reduce(
       (acc, t) => {
+        const itemAmount = (t.items || []).reduce(
+          (sum, item) => sum + Number(item.amount || (Number(item.carat || 0) * Number(item.price || 0)) || 0),
+          0
+        );
+        const resolvedAmount = Number(t.total_amount ?? t.final_amount ?? t.amount ?? itemAmount) || 0;
         acc.pcs += Number(t.total_pcs || 0);
         acc.carats += Number(t.total_carat || 0);
-        acc.amount += Number(t.total_amount || 0);
+        acc.amount += resolvedAmount;
         return acc;
       },
       { pcs: 0, carats: 0, amount: 0 }
@@ -404,7 +481,7 @@ const CompanyTransferList = () => {
                 <Table.Summary fixed>
                   <Table.Summary.Row className={styles.childSummaryRow}>
                     <Table.Summary.Cell index={0} align="left">
-                      <Text strong>Total</Text>
+                      <Text strong style={{ whiteSpace: 'nowrap' }}>Total</Text>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={1} align="left">—</Table.Summary.Cell>
                     <Table.Summary.Cell index={2} align="left">—</Table.Summary.Cell>
@@ -440,6 +517,32 @@ const CompanyTransferList = () => {
     );
   };
 
+  const toggleRowExpand = useCallback((record) => {
+    const key = record?.id;
+    if (key == null) return;
+    setExpandedRowKeys((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
+  }, []);
+
+  const getRowProps = useCallback(
+    (record) => ({
+      onClick: (event) => {
+        const target = event.target;
+        if (
+          target.closest(
+            'a, button, .ant-btn, .anticon, .actionIcons, .actionBtn, .ant-table-row-expand-icon-cell, .ant-table-row-expand-icon, input, textarea, select, .ant-checkbox-wrapper, .ant-select, .ant-dropdown, .ant-picker, [data-no-row-expand]'
+          )
+        ) {
+          return;
+        }
+        toggleRowExpand(record);
+      },
+      style: { cursor: 'pointer' },
+    }),
+    [toggleRowExpand]
+  );
+
   // Main columns (styled exactly like TransactionStockTemplate)
   const mainColumns = useMemo(
     () => [
@@ -453,13 +556,18 @@ const CompanyTransferList = () => {
       {
         title: 'Company',
         key: 'company',
-        width: 160,
+        width: 110,
+        align: 'center',
         ellipsis: true,
         render: (_, r) => {
-          const compName = r.from_company_name || `Company #${r.from_company_id}`;
+          const compId = r.from_company_id != null ? Number(r.from_company_id) : (r.company != null ? Number(r.company) : null);
+          const meta = compId ? companyMetaMap.get(compId) : null;
+          const baseName = r.from_company_name || meta?.name || (compId ? `Company #${compId}` : '');
+          const code = r.from_company_shortcut || r.from_company_code || r.company_shortcut || r.company_code || r.companyShortcut || meta?.code || '';
+          const compDisplay = code || baseName || (compId ? `Company #${compId}` : '—');
           return (
-            <Tag color="blue" style={{ fontWeight: 600 }}>
-              {compName}
+            <Tag color="blue" title={baseName || undefined} style={{ fontWeight: 600 }}>
+              {compDisplay}
             </Tag>
           );
         },
@@ -486,17 +594,6 @@ const CompanyTransferList = () => {
           >
             {status || 'transferred'}
           </Tag>
-        ),
-      },
-      {
-        title: 'From Company',
-        key: 'from_company',
-        width: 170,
-        ellipsis: true,
-        render: (_, r) => (
-          <span style={{ fontWeight: 500 }}>
-            {r.from_company_name || `Company #${r.from_company_id}`}
-          </span>
         ),
       },
       {
@@ -544,20 +641,28 @@ const CompanyTransferList = () => {
         title: 'Amount',
         dataIndex: 'total_amount',
         key: 'total_amount',
-        width: 120,
+        width: 130,
         align: 'right',
-        render: (val) => (
-          <Text strong style={{ color: cssVar('color-error') }}>
-            ${Number(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </Text>
-        ),
+        render: (val, record) => {
+          const raw = val != null && val !== '' ? val : (record?.total_amount ?? record?.final_amount ?? record?.amount);
+          const amount = raw != null && raw !== '' && Number(raw) > 0
+            ? Number(raw)
+            : (record?.items || []).reduce(
+              (sum, item) => sum + Number(item.amount || (Number(item.carat || 0) * Number(item.price || 0)) || 0),
+              0
+            );
+          return (
+            <Text strong style={{ color: cssVar('color-error'), whiteSpace: 'nowrap' }}>
+              ${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </Text>
+          );
+        },
       },
       {
         title: 'Operations',
         key: 'operations',
         width: 250,
         align: 'center',
-        fixed: 'right',
         render: (_, record) => {
           const isTransferred = record.status === 'transferred';
           const isReturning = returnSubmittingId === record.id;
@@ -565,31 +670,21 @@ const CompanyTransferList = () => {
           return (
             <div className={styles.actionButtons}>
               {/* Sale Return button matching .actionReturn style */}
-              <Popconfirm
-                title="Process Sale Return?"
-                description={
-                  <span>
-                    Stock will be returned from <b>{record.to_company_name}</b> back to{' '}
-                    <b>{record.from_company_name}</b>. Continue?
-                  </span>
-                }
-                okText="Yes, Return"
-                cancelText="Cancel"
-                okButtonProps={{ danger: true, loading: isReturning }}
+              <button
+                type="button"
+                className={`${styles.actionBtn} ${styles.actionReturn} ${!isTransferred || isReturning ? styles.actionDisabled : ''
+                  }`}
                 disabled={!isTransferred || isReturning}
-                onConfirm={() => handleExecuteSaleReturn(record)}
+                title={!isTransferred ? 'Stock already returned' : 'Process Sale Return'}
+                onClick={() => {
+                  if (isTransferred && !isReturning) {
+                    handleOpenSaleReturn(record);
+                  }
+                }}
               >
-                <button
-                  type="button"
-                  className={`${styles.actionBtn} ${styles.actionReturn} ${!isTransferred || isReturning ? styles.actionDisabled : ''
-                    }`}
-                  disabled={!isTransferred || isReturning}
-                  title={!isTransferred ? 'Stock already returned' : 'Return stock back to source company'}
-                >
-                  <RollbackOutlined />
-                  Sale Return
-                </button>
-              </Popconfirm>
+                <RollbackOutlined />
+                Sale Return
+              </button>
 
               {/* Print Sale Invoice */}
               <button
@@ -617,7 +712,7 @@ const CompanyTransferList = () => {
         },
       },
     ],
-    [returnSubmittingId]
+    [returnSubmittingId, companyMetaMap]
   );
 
   const {
@@ -702,7 +797,7 @@ const CompanyTransferList = () => {
               resetList();
             }}
             options={branchCompanies}
-            style={{ minWidth: 150, borderRadius: 8 }}
+            style={{ minWidth: 150, borderRadius: 4 }}
           />
         </FilterField>
 
@@ -719,7 +814,7 @@ const CompanyTransferList = () => {
               resetList();
             }}
             options={branchCompanies}
-            style={{ minWidth: 150, borderRadius: 8 }}
+            style={{ minWidth: 150, borderRadius: 4 }}
           />
         </FilterField>
 
@@ -733,7 +828,6 @@ const CompanyTransferList = () => {
             }}
             onPressEnter={loadTransfers}
             placeholder="Transfer / Invoice No"
-            borderRadius="8px"
             allowClear
           />
         </FilterField>
@@ -752,7 +846,7 @@ const CompanyTransferList = () => {
               { label: 'Transferred', value: 'transferred' },
               { label: 'Returned', value: 'returned' },
             ]}
-            style={{ minWidth: 130, borderRadius: 8 }}
+            style={{ minWidth: 130, borderRadius: 4 }}
           />
         </FilterField>
 
@@ -810,7 +904,7 @@ const CompanyTransferList = () => {
             size="small"
             bordered
             tableLayout="fixed"
-            scroll={{ x: 1720, y: effectiveTableHeight }}
+            scroll={{ x: 'max-content', y: effectiveTableHeight }}
             locale={{
               emptyText: (
                 <Empty
@@ -819,6 +913,7 @@ const CompanyTransferList = () => {
                 />
               ),
             }}
+            onRow={showSkeleton ? undefined : getRowProps}
             expandable={
               showSkeleton
                 ? undefined
@@ -896,6 +991,19 @@ const CompanyTransferList = () => {
         invoiceTitle={invoiceModal.invoiceTitle}
         printType={invoiceModal.printType}
         company={invoiceModal.company}
+      />
+
+      {/* Sale Return Modal */}
+      <MemoConvertModal
+        open={returnModal.open}
+        mode="return"
+        returnVariant="sale"
+        record={returnModal.record}
+        productIds={returnModal.productIds || []}
+        products={returnModal.products || []}
+        loading={returnSubmittingId != null}
+        onClose={() => setReturnModal({ open: false, record: null, productIds: [], products: [] })}
+        onConfirm={handleConfirmSaleReturn}
       />
     </div>
   );

@@ -1364,7 +1364,7 @@ const TransactionStockTemplate = ({
           onChange={(e) => toggleAllInGroup(group.id, group.products || [], e.target.checked)}
         />
       ),
-      width: 50,
+      width: 65,
       fixed: 'left',
       render: (_, row) => (
         <Checkbox
@@ -1417,6 +1417,7 @@ const TransactionStockTemplate = ({
     const isCaratCol = (key) => key === 'polish_carat' || key === 'carat';
     const isPriceCol = (key) => key === 'price' || key === 'sell_price' || key === 'purchase_price';
     const isAmountCol = (key) => key === 'amount' || key === 'sell_amount' || key === 'purchase_amount';
+    const hasCheckboxCol = Boolean(columns[0]?.fixed === 'left' || !columns[0]?.dataIndex);
 
     return (
       <div className={styles.expandedBlock}>
@@ -1434,14 +1435,41 @@ const TransactionStockTemplate = ({
             summary={() => {
               if (!products.length) return null;
               return (
-                <Table.Summary fixed>
+                <Table.Summary>
                   <Table.Summary.Row className={styles.childSummaryRow}>
                     {columns.map((col, index) => {
                       const key = col.dataIndex || col.key;
                       let content = null;
-                      if (index === 0) {
-                        content = <Text strong>Total</Text>;
-                      } else if (isPcsCol(key)) {
+                      let cellColSpan = 1;
+
+                      if (hasCheckboxCol) {
+                        if (index === 0) {
+                          cellColSpan = 2;
+                          content = (
+                            <Text strong style={{ whiteSpace: 'nowrap', display: 'inline-block' }}>
+                              Total
+                            </Text>
+                          );
+                        } else if (index === 1) {
+                          return (
+                            <Table.Summary.Cell
+                              key="sr_no_span"
+                              index={1}
+                              colSpan={0}
+                            />
+                          );
+                        }
+                      } else {
+                        if (index === 0) {
+                          content = (
+                            <Text strong style={{ whiteSpace: 'nowrap', display: 'inline-block' }}>
+                              Total
+                            </Text>
+                          );
+                        }
+                      }
+
+                      if (isPcsCol(key)) {
                         content = <Text strong>{childTotals.pcs.toLocaleString()}</Text>;
                       } else if (isCaratCol(key)) {
                         content = <Text strong>{childTotals.carats.toFixed(2)}</Text>;
@@ -1450,11 +1478,14 @@ const TransactionStockTemplate = ({
                       } else if (isAmountCol(key)) {
                         content = <Text strong>{childTotals.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>;
                       }
+
                       return (
                         <Table.Summary.Cell
                           key={key || index}
                           index={index}
-                          align={col.align || (index === 0 ? 'left' : undefined)}
+                          colSpan={cellColSpan}
+                          align={col.align || (index === 0 ? 'center' : undefined)}
+                          style={{ whiteSpace: 'nowrap' }}
                         >
                           {content}
                         </Table.Summary.Cell>
@@ -1484,18 +1515,17 @@ const TransactionStockTemplate = ({
     {
       title: 'Company',
       key: 'company',
-      width: 240,
+      width: actions.companyWidth || 100,
+      align: 'center',
       ellipsis: true,
       render: (_, record) => {
         const compId = record.company != null ? Number(record.company) : null;
         const meta = compId ? companyMetaMap.get(compId) : null;
         const baseName = record.company_name || meta?.name || (compId ? `Company #${compId}` : '');
-        const code = record.company_shortcut || record.company_code || meta?.code || '';
-        const compDisplay = code && baseName
-          ? (baseName.includes(`(${code})`) ? baseName : `${baseName} (${code})`)
-          : (meta?.label || baseName || (compId ? `Company #${compId}` : '—'));
+        const code = record.company_shortcut || record.company_code || record.companyShortcut || record.companyCode || meta?.code || '';
+        const compDisplay = code || baseName || (compId ? `Company #${compId}` : '—');
         return (
-          <Tag color="blue" style={{ fontWeight: 600 }}>
+          <Tag color="blue" title={baseName || undefined} style={{ fontWeight: 600 }}>
             {compDisplay}
           </Tag>
         );
@@ -1504,7 +1534,8 @@ const TransactionStockTemplate = ({
     {
       title: 'Type',
       key: 'type',
-      width: actions.typeWidth || 100,
+      width: actions.typeWidth || 135,
+      align: 'center',
       render: (_, record) => {
         const displayType = record.type || record.inward_type;
         return (
@@ -1878,7 +1909,7 @@ const TransactionStockTemplate = ({
                 value={fromCompany || undefined}
                 onChange={(v) => { setSelectedCompany(''); setFromCompany(v || ''); resetList(); }}
                 options={branchCompanies}
-                style={{ minWidth: 150, borderRadius: 8 }}
+                style={{ minWidth: 150, borderRadius: 4 }}
               />
             </FilterField>
             <FilterField>
@@ -1891,7 +1922,7 @@ const TransactionStockTemplate = ({
                 value={toCompany || undefined}
                 onChange={(v) => { setToCompany(v || ''); resetList(); }}
                 options={branchCompanies}
-                style={{ minWidth: 150, borderRadius: 8 }}
+                style={{ minWidth: 150, borderRadius: 4 }}
               />
             </FilterField>
             {showSkuFilter && (
@@ -1919,7 +1950,7 @@ const TransactionStockTemplate = ({
                 value={selectedCompany || undefined}
                 onChange={(v) => { setSelectedCompany(v || ''); resetList(); }}
                 options={branchCompanies}
-                style={{ minWidth: 150, borderRadius: 8 }}
+                style={{ minWidth: 150, borderRadius: 4 }}
               />
             </FilterField>
             {showSkuFilter && (
@@ -1944,7 +1975,7 @@ const TransactionStockTemplate = ({
                 value={party || undefined}
                 onChange={(v) => { setParty(v || ''); resetList(); }}
                 options={partyOptions}
-                style={{ borderRadius: 8 }}
+                style={{ borderRadius: 4 }}
                 virtual
               />
             </FilterField>
@@ -1958,7 +1989,6 @@ const TransactionStockTemplate = ({
             onChange={(e) => { setInvoice(e.target.value); resetList(); }}
             onPressEnter={refreshList}
             placeholder="Invoice number"
-            borderRadius="8px"
             allowClear
           />
         </FilterField>
@@ -1971,7 +2001,7 @@ const TransactionStockTemplate = ({
               value={filterType || undefined}
               onChange={(v) => { setFilterType(v || ''); resetList(); }}
               options={typeFilterOptions}
-              style={{ minWidth: 140, borderRadius: 8 }}
+              style={{ minWidth: 140, borderRadius: 4 }}
             />
           </FilterField>
         )}

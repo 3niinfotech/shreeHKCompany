@@ -41,8 +41,20 @@ const DashboardLayout = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    const handleBeforeUnload = () => {
+      try {
+        sessionStorage.setItem("tab_mgr_is_reload", "true");
+      } catch (e) {}
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
+  useEffect(() => {
     const isReload = (() => {
       try {
+        const fromSession = sessionStorage.getItem("tab_mgr_is_reload") === "true";
+        if (fromSession) return true;
         const navEntries = performance.getEntriesByType?.("navigation");
         if (navEntries && navEntries.length > 0) {
           return navEntries[0].type === "reload";

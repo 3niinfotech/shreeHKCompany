@@ -102,23 +102,38 @@
           grid-template-columns: repeat(4, minmax(0, 1fr));
         }
 
+        &--cols-6 {
+          grid-template-columns: repeat(6, minmax(0, 1fr));
+        }
+
         &--cols-5 {
           grid-template-columns: repeat(5, minmax(0, 1fr));
         }
 
         &--cols-8 {
           grid-template-columns: repeat(8, minmax(0, 1fr));
+
+          &.memo-grid-row--export-row1 {
+            grid-template-columns: minmax(0, 0.8fr) minmax(0, 0.85fr) minmax(0, 0.85fr) minmax(0, 1fr) minmax(0, 0.7fr) minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1.4fr);
+          }
+
+          &.memo-grid-row--export-row2 {
+            grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 1.4fr);
+          }
+
           gap: 6px 6px;
 
           .ant-form-item-label {
             margin-inline-end: 3px;
-            > label {
+
+            >label {
               font-size: 11px;
             }
           }
 
           .memo-form-item--banks {
             gap: 4px;
+
             .ant-checkbox-wrapper {
               font-size: 11px;
               padding-inline-start: 1px;
@@ -150,7 +165,7 @@
         padding: 0 !important;
         margin-inline-end: 6px;
 
-        > label {
+        >label {
           font-size: 12px;
           font-weight: 600;
           color: var(--color-text-body);

@@ -670,6 +670,9 @@
       &:focus:not(:disabled),
       &:focus-visible:not(:disabled),
       &:active:not(:disabled) {
+        background: transparent !important;
+        border-color: transparent !important;
+        box-shadow: none !important;
         color: var(--color-text-heading) !important;
 
         :global(.ant-btn-icon),
@@ -682,7 +685,7 @@
       }
 
       &:hover:not(:disabled) {
-        background: var(--color-sidebar-hover-bg) !important;
+        background: transparent !important;
       }
     }
 
@@ -699,6 +702,9 @@
       &:focus:not(:disabled),
       &:focus-visible:not(:disabled),
       &:active:not(:disabled) {
+        background: transparent !important;
+        border-color: transparent !important;
+        box-shadow: none !important;
         color: var(--color-text-heading) !important;
 
         :global(.ant-btn-icon),

@@ -27,7 +27,7 @@ const ColorPickerInput = ({ value, onChange, placeholder, disabled, height }) =>
                     height: height || 'var(--form-control-height, 32px)',
                     padding: 2,
                     border: '1px solid #d9d9d9',
-                    borderRadius: 6,
+                    borderRadius: 4,
                     cursor: disabled ? 'not-allowed' : 'pointer',
                     background: 'transparent',
                     flexShrink: 0,

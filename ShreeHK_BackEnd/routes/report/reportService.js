@@ -1121,6 +1121,7 @@ function formatGroupRow(row, report, no) {
   return {
     no,
     company: row.party_name || "",
+    company_id: row.company || "",
     date: row.out_date ? moment(row.out_date).format("DD-MM-YYYY") : "",
     invoice: row.invoiceno || "",
     sku: row.sku || "",

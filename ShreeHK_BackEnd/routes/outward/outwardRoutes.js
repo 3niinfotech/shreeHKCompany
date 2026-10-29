@@ -69,6 +69,7 @@ outwardRouter.post("/outward/sendTo", authenticateToken, async (req, res) => {
         status: true,
         message: result.message,
         id: result.id,
+        invoice_no: result.invoice_no,
         transfer_id: result.transfer_id,
         transfer_no: result.transfer_no,
         is_inter_transfer: result.is_inter_transfer,

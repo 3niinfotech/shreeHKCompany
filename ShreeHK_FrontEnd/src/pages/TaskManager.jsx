@@ -739,7 +739,7 @@ export default function TaskManager() {
                                 value={searchText}
                                 onChange={(e) => setSearchText(e.target.value)}
                                 allowClear
-                                style={{ width: 240, borderRadius: 8 }}
+                                style={{ width: 240, borderRadius: 4 }}
                             />
                             <Select
                                 value={statusFilter}

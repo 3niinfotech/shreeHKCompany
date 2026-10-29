@@ -200,9 +200,25 @@ const LineageTreePanel = ({ lineage, currentDetail, onNavigateSku }) => {
 
             {/* Visual Tree Section */}
             <div className={styles.visualTreeContainer}>
-                <div className={styles.treeSectionTitle}>
-                    <Network size={14} />
-                    <span>Visual Hierarchy Flow</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                    <div className={styles.treeSectionTitle}>
+                        <Network size={14} />
+                        <span>Visual Hierarchy Flow</span>
+                    </div>
+
+                    {rawChildren.length > 0 ? (
+                        <div className={styles.childrenSearchWrap}>
+                            <Input
+                                placeholder="Search child by SKU, shape, color..."
+                                prefix={<Search size={13} style={{ color: '#94a3b8' }} />}
+                                value={childSearch}
+                                onChange={(e) => setChildSearch(e.target.value)}
+                                allowClear
+                                size="small"
+                                style={{ width: 260, borderRadius: 4 }}
+                            />
+                        </div>
+                    ) : null}
                 </div>
 
                 <div className={styles.treeFlowWrap}>
@@ -367,19 +383,7 @@ const LineageTreePanel = ({ lineage, currentDetail, onNavigateSku }) => {
                     {/* Level 3: Children Stones (if current is Box or Parcel container) */}
                     {rawChildren.length > 0 ? (
                         <div className={styles.treeChildrenCard}>
-                            <div className={styles.childrenCardHeader} style={{ justifyContent: 'flex-end', marginBottom: 10 }}>
-                                <div className={styles.childrenSearchWrap}>
-                                    <Input
-                                        placeholder="Search child by SKU, shape, color..."
-                                        prefix={<Search size={13} style={{ color: '#94a3b8' }} />}
-                                        value={childSearch}
-                                        onChange={(e) => setChildSearch(e.target.value)}
-                                        allowClear
-                                        size="small"
-                                        style={{ width: 240, borderRadius: 6 }}
-                                    />
-                                </div>
-                            </div>
+                            
                             <Table
                                 columns={childColumns}
                                 dataSource={filteredChildren.map((c, i) => ({ ...c, key: c.id || i }))}
