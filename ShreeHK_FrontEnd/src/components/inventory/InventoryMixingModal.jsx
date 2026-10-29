@@ -101,14 +101,14 @@ const InventoryMixingModal = ({
         setDestMode("existing");
       } else if (selectedBoxRows.length >= 2) {
         setActiveMode("box_to_box");
-        setSourceContainerId(selectedBoxRows[0].id);
-        setTransferTargetBoxId(selectedBoxRows[1].id);
+        setSourceContainerId(undefined);
+        setTransferTargetBoxId(undefined);
         setDestMode("existing");
       } else if (selectedBoxRows.length === 1 && singleRows.length === 0) {
-        // Single box selected in inventory table -> default to Box to Box with that Box pre-selected
+        // Single box selected in inventory table -> default to Box to Box with placeholder
         setActiveMode("box_to_box");
-        setSourceContainerId(selectedBoxRows[0].id);
-        setTargetContainerId(selectedBoxRows[0].id);
+        setSourceContainerId(undefined);
+        setTargetContainerId(undefined);
         setTransferTargetBoxId(undefined);
         setDestMode("existing");
       } else if (selectedBoxRow && singleRows.length > 0) {
@@ -136,10 +136,8 @@ const InventoryMixingModal = ({
   const handleModeChange = (mode) => {
     setActiveMode(mode);
     if (mode === "box_to_box") {
-      setSourceContainerId(selectedBoxRows[0]?.id || selectedBoxRow?.id || undefined);
-      if (selectedBoxRows.length >= 2) {
-        setTransferTargetBoxId(selectedBoxRows[1]?.id || undefined);
-      }
+      setSourceContainerId(undefined);
+      setTransferTargetBoxId(undefined);
       setDestMode("existing");
     } else if (mode === "to_box") {
       if (selectedBoxRow) {
@@ -199,12 +197,16 @@ const InventoryMixingModal = ({
 
   const boxOptions = useMemo(() => {
     const rows = boxListData?.Data || [];
-    return rows.map((b) => ({
+    const list = [...rows];
+    if (selectedBoxRow && !list.some((b) => Number(b.id) === Number(selectedBoxRow.id))) {
+      list.unshift(selectedBoxRow);
+    }
+    return list.map((b) => ({
       value: b.id,
       label: `${b.sku} (${b.polish_carat || 0} ct, ${b.polish_pcs || 0} pcs)`,
       raw: b,
     }));
-  }, [boxListData]);
+  }, [boxListData, selectedBoxRow]);
 
   // Filter box options for target box in box-to-box mode so user cannot select source box as target
   const targetBoxOptionsForBoxToBox = useMemo(() => {
@@ -710,11 +712,12 @@ const InventoryMixingModal = ({
                 Select Source Box:
               </div>
               <Select
-                placeholder="Search & select Source Box SKU to transfer from..."
-                style={{ width: "100%" }}
+                placeholder="Search & select Sour
+                ce Box SKU..."
+                allowClear
                 showSearch
                 optionFilterProp="label"
-                value={sourceContainerId}
+                value={sourceContainerId || undefined}
                 onChange={setSourceContainerId}
                 options={boxOptions}
               />
@@ -1154,11 +1157,12 @@ const InventoryMixingModal = ({
                 Select Source Box:
               </div>
               <Select
-                placeholder="Search & select Box SKU to assign single stones from..."
+                placeholder="Search & select Source Box SKU..."
+                allowClear
                 style={{ width: "100%" }}
                 showSearch
                 optionFilterProp="label"
-                value={sourceContainerId}
+                value={sourceContainerId || undefined}
                 onChange={setSourceContainerId}
                 options={boxOptions}
               />

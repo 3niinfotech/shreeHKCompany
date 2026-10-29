@@ -12,6 +12,7 @@ import styles from '../../assets/scss/pages/report/groupReport.module.scss';
 import useTableBodyScrollHeight from '../../hooks/useTableBodyScrollHeight';
 import { SkuLink } from '../../hooks/useSkuModalAction';
 import SkeletonAwareTable from '../../components/common/skeleton/SkeletonAwareTable';
+import useBranchCompanies from '../../hooks/useBranchCompanies';
 
 const TYPE_OPTIONS = [
     { value: 'sale', label: 'Sale' },
@@ -45,7 +46,19 @@ const SaleStoneReport = () => {
     const [tableData, setTableData] = useState([]);
     const [exporting, setExporting] = useState(false);
     const { data: companyData } = useFetchApi('GetCompanyAllParties', ENDPOINTS.company.options, { all: '1' });
+    const { options: branchCompanies } = useBranchCompanies();
     const { mutate: fetchReport, isPending: tableLoading } = usePostApiRequest(ENDPOINTS.report.saleStock, 'saleStoneReport', { showToast: false });
+
+    const companyMetaMap = useMemo(() => {
+        const map = new Map();
+        for (const opt of branchCompanies || []) {
+            map.set(Number(opt.value), {
+                code: opt.code || '',
+                name: opt.name || '',
+            });
+        }
+        return map;
+    }, [branchCompanies]);
 
     const companyOptions = useMemo(() => {
         const list = companyData?.Data || [];
@@ -77,6 +90,25 @@ const SaleStoneReport = () => {
 
     const columns = [
         { title: 'No', dataIndex: 'no', width: 50, align: 'center', render: (_, __, idx) => idx + 1 },
+        {
+            title: 'Company',
+            key: 'company',
+            width: 90,
+            align: 'center',
+            ellipsis: true,
+            render: (_, record) => {
+                const compId = record.company != null && record.company !== ''
+                    ? Number(record.company)
+                    : (record.company_id != null ? Number(record.company_id) : null);
+                const meta = compId ? companyMetaMap.get(compId) : null;
+                const code = record.company_shortcut || record.company_code || record.companyCode || meta?.code || meta?.name || (compId ? `Company #${compId}` : '—');
+                return (
+                    <Tag color="blue" title={meta?.name || undefined} style={{ fontWeight: 600 }}>
+                        {code}
+                    </Tag>
+                );
+            },
+        },
         { title: 'SKU', dataIndex: 'sku', width: 140, render: (text, record) => <SkuLink sku={text} record={record} /> },
         {
             title: 'Date',

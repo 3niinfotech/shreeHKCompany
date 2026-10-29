@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Card, Form, Input, Tag, Button, Switch, Tabs, Tooltip, Badge } from 'antd';
+import { Card, Form, Input, Tag, Button, Switch, Tabs, Tooltip, Badge, Modal, Spin, Table } from 'antd';
 import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
 import { ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -926,6 +926,9 @@ const StoneHistory = () => {
     const [loading, setLoading] = useState(false);
     const [exporting, setExporting] = useState(false);
     const [oldLoading, setOldLoading] = useState(false);
+    const [popupSku, setPopupSku] = useState(null);
+    const [popupLoading, setPopupLoading] = useState(false);
+    const [popupData, setPopupData] = useState(null);
     const [searchForm] = Form.useForm();
     const { form, resetAll } = useFormHandleChange();
     const tableRef = React.useRef(null);
@@ -1283,6 +1286,130 @@ const StoneHistory = () => {
         return classes.join(' ');
     };
 
+    const handleOpenHistoryModal = (targetSku) => {
+        if (!targetSku) return;
+        setPopupSku(targetSku);
+        setPopupLoading(true);
+        setPopupData(null);
+        const companyId = (searchParams.get('companyId') || '').trim();
+        api.get(ENDPOINTS.report.stoneDetail, {
+            params: {
+                sku: targetSku,
+                ...(companyId ? { companyId } : {}),
+            },
+        })
+            .then((res) => {
+                setPopupData(res?.data || null);
+            })
+            .catch((err) => {
+                toastApiError(err);
+                setPopupData(null);
+            })
+            .finally(() => {
+                setPopupLoading(false);
+            });
+    };
+
+    const popupColumns = [
+        {
+            title: 'Action',
+            dataIndex: 'action',
+            key: 'action',
+            width: 130,
+            render: (value, row) => {
+                const raw = value || row.action || '';
+                const label = String(raw).replace(/_/g, ' ').trim();
+                if (!label) return '—';
+                const display = label.toLowerCase().replace(/\b\w/g, (ch) => ch.toUpperCase());
+                return (
+                    <Tag color={getActionTagColor(row.action)}>
+                        {display}
+                    </Tag>
+                );
+            },
+        },
+        {
+            title: 'Date & Time',
+            dataIndex: 'date',
+            key: 'date',
+            width: 170,
+            render: (_, row) => (
+                <span style={{ whiteSpace: 'nowrap' }}>{formatHistoryDateTime(row)}</span>
+            ),
+        },
+        {
+            title: 'Party',
+            dataIndex: 'party_name',
+            key: 'party',
+            width: 150,
+            ellipsis: true,
+            render: (value, row) => value || row.party || '—',
+        },
+        {
+            title: 'Invoice',
+            dataIndex: 'invoice',
+            key: 'invoice',
+            width: 110,
+            render: (value, row) => value || row.invoice_no || '—',
+        },
+        {
+            title: 'Description',
+            dataIndex: 'description',
+            key: 'description',
+            width: 340,
+            ellipsis: true,
+            render: (v) => (v ? <Tooltip title={v}><span>{v}</span></Tooltip> : "—"),
+        },
+        {
+            title: 'Pcs',
+            dataIndex: 'pcs',
+            key: 'pcs',
+            width: 55,
+            align: 'right',
+            render: (v) => (v != null && v !== '' ? v : '—'),
+        },
+        {
+            title: 'Carat',
+            dataIndex: 'carat',
+            key: 'carat',
+            width: 70,
+            align: 'right',
+            render: (v) => (v != null && v !== '' ? Number(v).toFixed(2) : '—'),
+        },
+        {
+            title: 'Price',
+            dataIndex: 'price',
+            key: 'price',
+            width: 80,
+            align: 'right',
+            render: (v) => (v != null && v !== '' && Number(v) > 0 ? `$${Number(v).toLocaleString()}` : '—'),
+        },
+        {
+            title: 'Amount',
+            dataIndex: 'amount',
+            key: 'amount',
+            width: 90,
+            align: 'right',
+            render: (v) => (v != null && v !== '' && Number(v) > 0 ? `$${Number(v).toLocaleString()}` : '—'),
+        },
+        {
+            title: 'B.Pcs',
+            dataIndex: 'balance_pcs',
+            key: 'balance_pcs',
+            width: 60,
+            align: 'right',
+            render: (v) => (v != null && v !== '' ? v : '—'),
+        },
+        {
+            title: 'B.Carat',
+            dataIndex: 'balance_carat',
+            key: 'balance_carat',
+            width: 75,
+            align: 'right',
+            render: (v) => (v != null && v !== '' ? Number(v).toFixed(2) : '—'),
+        },
+    ];
+
     const handleSearchSku = (targetSku) => {
         if (!targetSku) return;
         searchForm.setFieldsValue({ searchSku: targetSku });
@@ -1374,7 +1501,7 @@ const StoneHistory = () => {
             title: 'Date & Time',
             dataIndex: 'date_display',
             key: 'date_display',
-            width: 145,
+            width: 170,
             render: (_, row) => (
                 <span style={{ whiteSpace: 'nowrap' }}>{formatHistoryDateTime(row)}</span>
             ),
@@ -1415,7 +1542,7 @@ const StoneHistory = () => {
                     historyRows,
                     oldHistoryRows,
                     handleJumpToInvoice,
-                    handleSearchSku,
+                    handleOpenHistoryModal,
                     stoneDetail?.sku
                 ),
         },
@@ -2145,6 +2272,120 @@ const StoneHistory = () => {
                     </Card>
                 </div>
             )}
+
+            {/* Pop-up Stone History Modal */}
+            <Modal
+                open={Boolean(popupSku)}
+                onCancel={() => {
+                    setPopupSku(null);
+                    setPopupData(null);
+                }}
+                footer={[
+                    <Button
+                        key="fullHistory"
+                        type="default"
+                        icon={<ExternalLink size={14} />}
+                        onClick={() => {
+                            const skuToSearch = popupSku;
+                            setPopupSku(null);
+                            setPopupData(null);
+                            handleSearchSku(skuToSearch);
+                        }}
+                    >
+                        Open Full Page
+                    </Button>,
+                    <Button
+                        key="close"
+                        type="primary"
+                        onClick={() => {
+                            setPopupSku(null);
+                            setPopupData(null);
+                        }}
+                    >
+                        Close
+                    </Button>,
+                ]}
+                width={1350}
+                centered
+                destroyOnClose
+                title={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <History size={18} style={{ color: 'var(--color-primary, #1e3a8a)' }} />
+                        <span style={{ fontWeight: 700, fontSize: 16 }}>Stone History: {popupSku}</span>
+                        {popupData?.detail?.shape && (
+                            <Tag color="blue">{popupData.detail.shape}</Tag>
+                        )}
+                        {popupData?.detail?.polish_carat != null && (
+                            <Tag color="cyan">{Number(popupData.detail.polish_carat).toFixed(2)} ct</Tag>
+                        )}
+                        {popupData?.status && (
+                            <Tag color={popupData.status === 'available' ? 'green' : 'orange'}>
+                                {String(popupData.status).toUpperCase()}
+                            </Tag>
+                        )}
+                    </div>
+                }
+            >
+                {popupLoading ? (
+                    <div style={{ padding: 40, textAlign: 'center' }}>
+                        <Spin tip="Loading stone history..." size="large" />
+                    </div>
+                ) : popupData ? (
+                    <div>
+                        {popupData.detail && (
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    gap: 16,
+                                    padding: '12px 18px',
+                                    background: '#f8fafc',
+                                    borderRadius: 8,
+                                    marginTop: 14,
+                                    marginBottom: 18,
+                                    fontSize: 12,
+                                    border: '1px solid #e2e8f0',
+                                }}
+                            >
+                                <span><b>SKU:</b> {popupData.detail.sku || popupSku}</span>
+                                <span><b>Carat:</b> {Number(popupData.detail.polish_carat || 0).toFixed(2)} ct</span>
+                                {popupData.detail.shape && <span><b>Shape:</b> {popupData.detail.shape}</span>}
+                                {popupData.detail.color && <span><b>Color:</b> {popupData.detail.color}</span>}
+                                {popupData.detail.clarity && <span><b>Clarity:</b> {popupData.detail.clarity}</span>}
+                                {popupData.detail.cut && <span><b>Cut:</b> {popupData.detail.cut}</span>}
+                                {popupData.detail.polish && <span><b>Polish:</b> {popupData.detail.polish}</span>}
+                                {Number(popupData.detail.price || 0) > 0 && (
+                                    <span><b>Price:</b> ${Number(popupData.detail.price).toLocaleString()}</span>
+                                )}
+                                {popupData.detail.location && <span><b>Location:</b> {popupData.detail.location}</span>}
+                            </div>
+                        )}
+
+                        <style>{`
+                            .stone-history-popup-table .ant-table-body {
+                                max-height: 340px !important;
+                                overflow-y: auto !important;
+                            }
+                        `}</style>
+
+                        <Table
+                            className="stone-history-popup-table"
+                            dataSource={popupData.history || []}
+                            rowKey={(r, i) => r.id || `${r.action}-${r.date}-${i}`}
+                            size="small"
+                            pagination={false}
+                            bordered
+                            scroll={{ y: (popupData.history || []).length > 6 ? 340 : undefined, x: 1300 }}
+                            columns={popupColumns}
+                            locale={{ emptyText: 'No history records found for this stone.' }}
+                        />
+                    </div>
+                ) : (
+                    <div style={{ padding: 30, textAlign: 'center', color: '#94a3b8' }}>
+                        No history found for {popupSku}
+                    </div>
+                )}
+            </Modal>
         </div>
     );
 };

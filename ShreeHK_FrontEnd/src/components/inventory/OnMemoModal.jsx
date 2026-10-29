@@ -910,15 +910,19 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
       mask={{ closable: false }}
       title={
         <div className="memo-modal-title">
-          <span className="memo-title-text">{config.title}</span>
-          {isInterCompanySell && (
-            <AntTag color="purple" style={{ marginLeft: 8, fontWeight: 600 }}>
-              Inter-Company Transfer
-            </AntTag>
-          )}
-          <span className="memo-title-count">
-            {resolvedRowCount} diamond(s) — use Add Stone to include more by SKU
-          </span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+            <div>
+              <span className="memo-title-text">{config.title}</span>
+              <span className="memo-title-count">
+                {resolvedRowCount} diamond(s) — use Add Stone to include more by SKU
+              </span>
+            </div>
+            {isInterCompanySell && (
+              <AntTag color="purple" style={{ margin: 0, fontWeight: 600, flexShrink: 0 }}>
+                Inter-Company Transfer
+              </AntTag>
+            )}
+          </div>
         </div>
       }
       footer={null}
@@ -928,7 +932,7 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
         <Form form={form} layout="inline" className="memo-header-form" onValuesChange={handleFormValuesChange}>
           {actionType === "export" ? (
             <>
-              <div className="memo-grid-row memo-grid-row--cols-8">
+              <div className="memo-grid-row memo-grid-row--cols-8 memo-grid-row--export-row1">
                 {outwardField}
                 {invoiceField}
                 {referenceField}
@@ -938,7 +942,7 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
                 {companyField}
                 {partyField}
               </div>
-              <div className="memo-grid-row memo-grid-row--cols-8">
+              <div className="memo-grid-row memo-grid-row--cols-8 memo-grid-row--export-row2">
                 {otherPartyField}
                 {shippingField}
                 {originField}
@@ -951,15 +955,15 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
             </>
           ) : actionType === "sell" ? (
             <>
-              <div className="memo-grid-row memo-grid-row--cols-5">
+              <div className="memo-grid-row memo-grid-row--cols-6">
                 {outwardField}
                 {invoiceField}
                 {referenceField}
                 {dateField}
                 {termsField}
-              </div>
-              <div className="memo-grid-row memo-grid-row--cols-5">
                 {dueDateField}
+              </div>
+              <div className="memo-grid-row memo-grid-row--cols-4">
                 {companyField}
                 {partyField}
                 {otherPartyField}

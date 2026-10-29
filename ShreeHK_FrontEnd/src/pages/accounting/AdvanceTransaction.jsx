@@ -98,7 +98,7 @@ const AdvanceTransaction = () => {
                         showSearch
                         optionFilterProp="children"
                         virtual
-                        style={{ borderRadius: "8px" }}
+                        style={{ borderRadius: "4px" }}
                     >
                         {partyOptions.map((p) => (
                             <Option key={p.value || 'all'} value={p.value}>{p.label}</Option>

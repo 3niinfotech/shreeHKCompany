@@ -283,7 +283,17 @@ const MyAccount = () => {
     ];
 
     return (
-        <div className="page-shell" style={{ background: cssVar('color-bg-page'), gap: 10 }}>
+        <div
+            className="page-shell"
+            style={{
+                background: cssVar('color-bg-page'),
+                gap: 10,
+                overflowY: 'auto',
+                overflowX: 'hidden',
+                paddingBottom: 24,
+                paddingRight: 4,
+            }}
+        >
             <Row gutter={[24, 24]}>
 
                 {/* ── Left: Profile Card ── */}

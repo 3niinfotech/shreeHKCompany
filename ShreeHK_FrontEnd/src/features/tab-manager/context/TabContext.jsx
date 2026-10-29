@@ -52,20 +52,25 @@ export const TabProvider = ({ children }) => {
     [homePath]
   );
 
+  const isReloadInitially = useMemo(() => {
+    try {
+      const fromSession = sessionStorage.getItem("tab_mgr_is_reload") === "true";
+      if (fromSession) return true;
+      const navEntries = performance.getEntriesByType?.("navigation");
+      if (navEntries && navEntries.length > 0) {
+        return navEntries[0].type === "reload";
+      }
+      return window.performance?.navigation?.type === 1;
+    } catch (e) {
+      return false;
+    }
+  }, []);
+
+  const isReloadRef = useRef(isReloadInitially);
+
   const [tabs, setTabs] = useState(() => [initialHomeTab]);
   const [activeKey, setActiveKey] = useState(() => {
-    const isReload = (() => {
-      try {
-        const navEntries = performance.getEntriesByType?.("navigation");
-        if (navEntries && navEntries.length > 0) {
-          return navEntries[0].type === "reload";
-        }
-        return window.performance?.navigation?.type === 1;
-      } catch (e) {
-        return false;
-      }
-    })();
-    if (isReload) return HOME_TAB_CONFIG.key;
+    if (isReloadInitially) return HOME_TAB_CONFIG.key;
     const currentKey = `${location.pathname}${location.search || ""}`;
     return currentKey === "/" || currentKey === "/dashboard"
       ? HOME_TAB_CONFIG.key
@@ -243,6 +248,14 @@ export const TabProvider = ({ children }) => {
 
     // Skip auth / public routes
     if (pathname.startsWith("/auth/") || pathname === "/login") return;
+
+    if (isReloadRef.current) {
+      isReloadRef.current = false;
+      if (pathname !== "/" && pathname !== "/dashboard") {
+        navigate("/", { replace: true });
+        return;
+      }
+    }
 
     if (pathname === "/" || pathname === "/dashboard") {
       if (activeKeyRef.current !== HOME_TAB_CONFIG.key) {

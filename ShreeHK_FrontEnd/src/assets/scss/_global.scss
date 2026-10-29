@@ -108,6 +108,52 @@ input[type="number"] {
 }
 
 // Select inner alignment
+// ---------------------------------------------------------------------------
+// Global Unified Form Fields Border Radius (4px across entire project)
+// Manages: Input, Select, DatePicker, RangePicker, Password, InputNumber, Textarea
+// Applies everywhere: Forms, Filters, Modals, Popovers, Drawers, Tables
+// ---------------------------------------------------------------------------
+.ant-input:not(.ant-input-affix-wrapper > .ant-input),
+.ant-input-affix-wrapper,
+.ant-input-number,
+.ant-picker,
+.ant-picker.ant-picker-range,
+.ant-select:not(.ant-select-customize-input) .ant-select-selector,
+.ant-cascader-picker,
+.ant-tree-select .ant-select-selector {
+  border-radius: 4px !important;
+}
+
+// Compound input groups (search with button, addon attachments)
+.ant-input-group > .ant-input:first-child:not(:last-child),
+.ant-input-group > .ant-input-affix-wrapper:first-child:not(:last-child) {
+  border-top-left-radius: 4px !important;
+  border-bottom-left-radius: 4px !important;
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+.ant-input-group > .ant-input:last-child:not(:first-child),
+.ant-input-group > .ant-input-affix-wrapper:last-child:not(:first-child) {
+  border-top-right-radius: 4px !important;
+  border-bottom-right-radius: 4px !important;
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+}
+
+.ant-input-group-addon {
+  border-radius: 4px !important;
+}
+.ant-input-group > .ant-input-group-addon:first-child:not(:last-child) {
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+.ant-input-group > .ant-input-group-addon:last-child:not(:first-child) {
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+}
+
+
 .ant-select:not(.ant-select-customize-input) .ant-select-selector {
   display: flex !important;
   align-items: center !important;

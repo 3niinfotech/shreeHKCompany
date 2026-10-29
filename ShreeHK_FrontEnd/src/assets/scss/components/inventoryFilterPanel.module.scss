@@ -294,7 +294,7 @@ $compact-accent-hover: var(--color-primary-dark);
   max-width: 72px !important;
   height: 32px !important;
   font-size: 12px !important;
-  border-radius: 6px !important;
+  border-radius: 4px !important;
   background: var(--color-bg-card) !important;
   // border-color: var(--color-border-strong) !important;
   border: 0.5px solid #9fa2ae !important;
@@ -363,7 +363,7 @@ $compact-accent-hover: var(--color-primary-dark);
     min-height: 32px !important;
     background: var(--color-bg-muted) !important;
     border: 1px solid var(--color-border-strong) !important;
-    border-radius: 6px !important;
+    border-radius: 4px !important;
     font-size: 12px !important;
   }
 
@@ -380,14 +380,14 @@ $compact-accent-hover: var(--color-primary-dark);
   border: 0.5px solid #9fa2ae !important;
   --ant-color-text-placeholder: #3A3F55;
   color: #3A3F55 !important;
-  border-radius: 6px !important;
+  border-radius: 4px !important;
 
   :global(.ant-select-selector) {
     height: 32px !important;
     min-height: 32px !important;
     background: var(--color-bg-muted) !important;
     border: 1px solid var(--color-border-strong) !important;
-    border-radius: 6px !important;
+    border-radius: 4px !important;
     font-size: 12px !important;
   }
 
@@ -929,7 +929,7 @@ $compact-accent-hover: var(--color-primary-dark);
 
   :global(.ant-select-selector) {
     height: 32px !important;
-    border-radius: 6px !important;
+    border-radius: 4px !important;
     border: 1px solid #9fa2ae !important;
     background: #ffffff !important;
     display: flex !important;
@@ -950,7 +950,7 @@ $compact-accent-hover: var(--color-primary-dark);
   width: 200px !important;
   min-width: 160px;
   height: 32px !important;
-  border-radius: 6px !important;
+  border-radius: 4px !important;
   border: 1px solid #9fa2ae !important;
   background: #ffffff !important;
   font-size: 12px !important;
@@ -1117,7 +1117,7 @@ $compact-accent-hover: var(--color-primary-dark);
     min-height: 32px !important;
     background: #fff !important;
     border: 1px solid #9fa2ae !important;
-    border-radius: 6px !important;
+    border-radius: 4px !important;
     font-size: 12px !important;
     color: #1f2a37 !important;
     box-shadow: none !important;

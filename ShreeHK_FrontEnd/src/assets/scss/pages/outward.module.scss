@@ -382,7 +382,7 @@
       }
 
       :global(.ant-table-content) {
-        overflow-x: auto !important;
+        overflow-x: visible !important;
         overflow-y: visible !important;
       }
 
@@ -438,6 +438,8 @@
       }
 
       :global(.ant-table-summary) {
+        overflow: visible !important;
+        overflow-x: visible !important;
         background: var(--color-bg-muted);
 
         >tr>td {
@@ -446,6 +448,7 @@
           font-weight: 600 !important;
           background: #f0edfa !important;
           border-top: 1px solid var(--color-border) !important;
+          white-space: nowrap !important;
         }
       }
     }
@@ -453,6 +456,7 @@
     .childSummaryRow {
       :global(td) {
         background: #f0edfa !important;
+        white-space: nowrap !important;
       }
     }
   }

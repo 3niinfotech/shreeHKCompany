@@ -115,7 +115,7 @@ async function generateTargetSku(executor, baseSku) {
 }
 
 const companyTransferService = {
-  async executeTransfer(payload, userContext = {}) {
+  async executeTransferWithQuery(q, payload, userContext = {}) {
     await ensureCompanyTransferSchema();
 
     const {
@@ -128,21 +128,20 @@ const companyTransferService = {
     } = payload;
     const userId = Number(userContext.userId || userContext.user_id || 1);
 
-    return helper.runInTransaction(async (q) => {
-      // 1. Fetch and lock source stones from dai_product
-      const productIds = items.map((i) => i.product_id);
-      const ph = productIds.map(() => "?").join(",");
-      const sourceStones = await queryWith(
-        q,
-        `SELECT p.*,
-                pv.report_no, pv.shape, pv.clarity, pv.size, pv.f_intensity, pv.cut,
-                pv.polish, pv.symmentry, pv.table_pc, pv.depth_pc, pv.mesurment, pv.gridle,
-                pv.intensity, pv.overtone, pv.color, pv.package, pv.bgm, pv.eyeclean
-         FROM dai_product p
-         LEFT JOIN dai_product_value pv ON p.id = pv.product_id
-         WHERE p.id IN (${ph}) FOR UPDATE`,
-        productIds
-      );
+    // 1. Fetch and lock source stones from dai_product
+    const productIds = items.map((i) => i.product_id);
+    const ph = productIds.map(() => "?").join(",");
+    const sourceStones = await queryWith(
+      q,
+      `SELECT p.*,
+              pv.report_no, pv.shape, pv.clarity, pv.size, pv.f_intensity, pv.cut,
+              pv.polish, pv.symmentry, pv.table_pc, pv.depth_pc, pv.mesurment, pv.gridle,
+              pv.intensity, pv.overtone, pv.color, pv.package, pv.bgm, pv.eyeclean
+       FROM dai_product p
+       LEFT JOIN dai_product_value pv ON p.id = pv.product_id
+       WHERE p.id IN (${ph}) FOR UPDATE`,
+      productIds
+    );
 
       const sourceMap = new Map();
       sourceStones.forEach((s) => sourceMap.set(Number(s.id), s));
@@ -181,8 +180,16 @@ const companyTransferService = {
 
       for (const item of items) {
         const stone = sourceMap.get(item.product_id);
-        const availPcs = Number(stone.polish_pcs || 0);
-        const availCarat = Number(stone.polish_carat || 0);
+        const availPcs = Number(
+          stone.onhand_pcs != null && Number(stone.onhand_pcs) > 0
+            ? stone.onhand_pcs
+            : (stone.polish_pcs || 0)
+        );
+        const availCarat = Number(
+          stone.onhand_carat != null && Number(stone.onhand_carat) > 0
+            ? stone.onhand_carat
+            : (stone.polish_carat || 0)
+        );
         if (availPcs < item.pcs) {
           throw new Error(`SKU "${item.sku}": Insufficient pcs (Available: ${availPcs}, Requested: ${item.pcs}).`);
         }
@@ -271,12 +278,15 @@ const companyTransferService = {
       });
 
       const targetProductIds = [];
+      const targetItemMap = {};
 
       // 8. Process each stone item
       for (const item of items) {
         const stone = sourceMap.get(item.product_id);
         const sourceSku = String(item.sku || stone.sku || "").trim();
-        const targetSku = await generateTargetSku(q, sourceSku);
+        const targetSku = (payload.keepOriginalSku || payload.keep_original_sku)
+          ? sourceSku
+          : await generateTargetSku(q, sourceSku);
 
         // 8a. Insert dai_outward_item for source company
         await queryWith(
@@ -303,8 +313,16 @@ const companyTransferService = {
         );
 
         // 8b. Deduct stock in source company
-        const origPcs = Number(stone.polish_pcs || 0);
-        const origCarat = Number(stone.polish_carat || 0);
+        const origPcs = Number(
+          stone.onhand_pcs != null && Number(stone.onhand_pcs) > 0
+            ? stone.onhand_pcs
+            : (stone.polish_pcs || 0)
+        );
+        const origCarat = Number(
+          stone.onhand_carat != null && Number(stone.onhand_carat) > 0
+            ? stone.onhand_carat
+            : (stone.polish_carat || 0)
+        );
         let remPcs = Math.max(0, origPcs - item.pcs);
         const remCarat = Math.max(0, origCarat - item.carat);
         const isFullTransfer = remCarat <= 0.0001;
@@ -401,6 +419,7 @@ const companyTransferService = {
         ]);
         const targetProductId = newProductResult.insertId;
         targetProductIds.push(targetProductId);
+        targetItemMap[item.product_id] = targetProductId;
 
         // 8e. Insert dai_product_value for Target Company
         await queryWith(
@@ -518,8 +537,14 @@ const companyTransferService = {
         total_pcs: totalPcs,
         total_carat: totalCarat,
         total_amount: totalAmount,
+        target_product_ids: targetProductIds,
+        target_item_map: targetItemMap,
       };
-    });
+  },
+
+  async executeTransfer(payload, userContext = {}) {
+    await ensureCompanyTransferSchema();
+    return helper.runInTransaction((q) => this.executeTransferWithQuery(q, payload, userContext));
   },
 
   async listTransfers(filters, userContext) {
@@ -569,7 +594,8 @@ const companyTransferService = {
 
   async executeSaleReturn(payload, userContext = {}) {
     await ensureCompanyTransferSchema();
-    const { transfer_id, notes } = payload;
+    const { transfer_id } = payload;
+    const notes = payload.notes || payload.return_notes || payload.narretion || "";
     const userId = Number(userContext.userId || userContext.user_id || 1);
 
     return helper.runInTransaction(async (q) => {
@@ -715,7 +741,7 @@ const companyTransferService = {
       if (transfer.target_inward_id) {
         await queryWith(
           q,
-          "UPDATE dai_inward SET deleted = 1, status = 'returned' WHERE id = ?",
+          "UPDATE dai_inward SET deleted = 1 WHERE id = ?",
           [transfer.target_inward_id]
         );
       }

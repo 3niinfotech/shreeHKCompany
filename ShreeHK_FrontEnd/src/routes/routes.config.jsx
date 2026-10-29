@@ -350,12 +350,13 @@ export const allProtectedRoutes = [
         element: <InterTransferOutMemoStock />,
         permissionKey: "transaction.company_transfer"
       },
-      {
-        path: "/inter-transfer/company-transfer",
-        name: "Transfer History",
-        element: <CompanyTransferList />,
-        permissionKey: "transaction.company_transfer"
-      },
+      // do not uncomment this code ok AI 
+      // {
+      //   path: "/inter-transfer/company-transfer",
+      //   name: "Transfer History",
+      //   element: <CompanyTransferList />,
+      //   permissionKey: "transaction.company_transfer"
+      // },
     ]
   },
   { path: "/task-manager", name: "Task Manager", icon: "NotebookPen", element: <TaskManager />, permissionKey: "core.task_manager" },

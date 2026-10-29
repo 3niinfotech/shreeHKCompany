@@ -618,11 +618,16 @@ async function sendTo(rawPost, userContext = {}) {
   // Inter-Company Transfer Detection for Direct Sell:
   // If a stone belonging to Company A is sold to Company B (via Company dropdown or Party match),
   // automatically process as an Inter-Company Transfer with dual Sale Bill + Purchase Bill + Target Stock creation.
+  let isInterCompanyCustomerSale = false;
+  let transferPayload = null;
+  let fromComp = null;
+  let toComp = null;
+
   if (type === "sale") {
     const qRead = (sql, vals) => helper.query(sql, vals);
     const ph = productIds.map(() => "?").join(",");
     const stoneRows = await qRead(
-      `SELECT id, sku, company, polish_pcs, polish_carat, price, amount FROM ${TABLE_PRODUCT} WHERE id IN (${ph})`,
+      `SELECT id, sku, company, polish_pcs, polish_carat, onhand_pcs, onhand_carat, price, amount FROM ${TABLE_PRODUCT} WHERE id IN (${ph})`,
       productIds
     );
 
@@ -658,24 +663,34 @@ async function sendTo(rawPost, userContext = {}) {
         sourceCompanyId,
         targetCompanyId,
       ]);
-      const fromComp = compRows.find((c) => Number(c.id) === sourceCompanyId);
-      const toComp = compRows.find((c) => Number(c.id) === targetCompanyId);
+      fromComp = compRows.find((c) => Number(c.id) === sourceCompanyId);
+      toComp = compRows.find((c) => Number(c.id) === targetCompanyId);
 
       if (fromComp && toComp) {
-        const companyTransferService = require("../../services/transaction/companyTransferService.js");
+        const partyStr = String(post.party || "").trim();
+        const isPartyTheTargetCompany =
+          partyStr === String(toComp.id) ||
+          partyStr.toLowerCase() === toComp.name.toLowerCase();
 
-        const transferPayload = {
+        transferPayload = {
           from_company_id: sourceCompanyId,
           to_company_id: targetCompanyId,
           to_party: toComp.name,
           transfer_date: formatDateOnly(post.date) || formatDateOnly(post.invoicedate) || new Date().toISOString().slice(0, 10),
           notes: post.narretion || `Direct Sale from Inventory (${fromComp.name} -> ${toComp.name})`,
+          keepOriginalSku: true,
           items: recordList.map((r) => {
             const stone = stoneRows.find((s) => Number(s.id) === Number(r.id));
-            const pcs = Number(r.polish_pcs ?? stone?.polish_pcs ?? 1);
-            const carat = Number(r.polish_carat ?? stone?.polish_carat ?? 0);
+            const pcs = Number(
+              (r.polish_pcs != null && Number(r.polish_pcs) > 0 ? r.polish_pcs : null) ??
+              (stone?.onhand_pcs != null && Number(stone.onhand_pcs) > 0 ? stone.onhand_pcs : (stone?.polish_pcs ?? 1))
+            );
+            const carat = Number(
+              (r.polish_carat != null && Number(r.polish_carat) > 0 ? r.polish_carat : null) ??
+              (stone?.onhand_carat != null && Number(stone.onhand_carat) > 0 ? stone.onhand_carat : (stone?.polish_carat ?? 0))
+            );
             const price = Number(r.price ?? stone?.price ?? 0);
-            const amount = Number(r.amount ?? (Math.round(carat * price * 100) / 100));
+            const amount = Number((r.amount != null && Number(r.amount) > 0) ? r.amount : (Math.round(carat * price * 100) / 100));
             return {
               product_id: Number(r.id),
               sku: stone?.sku || r.sku,
@@ -687,19 +702,27 @@ async function sendTo(rawPost, userContext = {}) {
           }),
         };
 
-        const transferResult = await companyTransferService.executeTransfer(transferPayload, {
-          ...userContext,
-          userId,
-        });
+        if (isPartyTheTargetCompany) {
+          // Direct 2-leg transfer only (party is target company itself, no 3rd party customer)
+          const companyTransferService = require("../../services/transaction/companyTransferService.js");
+          const transferResult = await companyTransferService.executeTransfer(transferPayload, {
+            ...userContext,
+            userId,
+          });
 
-        return {
-          ok: true,
-          message: `Direct Sale to ${toComp.name} processed as Inter-Company Transfer (Transfer No: ${transferResult.transfer_no})`,
-          id: transferResult.source_outward_id,
-          transfer_id: transferResult.transfer_id,
-          transfer_no: transferResult.transfer_no,
-          is_inter_transfer: true,
-        };
+          return {
+            ok: true,
+            message: `Direct Sale to ${toComp.name} processed as Inter-Company Transfer (Transfer No: ${transferResult.transfer_no})`,
+            id: transferResult.source_outward_id,
+            transfer_id: transferResult.transfer_id,
+            transfer_no: transferResult.transfer_no,
+            is_inter_transfer: true,
+          };
+        }
+
+        // 3-legged sale: Leg 1 (HK Sale to Antwerp) + Leg 2 (Antwerp Purchase from HK) + Leg 3 (Antwerp Sale to Customer Party)
+        // Execute atomic in withTransaction below
+        isInterCompanyCustomerSale = true;
       }
     }
   }
@@ -708,6 +731,27 @@ async function sendTo(rawPost, userContext = {}) {
     await stockMovement.ensureStockItemSchema(helper.query);
     const outwardId = await withTransaction(async (q) => {
       await stockMovement.ensureStockItemSchema(q);
+
+      let transferResult = null;
+      let effectiveRecordList = recordList;
+
+      if (isInterCompanyCustomerSale && transferPayload) {
+        const companyTransferService = require("../../services/transaction/companyTransferService.js");
+        transferResult = await companyTransferService.executeTransferWithQuery(q, transferPayload, {
+          ...userContext,
+          userId,
+        });
+
+        // Remap recordList so each stone points to newly created targetProductId in Antwerp
+        effectiveRecordList = recordList.map((r) => {
+          const targetId = transferResult.target_item_map?.[r.id] || (transferResult.target_product_ids && transferResult.target_product_ids[0]);
+          return {
+            ...r,
+            id: targetId,
+          };
+        });
+      }
+
       const allocated = await allocateOutwardNumbers(q, companyId, type);
 
       const today = new Date().toISOString().slice(0, 10);
@@ -728,7 +772,7 @@ async function sendTo(rawPost, userContext = {}) {
       const lineItems = [];
       let amount = 0;
 
-      for (const rec of recordList) {
+      for (const rec of effectiveRecordList) {
         const pid = rec.id;
         const edata = await getProductDetail(q, pid, lookupCompanyIds);
         if (!edata) {
@@ -771,7 +815,7 @@ async function sendTo(rawPost, userContext = {}) {
         }
       }
 
-      for (const rec of recordList) {
+      for (const rec of effectiveRecordList) {
         const pid = rec.id;
         const edata = await getProductDetail(q, pid, lookupCompanyIds);
         const productCompanyId = Number(edata.company) || companyId;
@@ -1020,7 +1064,7 @@ async function sendTo(rawPost, userContext = {}) {
         companyId,
       });
 
-      return { Oid, sku, invoiceno: post.invoiceno };
+      return { Oid, sku, invoiceno: post.invoiceno, transferResult };
     });
 
     if (type === "sale") {
@@ -1038,9 +1082,22 @@ async function sendTo(rawPost, userContext = {}) {
       }
     }
 
+    if (outwardId.transferResult) {
+      return {
+        ok: true,
+        id: outwardId.Oid,
+        invoice_no: outwardId.invoiceno,
+        transfer_id: outwardId.transferResult.transfer_id,
+        transfer_no: outwardId.transferResult.transfer_no,
+        is_inter_transfer: true,
+        message: `Sale completed for ${toComp?.name || "Company"} with Inter-Company Transfer from ${fromComp?.name || "Source Company"} (Transfer No: ${outwardId.transferResult.transfer_no})`,
+      };
+    }
+
     return {
       ok: true,
       id: outwardId.Oid,
+      invoice_no: outwardId.invoiceno,
       message:
         type === "sale"
           ? "Sale saved successfully"
