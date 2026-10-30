@@ -34,7 +34,10 @@ const AdvanceTableData = () => {
 
     const { data: companyData } = useFetchApi('GetCompany', ENDPOINTS.company.options);
     const { data: bookApiData } = useFetchApi('accBooks', ENDPOINTS.accountingTxn.books);
-    const { data: balanceData } = useFetchApi('myBalanceBook', ENDPOINTS.balance.list);
+    const { data: balanceData } = useFetchApi('myBalanceBook', ENDPOINTS.balance.list, {}, 'GET', {
+        staleTime: 0,
+        refetchOnMount: 'always',
+    });
 
     const partyOptions = useMemo(() => {
         const list = companyData?.Data || [];

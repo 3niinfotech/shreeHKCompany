@@ -37,7 +37,7 @@ const resolveUserCompanyId = async (req, userRoll) => {
     try {
       const allowed = await getRollCompanyIds(userRoll);
       if (allowed && allowed.length > 0) return allowed[0];
-    } catch {}
+    } catch { }
   }
   return 1;
 };

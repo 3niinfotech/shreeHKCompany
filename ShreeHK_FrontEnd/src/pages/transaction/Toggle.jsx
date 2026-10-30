@@ -1,4 +1,3 @@
-import React from 'react';
 import styles from '../../assets/scss/pages/transaction/stoneupdate.module.scss';
 
 const Toggle = ({ label, checked, onChange, id }) => {

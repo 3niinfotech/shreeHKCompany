@@ -139,6 +139,39 @@ export function mapTransactionToInvoice(record, options = {}) {
     vatAmount,
     vatPercent: record?.vat_percent ?? 7,
     invoiceFrom: toNumber(record?.invoice_from),
+    selectedBanks: (() => {
+      let b = record?.selected_banks || record?.selectedBanks;
+      if (typeof b === "string" && b.trim()) {
+        try {
+          b = JSON.parse(b);
+        } catch {
+          b = [];
+        }
+      }
+      if (Array.isArray(b) && b.length > 0) return b;
+
+      let compBanks = company?.bank_details || company?.banks;
+      if (typeof compBanks === "string" && compBanks.trim()) {
+        try {
+          compBanks = JSON.parse(compBanks);
+        } catch {
+          compBanks = [];
+        }
+      }
+      if (Array.isArray(compBanks) && compBanks.length > 0) {
+        const matched = compBanks.filter((cb) => {
+          const lbl = String(cb.bank_label || cb.bank_name || "").toLowerCase();
+          if (record?.boc && lbl.includes("boc")) return true;
+          if (record?.citi && lbl.includes("citi")) return true;
+          if (record?.dbs && lbl.includes("dbs")) return true;
+          if (record?.sc && (lbl.includes("sc") || lbl.includes("standard"))) return true;
+          return false;
+        });
+        if (matched.length) return matched;
+        return [compBanks[0]];
+      }
+      return [];
+    })(),
     bankFlags: {
       boc: record?.boc,
       citi: record?.citi,

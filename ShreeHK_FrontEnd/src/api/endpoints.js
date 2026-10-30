@@ -210,6 +210,7 @@ export const ENDPOINTS = {
         detail: (id) => `/admin/branch/${id}`,
         save: "/admin/branch/save",
         delete: "/admin/branch/delete",
+        deleteImpact: "/admin/branch/delete-impact",
         options: "/admin/branch/options",
     },
     tenantCompany: {
@@ -217,6 +218,7 @@ export const ENDPOINTS = {
         detail: (id) => `/admin/tenant-company/${id}`,
         save: "/admin/tenant-company/save",
         delete: "/admin/tenant-company/delete",
+        deleteImpact: "/admin/tenant-company/delete-impact",
         options: "/admin/tenant-company/options",
     },
     integration: {
@@ -278,5 +280,8 @@ export const QUERY_KEYS = {
     categories: "categories",
     users: "users",
 };
+
+export const TENANT_COMPANY_DELETE_IMPACT = "/admin/tenant-company/delete-impact";
+export const BRANCH_DELETE_IMPACT = "/admin/branch/delete-impact";
 
 export default ENDPOINTS;

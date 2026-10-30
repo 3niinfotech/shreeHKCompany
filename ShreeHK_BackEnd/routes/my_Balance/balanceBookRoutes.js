@@ -152,25 +152,41 @@ MyBalanceBook.use(express.json());
 
 // 1. GET API
 MyBalanceBook.get("/balance/get", authenticateToken, (req, res) => {
-    const companyId = buildUserContext(req).companyId;
-    if (!companyId || companyId <= 0) {
+    const userContext = buildUserContext(req);
+    const companyId = req.query.company_id || req.query.company || userContext.companyId;
+    const all = req.query.all === "1" || req.query.allCompanies === "1";
+
+    if (!all && (!companyId || companyId <= 0)) {
         return res.status(200).json({
             message: "Balance Data Retrieved Successfully",
             Data: [],
         });
     }
 
-    const query = `
+    const query = all
+        ? `
         SELECT id,
                book AS bank,
                currency,
                balance AS cash,
+               company,
+               0 AS credit
+        FROM dai_book
+        ORDER BY book ASC, currency ASC, id ASC
+        `
+        : `
+        SELECT id,
+               book AS bank,
+               currency,
+               balance AS cash,
+               company,
                0 AS credit
         FROM dai_book
         WHERE company = ?
         ORDER BY book ASC, currency ASC, id ASC
-    `;
-    connection.query(query, [companyId], (err, results) => {
+        `;
+    const params = all ? [] : [companyId];
+    connection.query(query, params, (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         res.status(200).json({
             message: "Balance Data Retrieved Successfully",

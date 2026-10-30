@@ -14,7 +14,7 @@ const inMemoProductColumns = [
   { title: 'Amount', dataIndex: 'amount', key: 'amount', width: 100, align: 'right', render: (v) => v || 0 },
   { title: 'Lab', dataIndex: 'lab', key: 'lab', width: 80 },
   { title: 'LOC', dataIndex: 'location', key: 'location', width: 80 },
-  { title: 'Remark', dataIndex: 'remark', key: 'remark', width: 120, ellipsis: true },
+  { title: 'Remark', dataIndex: 'remark', key: 'remark', width: 650, ellipsis: true },
 ];
 
 const InterTransferInMemoStock = () => (

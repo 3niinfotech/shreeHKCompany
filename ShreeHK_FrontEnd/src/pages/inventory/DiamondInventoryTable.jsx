@@ -553,6 +553,7 @@ const DiamondInventoryTable = () => {
   });
   const [saleSuccessModal, setSaleSuccessModal] = useState({
     open: false,
+    actionType: "sale",
     outwardId: null,
     data: {},
   });
@@ -940,6 +941,31 @@ const DiamondInventoryTable = () => {
     }
   ], [stoneTypeFw]);
 
+  const openActionSuccessModal = (actionType, payload, result, affectedRows) => {
+    const totalPcs = affectedRows.reduce((sum, r) => sum + (Number(r.polishPcs ?? r.pcs) || 1), 0);
+    const totalCarat = affectedRows.reduce((sum, r) => sum + (Number(r.polishCarat ?? r.carat) || 0), 0);
+    const totalAmount = payload?.finalAmount != null
+      ? Number(payload.finalAmount)
+      : affectedRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+
+    setSaleSuccessModal({
+      open: true,
+      actionType,
+      outwardId: result?.id || null,
+      data: {
+        invoiceNo: payload?.invoiceno || result?.invoice_no || "",
+        entryNo: payload?.entryno || "",
+        date: payload?.date || "",
+        partyName: payload?._partyLabel || "",
+        companyName: payload?._operatingCompanyLabel || companyName || "",
+        items: affectedRows,
+        totalPcs,
+        totalCarat,
+        totalAmount,
+      },
+    });
+  };
+
   const handleMemoSubmit = async (payload) => {
     const result = await sendToOutward(payload);
     if (!result?.status) {
@@ -949,7 +975,7 @@ const DiamondInventoryTable = () => {
     const affectedRows = (payload?._submittedRows && payload._submittedRows.length > 0)
       ? payload._submittedRows
       : selectedRows;
-    showSuccessModal("memo", affectedRows, { outwardId: result?.id });
+    openActionSuccessModal("memo", payload, result, affectedRows);
     setSelectedRowKeys([]);
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.outMemo] });
@@ -970,27 +996,7 @@ const DiamondInventoryTable = () => {
       ? payload._submittedRows
       : selectedRows;
 
-    const totalPcs = affectedRows.reduce((sum, r) => sum + (Number(r.polishPcs ?? r.pcs) || 1), 0);
-    const totalCarat = affectedRows.reduce((sum, r) => sum + (Number(r.polishCarat ?? r.carat) || 0), 0);
-    const totalAmount = payload?.finalAmount != null
-      ? Number(payload.finalAmount)
-      : affectedRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
-
-    setSaleSuccessModal({
-      open: true,
-      outwardId: result?.id || null,
-      data: {
-        invoiceNo: payload?.invoiceno || result?.invoice_no || "",
-        entryNo: payload?.entryno || "",
-        date: payload?.date || "",
-        partyName: payload?._partyLabel || "",
-        companyName: payload?._operatingCompanyLabel || companyName || "",
-        items: affectedRows,
-        totalPcs,
-        totalCarat,
-        totalAmount,
-      },
-    });
+    openActionSuccessModal("sale", payload, result, affectedRows);
     setSelectedRowKeys([]);
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.sale] });
@@ -1013,7 +1019,7 @@ const DiamondInventoryTable = () => {
     const affectedRows = (payload?._submittedRows && payload._submittedRows.length > 0)
       ? payload._submittedRows
       : selectedRows;
-    showSuccessModal("consign", affectedRows, { outwardId: result?.id });
+    openActionSuccessModal("consign", payload, result, affectedRows);
     setSelectedRowKeys([]);
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.outMemo] });
@@ -1033,7 +1039,7 @@ const DiamondInventoryTable = () => {
     const affectedRows = (payload?._submittedRows && payload._submittedRows.length > 0)
       ? payload._submittedRows
       : selectedRows;
-    showSuccessModal("lab", affectedRows, { outwardId: result?.id });
+    openActionSuccessModal("lab", payload, result, affectedRows);
     setSelectedRowKeys([]);
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.gia] });
@@ -1053,7 +1059,7 @@ const DiamondInventoryTable = () => {
     const affectedRows = (payload?._submittedRows && payload._submittedRows.length > 0)
       ? payload._submittedRows
       : selectedRows;
-    showSuccessModal("export", affectedRows, { outwardId: result?.id });
+    openActionSuccessModal("export", payload, result, affectedRows);
     setSelectedRowKeys([]);
     setOffset(1);
     queryClient.invalidateQueries({ queryKey: [TRANSACTION_STOCK_KEYS.outMemo] });
@@ -2343,9 +2349,10 @@ const DiamondInventoryTable = () => {
 
           <SaleSuccessModal
             open={saleSuccessModal.open}
-            onClose={() => setSaleSuccessModal({ open: false, outwardId: null, data: {} })}
+            actionType={saleSuccessModal.actionType || "sale"}
+            onClose={() => setSaleSuccessModal({ open: false, actionType: "sale", outwardId: null, data: {} })}
             data={saleSuccessModal.data}
-            onPrint={() => handleSuccessPrint(saleSuccessModal.outwardId, "sale")}
+            onPrint={() => handleSuccessPrint(saleSuccessModal.outwardId, saleSuccessModal.actionType || "sale")}
           />
 
           <CompanyTransferSuccessModal

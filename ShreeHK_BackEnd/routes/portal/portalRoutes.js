@@ -243,7 +243,7 @@ portalRouter.get("/portal/branch-companies", authenticateToken, async (req, res)
     if (branchId) {
       // All tenant companies linked to this branch (HK → both companies)
       rows = await metaQuery(
-        `SELECT c.id, c.name, c.shortcutName, c.branch_id, c.color_code, c.address, c.number, c.email, c.website, c.rapnet_id,
+        `SELECT c.id, c.name, c.shortcutName, c.branch_id, c.color_code, c.address, c.number, c.email, c.website, c.rapnet_id, c.bank_details,
                 b.name AS branch_name, b.color_code AS branch_color_code
          FROM company c
          LEFT JOIN branch b ON b.id = c.branch_id
@@ -253,7 +253,7 @@ portalRouter.get("/portal/branch-companies", authenticateToken, async (req, res)
       );
     } else {
       rows = await metaQuery(
-        `SELECT c.id, c.name, c.shortcutName, c.branch_id, c.color_code, c.address, c.number, c.email, c.website, c.rapnet_id,
+        `SELECT c.id, c.name, c.shortcutName, c.branch_id, c.color_code, c.address, c.number, c.email, c.website, c.rapnet_id, c.bank_details,
                 NULL AS branch_name, NULL AS branch_color_code
          FROM company c
          WHERE c.id = ?
@@ -292,6 +292,7 @@ portalRouter.get("/portal/branch-companies", authenticateToken, async (req, res)
         email: c.email || null,
         website: c.website || null,
         rapnet_id: c.rapnet_id || null,
+        bank_details: c.bank_details || null,
         branchId: c.branch_id != null ? Number(c.branch_id) : null,
         branchName: c.branch_name || branchName,
         branchColorCode: c.branch_color_code || null,

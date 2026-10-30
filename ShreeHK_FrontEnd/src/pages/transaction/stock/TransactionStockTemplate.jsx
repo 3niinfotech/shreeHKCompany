@@ -70,9 +70,9 @@ export const defaultProductColumns = [
   { title: 'Gridle', dataIndex: 'griddle_pc', key: 'griddle_pc', width: 80, align: 'center', render: (v, row) => v || row.gridle || row.griddle_pc || row.gridle_pc || '-' },
   { title: 'BGM', dataIndex: 'bgm', key: 'bgm', width: 80, align: 'center', render: (v, row) => v || row.bgm || '-' },
   { title: 'EyeClean', dataIndex: 'eye_clean', key: 'eye_clean', width: 80, align: 'center', render: (v, row) => v || row.eyeclean || row.eye_clean || '-' },
-  { title: 'Measurement', dataIndex: 'measurement', key: 'measurement', width: 100, align: 'center', render: (v, row) => v || row.measurement || row.mesurment || '-' },
-  { title: 'Label', dataIndex: 'label', key: 'label', width: 280, ellipsis: true, render: (v, row) => v || row.label || '-' },
-  { title: 'Remark', dataIndex: 'remark', key: 'remark', width: 120, ellipsis: true, render: (v, row) => v || row.remark || '-' },
+  { title: 'Measurement', dataIndex: 'measurement', key: 'measurement', width: 180, align: 'center', render: (v, row) => v || row.measurement || row.mesurment || '-' },
+  { title: 'Label', dataIndex: 'label', key: 'label', width: 400, ellipsis: true, render: (v, row) => v || row.label || '-' },
+  { title: 'Remark', dataIndex: 'remark', key: 'remark', width: 650, ellipsis: true, render: (v, row) => v || row.remark || '-' },
 ];
 
 const typeColors = {
@@ -211,6 +211,23 @@ const TransactionStockTemplate = ({
     return list;
   }, [branchCompanies, editingRecord, companyMap]);
 
+  const editCompanyMeta = useMemo(() => {
+    const rawComp = editingRecord?.company;
+    if (!rawComp) return null;
+    return (
+      (branchCompanies || []).find(
+        (c) =>
+          String(c.value) === String(rawComp) ||
+          c.name === rawComp ||
+          c.code === rawComp
+      ) || null
+    );
+  }, [editingRecord, branchCompanies]);
+
+  const editCompanyBanks = useMemo(() => {
+    return Array.isArray(editCompanyMeta?.banks) ? editCompanyMeta.banks : [];
+  }, [editCompanyMeta]);
+
   const listLimit = infiniteScroll ? SCROLL_LIMIT : pageSize;
   const listStart = infiniteScroll ? offset : (page - 1) * pageSize;
 
@@ -219,6 +236,13 @@ const TransactionStockTemplate = ({
     stockType === 'inter_memo' ||
     listPayload?.stockType === 'inter_transfer' ||
     listPayload?.stockType === 'inter_memo';
+
+  const isPurchaseInterTransfer = Boolean(
+    isInterTransfer &&
+      (queryKey === 'INTER_TRANSFER_PURCHASE' ||
+        title === 'Inter Transfer Purchase' ||
+        (typeof window !== 'undefined' && window.location.pathname.includes('/inter-transfer/purchase')))
+  );
 
   const isInward =
     (listEndpoint && String(listEndpoint).includes('/inward/')) ||
@@ -370,6 +394,39 @@ const TransactionStockTemplate = ({
       companyName ||
       '';
 
+    let parsedSelectedBanks = [];
+    if (details.selected_banks) {
+      try {
+        parsedSelectedBanks = typeof details.selected_banks === 'string'
+          ? JSON.parse(details.selected_banks)
+          : details.selected_banks;
+      } catch {}
+    }
+
+    let selectedIndices = [];
+    if (Array.isArray(parsedSelectedBanks) && parsedSelectedBanks.length > 0) {
+      selectedIndices = editCompanyBanks
+        .map((b, idx) => {
+          const match = parsedSelectedBanks.some(
+            (pb) =>
+              (pb.bank_label && pb.bank_label === b.bank_label) ||
+              (pb.account_no && pb.account_no === b.account_no)
+          );
+          return match ? idx : -1;
+        })
+        .filter((idx) => idx !== -1);
+    }
+    if (selectedIndices.length === 0 && editCompanyBanks.length > 0) {
+      editCompanyBanks.forEach((b, idx) => {
+        const lbl = String(b.bank_label || b.bank_name || "").toLowerCase();
+        if (details.boc && lbl.includes("boc")) selectedIndices.push(idx);
+        if (details.citi && lbl.includes("citi")) selectedIndices.push(idx);
+        if (details.dbs && lbl.includes("dbs")) selectedIndices.push(idx);
+        if (details.sc && (lbl.includes("sc") || lbl.includes("standard"))) selectedIndices.push(idx);
+      });
+      if (selectedIndices.length === 0) selectedIndices = [0];
+    }
+
     editForm.setFieldsValue({
       ...details,
       company: resolvedCompanyText,
@@ -380,6 +437,7 @@ const TransactionStockTemplate = ({
       duedate: details.duedate ? dayjs(details.duedate) : null,
       party: details.party != null ? String(details.party) : undefined,
       other_party: details.other_party != null ? String(details.other_party) : undefined,
+      selected_bank_indices: selectedIndices,
       boc: details.boc === 1 || details.boc === true,
       citi: details.citi === 1 || details.citi === true,
       dbs: details.dbs === 1 || details.dbs === true,
@@ -407,7 +465,7 @@ const TransactionStockTemplate = ({
       ? details.products
       : normalizedProducts.map((p) => p.id).filter(Boolean).join(',');
     setOriginalSproducts(csvIds || '');
-  }, [editForm, editingRecord, companyMap, companyName]);
+  }, [editForm, editingRecord, companyMap, companyName, editCompanyBanks]);
 
   useEffect(() => {
     if (!editDetailData || editDetailData.status === false) return;
@@ -631,24 +689,27 @@ const TransactionStockTemplate = ({
             colon={false}
           >
             <div className={styles.stockEditBankSlot}>
-              <Form.Item name="boc" valuePropName="checked" noStyle>
-                <Checkbox>BOC</Checkbox>
-              </Form.Item>
-              <Form.Item name="citi" valuePropName="checked" noStyle>
-                <Checkbox>CITI</Checkbox>
-              </Form.Item>
-              <Form.Item name="dbs" valuePropName="checked" noStyle>
-                <Checkbox>DBS</Checkbox>
-              </Form.Item>
-              <Form.Item name="sc" valuePropName="checked" noStyle>
-                <Checkbox>SC</Checkbox>
-              </Form.Item>
+              {editCompanyBanks.length > 0 ? (
+                <Form.Item name="selected_bank_indices" noStyle>
+                  <Checkbox.Group
+                    style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}
+                    options={editCompanyBanks.map((b, idx) => ({
+                      label: b.bank_label || b.bank_name || `Bank #${idx + 1}`,
+                      value: idx,
+                    }))}
+                  />
+                </Form.Item>
+              ) : (
+                <span style={{ fontSize: '11px', color: 'var(--color-text-muted, #8c8c8c)', fontStyle: 'italic', whiteSpace: 'nowrap' }}>
+                  No bank details added for this company
+                </span>
+              )}
             </div>
           </Form.Item>
         ),
       },
     ];
-  }, [partyOptions, isVenyaSaleEdit, branchCompanyOptions]);
+  }, [partyOptions, isVenyaSaleEdit, branchCompanyOptions, editCompanyBanks]);
 
   const watchInvoiceDate = Form.useWatch('invoicedate', editForm);
   const watchTerms = Form.useWatch('terms', editForm);
@@ -1104,7 +1165,7 @@ const TransactionStockTemplate = ({
           textCol("Price", "sell_price", 90, { type: "number", placeholder: "0.00" }),
           textCol("Amount", "sell_amount", 100, { type: "number", placeholder: "0.00" }),
           textCol("LOC", "location", 90, { placeholder: "LOC" }),
-          textCol("Remark", "remark", 120, { placeholder: "Remark" }),
+          textCol("Remark", "remark", 650, { placeholder: "Remark" }),
           textCol("Lab", "lab", 80, { placeholder: "Lab" }),
         ]
         : [
@@ -1117,7 +1178,7 @@ const TransactionStockTemplate = ({
           textCol("Price", "sell_price", 90, { type: "number", placeholder: "0.00" }),
           textCol("Amount", "sell_amount", 100, { type: "number", placeholder: "0.00" }),
           textCol("LOC", "location", 90, { placeholder: "LOC" }),
-          textCol("Remark", "remark", 120, { placeholder: "Remark" }),
+          textCol("Remark", "remark", 650, { placeholder: "Remark" }),
           textCol("Lab", "lab", 80, { placeholder: "Lab" }),
           textCol("Group Type", "group_type", 100, { placeholder: "Group" }),
           textCol("Report No.", "report_no", 110, { placeholder: "Report" }),
@@ -1181,16 +1242,41 @@ const TransactionStockTemplate = ({
           ? (isNaN(Number(editingRecord.company)) ? editingRecord.company : Number(editingRecord.company))
           : undefined;
 
+      let selectedBanks = [];
+      const selectedIndices = values.selected_bank_indices;
+      if (Array.isArray(selectedIndices) && selectedIndices.length > 0) {
+        selectedBanks = selectedIndices
+          .map((idx) => editCompanyBanks[idx])
+          .filter(Boolean);
+      } else if (editCompanyBanks.length > 0) {
+        selectedBanks = [editCompanyBanks[0]];
+      }
+
+      let bocVal = values.boc ? 1 : 0;
+      let citiVal = values.citi ? 1 : 0;
+      let dbsVal = values.dbs ? 1 : 0;
+      let scVal = values.sc ? 1 : 0;
+      if (selectedBanks.length > 0) {
+        selectedBanks.forEach((b) => {
+          const lbl = String(b.bank_label || b.bank_name || "").toLowerCase();
+          if (lbl.includes("boc")) bocVal = 1;
+          if (lbl.includes("citi")) citiVal = 1;
+          if (lbl.includes("dbs")) dbsVal = 1;
+          if (lbl.includes("sc") || lbl.includes("standard")) scVal = 1;
+        });
+      }
+
       const payload = {
         id: editingRecord.id,
         type: editingRecord.type,
         sproducts: originalIds,
         ...values,
+        selected_banks: selectedBanks,
         ...(originalCompanyId != null ? { company: originalCompanyId } : {}),
-        boc: values.boc ? 1 : 0,
-        citi: values.citi ? 1 : 0,
-        dbs: values.dbs ? 1 : 0,
-        sc: values.sc ? 1 : 0,
+        boc: bocVal,
+        citi: citiVal,
+        dbs: dbsVal,
+        sc: scVal,
         boc_sksm: values.boc_sksm ? 1 : 0,
         citi_sksm: values.citi_sksm ? 1 : 0,
         date: values.date?.format?.('YYYY-MM-DD') ?? values.date,
@@ -1501,6 +1587,25 @@ const TransactionStockTemplate = ({
     );
   };
 
+  const resolveCompanyMeta = (compIdOrName) => {
+    if (!compIdOrName) return null;
+    const num = Number(compIdOrName);
+    if (num && companyMetaMap.has(num)) {
+      return companyMetaMap.get(num);
+    }
+    const str = String(compIdOrName).trim().toLowerCase();
+    for (const meta of companyMetaMap.values()) {
+      if (
+        meta.name?.toLowerCase() === str ||
+        meta.code?.toLowerCase() === str ||
+        meta.label?.toLowerCase() === str
+      ) {
+        return meta;
+      }
+    }
+    return null;
+  };
+
   const mainColumns = [
     {
       title: 'Entry No',
@@ -1513,12 +1618,23 @@ const TransactionStockTemplate = ({
       },
     },
     {
-      title: 'Company',
+      title: isInterTransfer ? 'From Company' : 'Company',
       key: 'company',
-      width: actions.companyWidth || 100,
+      width: actions.companyWidth || (isInterTransfer ? 120 : 100),
       align: 'center',
       ellipsis: true,
       render: (_, record) => {
+        if (isPurchaseInterTransfer) {
+          const meta = resolveCompanyMeta(record.party) || resolveCompanyMeta(record.party_name);
+          const baseName = meta?.name || record.party_name || (typeof record.party === 'string' ? record.party : '');
+          const code = meta?.code || (Number(record.party) ? meta?.name : baseName) || '—';
+          return (
+            <Tag color="blue" title={baseName || undefined} style={{ fontWeight: 600 }}>
+              {code}
+            </Tag>
+          );
+        }
+
         const compId = record.company != null ? Number(record.company) : null;
         const meta = compId ? companyMetaMap.get(compId) : null;
         const baseName = record.company_name || meta?.name || (compId ? `Company #${compId}` : '');
@@ -1531,26 +1647,36 @@ const TransactionStockTemplate = ({
         );
       },
     },
+    ...(!isInterTransfer
+      ? [
+          {
+            title: 'Type',
+            key: 'type',
+            width: actions.typeWidth || 135,
+            align: 'center',
+            render: (_, record) => {
+              const displayType = record.type || record.inward_type;
+              return (
+                <Tag color={getTypeColor(displayType)} style={{ textTransform: 'uppercase', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                  {String(displayType || '-')}
+                </Tag>
+              );
+            },
+          },
+        ]
+      : []),
     {
-      title: 'Type',
-      key: 'type',
-      width: actions.typeWidth || 135,
-      align: 'center',
-      render: (_, record) => {
-        const displayType = record.type || record.inward_type;
-        return (
-          <Tag color={getTypeColor(displayType)} style={{ textTransform: 'uppercase', fontWeight: 600, whiteSpace: 'nowrap' }}>
-            {String(displayType || '-')}
-          </Tag>
-        );
-      },
-    },
-    {
-      title: 'Party',
+      title: isInterTransfer ? 'To Company' : 'Party',
       key: 'party',
       width: actions.partyWidth || 180,
       ellipsis: true,
       render: (_, record) => {
+        if (isPurchaseInterTransfer) {
+          const compId = record.company != null ? Number(record.company) : null;
+          const meta = compId ? companyMetaMap.get(compId) : null;
+          return record.company_name || meta?.name || (compId ? `Company #${compId}` : '-');
+        }
+
         if (record.party_name) return record.party_name;
         if (stockType === 'inter_transfer' || stockType === 'inter_memo') {
           const compId = Number(record.party);
@@ -2227,24 +2353,21 @@ const TransactionStockTemplate = ({
                             colon={false}
                           >
                             <div className={`${styles.stockEditBankSlot} ${styles.stockEditBankSlotWide}`}>
-                              <Form.Item name="boc" valuePropName="checked" noStyle>
-                                <Checkbox>BOC</Checkbox>
-                              </Form.Item>
-                              <Form.Item name="citi" valuePropName="checked" noStyle>
-                                <Checkbox>Citi</Checkbox>
-                              </Form.Item>
-                              <Form.Item name="dbs" valuePropName="checked" noStyle>
-                                <Checkbox>DBS</Checkbox>
-                              </Form.Item>
-                              <Form.Item name="sc" valuePropName="checked" noStyle>
-                                <Checkbox>SC</Checkbox>
-                              </Form.Item>
-                              <Form.Item name="boc_sksm" valuePropName="checked" noStyle>
-                                <Checkbox>BOC-SKSM</Checkbox>
-                              </Form.Item>
-                              <Form.Item name="citi_sksm" valuePropName="checked" noStyle>
-                                <Checkbox>DBS-SKSM</Checkbox>
-                              </Form.Item>
+                              {editCompanyBanks.length > 0 ? (
+                                <Form.Item name="selected_bank_indices" noStyle>
+                                  <Checkbox.Group
+                                    style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}
+                                    options={editCompanyBanks.map((b, idx) => ({
+                                      label: b.bank_label || b.bank_name || `Bank #${idx + 1}`,
+                                      value: idx,
+                                    }))}
+                                  />
+                                </Form.Item>
+                              ) : (
+                                <span style={{ fontSize: '11px', color: 'var(--color-text-muted, #8c8c8c)', fontStyle: 'italic', whiteSpace: 'nowrap' }}>
+                                  No bank details added for this company
+                                </span>
+                              )}
                             </div>
                           </Form.Item>
                         </Col>
@@ -2275,7 +2398,7 @@ const TransactionStockTemplate = ({
                     rowKey={(r) => r.id ?? r._tempId}
                     pagination={false}
                     size="small"
-                    scroll={{ x: isVenyaSaleEditGrid ? 980 : 1900, y: 180 }}
+                    scroll={{ x: isVenyaSaleEditGrid ? 1510 : 2430, y: 180 }}
                     locale={
                       allowAddProductInEdit
                         ? { emptyText: 'No products — click Add New Data' }

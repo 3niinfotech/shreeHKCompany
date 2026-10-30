@@ -302,6 +302,11 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
   const [extraCharge, setExtraCharge] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [lookupRowKey, setLookupRowKey] = useState(null);
+  const [onPayment, setOnPayment] = useState(false);
+  const [selectedBook, setSelectedBook] = useState(undefined);
+  const [paymentDate, setPaymentDate] = useState(null);
+  const [paymentAmount, setPaymentAmount] = useState(null);
+  const [paymentCheque, setPaymentCheque] = useState("");
   const [form] = Form.useForm();
   const vatPercent = Form.useWatch("vat_percent", form);
   const selectedOperatingCompany = Form.useWatch("operating_company_id", form);
@@ -312,15 +317,14 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
   }, [selectedRows]);
 
   const isInterCompanySell = useMemo(() => {
-    return (
-      actionType === "sell" &&
-      Boolean(
-        sourceCompanyId &&
-        selectedOperatingCompany &&
-        Number(selectedOperatingCompany) !== sourceCompanyId
-      )
-    );
-  }, [actionType, sourceCompanyId, selectedOperatingCompany]);
+    if (actionType !== "sell" || !selectedOperatingCompany) return false;
+    const targetCompId = Number(selectedOperatingCompany);
+    if (sourceCompanyId && sourceCompanyId !== targetCompId) return true;
+    return selectedRows.some((row) => {
+      const rowComp = Number(row.company);
+      return Boolean(rowComp && rowComp !== targetCompId);
+    });
+  }, [actionType, sourceCompanyId, selectedOperatingCompany, selectedRows]);
 
   const { data: companyData } = useFetchApi(
     "GetCompany",
@@ -333,6 +337,30 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
     options: branchCompanyOptions,
     isLoading: isBranchCompanyLoading,
   } = useBranchCompanies();
+
+  const activeBranchCompany = useMemo(() => {
+    const list = branchCompanyOptions || [];
+    if (!list.length) return null;
+    if (selectedOperatingCompany) {
+      const match = list.find((c) => String(c.value) === String(selectedOperatingCompany));
+      if (match) return match;
+    }
+    const defaultId = Number(selectedRows?.[0]?.company) || Number(list[0]?.value);
+    return list.find((c) => Number(c.value) === defaultId) || list[0] || null;
+  }, [branchCompanyOptions, selectedOperatingCompany, selectedRows]);
+
+  const activeCompanyBanks = useMemo(() => {
+    return Array.isArray(activeBranchCompany?.banks) ? activeBranchCompany.banks : [];
+  }, [activeBranchCompany]);
+
+  useEffect(() => {
+    if (activeCompanyBanks.length > 0) {
+      const current = form.getFieldValue("selected_bank_indices");
+      if (!Array.isArray(current) || current.length === 0 || !current.every((i) => i < activeCompanyBanks.length)) {
+        form.setFieldsValue({ selected_bank_indices: [0] });
+      }
+    }
+  }, [activeCompanyBanks, form]);
   const { data: incrementData } = useFetchApi(
     "getIncrement",
     ENDPOINTS.common.increment,
@@ -374,6 +402,44 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
       : [];
   }, [originData]);
 
+  const {
+    data: balanceData,
+    isLoading: isBalanceLoading,
+    refetch: refetchBalanceBooks,
+  } = useFetchApi(
+    "GetBalanceBooks",
+    ENDPOINTS.balance.list,
+    { all: 1 },
+    "GET",
+    {
+      enabled: open && isSaleLike,
+      staleTime: 0,
+      refetchOnMount: "always",
+    }
+  );
+
+  useEffect(() => {
+    if (open && isSaleLike) {
+      refetchBalanceBooks?.();
+    }
+  }, [open, isSaleLike, refetchBalanceBooks]);
+
+  const bookOptions = useMemo(() => {
+    const list = balanceData?.Data || balanceData?.data || [];
+    if (!Array.isArray(list)) return [];
+    return list.map((b) => {
+      const name = b.bank || b.book || `Book #${b.id}`;
+      const label = b.currency ? `${name} (${b.currency})` : name;
+      return {
+        label,
+        value: name,
+        id: b.id,
+        currency: b.currency,
+        cash: b.cash,
+      };
+    });
+  }, [balanceData]);
+
   useEffect(() => {
     if (!open) return;
     const rows = selectedRows.map(mapSelectedRowToMemoRow);
@@ -383,6 +449,11 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
     setOtherLessPercent(null);
     setExtraCharge(null);
     setLookupRowKey(null);
+    setOnPayment(false);
+    setSelectedBook(undefined);
+    setPaymentDate(null);
+    setPaymentAmount(null);
+    setPaymentCheque("");
     const inc = incrementData?.Data;
     // Default Company = stone's stock company (branch siblings share inventory list)
     const productCompany =
@@ -394,6 +465,8 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
       invoiceType: "Invoice From",
       vat_percent: "0",
       operating_company_id: productCompany,
+      selected_bank_indices: [0],
+      boc: true,
       ...(inc
         ? {
           entryno: inc.outward,
@@ -562,14 +635,52 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
     }
     try {
       const values = await form.validateFields();
+
+      let selectedBanks = [];
+      const selectedIndices = values.selected_bank_indices;
+      if (Array.isArray(selectedIndices) && selectedIndices.length > 0) {
+        selectedBanks = selectedIndices
+          .map((idx) => activeCompanyBanks[idx])
+          .filter(Boolean);
+      } else if (activeCompanyBanks.length > 0) {
+        selectedBanks = [activeCompanyBanks[0]];
+      }
+
+      let bocVal = Boolean(values.boc);
+      let citiVal = Boolean(values.citi);
+      let dbsVal = Boolean(values.dbs);
+      let scVal = Boolean(values.sc);
+
+      if (selectedBanks.length > 0) {
+        selectedBanks.forEach((b) => {
+          const lbl = String(b.bank_label || b.bank_name || "").toLowerCase();
+          if (lbl.includes("boc")) bocVal = true;
+          if (lbl.includes("citi")) citiVal = true;
+          if (lbl.includes("dbs")) dbsVal = true;
+          if (lbl.includes("sc") || lbl.includes("standard")) scVal = true;
+        });
+      }
+
       const vatPct = Number(values.vat_percent) || 0;
       const payloadVatAmount = isExport && vatPct > 0
         ? +(discountCalc.finalAmount * vatPct / 100).toFixed(2)
         : 0;
       const payload = {
         ...values,
+        selected_banks: selectedBanks,
+        boc: bocVal,
+        citi: citiVal,
+        dbs: dbsVal,
+        sc: scVal,
         type: resolveOutwardType(actionType),
         status: `on_${resolveOutwardType(actionType)}`,
+        on_payment: onPayment,
+        book: selectedBook || null,
+        payment_book: selectedBook || null,
+        bank: selectedBook || values.bank || null,
+        payment_date: paymentDate ? paymentDate.format?.("YYYY-MM-DD") : null,
+        payment_amount: paymentAmount != null ? Number(paymentAmount) : null,
+        cheque: paymentCheque || null,
         date: values.date?.format("YYYY-MM-DD"),
         duedate: values.duedate?.format?.("YYYY-MM-DD") || values.duedate,
         narration: narration,
@@ -882,14 +993,30 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
     </Form.Item>
   );
 
-  const renderBankCheckboxes = () => (
-    <div className="memo-form-item memo-form-item--banks">
-      <Form.Item name="boc" valuePropName="checked"><Checkbox>BOC</Checkbox></Form.Item>
-      <Form.Item name="citi" valuePropName="checked"><Checkbox>Citi</Checkbox></Form.Item>
-      <Form.Item name="dbs" valuePropName="checked"><Checkbox>DBS</Checkbox></Form.Item>
-      <Form.Item name="sc" valuePropName="checked"><Checkbox>SC</Checkbox></Form.Item>
-    </div>
-  );
+  const renderBankCheckboxes = () => {
+    if (activeCompanyBanks.length > 0) {
+      return (
+        <div className="memo-form-item memo-form-item--banks" style={{ overflowX: "auto", flexWrap: "nowrap" }}>
+          <Form.Item name="selected_bank_indices" noStyle>
+            <Checkbox.Group style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "nowrap", whiteSpace: "nowrap" }}>
+              {activeCompanyBanks.map((b, idx) => (
+                <Checkbox key={idx} value={idx}>
+                  {b.bank_label || b.bank_name || `Bank #${idx + 1}`}
+                </Checkbox>
+              ))}
+            </Checkbox.Group>
+          </Form.Item>
+        </div>
+      );
+    }
+    return (
+      <div className="memo-form-item memo-form-item--banks" style={{ alignItems: "center" }}>
+        <span style={{ fontSize: "11px", color: "var(--color-text-muted, #8c8c8c)", fontStyle: "italic", whiteSpace: "nowrap" }}>
+          No bank details added for this company
+        </span>
+      </div>
+    );
+  };
 
   return (
     <Modal
@@ -1096,22 +1223,53 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
             </div>
           </div>
           <div className="memo-sell-row">
-            <Checkbox style={{ alignSelf: "flex-end", marginBottom: 4 }}>On Payment</Checkbox>
+            <Checkbox
+              checked={onPayment}
+              onChange={(e) => setOnPayment(e.target.checked)}
+              style={{ alignSelf: "flex-end", marginBottom: 4 }}
+            >
+              On Payment
+            </Checkbox>
             <div className="memo-sell-group">
               <span className="memo-sell-label-top">Select Book</span>
-              <Select placeholder="Book" options={[{ label: "Book", value: "book" }]} style={{ width: 120 }} />
+              <Select
+                placeholder="Select Book"
+                options={bookOptions}
+                value={selectedBook}
+                onChange={setSelectedBook}
+                loading={isBalanceLoading}
+                allowClear
+                showSearch
+                optionFilterProp="label"
+                style={{ width: 150 }}
+              />
             </div>
             <div className="memo-sell-group">
               <span className="memo-sell-label-top">Date</span>
-              <DatePicker format="DD-MM-YYYY" style={{ width: 130 }} />
+              <DatePicker
+                format="DD-MM-YYYY"
+                value={paymentDate}
+                onChange={setPaymentDate}
+                style={{ width: 130 }}
+              />
             </div>
             <div className="memo-sell-group">
               <span className="memo-sell-label-top">Amount</span>
-              <InputNumber placeholder="0" style={{ width: 100 }} />
+              <InputNumber
+                placeholder="0"
+                value={paymentAmount}
+                onChange={setPaymentAmount}
+                style={{ width: 100 }}
+              />
             </div>
             <div className="memo-sell-group">
               <span className="memo-sell-label-top">Cheque</span>
-              <Input placeholder="" style={{ width: 100 }} />
+              <Input
+                placeholder="Cheque No"
+                value={paymentCheque}
+                onChange={(e) => setPaymentCheque(e.target.value)}
+                style={{ width: 100 }}
+              />
             </div>
           </div>
         </div>

@@ -1,4 +1,3 @@
-import React from "react";
 import InwardEntryForm from "./InwardEntryForm";
 import OutwardEntryForm from "./OutwardEntryForm";
 
