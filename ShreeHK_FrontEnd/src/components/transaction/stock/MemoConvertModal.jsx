@@ -34,13 +34,13 @@ const ATTR_COLS = [
   { title: "Symm", dataIndex: "symmentry", width: 70 },
   { title: "Cut", dataIndex: "cut", width: 70 },
   { title: "Flo. Intensity", dataIndex: "f_intensity", width: 110 },
-  { title: "Measurements", dataIndex: "mesurment", width: 120 },
+  { title: "Measurements", dataIndex: "mesurment", width: 180 },
   { title: "Table%", dataIndex: "table_pc", width: 70 },
   { title: "Depth%", dataIndex: "depth_pc", width: 70 },
   { title: "Gridle", dataIndex: "gridle", width: 80 },
   { title: "BGM", dataIndex: "bgm", width: 60 },
   { title: "Eyeclean", dataIndex: "eyeclean", width: 80 },
-  { title: "Remark", dataIndex: "remark", width: 120 },
+  { title: "Remark", dataIndex: "remark", width: 650 },
   { title: "Lab", dataIndex: "lab", width: 70 },
 ];
 

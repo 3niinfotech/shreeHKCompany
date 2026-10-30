@@ -3,6 +3,17 @@ import { useFetchApi } from "../api/ApiFunction";
 import { ENDPOINTS } from "../api/endpoints";
 import useAuthStore from "../store/Auth.Store";
 
+const parseBanks = (val) => {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  try {
+    const parsed = typeof val === "string" ? JSON.parse(val) : val;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
 /**
  * Branch-scoped tenant companies for compulsory Company dropdown.
  * Login HK → dropdown shows ShreeHK International, KG Infrastructure, etc.
@@ -36,6 +47,8 @@ export default function useBranchCompanies() {
       email: c.email || "",
       website: c.website || "",
       rapnetId: c.rapnet_id || "",
+      bank_details: c.bank_details || null,
+      banks: parseBanks(c.bank_details),
     }));
   }, [data]);
 

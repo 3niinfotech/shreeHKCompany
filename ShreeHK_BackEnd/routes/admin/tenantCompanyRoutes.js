@@ -8,6 +8,14 @@ const helper = require("../../helper.js");
 const { authenticateToken, isSuperAdmin } = require("../../authMiddleware.js");
 const { clearPermissionCache } = require("../../permissionHelper.js");
 const { metaQuery, parseCompanyJson, buildUserContext, getBranchCompanyIds } = require("../../tenantHelper.js");
+const {
+  isRateLimited,
+  recordFailedAttempt,
+  clearFailedAttempts,
+  getRateLimitResetMs,
+  getCompanyDeleteImpact,
+  executePermanentDeleteCompany,
+} = require("../../services/permanentDeleteService.js");
 
 const tenantCompanyRouter = express.Router();
 tenantCompanyRouter.use(express.json());
@@ -21,7 +29,7 @@ const COMPANY_COLUMNS = [
   "vatno", "vwef", "cstno", "cwef", "period", "startdate", "enddate",
   "rapnet_id", "rapnet_password", "shortcutName", "logo", "branch_id",
   "invoice_prefix", "memo_prefix", "purchase_prefix", "lab_prefix",
-  "color_code",
+  "color_code", "bank_details",
 ];
 const COMPANY_SAFE_SELECT = ["id", ...COMPANY_COLUMNS.filter((column) => column !== "rapnet_password")]
   .map((column) => `c.\`${column}\``)
@@ -51,6 +59,17 @@ const uploadLogo = multer({
     cb(null, true);
   },
 });
+
+let bankDetailsColumnReady = false;
+const ensureCompanyBankDetailsColumn = async () => {
+  if (bankDetailsColumnReady) return;
+  try {
+    await metaQuery("ALTER TABLE company ADD COLUMN bank_details LONGTEXT NULL");
+  } catch (err) {
+    // already exists
+  }
+  bankDetailsColumnReady = true;
+};
 
 let logoColumnReady = false;
 const ensureLogoColumn = async () => {
@@ -129,7 +148,7 @@ tenantCompanyRouter.get("/admin/tenant-company/options", authenticateToken, isSu
   try {
     await ensureBranchSchema();
     const rows = await metaQuery(
-      `SELECT c.id, c.name, c.branch_id, b.name AS branch_name
+      `SELECT c.id, c.name, c.shortcutName, c.branch_id, c.bank_details, b.name AS branch_name
        FROM company c
        LEFT JOIN branch b ON b.id = c.branch_id
        ORDER BY c.name ASC`
@@ -144,6 +163,7 @@ tenantCompanyRouter.get("/admin/tenant-company", authenticateToken, isSuperAdmin
   try {
     await ensureLogoColumn();
     await ensureCompanyPrefixColumns();
+    await ensureCompanyBankDetailsColumn();
     await ensureBranchSchema();
     const { searchInput = "", branch_id: branchId, all = false } = req.query;
     const userContext = buildUserContext(req);
@@ -190,6 +210,7 @@ tenantCompanyRouter.get("/admin/tenant-company/:id", authenticateToken, isSuperA
   try {
     await ensureLogoColumn();
     await ensureCompanyPrefixColumns();
+    await ensureCompanyBankDetailsColumn();
     await ensureBranchSchema();
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ status: false, message: "Invalid id" });
@@ -225,6 +246,7 @@ tenantCompanyRouter.post(
     try {
       await ensureLogoColumn();
       await ensureCompanyPrefixColumns();
+      await ensureCompanyBankDetailsColumn();
       await ensureBranchSchema();
       const body = req.body || {};
       const id = Number(body.id) || 0;
@@ -240,6 +262,11 @@ tenantCompanyRouter.post(
       COMPANY_COLUMNS.forEach((col) => {
         if (body[col] !== undefined && col !== "logo") post[col] = body[col];
       });
+      if (body.bank_details !== undefined) {
+        post.bank_details = typeof body.bank_details === "object"
+          ? JSON.stringify(body.bank_details)
+          : String(body.bank_details || "");
+      }
       if (post.branch_id !== undefined && post.branch_id !== null && post.branch_id !== "") {
         post.branch_id = Number(post.branch_id) || null;
       } else if (body.branch_id === "" || body.branch_id === null) {
@@ -306,6 +333,7 @@ tenantCompanyRouter.post(
   }
 );
 
+/** Verify admin password (reusable) */
 const verifyAdminPassword = (userId, password) =>
   new Promise((resolve, reject) => {
     connection.query(
@@ -322,78 +350,113 @@ const verifyAdminPassword = (userId, password) =>
     );
   });
 
-const removeCompanyFromRolls = async (companyId) => {
-  const rolls = await metaQuery("SELECT id, company FROM roll");
-  const meta = connection.getMetaPool();
-
-  for (const row of rolls || []) {
-    const ids = parseCompanyJson(row.company);
-    if (!ids.includes(Number(companyId))) continue;
-
-    const next = ids.filter((id) => id !== Number(companyId));
-    await new Promise((resolve, reject) => {
-      meta.query(
-        "UPDATE roll SET company = ? WHERE id = ?",
-        [JSON.stringify(next), row.id],
-        (err) => (err ? reject(err) : resolve())
-      );
-    });
+// ── Impact preview endpoint ────────────────────────────────────────────────────
+tenantCompanyRouter.post(
+  "/admin/tenant-company/delete-impact",
+  authenticateToken,
+  isSuperAdmin,
+  async (req, res) => {
+    try {
+      const id = Number(req.body?.id);
+      if (!id) return res.status(400).json({ status: false, message: "Company id is required." });
+      const impact = await getCompanyDeleteImpact(id);
+      res.json({ status: true, Data: impact });
+    } catch (err) {
+      const code = err.statusCode || 500;
+      res.status(code).json({ status: false, message: err.message });
+    }
   }
-};
+);
 
-tenantCompanyRouter.post("/admin/tenant-company/delete", authenticateToken, isSuperAdmin, async (req, res) => {
-  try {
-    const id = Number(req.body?.id);
-    const password = String(req.body?.password || "").trim();
+// ── Permanent delete endpoint ──────────────────────────────────────────────────
+tenantCompanyRouter.post(
+  "/admin/tenant-company/delete",
+  authenticateToken,
+  isSuperAdmin,
+  async (req, res) => {
+    try {
+      const id = Number(req.body?.id);
+      const password = String(req.body?.password || "").trim();
+      const confirmPassword = String(req.body?.confirmPassword || "").trim();
+      const confirmName = String(req.body?.confirmName || "").trim();
+      const userId = req.user.user_id;
 
-    if (!id) {
-      return res.status(400).json({ status: false, message: "Company id is required." });
-    }
-    if (!password) {
-      return res.status(400).json({ status: false, message: "Password is required to delete a company." });
-    }
+      if (!id) return res.status(400).json({ status: false, message: "Company id is required." });
 
-    const passwordOk = await verifyAdminPassword(req.user.user_id, password);
-    if (!passwordOk) {
-      return res.status(403).json({
-        status: false,
-        message: "Incorrect password. Company was not deleted.",
+      // Rate limit check (per user, failures only)
+      if (isRateLimited(userId)) {
+        const msLeft = getRateLimitResetMs(userId);
+        const minLeft = Math.ceil(msLeft / 60000);
+        return res.status(429).json({
+          status: false,
+          message: `Too many failed attempts. Please try again in ${minLeft} minute(s).`,
+          retryAfterMs: msLeft,
+        });
+      }
+
+      if (!password) return res.status(400).json({ status: false, message: "Password is required." });
+      if (!confirmPassword) return res.status(400).json({ status: false, message: "Please confirm your password." });
+      if (password !== confirmPassword) return res.status(400).json({ status: false, message: "Passwords do not match." });
+      if (!confirmName) return res.status(400).json({ status: false, message: "Please type the company name to confirm." });
+
+      // Verify password
+      const passwordOk = await verifyAdminPassword(userId, password);
+      if (!passwordOk) {
+        recordFailedAttempt(userId);
+        return res.status(403).json({
+          status: false,
+          message: "Incorrect password. Company was not deleted.",
+        });
+      }
+
+      // Verify company name matches
+      const existing = await metaQuery("SELECT id, name FROM company WHERE id = ? LIMIT 1", [id]);
+      if (!existing.length) return res.status(404).json({ status: false, message: "Company not found." });
+      if (confirmName !== existing[0].name) {
+        return res.status(400).json({
+          status: false,
+          message: `Company name does not match. Expected: "${existing[0].name}"`,
+        });
+      }
+
+      // Session safety
+      const sessionCompanyId = Number(req.user?.companyId);
+      if (sessionCompanyId && sessionCompanyId === id) {
+        return res.status(400).json({
+          status: false,
+          message: "Cannot delete the company you are currently logged into. Switch to another company first.",
+        });
+      }
+
+      // Execute permanent delete
+      const reqInfo = {
+        userId: req.user.user_id,
+        userName: req.user.user_name || req.user.username || "Unknown",
+        userRole: req.user.role || req.user.roll || "Super Admin",
+        userRoleId: req.user.roll_id || req.user.roleId || null,
+        companyId: sessionCompanyId || 1,
+        ip: req.ip || req.headers["x-forwarded-for"] || null,
+        userAgent: req.headers["user-agent"] || null,
+      };
+
+      const result = await executePermanentDeleteCompany({
+        companyId: id,
+        sessionCompanyId,
+        reqInfo,
       });
-    }
 
-    const existing = await metaQuery("SELECT id, name FROM company WHERE id = ? LIMIT 1", [id]);
-    if (!existing.length) {
-      return res.status(404).json({ status: false, message: "Company not found." });
-    }
+      clearFailedAttempts(userId);
 
-    const sessionCompanyId = Number(req.user?.companyId);
-    if (sessionCompanyId && sessionCompanyId === id) {
-      return res.status(400).json({
-        status: false,
-        message: "Cannot delete the company you are currently using. Switch to another company first.",
+      res.json({
+        status: true,
+        message: `"${result.companyName}" permanently deleted. ${result.total} record(s) removed.`,
+        Data: result,
       });
+    } catch (err) {
+      const code = err.statusCode || 500;
+      res.status(code).json({ status: false, message: err.message });
     }
-
-    const meta = connection.getMetaPool();
-    await new Promise((resolve, reject) => {
-      meta.query("DELETE FROM dai_incrementid WHERE company = ?", [id], (err) => (err ? reject(err) : resolve()));
-    });
-
-    await removeCompanyFromRolls(id);
-
-    await new Promise((resolve, reject) => {
-      meta.query("DELETE FROM company WHERE id = ?", [id], (err) => (err ? reject(err) : resolve()));
-    });
-
-    clearPermissionCache();
-
-    res.json({
-      status: true,
-      message: `"${existing[0].name}" deleted successfully.`,
-    });
-  } catch (err) {
-    res.status(500).json({ status: false, message: err.message });
   }
-});
+);
 
 module.exports = tenantCompanyRouter;

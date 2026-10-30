@@ -14,8 +14,8 @@ const outMemoProductColumns = [
   { title: 'Location', dataIndex: 'location', key: 'location', width: 100, render: (v) => v || '-' },
   { title: 'Price', dataIndex: 'sell_price', key: 'sell_price', width: 90, align: 'right', render: (v, row) => v || row.price },
   { title: 'Amount', dataIndex: 'sell_amount', key: 'sell_amount', width: 100, align: 'right', render: (v, row) => v || row.amount },
-  { title: 'Label', dataIndex: 'label', key: 'label', width: 280, ellipsis: true, render: (v) => v || '-' },
-  { title: 'Remark', dataIndex: 'remark', key: 'remark', width: 120, ellipsis: true, render: (v) => v || '-' },
+  { title: 'Label', dataIndex: 'label', key: 'label', width: 400, ellipsis: true, render: (v) => v || '-' },
+  { title: 'Remark', dataIndex: 'remark', key: 'remark', width: 650, ellipsis: true, render: (v) => v || '-' },
 ];
 
 const InterTransferOutMemoStock = () => (

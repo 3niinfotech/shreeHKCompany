@@ -221,7 +221,7 @@ companyRouter.get("/company/getOption", authenticateToken, (req, res) => {
 
     if (allCompanies || req.query.includeOperating === "1" || req.query.withCompanies === "1") {
       connection.query(
-        `SELECT id, name, shortcutName, address, city, state, pincode, country, number, email, website, logo, rapnet_id, branch_id
+        `SELECT id, name, shortcutName, address, city, state, pincode, country, number, email, website, logo, rapnet_id, branch_id, bank_details
          FROM company ORDER BY id ASC`,
         (compErr, compRows) => {
           res.json({

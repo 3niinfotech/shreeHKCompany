@@ -12,6 +12,7 @@ const SaleSuccessModal = ({
   open,
   onClose,
   onPrint,
+  actionType = "sale",
   data = {},
 }) => {
   const {
@@ -25,6 +26,32 @@ const SaleSuccessModal = ({
     totalCarat = 0,
     totalAmount = 0,
   } = data;
+
+  const isMemo = actionType === "memo";
+  const actionLabel = isMemo
+    ? "Memo"
+    : actionType === "consign"
+    ? "Consignment"
+    : actionType === "lab"
+    ? "Lab"
+    : actionType === "export"
+    ? "Export"
+    : "Sale";
+
+  const titleText = isMemo
+    ? "Placed On Memo Successfully"
+    : `${actionLabel} Completed Successfully`;
+
+  const subtitleText = isMemo
+    ? "Memo transaction has been recorded into the system"
+    : `${actionLabel} transaction has been recorded into the system`;
+
+  const itemsTableTitle = isMemo
+    ? "Memo Diamond Item(s)"
+    : `${actionLabel} Diamond Item(s)`;
+
+  const printButtonText = isMemo ? "Print Memo" : "Print Invoice";
+  const invoiceLabel = isMemo ? "Memo No" : "Invoice No";
 
   const columns = [
     {
@@ -123,10 +150,10 @@ const SaleSuccessModal = ({
           </div>
           <div>
             <div style={{ fontSize: "16px", fontWeight: 700, color: "var(--color-navy, #1e293b)", lineHeight: 1.2 }}>
-              Sale Completed Successfully
+              {titleText}
             </div>
             <div style={{ fontSize: "12px", fontWeight: 400, color: "#64748b", marginTop: 2 }}>
-              Sale transaction has been recorded into the system
+              {subtitleText}
             </div>
           </div>
         </div>
@@ -147,7 +174,7 @@ const SaleSuccessModal = ({
             minWidth: 120,
           }}
         >
-          Print Invoice
+          {printButtonText}
         </Button>,
       ]}
       styles={{
@@ -182,7 +209,7 @@ const SaleSuccessModal = ({
           </div>
           <div>
             <div style={{ color: "#64748b", fontSize: "11px", marginBottom: 2, display: "flex", alignItems: "center", gap: 4 }}>
-              <Receipt size={12} /> Invoice No
+              <Receipt size={12} /> {invoiceLabel}
             </div>
             <div style={{ fontWeight: 600, color: "#1e293b" }}>{invoiceNo || "Auto-Generated"}</div>
           </div>
@@ -271,7 +298,7 @@ const SaleSuccessModal = ({
         {/* Items Table */}
         <div>
           <div style={{ fontSize: "12px", fontWeight: 600, color: "#475569", marginBottom: 6 }}>
-            Sold Diamond Item(s)
+            {itemsTableTitle}
           </div>
           <Table
             dataSource={items}

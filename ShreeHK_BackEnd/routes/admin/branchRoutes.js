@@ -7,6 +7,15 @@ const { ensureBranchSchema } = require("../../services/ensureBranchSchemaService
 const { ensureCurrentFiscalYear } = require("../../services/ensureCurrentFiscalYearService.js");
 const { reassignSuratCompanies } = require("../../services/reassignSuratCompaniesService.js");
 const { attachCurrentYearToBranch } = require("../../services/branchYearService.js");
+const { verifyAndMigratePassword } = require("../../services/passwordService.js");
+const {
+  isRateLimited,
+  recordFailedAttempt,
+  clearFailedAttempts,
+  getRateLimitResetMs,
+  getBranchDeleteImpact,
+  executePermanentDeleteBranch,
+} = require("../../services/permanentDeleteService.js");
 
 const branchRouter = express.Router();
 branchRouter.use(express.json());
@@ -186,60 +195,129 @@ branchRouter.post("/admin/branch/save", authenticateToken, isSuperAdmin, async (
   }
 });
 
+/** Verify admin password */
+const verifyAdminPassword = (userId, password) =>
+  new Promise((resolve, reject) => {
+    connection.query(
+      "SELECT pass FROM user WHERE user_id = ? LIMIT 1",
+      [userId],
+      (err, rows) => {
+        if (err) return reject(err);
+        if (!rows?.length) return resolve(false);
+        const valid = verifyAndMigratePassword(password, rows[0].pass, (newHash) => {
+          connection.query("UPDATE user SET pass = ? WHERE user_id = ?", [newHash, userId]);
+        });
+        resolve(valid);
+      }
+    );
+  });
+
+// ── Branch delete impact preview ──────────────────────────────────────────────
+branchRouter.post("/admin/branch/delete-impact", authenticateToken, isSuperAdmin, async (req, res) => {
+  try {
+    const id = Number(req.body?.id);
+    if (!id) return res.status(400).json({ status: false, message: "Branch id is required." });
+    const impact = await getBranchDeleteImpact(id);
+    res.json({ status: true, Data: impact });
+  } catch (err) {
+    const code = err.statusCode || 500;
+    res.status(code).json({ status: false, message: err.message });
+  }
+});
+
+// ── Branch permanent delete ────────────────────────────────────────────────────
 branchRouter.post("/admin/branch/delete", authenticateToken, isSuperAdmin, async (req, res) => {
   try {
     const id = Number(req.body?.id);
-    if (!id) {
-      return res.status(400).json({ status: false, message: "Branch id is required." });
+    const password = String(req.body?.password || "").trim();
+    const confirmPassword = String(req.body?.confirmPassword || "").trim();
+    const confirmName = String(req.body?.confirmName || "").trim();
+    const userId = req.user.user_id;
+
+    if (!id) return res.status(400).json({ status: false, message: "Branch id is required." });
+
+    // Rate limit check
+    if (isRateLimited(userId)) {
+      const msLeft = getRateLimitResetMs(userId);
+      const minLeft = Math.ceil(msLeft / 60000);
+      return res.status(429).json({
+        status: false,
+        message: `Too many failed attempts. Please try again in ${minLeft} minute(s).`,
+        retryAfterMs: msLeft,
+      });
     }
 
+    if (!password) return res.status(400).json({ status: false, message: "Password is required." });
+    if (!confirmPassword) return res.status(400).json({ status: false, message: "Please confirm your password." });
+    if (password !== confirmPassword) return res.status(400).json({ status: false, message: "Passwords do not match." });
+    if (!confirmName) return res.status(400).json({ status: false, message: "Please type the branch name to confirm." });
+
+    // Verify password
+    const passwordOk = await verifyAdminPassword(userId, password);
+    if (!passwordOk) {
+      recordFailedAttempt(userId);
+      return res.status(403).json({
+        status: false,
+        message: "Incorrect password. Branch was not deleted.",
+      });
+    }
+
+    // Verify branch name matches
     const existing = await metaQuery("SELECT id, name FROM branch WHERE id = ? LIMIT 1", [id]);
-    if (!existing.length) {
-      return res.status(404).json({ status: false, message: "Branch not found." });
+    if (!existing.length) return res.status(404).json({ status: false, message: "Branch not found." });
+    if (confirmName !== existing[0].name) {
+      return res.status(400).json({
+        status: false,
+        message: `Branch name does not match. Expected: "${existing[0].name}"`,
+      });
     }
 
-    // Always free linked companies first (move to HK/Dubai, else clear branch_id)
-    const linked = await metaQuery(
-      "SELECT id FROM company WHERE branch_id = ? ORDER BY id",
-      [id]
-    );
-    let moved = 0;
-    if (linked.length) {
-      const targets = await metaQuery(
-        `SELECT id, name FROM branch
-         WHERE id <> ? AND status = 1
-         ORDER BY FIELD(LOWER(TRIM(name)), 'hk', 'dubai', 'uae'), id ASC`,
-        [id]
+    // Session safety: block if session company belongs to this branch
+    const sessionCompanyId = Number(req.user?.companyId);
+    if (sessionCompanyId) {
+      const sessionCompanyRows = await metaQuery(
+        "SELECT branch_id FROM company WHERE id = ? LIMIT 1",
+        [sessionCompanyId]
       );
-      if (targets.length) {
-        for (let i = 0; i < linked.length; i += 1) {
-          await metaQuery("UPDATE company SET branch_id = ? WHERE id = ?", [
-            targets[i % targets.length].id,
-            linked[i].id,
-          ]);
-        }
-        moved = linked.length;
-      } else {
-        await metaQuery("UPDATE company SET branch_id = NULL WHERE branch_id = ?", [id]);
-        moved = linked.length;
+      if (sessionCompanyRows.length && Number(sessionCompanyRows[0].branch_id) === id) {
+        return res.status(400).json({
+          status: false,
+          message: "Cannot delete the branch your current session belongs to. Switch to another branch first.",
+        });
       }
     }
 
-    try {
-      await metaQuery("DELETE FROM branch_year WHERE branch_id = ?", [id]);
-    } catch (_) {
-      /* table may not exist yet */
-    }
-    await metaQuery("DELETE FROM branch WHERE id = ?", [id]);
-    const movedNote = moved
-      ? ` ${moved} compan${moved === 1 ? "y" : "ies"} moved off this branch.`
-      : "";
+    const reqInfo = {
+      userId: req.user.user_id,
+      userName: req.user.user_name || req.user.username || "Unknown",
+      userRole: req.user.role || req.user.roll || "Super Admin",
+      userRoleId: req.user.roll_id || req.user.roleId || null,
+      companyId: sessionCompanyId || 1,
+      ip: req.ip || req.headers["x-forwarded-for"] || null,
+      userAgent: req.headers["user-agent"] || null,
+    };
+
+    // Get branch's session company branch_id for safety check inside service
+    const sessionCompanyBranchId = sessionCompanyId
+      ? (await metaQuery("SELECT branch_id FROM company WHERE id = ? LIMIT 1", [sessionCompanyId]))[0]?.branch_id
+      : null;
+
+    const result = await executePermanentDeleteBranch({
+      branchId: id,
+      sessionCompanyBranchId: sessionCompanyBranchId || null,
+      reqInfo,
+    });
+
+    clearFailedAttempts(userId);
+
     res.json({
       status: true,
-      message: `"${existing[0].name}" deleted successfully.${movedNote}`,
+      message: `"${result.branchName}" permanently deleted. ${result.companiesDeleted.length} company(ies) and ${result.total} record(s) removed.`,
+      Data: result,
     });
   } catch (err) {
-    res.status(500).json({ status: false, message: err.message });
+    const code = err.statusCode || 500;
+    res.status(code).json({ status: false, message: err.message });
   }
 });
 

@@ -212,10 +212,25 @@ function buildMemoOutwardRow(post, productsCsv) {
     boc_sksm: 0,
     citi_sksm: 0,
     other_party: post.other_party != null ? String(post.other_party) : "",
+    selected_banks: post.selected_banks
+      ? (typeof post.selected_banks === "object" ? JSON.stringify(post.selected_banks) : String(post.selected_banks))
+      : null,
   };
 }
 
 let outwardTableColumnsCache = null;
+
+let selectedBanksColReady = false;
+async function ensureSelectedBanksColumn(q) {
+  if (selectedBanksColReady) return;
+  try {
+    await q("ALTER TABLE dai_outward ADD COLUMN selected_banks LONGTEXT NULL");
+    outwardTableColumnsCache = null;
+  } catch (err) {
+    // already exists
+  }
+  selectedBanksColReady = true;
+}
 
 async function getOutwardTableColumns(q) {
   if (outwardTableColumnsCache) return outwardTableColumnsCache;
@@ -619,8 +634,7 @@ async function sendTo(rawPost, userContext = {}) {
   // If a stone belonging to Company A is sold to Company B (via Company dropdown or Party match),
   // automatically process as an Inter-Company Transfer with dual Sale Bill + Purchase Bill + Target Stock creation.
   let isInterCompanyCustomerSale = false;
-  let transferPayload = null;
-  let fromComp = null;
+  let transferPayloads = [];
   let toComp = null;
 
   if (type === "sale") {
@@ -650,36 +664,46 @@ async function sendTo(rawPost, userContext = {}) {
       }
     }
 
-    // Inter-Company Transfer condition: Source Company != Target Company
-    if (sourceCompanyId && targetCompanyId && sourceCompanyId !== targetCompanyId) {
-      if (sourceCompanyIds.length > 1) {
+    // Inter-Company Transfer condition: stones belonging to other companies need transfer into targetCompanyId
+    const foreignCompanyIds = [
+      ...new Set(
+        stoneRows
+          .map((s) => Number(s.company))
+          .filter((cid) => cid && cid !== targetCompanyId)
+      ),
+    ];
+
+    if (foreignCompanyIds.length > 0) {
+      const involvedCompanyIds = [targetCompanyId, ...foreignCompanyIds];
+      const compRows = await qRead(
+        `SELECT id, name FROM company WHERE id IN (${involvedCompanyIds.map(() => "?").join(",")})`,
+        involvedCompanyIds
+      );
+      toComp = compRows.find((c) => Number(c.id) === targetCompanyId);
+
+      if (!toComp) {
         return {
           ok: false,
-          message: "All selected stones must belong to the same source company for inter-company transfer.",
+          message: "Target company for inter-company transfer not found.",
         };
       }
 
-      const compRows = await qRead("SELECT id, name FROM company WHERE id IN (?, ?)", [
-        sourceCompanyId,
-        targetCompanyId,
-      ]);
-      fromComp = compRows.find((c) => Number(c.id) === sourceCompanyId);
-      toComp = compRows.find((c) => Number(c.id) === targetCompanyId);
+      for (const srcCompId of foreignCompanyIds) {
+        const fromComp = compRows.find((c) => Number(c.id) === srcCompId);
+        const fromCompName = fromComp?.name || `Company #${srcCompId}`;
+        const itemsForSourceComp = recordList.filter((r) => {
+          const stone = stoneRows.find((s) => Number(s.id) === Number(r.id));
+          return Number(stone?.company) === srcCompId;
+        });
 
-      if (fromComp && toComp) {
-        const partyStr = String(post.party || "").trim();
-        const isPartyTheTargetCompany =
-          partyStr === String(toComp.id) ||
-          partyStr.toLowerCase() === toComp.name.toLowerCase();
-
-        transferPayload = {
-          from_company_id: sourceCompanyId,
+        transferPayloads.push({
+          from_company_id: srcCompId,
           to_company_id: targetCompanyId,
           to_party: toComp.name,
           transfer_date: formatDateOnly(post.date) || formatDateOnly(post.invoicedate) || new Date().toISOString().slice(0, 10),
-          notes: post.narretion || `Direct Sale from Inventory (${fromComp.name} -> ${toComp.name})`,
+          notes: post.narretion || `Direct Sale from Inventory (${fromCompName} -> ${toComp.name})`,
           keepOriginalSku: true,
-          items: recordList.map((r) => {
+          items: itemsForSourceComp.map((r) => {
             const stone = stoneRows.find((s) => Number(s.id) === Number(r.id));
             const pcs = Number(
               (r.polish_pcs != null && Number(r.polish_pcs) > 0 ? r.polish_pcs : null) ??
@@ -700,54 +724,75 @@ async function sendTo(rawPost, userContext = {}) {
               amount,
             };
           }),
-        };
+        });
+      }
 
-        if (isPartyTheTargetCompany) {
-          // Direct 2-leg transfer only (party is target company itself, no 3rd party customer)
-          const companyTransferService = require("../../services/transaction/companyTransferService.js");
-          const transferResult = await companyTransferService.executeTransfer(transferPayload, {
+      const partyStr = String(post.party || "").trim();
+      const isPartyTheTargetCompany =
+        partyStr === String(toComp.id) ||
+        partyStr.toLowerCase() === toComp.name.toLowerCase();
+
+      if (isPartyTheTargetCompany) {
+        // Direct 2-leg transfer only (party is target company itself, no 3rd party customer)
+        const companyTransferService = require("../../services/transaction/companyTransferService.js");
+        const transferResults = [];
+        for (const payload of transferPayloads) {
+          const transferResult = await companyTransferService.executeTransfer(payload, {
             ...userContext,
             userId,
           });
-
-          return {
-            ok: true,
-            message: `Direct Sale to ${toComp.name} processed as Inter-Company Transfer (Transfer No: ${transferResult.transfer_no})`,
-            id: transferResult.source_outward_id,
-            transfer_id: transferResult.transfer_id,
-            transfer_no: transferResult.transfer_no,
-            is_inter_transfer: true,
-          };
+          transferResults.push(transferResult);
         }
 
-        // 3-legged sale: Leg 1 (HK Sale to Antwerp) + Leg 2 (Antwerp Purchase from HK) + Leg 3 (Antwerp Sale to Customer Party)
-        // Execute atomic in withTransaction below
-        isInterCompanyCustomerSale = true;
+        const transferNos = transferResults.map((t) => t.transfer_no).filter(Boolean);
+        const lastResult = transferResults[transferResults.length - 1];
+
+        return {
+          ok: true,
+          message: `Direct Sale to ${toComp.name} processed as Inter-Company Transfer (Transfer No: ${transferNos.join(", ")})`,
+          id: lastResult?.source_outward_id,
+          transfer_id: lastResult?.transfer_id,
+          transfer_no: transferNos.join(", "),
+          is_inter_transfer: true,
+        };
       }
+
+      // 3-legged sale: Leg 1 (Source Sale to Target) + Leg 2 (Target Purchase from Source) + Leg 3 (Target Sale to Customer Party)
+      // Execute atomic in withTransaction below
+      isInterCompanyCustomerSale = true;
     }
   }
 
   try {
+    await ensureSelectedBanksColumn(helper.query);
     await stockMovement.ensureStockItemSchema(helper.query);
     const outwardId = await withTransaction(async (q) => {
       await stockMovement.ensureStockItemSchema(q);
 
-      let transferResult = null;
+      let transferResults = [];
       let effectiveRecordList = recordList;
 
-      if (isInterCompanyCustomerSale && transferPayload) {
+      if (isInterCompanyCustomerSale && transferPayloads.length > 0) {
         const companyTransferService = require("../../services/transaction/companyTransferService.js");
-        transferResult = await companyTransferService.executeTransferWithQuery(q, transferPayload, {
-          ...userContext,
-          userId,
-        });
+        const allTargetItemMap = {};
 
-        // Remap recordList so each stone points to newly created targetProductId in Antwerp
+        for (const payload of transferPayloads) {
+          const transferResult = await companyTransferService.executeTransferWithQuery(q, payload, {
+            ...userContext,
+            userId,
+          });
+          transferResults.push(transferResult);
+          if (transferResult.target_item_map) {
+            Object.assign(allTargetItemMap, transferResult.target_item_map);
+          }
+        }
+
+        // Remap recordList so each transferred stone points to newly created targetProductId in targetCompany
         effectiveRecordList = recordList.map((r) => {
-          const targetId = transferResult.target_item_map?.[r.id] || (transferResult.target_product_ids && transferResult.target_product_ids[0]);
+          const targetId = allTargetItemMap[r.id];
           return {
             ...r,
-            id: targetId,
+            id: targetId || r.id,
           };
         });
       }
@@ -1064,7 +1109,7 @@ async function sendTo(rawPost, userContext = {}) {
         companyId,
       });
 
-      return { Oid, sku, invoiceno: post.invoiceno, transferResult };
+      return { Oid, sku, invoiceno: post.invoiceno, transferResults };
     });
 
     if (type === "sale") {
@@ -1082,15 +1127,21 @@ async function sendTo(rawPost, userContext = {}) {
       }
     }
 
-    if (outwardId.transferResult) {
+    const allTransfers = outwardId.transferResults || (outwardId.transferResult ? [outwardId.transferResult] : []);
+    if (allTransfers.length > 0) {
+      const tNos = allTransfers.map((t) => t.transfer_no).filter(Boolean).join(", ");
+      const firstTransfer = allTransfers[0];
+      const fromNames = [
+        ...new Set(allTransfers.map((t) => t.source_company_name).filter(Boolean)),
+      ].join(", ");
       return {
         ok: true,
         id: outwardId.Oid,
         invoice_no: outwardId.invoiceno,
-        transfer_id: outwardId.transferResult.transfer_id,
-        transfer_no: outwardId.transferResult.transfer_no,
+        transfer_id: firstTransfer?.transfer_id,
+        transfer_no: tNos,
         is_inter_transfer: true,
-        message: `Sale completed for ${toComp?.name || "Company"} with Inter-Company Transfer from ${fromComp?.name || "Source Company"} (Transfer No: ${outwardId.transferResult.transfer_no})`,
+        message: `Sale completed for ${toComp?.name || "Company"} with Inter-Company Transfer from ${fromNames || "Source Company"} (Transfer No: ${tNos})`,
       };
     }
 
@@ -1761,6 +1812,11 @@ async function updateOutward(rawPost) {
 
       // Optional Venya columns — only if present on this DB
       const outwardCols = await getOutwardTableColumns(q);
+      if (outwardCols.includes("selected_banks")) {
+        headerUpdate.selected_banks = post.selected_banks
+          ? (typeof post.selected_banks === "object" ? JSON.stringify(post.selected_banks) : String(post.selected_banks))
+          : (existing.selected_banks || null);
+      }
       if (outwardCols.includes("manufacture_origin")) {
         headerUpdate.manufacture_origin =
           post.manufacture_origin != null

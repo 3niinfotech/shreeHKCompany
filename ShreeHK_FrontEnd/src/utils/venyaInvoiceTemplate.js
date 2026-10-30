@@ -455,7 +455,31 @@ function buildTableHeader(variant) {
   </table>`;
 }
 
-function buildBankBlock(bankFlags, company = {}) {
+function buildBankBlock(bankFlags, company = {}, selectedBanks = []) {
+  if (Array.isArray(selectedBanks) && selectedBanks.length > 0) {
+    return selectedBanks
+      .map((b) => {
+        const acName = b.ac_name || b.acName || company.acName || company.name || BOC_BANK.acName;
+        const bankName = b.bank_name || b.bankName || b.bank_label || BOC_BANK.bankName;
+        const accountNo = b.account_no || b.accountNo || BOC_BANK.accountNo;
+        const bankCode = b.bank_code || b.bankCode || "";
+        const branchCode = b.branch_code || b.branchCode || "";
+        const swiftCode = b.swift_code || b.swiftCode || "";
+
+        return `<td style="width:33.33%;max-width:33.33%;text-align:left;vertical-align:top;">
+    <table style="width:100%;font-size:10px;">
+      <tr><td style="width:8%;color:#000;font-size:10px;">[&nbsp;&nbsp;&nbsp;]</td><td style="width:25%;color:${VENYA_BLUE};">A/c. Name</td><td style="width:67%;">${escapeHtml(acName)}</td></tr>
+      <tr><td style="width:8%;">&nbsp;</td><td style="width:25%;color:${VENYA_BLUE};">Bank Name</td><td style="width:67%;">${escapeHtml(bankName)}</td></tr>
+      <tr><td style="width:8%;">&nbsp;</td><td style="width:25%;color:${VENYA_BLUE};">Account No</td><td style="width:67%;">${accountNo}</td></tr>
+      ${bankCode ? `<tr><td style="width:8%;">&nbsp;</td><td style="width:25%;color:${VENYA_BLUE};">Bank Code</td><td style="width:67%;">${escapeHtml(bankCode)}</td></tr>` : ""}
+      ${branchCode ? `<tr><td style="width:8%;">&nbsp;</td><td style="width:25%;color:${VENYA_BLUE};">Branch Code</td><td style="width:67%;">${escapeHtml(branchCode)}</td></tr>` : ""}
+      ${swiftCode ? `<tr><td style="width:8%;">&nbsp;</td><td style="width:25%;color:${VENYA_BLUE};">Swift Code</td><td style="width:67%;">${escapeHtml(swiftCode)}</td></tr>` : ""}
+    </table>
+  </td>`;
+      })
+      .join("");
+  }
+
   const flags = { ...bankFlags };
   if (!flags.boc && !flags.citi && !flags.dbs && !flags.sc && !flags.boc_sksm && !flags.citi_sksm) {
     flags.boc = true;
@@ -727,7 +751,7 @@ function buildInvoicePage(data, copyLabel, { isSummary = false } = {}) {
     <p style="padding:0;margin:0;color:#ccc">----------------------------------------------------------------------------------------------------------------------------------------------------</p>
     <table cellspacing="0" style="width:100%;text-align:left;font-size:9px;margin-top:10px;">
       <tr><td colspan="3"><p style="margin:0 0 2px;padding-bottom:5px;color:${VENYA_PINK}"><b>Payment Detail:</b></p></td></tr>
-      <tr>${buildBankBlock(data.bankFlags || {}, data.company)}</tr>
+      <tr>${buildBankBlock(data.bankFlags || {}, data.company, data.selectedBanks)}</tr>
     </table>
     <table cellspacing="0" style="width:100%;text-align:left;font-size:14px;">
       <tr>
@@ -888,7 +912,7 @@ function buildInvoicePage(data, copyLabel, { isSummary = false } = {}) {
           <p style="padding:0;margin:0;color:#ccc">-----------------------------------------------------------------------------------------------------------------------------------------------</p>
           <table cellspacing="0" style="width:100%;text-align:left;font-size:9px;margin-top:10px;">
             <tr><td colspan="3"><p style="margin:0 0 2px;padding-bottom:5px;color:${VENYA_PINK}"><b>Payment Detail:</b></p></td></tr>
-            <tr>${buildBankBlock(data.bankFlags || {}, data.company)}</tr>
+            <tr>${buildBankBlock(data.bankFlags || {}, data.company, data.selectedBanks)}</tr>
           </table>
           <table cellspacing="0" style="width:100%;text-align:left;font-size:14px;">
             <tr>

@@ -145,16 +145,29 @@ function _buildTableRows(rows, minRows = 5) {
     .join("");
 }
 
-function buildPaymentDetail() {
-  const b = BOC_BANK;
+function buildPaymentDetail(company = {}, selectedBanks = []) {
+  let b = null;
+  if (Array.isArray(selectedBanks) && selectedBanks.length > 0) {
+    b = selectedBanks[0];
+  } else if (Array.isArray(company?.banks) && company.banks.length > 0) {
+    b = company.banks[0];
+  }
+
+  const acName = b?.ac_name || b?.acName || company?.acName || company?.name || BOC_BANK.acName;
+  const bankName = b?.bank_name || b?.bankName || b?.bank_label || company?.bankName || BOC_BANK.bankName;
+  const accountNo = b?.account_no || b?.accountNo || company?.accountNo || BOC_BANK.accountNo;
+  const bankCode = b?.bank_code || b?.bankCode || company?.bankCode || BOC_BANK.bankCode;
+  const branchCode = b?.branch_code || b?.branchCode || company?.branchCode || BOC_BANK.branchCode;
+  const swiftCode = b?.swift_code || b?.swiftCode || company?.swiftCode || BOC_BANK.swiftCode;
+
   return `<div class="payment-detail">
     <div class="title">Payment Detail</div>
-    <div class="row"><span class="lbl">A/c. Name</span><span class="v">${escapeHtml(b.acName)}</span></div>
-    <div class="row"><span class="lbl">Bank Name</span><span class="v">${escapeHtml(b.bankName)}</span></div>
-    <div class="row"><span class="lbl">Account No</span><span class="v">${b.accountNo}</span></div>
-    <div class="row"><span class="lbl">Bank Code</span><span class="v">${escapeHtml(b.bankCode)}</span></div>
-    <div class="row"><span class="lbl">Branch Code</span><span class="v">${escapeHtml(b.branchCode)}</span></div>
-    <div class="row"><span class="lbl">Swift Code</span><span class="v">${escapeHtml(b.swiftCode)}</span></div>
+    <div class="row"><span class="lbl">A/c. Name</span><span class="v">${escapeHtml(acName)}</span></div>
+    <div class="row"><span class="lbl">Bank Name</span><span class="v">${escapeHtml(bankName)}</span></div>
+    <div class="row"><span class="lbl">Account No</span><span class="v">${accountNo}</span></div>
+    ${bankCode ? `<div class="row"><span class="lbl">Bank Code</span><span class="v">${escapeHtml(bankCode)}</span></div>` : ""}
+    ${branchCode ? `<div class="row"><span class="lbl">Branch Code</span><span class="v">${escapeHtml(branchCode)}</span></div>` : ""}
+    ${swiftCode ? `<div class="row"><span class="lbl">Swift Code</span><span class="v">${escapeHtml(swiftCode)}</span></div>` : ""}
   </div>`;
 }
 
@@ -246,7 +259,7 @@ export function buildGiaMemoConsignmentPage(data, copyLabel = "(ORIGINAL COPY)")
             </table>
           </div>
           <div class="pay-confirm">
-            ${buildPaymentDetail()}
+            ${buildPaymentDetail(data.company, data.selectedBanks)}
             <div class="confirm-col">
               <div class="title">Confirmed By :</div>
             </div>

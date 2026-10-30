@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Table, Card, Typography, Space, Button, Tag, Checkbox, Badge, Form, Input, Row, Col, Spin } from 'antd';
+import { Table, Card, Typography, Space, Button, Tag, Checkbox, Form, Input, Row, Col, Spin } from 'antd';
 import { EditOutlined, PrinterOutlined, DeleteOutlined, ReloadOutlined, PlusOutlined } from '@ant-design/icons';
 import { Pencil, CircleCheck } from 'lucide-react';
 import dayjs from 'dayjs';
@@ -21,7 +21,7 @@ import { cssVar } from '../../theme';
 import { SkuLink } from '../../hooks/useSkuModalAction';
 import '../../assets/scss/masterEdit.scss';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const LIMIT = 100;
 
 const ExpandedRowContent = ({ rowId }) => {
@@ -113,6 +113,23 @@ const OutWord = () => {
         return list;
     }, [branchCompanies, editingRecord, companyMap]);
 
+    const editCompanyMeta = useMemo(() => {
+        const rawComp = editingRecord?.company;
+        if (!rawComp) return null;
+        return (
+            (branchCompanies || []).find(
+                (c) =>
+                    String(c.value) === String(rawComp) ||
+                    c.name === rawComp ||
+                    c.code === rawComp
+            ) || null
+        );
+    }, [editingRecord, branchCompanies]);
+
+    const editCompanyBanks = useMemo(() => {
+        return Array.isArray(editCompanyMeta?.banks) ? editCompanyMeta.banks : [];
+    }, [editCompanyMeta]);
+
     const [payload, setPayload] = useState({
         party: "", invoiceno: "", type: "", page: 1, limit: LIMIT, from: "", to: ""
     });
@@ -172,9 +189,43 @@ const OutWord = () => {
                 (typeof rawComp === 'string' && isNaN(Number(rawComp)) ? rawComp : '') ||
                 editForm.getFieldValue('company') ||
                 '';
+            let parsedSelectedBanks = [];
+            if (details.selected_banks) {
+                try {
+                    parsedSelectedBanks = typeof details.selected_banks === 'string'
+                        ? JSON.parse(details.selected_banks)
+                        : details.selected_banks;
+                } catch { }
+            }
+
+            let selectedIndices = [];
+            if (Array.isArray(parsedSelectedBanks) && parsedSelectedBanks.length > 0) {
+                selectedIndices = editCompanyBanks
+                    .map((b, idx) => {
+                        const match = parsedSelectedBanks.some(
+                            (pb) =>
+                                (pb.bank_label && pb.bank_label === b.bank_label) ||
+                                (pb.account_no && pb.account_no === b.account_no)
+                        );
+                        return match ? idx : -1;
+                    })
+                    .filter((idx) => idx !== -1);
+            }
+            if (selectedIndices.length === 0 && editCompanyBanks.length > 0) {
+                editCompanyBanks.forEach((b, idx) => {
+                    const lbl = String(b.bank_label || b.bank_name || "").toLowerCase();
+                    if (details.boc && lbl.includes("boc")) selectedIndices.push(idx);
+                    if (details.citi && lbl.includes("citi")) selectedIndices.push(idx);
+                    if (details.dbs && lbl.includes("dbs")) selectedIndices.push(idx);
+                    if (details.sc && (lbl.includes("sc") || lbl.includes("standard"))) selectedIndices.push(idx);
+                });
+                if (selectedIndices.length === 0) selectedIndices = [0];
+            }
+
             editForm.setFieldsValue({
                 ...details,
                 company: resolvedCompName,
+                selected_bank_indices: selectedIndices,
                 date: details.date ? dayjs(details.date) : null,
                 invoicedate: details.invoicedate ? dayjs(details.invoicedate) : null,
                 duedate: details.duedate ? dayjs(details.duedate) : null,
@@ -186,7 +237,7 @@ const OutWord = () => {
             const products = editDetailData?.products || [];
             setFetchedProducts(products);
         }
-    }, [editDetailData, editForm, editingRecord, companyMap]);
+    }, [editDetailData, editForm, editingRecord, companyMap, editCompanyBanks]);
 
     const { form, renderFilters, handleClear } = useFiltersFormFields(['type', 'invoice', 'date', 'party'], {
         typeOptions: [
@@ -537,23 +588,53 @@ const OutWord = () => {
                     ? (isNaN(Number(editingRecord.company)) ? editingRecord.company : Number(editingRecord.company))
                     : undefined;
 
+            let selectedBanks = [];
+            const selectedIndices = values.selected_bank_indices;
+            if (Array.isArray(selectedIndices) && selectedIndices.length > 0) {
+                selectedBanks = selectedIndices
+                    .map((idx) => editCompanyBanks[idx])
+                    .filter(Boolean);
+            } else if (editCompanyBanks.length > 0) {
+                selectedBanks = [editCompanyBanks[0]];
+            }
+
+            let bocVal = values.boc ? 1 : 0;
+            let citiVal = values.citi ? 1 : 0;
+            let dbsVal = values.dbs ? 1 : 0;
+            let scVal = values.sc ? 1 : 0;
+            if (selectedBanks.length > 0) {
+                selectedBanks.forEach((b) => {
+                    const lbl = String(b.bank_label || b.bank_name || "").toLowerCase();
+                    if (lbl.includes("boc")) bocVal = 1;
+                    if (lbl.includes("citi")) citiVal = 1;
+                    if (lbl.includes("dbs")) dbsVal = 1;
+                    if (lbl.includes("sc") || lbl.includes("standard")) scVal = 1;
+                });
+            }
+
             const payload = {
                 id: editingRecord.id,
                 ...values,
+                selected_banks: selectedBanks,
                 ...(originalCompanyId != null ? { company: originalCompanyId } : {}),
                 type: values.type || editingRecord?.type,
-                boc: values.boc ? 1 : 0,
-                citi: values.citi ? 1 : 0,
-                dbs: values.dbs ? 1 : 0,
-                sc: values.sc ? 1 : 0,
+                boc: bocVal,
+                citi: citiVal,
+                dbs: dbsVal,
+                sc: scVal,
                 date: formattedDate,
                 invoicedate: formattedInvoiceDate,
                 duedate: formattedDueDate,
                 products: fetchedProducts,
                 update: {
                     ...values,
+                    selected_banks: selectedBanks,
                     ...(originalCompanyId != null ? { company: originalCompanyId } : {}),
                     type: values.type || editingRecord?.type,
+                    boc: bocVal,
+                    citi: citiVal,
+                    dbs: dbsVal,
+                    sc: scVal,
                     date: formattedDate,
                     invoicedate: formattedInvoiceDate,
                     duedate: formattedDueDate,
@@ -825,18 +906,21 @@ const OutWord = () => {
                                         colon={false}
                                     >
                                         <div className={styles.stockEditBankSlot}>
-                                            <Form.Item name="boc" valuePropName="checked" noStyle>
-                                                <Checkbox>BOC</Checkbox>
-                                            </Form.Item>
-                                            <Form.Item name="citi" valuePropName="checked" noStyle>
-                                                <Checkbox>CITI</Checkbox>
-                                            </Form.Item>
-                                            <Form.Item name="dbs" valuePropName="checked" noStyle>
-                                                <Checkbox>DBS</Checkbox>
-                                            </Form.Item>
-                                            <Form.Item name="sc" valuePropName="checked" noStyle>
-                                                <Checkbox>SC</Checkbox>
-                                            </Form.Item>
+                                            {editCompanyBanks.length > 0 ? (
+                                                <Form.Item name="selected_bank_indices" noStyle>
+                                                    <Checkbox.Group
+                                                        style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}
+                                                        options={editCompanyBanks.map((b, idx) => ({
+                                                            label: b.bank_label || b.bank_name || `Bank #${idx + 1}`,
+                                                            value: idx,
+                                                        }))}
+                                                    />
+                                                </Form.Item>
+                                            ) : (
+                                                <span style={{ fontSize: '11px', color: 'var(--color-text-muted, #8c8c8c)', fontStyle: 'italic', whiteSpace: 'nowrap' }}>
+                                                    No bank details added for this company
+                                                </span>
+                                            )}
                                         </div>
                                     </Form.Item>
                                 </Col>

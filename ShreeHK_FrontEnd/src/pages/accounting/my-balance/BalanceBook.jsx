@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Input, Space } from 'antd';
 import { SkeletonBlock } from '../../../components/common/skeleton';
 import { BookOpen, Plus, Save, Check, Pencil, Trash2, RefreshCcw } from 'lucide-react';
@@ -13,7 +14,23 @@ const BalanceBook = () => {
     const [deleteModal, setDeleteModal] = useState({ open: false, id: null, name: '' });
     const [isRefreshing, setIsRefreshing] = useState(false);
 
-    const { data, isFetching, refetch } = useFetchApi('GetBalance', ENDPOINTS.balance.list);
+    const queryClient = useQueryClient();
+    const { data, isFetching, refetch } = useFetchApi('GetBalance', ENDPOINTS.balance.list, {}, 'GET', {
+        staleTime: 0,
+        refetchOnMount: 'always',
+    });
+
+    const invalidateBalanceBooks = () => {
+        refetch();
+        queryClient.invalidateQueries({ queryKey: ['GetBalance'] });
+        queryClient.invalidateQueries({ queryKey: ['myBalanceBook'] });
+        queryClient.invalidateQueries({ queryKey: ['GetBalanceBooks'] });
+        queryClient.invalidateQueries({
+            predicate: (query) =>
+                query.queryKey.some((k) => typeof k === 'string' && (k.toLowerCase().includes('balance') || k.includes('/balance/get'))),
+        });
+    };
+
     const { mutate: createbalanceBook, isLoading: isSubmitting } = usePostApiRequest(ENDPOINTS.balance.book, 'CeateBalance');
     const { mutate: deleteBalance, isLoading: isDeleting } = useDeleteApiRequest(ENDPOINTS.balance.delete, 'deleteBalanceBook', { queryParam: 'deleteId' });
 
@@ -65,7 +82,7 @@ const BalanceBook = () => {
 
         createbalanceBook(payload, {
             onSuccess: () => {
-                refetch();
+                invalidateBalanceBooks();
             },
         });
     };
@@ -100,6 +117,7 @@ const BalanceBook = () => {
             onSuccess: () => {
                 setRows(rows.filter(row => row.id !== deleteModal.id));
                 closeDelete();
+                invalidateBalanceBooks();
             }
         });
     };

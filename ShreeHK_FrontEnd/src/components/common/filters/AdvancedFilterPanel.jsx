@@ -1,4 +1,3 @@
-import React from 'react';
 import { Button, Typography } from 'antd';
 import { FilterOutlined, SearchOutlined } from '@ant-design/icons';
 import styles from '../../../assets/scss/components/advancedFilterPanel.module.scss';
