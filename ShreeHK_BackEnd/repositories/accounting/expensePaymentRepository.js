@@ -96,13 +96,11 @@ async function updateExpensePayment({ id, party, other_party, date, type, book, 
  * @param {number} companyId
  */
 async function deleteExpensePaymentByIdAndCompany(id, companyId, userId = null) {
-  const sql = `UPDATE acc_transaction 
-               SET deleted = 1, deleted_at = NOW(), deleted_by = ? 
+  const sql = `DELETE FROM acc_transaction 
                WHERE id = ? AND company = ? 
                  AND (sale_id IS NULL OR sale_id = '' OR sale_id = '0')
-                 AND (purchase_id IS NULL OR purchase_id = '' OR purchase_id = '0')
-                 AND (deleted = 0 OR deleted IS NULL)`;
-  return queryAsync(sql, [userId, id, companyId]);
+                 AND (purchase_id IS NULL OR purchase_id = '' OR purchase_id = '0')`;
+  return queryAsync(sql, [id, companyId]);
 }
 
 module.exports = {
