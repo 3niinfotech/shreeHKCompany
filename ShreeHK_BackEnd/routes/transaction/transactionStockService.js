@@ -16,7 +16,7 @@ function companyInClause(alias, companyIds) {
 }
 const { logAudit, logAuditInTx } = require("../../services/auditIntegration.js");
 const { diffFields } = require("../../services/auditService.js");
-const { getAuditFlag } = require("../../services/auditFlagService.js");
+const { getAuditFlag, computeExpectedInvoiceTotal } = require("../../services/auditFlagService.js");
 
 const addHistoryAudited = async (
   history,
@@ -1934,6 +1934,25 @@ async function outwardMemoToSale(post, userContext = {}) {
     if (!Number.isFinite(finalAmount) || finalAmount <= 0) {
       finalAmount = amount + shippingCharge;
     }
+
+    const verifyTotalsFlag = getAuditFlag("FLAG_VERIFY_INVOICE_TOTALS");
+    if (verifyTotalsFlag === "LOG_ONLY") {
+      try {
+        const expected = computeExpectedInvoiceTotal(amount, post);
+        const diff = Math.abs(finalAmount - expected);
+        if (diff > 0.05) {
+          console.warn("[AUDIT_FLAG:FLAG_VERIFY_INVOICE_TOTALS] Invoice total mismatch in memo-to-sale:", {
+            type,
+            invoiceno: String(invoice),
+            storedFinalAmount: finalAmount,
+            expectedFinalAmount: expected,
+            difference: Number(diff.toFixed(2)),
+            subtotal: amount,
+          });
+        }
+      } catch (_) {}
+    }
+
     const paidAmount = post.on_payment ? Number(post.paid_amount) || 0 : 0;
     const dueAmount =
       post.due_amount != null && post.due_amount !== ""

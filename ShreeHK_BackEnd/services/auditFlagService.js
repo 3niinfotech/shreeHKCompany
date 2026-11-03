@@ -48,7 +48,35 @@ async function executeAuditGuard(flagName, checkFn, onEnforceFn) {
   return null;
 }
 
+/**
+ * Recomputes expected invoice final amount using standard diamond trade formula.
+ * itemsTotal - discount (less_amount / less_percent) - other_discount (other_less_amount / other_less_percent) + shipping + charges
+ */
+function computeExpectedInvoiceTotal(subtotal, post = {}) {
+  const itemsTotal = Number(subtotal) || 0;
+  const lessPercent = Number(post.less_percent) || 0;
+  let lessAmount = Number(post.less_amount) || 0;
+  if (!lessAmount && lessPercent > 0) {
+    lessAmount = Number(((itemsTotal * lessPercent) / 100).toFixed(2));
+  }
+  const afterLess1 = itemsTotal - lessAmount;
+
+  const otherLessPercent = Number(post.other_less_percent) || 0;
+  let otherLessAmount = Number(post.other_less_amount) || 0;
+  if (!otherLessAmount && otherLessPercent > 0) {
+    otherLessAmount = Number(((afterLess1 * otherLessPercent) / 100).toFixed(2));
+  }
+  const afterLess2 = afterLess1 - otherLessAmount;
+
+  const shippingCharge = Number(post.shipping_charge) || 0;
+  const charge = Number(post.charge) || 0;
+
+  return Number((afterLess2 + shippingCharge + charge).toFixed(2));
+}
+
 module.exports = {
   getAuditFlag,
   executeAuditGuard,
+  computeExpectedInvoiceTotal,
 };
+
