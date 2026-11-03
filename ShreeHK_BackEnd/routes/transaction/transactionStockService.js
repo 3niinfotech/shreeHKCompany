@@ -16,6 +16,7 @@ function companyInClause(alias, companyIds) {
 }
 const { logAudit, logAuditInTx } = require("../../services/auditIntegration.js");
 const { diffFields } = require("../../services/auditService.js");
+const { getAuditFlag } = require("../../services/auditFlagService.js");
 
 const addHistoryAudited = async (
   history,
@@ -2478,6 +2479,47 @@ async function deleteOutwardStock(id, options = {}) {
       : await q("SELECT * FROM dai_outward WHERE id = ?", [id]);
     const oData = oRows[0] || null;
     if (!oData) return { ok: false, message: "Outward record not found or access denied" };
+
+    const blockPaidSaleFlag = getAuditFlag("FLAG_BLOCK_PAID_SALE_DELETE");
+    if (blockPaidSaleFlag !== "OFF") {
+      const isPaidByHeader = Number(oData.paid_amount || 0) > 0;
+      let hasPaymentRows = false;
+      const targetCompany = companyId || oData.company;
+
+      const payRows = targetCompany
+        ? await q(
+            "SELECT id FROM acc_transaction WHERE sale_id = ? AND company = ? AND type = 'cr' AND (deleted = 0 OR deleted IS NULL) LIMIT 1",
+            [String(id), targetCompany]
+          )
+        : await q(
+            "SELECT id FROM acc_transaction WHERE sale_id = ? AND type = 'cr' AND (deleted = 0 OR deleted IS NULL) LIMIT 1",
+            [String(id)]
+          );
+      hasPaymentRows = payRows.length > 0;
+
+      if (isPaidByHeader || hasPaymentRows) {
+        if (blockPaidSaleFlag === "LOG_ONLY") {
+          try {
+            console.warn(
+              `[AUDIT_FLAG:FLAG_BLOCK_PAID_SALE_DELETE] Attempted deletion of paid sale voucher #${oData.invoiceno || id}:`,
+              {
+                outwardId: id,
+                invoiceno: oData.invoiceno,
+                companyId: targetCompany,
+                paidAmount: oData.paid_amount,
+                hasPaymentRows,
+              }
+            );
+          } catch (_) {}
+        } else if (blockPaidSaleFlag === "ENFORCE") {
+          const billRef = oData.invoiceno || id;
+          return {
+            ok: false,
+            message: `Cannot delete Sale #${billRef}: payment transactions are already recorded against this bill.`,
+          };
+        }
+      }
+    }
 
     const productIds = (oData.products || "")
       .split(",")
