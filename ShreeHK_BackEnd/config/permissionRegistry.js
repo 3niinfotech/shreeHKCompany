@@ -146,6 +146,7 @@ const PUBLIC_API_PREFIXES = [
   "/notification",
   "/api/profile/",
 
+  "/currency-rate/get",
   "/uploads/",
   "/company/getOption",
   "/admin/activity-log/track",
