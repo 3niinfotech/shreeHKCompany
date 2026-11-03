@@ -947,6 +947,7 @@ async function returnGia(post, userContext = {}) {
 
   const outwardItems = await stockMovement.getOutwardItems(query, outid);
 
+  let targetLab = lab || "GIA";
   const processedProductIds = new Set();
 
   for (const rawId of returnedIds) {
@@ -1026,7 +1027,7 @@ async function returnGia(post, userContext = {}) {
     const nextColor = v.color || product.main_color || product.color || "";
     const unitPrice = Number(product.price) || 0;
     const amount = Number(((Number(bal.onhand_carat) || 0) * unitPrice).toFixed(2));
-    const targetLab = lab || product.lab || "GIA";
+    targetLab = lab || product.lab || "GIA";
 
     if (!reportNo) {
       await query(
