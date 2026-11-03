@@ -12,12 +12,9 @@ function parseAdvancePaymentBody(body = {}, contextCompanyId) {
   const book = body.book ?? body.booktype ?? "";
   const type = body.type ?? body["dr-cr"] ?? "";
   const cheque = body.cheque ?? body.cheque_no ?? "";
-  const amount = body.amount !== undefined && body.amount !== null && body.amount !== "" ? body.amount : 0;
-  const use_amount = body.use_amount !== undefined && body.use_amount !== null && body.use_amount !== "" ? body.use_amount : 0;
-  const balance_amount =
-    body.balance_amount !== undefined && body.balance_amount !== null && body.balance_amount !== ""
-      ? body.balance_amount
-      : Number(amount) - Number(use_amount || 0);
+  const amount = body.amount !== undefined && body.amount !== null && body.amount !== "" ? Number(body.amount) : 0;
+  const use_amount = body.use_amount !== undefined && body.use_amount !== null && body.use_amount !== "" ? Number(body.use_amount) : 0;
+  const balance_amount = Number((amount - use_amount).toFixed(2));
   const invoice = body.invoice ?? body.invoice_id ?? "";
   const assign_date =
     body.assign_date && body.assign_date !== ""
