@@ -11,6 +11,23 @@ const { attachTenantContext } = require("./middleware/tenantContext.js");
 const { refreshAuditContextFromReq } = require("./middleware/auditContext.js");
 const { logActivity } = require("./services/auditService.js");
 const { touchUserPresence } = require("./services/userPresenceService.js");
+const { getAuditFlag } = require("./services/auditFlagService.js");
+
+const STOCK_ROUTE_ALLOWED_KEYS = {
+  "/transaction/outward-stock": ["transaction.sale_stock", "transaction.out_memo", "transaction.company_transfer"],
+  "/transaction/inward-stock": ["transaction.in_memo", "transaction.purchase_stock", "transaction.company_transfer"],
+  "/transaction/purchase-stock": ["transaction.purchase_stock", "transaction.company_transfer"],
+  "/transaction/gia": ["transaction.gia_memo"],
+  "/transaction/print": [
+    "transaction.gia_memo",
+    "transaction.in_memo",
+    "transaction.out_memo",
+    "transaction.sale_stock",
+    "transaction.purchase_stock",
+    "transaction.company_transfer",
+  ],
+  "/transaction/company-transfer": ["transaction.company_transfer"],
+};
 
 const SECRET_KEY = process.env.JWT_SECRET || "NitechDigitalServices";
 
@@ -152,6 +169,42 @@ const enforceApiPermission = async (req, res, next) => {
         message: "You do not have permission to access this API.",
       });
     }
+
+    const strictRbacFlag = getAuditFlag("FLAG_STRICT_RBAC");
+    if (strictRbacFlag !== "OFF") {
+      let matchedStockPrefix = null;
+      for (const prefix of Object.keys(STOCK_ROUTE_ALLOWED_KEYS)) {
+        if (path === prefix || path.startsWith(prefix + "/")) {
+          matchedStockPrefix = prefix;
+          break;
+        }
+      }
+
+      if (matchedStockPrefix) {
+        const allowedStockKeys = STOCK_ROUTE_ALLOWED_KEYS[matchedStockPrefix];
+        const hasStockPerm = allowedStockKeys.some((k) => hasPagePermission(permissions, k));
+        if (!hasStockPerm) {
+          if (strictRbacFlag === "LOG_ONLY") {
+            try {
+              console.warn("[AUDIT_FLAG:FLAG_STRICT_RBAC] Stock route accessed via accounting permission only:", {
+                userId: decoded.user_id ?? decoded.userId,
+                roll: decoded.roll,
+                method: req.method,
+                path,
+              });
+            } catch (_) {}
+          } else if (strictRbacFlag === "ENFORCE") {
+            logPermissionAttempt(req, path, decoded);
+            return res.status(403).json({
+              status: false,
+              code: "FORBIDDEN_PAGE",
+              message: "You do not have permission to access this API.",
+            });
+          }
+        }
+      }
+    }
+
     next();
   } catch {
     return next();
