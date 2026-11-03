@@ -49,29 +49,38 @@ async function executeAuditGuard(flagName, checkFn, onEnforceFn) {
 }
 
 /**
- * Recomputes expected invoice final amount using standard diamond trade formula.
- * itemsTotal - discount (less_amount / less_percent) - other_discount (other_less_amount / other_less_percent) + shipping + charges
+ * Recomputes expected invoice final amount matching frontend MemoConvertModal formula:
+ * base = itemsTotal + shipping_charge
+ * less applied on base
+ * other_less applied after less
+ * final = after_other_less + extra charge
  */
 function computeExpectedInvoiceTotal(subtotal, post = {}) {
   const itemsTotal = Number(subtotal) || 0;
+  const shippingCharge = Number(post.shipping_charge) || 0;
+  const base = itemsTotal + shippingCharge;
+
   const lessPercent = Number(post.less_percent) || 0;
-  let lessAmount = Number(post.less_amount) || 0;
-  if (!lessAmount && lessPercent > 0) {
-    lessAmount = Number(((itemsTotal * lessPercent) / 100).toFixed(2));
+  let lessAmount = 0;
+  if (lessPercent > 0) {
+    lessAmount = (base * lessPercent) / 100;
+  } else if (post.less_amount) {
+    lessAmount = Number(post.less_amount) || 0;
   }
-  const afterLess1 = itemsTotal - lessAmount;
+  const afterLess1 = base - lessAmount;
 
   const otherLessPercent = Number(post.other_less_percent) || 0;
-  let otherLessAmount = Number(post.other_less_amount) || 0;
-  if (!otherLessAmount && otherLessPercent > 0) {
-    otherLessAmount = Number(((afterLess1 * otherLessPercent) / 100).toFixed(2));
+  let otherLessAmount = 0;
+  if (otherLessPercent > 0) {
+    otherLessAmount = (afterLess1 * otherLessPercent) / 100;
+  } else if (post.other_less_amount) {
+    otherLessAmount = Number(post.other_less_amount) || 0;
   }
   const afterLess2 = afterLess1 - otherLessAmount;
 
-  const shippingCharge = Number(post.shipping_charge) || 0;
   const charge = Number(post.charge) || 0;
 
-  return Number((afterLess2 + shippingCharge + charge).toFixed(2));
+  return Number((afterLess2 + charge).toFixed(2));
 }
 
 module.exports = {
