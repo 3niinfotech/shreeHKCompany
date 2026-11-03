@@ -5,13 +5,18 @@ const ALLOWED_BY_COLUMNS = ["id", "p.id", "p.sku", "p.mfg_code", "pv.report_no"]
 const VALUE_COLUMNS =
   "v.report_no, v.shape, v.clarity, v.size, v.f_intensity, v.cut, v.polish, v.symmentry, v.table_pc, v.depth_pc, v.mesurment, v.gridle, v.intensity, v.overtone, v.color, v.package, v.bgm, v.eyeclean";
 
-const getDetail = (id, by) => {
+const getDetail = (id, by, q = null) => {
   return new Promise((resolve, reject) => {
     try {
       if (!ALLOWED_BY_COLUMNS.includes(by)) {
         return reject({ error: "Invalid column specifier" });
       }
-      const query = `SELECT p.*, ${VALUE_COLUMNS} FROM dai_product p LEFT JOIN dai_product_value v ON p.id = v.product_id WHERE ${by}=?`;
+      const query = `SELECT p.*, ${VALUE_COLUMNS} FROM dai_product p LEFT JOIN dai_product_value v ON p.id = v.product_id WHERE ${by}=? AND (p.deleted = 0 OR p.deleted IS NULL)`;
+      if (q) {
+        return q(query, [id])
+          .then((data) => resolve(data && data.length > 0 ? data[0] : null))
+          .catch((error) => reject({ error: "Error occurred while fetching product data by " + by }));
+      }
       connection.query(query, [id], (error, data) => {
         if (error) {
           return reject({ error: "Error occurred while fetching product data by " + by });
@@ -34,7 +39,7 @@ const getDetailBySku = (sku, companyId) => {
     try {
       const trimmed = String(sku || "").trim();
       if (!trimmed) return resolve(null);
-      const sql = `SELECT p.*, ${VALUE_COLUMNS} FROM dai_product p LEFT JOIN dai_product_value v ON p.id = v.product_id WHERE p.company = ? AND UPPER(TRIM(p.sku)) = UPPER(?) LIMIT 1`;
+      const sql = `SELECT p.*, ${VALUE_COLUMNS} FROM dai_product p LEFT JOIN dai_product_value v ON p.id = v.product_id WHERE p.company = ? AND UPPER(TRIM(p.sku)) = UPPER(?) AND (p.deleted = 0 OR p.deleted IS NULL) LIMIT 1`;
       connection.query(sql, [companyId, trimmed], (error, data) => {
         if (error) {
           return reject({ error: "Error occurred while fetching product data by sku" });
@@ -50,7 +55,7 @@ const getDetailBySku = (sku, companyId) => {
 const getDetailTest = (id, by) => {
   try {
     if (!ALLOWED_BY_COLUMNS.includes(by)) return null;
-    const query = `SELECT p.*, ${VALUE_COLUMNS} FROM dai_product p LEFT JOIN dai_product_value v ON p.id = v.product_id WHERE ${by}=?`;
+    const query = `SELECT p.*, ${VALUE_COLUMNS} FROM dai_product p LEFT JOIN dai_product_value v ON p.id = v.product_id WHERE ${by}=? AND (p.deleted = 0 OR p.deleted IS NULL)`;
     connection.query(query, [id], (error, data) => {
       if (data && data.length > 0) {
         return data[0];
