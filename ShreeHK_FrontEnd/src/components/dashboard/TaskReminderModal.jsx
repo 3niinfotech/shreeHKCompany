@@ -3,6 +3,7 @@ import { Modal, Tag, Button, ConfigProvider } from 'antd';
 import { BellRing, CheckCircle2, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
+import { formatDateDisplay } from '../../utils/dateDisplayFormat';
 import { api } from '../../api/client/axiosInstance';
 import { ENDPOINTS } from '../../api/endpoints';
 import { PAUSE_BACKGROUND_API } from '../../api/pauseBackgroundApi';
@@ -138,7 +139,7 @@ export default function TaskReminderModal() {
                                             {getPriorityTag(task.priority)}
                                             {isOverdue ? (
                                                 <Tag color="volcano" style={{ fontWeight: 600, margin: 0 }}>
-                                                    Overdue ({dayjs(task.target_date).format('DD MMM')})
+                                                    Overdue ({formatDateDisplay(task.target_date)})
                                                 </Tag>
                                             ) : isToday ? (
                                                 <Tag color="cyan" style={{ fontWeight: 600, margin: 0 }}>
@@ -146,7 +147,7 @@ export default function TaskReminderModal() {
                                                 </Tag>
                                             ) : (
                                                 <Tag color="blue" style={{ fontWeight: 600, margin: 0 }}>
-                                                    {dayjs(task.target_date).format('DD MMM YYYY')}
+                                                    {formatDateDisplay(task.target_date)}
                                                 </Tag>
                                             )}
                                         </div>

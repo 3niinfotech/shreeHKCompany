@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
+import { formatDateDisplay } from "../../utils/dateDisplayFormat";
 import useAuthStore from "../../store/Auth.Store";
 import { useFetchApi, usePostApiRequest, usePutApiRequest, useDeleteApiRequest } from "../../api/ApiFunction";
 import { ENDPOINTS } from "../../api/endpoints";
@@ -182,13 +183,13 @@ const QuickNotesCard = () => {
     if (!tDate) return <span className="notes-date-muted">-</span>;
 
     if (completed) {
-      return <span className="notes-date-muted">{dayjs(tDate).format("DD MMM YYYY")}</span>;
+      return <span className="notes-date-muted">{formatDateDisplay(tDate)}</span>;
     }
 
     if (tDate < todayStr) {
       return (
         <span className="notes-badge notes-badge--overdue">
-          Overdue ({dayjs(tDate).format("DD MMM")})
+          Overdue ({formatDateDisplay(tDate)})
         </span>
       );
     }
@@ -196,12 +197,12 @@ const QuickNotesCard = () => {
     if (tDate === todayStr) {
       return (
         <span className="notes-badge notes-badge--today">
-          Today ({dayjs(tDate).format("DD MMM")})
+          Today ({formatDateDisplay(tDate)})
         </span>
       );
     }
 
-    return <span className="notes-date-text">{dayjs(tDate).format("DD MMM YYYY")}</span>;
+    return <span className="notes-date-text">{formatDateDisplay(tDate)}</span>;
   };
 
   const pendingCount = notes.filter((n) => !n.completed).length;

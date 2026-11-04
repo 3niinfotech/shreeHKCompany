@@ -14,6 +14,7 @@ import {
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
+import { formatDateDisplay } from "../utils/dateDisplayFormat";
 import { useFetchApi } from "../api/ApiFunction";
 import { ENDPOINTS } from "../api/endpoints";
 import useThemeColors from "../hooks/useThemeColors";
@@ -184,7 +185,7 @@ const Dashboard = () => {
       return {
         ...txn,
         ...meta,
-        time: txn.date ? dayjs(txn.date).format("DD MMM YYYY") : "-",
+        time: formatDateDisplay(txn.date),
         amount: fmtMoney(txn.amount),
         statusColor: theme.primaryMedium,
       };

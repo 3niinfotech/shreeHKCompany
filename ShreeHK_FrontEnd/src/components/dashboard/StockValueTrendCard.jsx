@@ -9,6 +9,7 @@ import {
   Tooltip,
 } from "recharts";
 import dayjs from "dayjs";
+import { formatDateDisplay } from "../../utils/dateDisplayFormat";
 import { SkeletonChart } from "../common/skeleton";
 import { fmtAxisAmount, fmtMoney, RANGE_OPTIONS } from "./dashboardFormatters";
 
@@ -62,7 +63,7 @@ const StockValueTrendCard = ({
               <CartesianGrid strokeDasharray="3 3" stroke={muted} vertical={false} />
               <XAxis
                 dataKey="period"
-                tickFormatter={(value) => dayjs(value).format("DD MMM")}
+                tickFormatter={(value) => dayjs(value).format("DD-MM")}
                 tick={{ fontSize: 11, fill: muted }}
                 axisLine={false}
                 tickLine={false}
@@ -77,7 +78,7 @@ const StockValueTrendCard = ({
               />
               <Tooltip
                 formatter={(value) => [fmtMoney(value), usingFallback ? "Sales" : "Stock value"]}
-                labelFormatter={(label) => dayjs(label).format("DD MMM YYYY")}
+                labelFormatter={(label) => formatDateDisplay(label)}
               />
               <Area
                 type="monotone"
