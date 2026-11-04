@@ -648,21 +648,19 @@ const TransactionStockTemplate = ({
     // 5 fields per row (account for Row gutter)
     const c5 = '1 1 calc(20% - 13px)';
     if (isVenyaSaleEdit) {
-      // Match Venya sform.php header (no Type field — type is hidden)
+      // User specified sequence: Company, Invoice No, Reference, Sale, Invoice Date, Terms, Due Date, Party, Other Party, Paid Amount, Due Amount
       return [
-        { name: 'entryno', label: 'Entry', type: 'text', required: true, flex: c5, disabled: true },
         { name: 'company', label: 'Company', type: 'text', flex: c5, disabled: true },
-        { name: 'place', label: 'Sale @', type: 'text', flex: c5 },
-        { name: 'date', label: 'Date', type: 'date', required: true, flex: c5 },
+        { name: 'invoiceno', label: 'Invoice No', type: 'text', required: true, flex: c5, disabled: true },
         { name: 'reference', label: 'Reference', type: 'text', flex: c5 },
-        { name: 'invoiceno', label: 'Invoice No.', type: 'text', required: true, flex: c5, disabled: true },
+        { name: 'place', label: 'Sale', type: 'text', flex: c5 },
         { name: 'invoicedate', label: 'Invoice Date', type: 'date', flex: c5 },
         { name: 'terms', label: 'Terms', type: 'text', flex: c5 },
         { name: 'duedate', label: 'Due Date', type: 'date', flex: c5 },
-        { name: 'paid_amount', label: 'Paid Amount', type: 'number', flex: c5 },
-        { name: 'due_amount', label: 'Due Amount', type: 'number', flex: c5 },
-        { name: 'party', label: 'Party Name', type: 'select', options: partyOptions, required: true, flex: c5 },
+        { name: 'party', label: 'Party', type: 'select', options: partyOptions, required: true, flex: c5 },
         { name: 'other_party', label: 'Other Party', type: 'select', options: partyOptions, flex: c5 },
+        { name: 'paid_amount', label: 'Paid Amount', type: 'number', flex: c5, disabled: true },
+        { name: 'due_amount', label: 'Due Amount', type: 'number', flex: c5, disabled: true },
       ];
     }
     return [
@@ -1280,7 +1278,8 @@ const TransactionStockTemplate = ({
         sc: scVal,
         boc_sksm: values.boc_sksm ? 1 : 0,
         citi_sksm: values.citi_sksm ? 1 : 0,
-        date: values.date?.format?.('YYYY-MM-DD') ?? values.date,
+        date: values.date?.format?.('YYYY-MM-DD') ?? values.date ?? (editingRecord?.date ? dayjs(editingRecord.date).format('YYYY-MM-DD') : undefined),
+        entryno: values.entryno ?? editingRecord?.entryno,
         invoicedate: values.invoicedate?.format?.('YYYY-MM-DD') ?? values.invoicedate,
         duedate: values.duedate?.format?.('YYYY-MM-DD') ?? values.duedate,
         shipping_charge: values.shipping_charge ?? 0,
