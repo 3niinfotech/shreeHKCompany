@@ -992,14 +992,13 @@ const OutWord = () => {
                                         { title: 'No', key: 'no', width: 50, fixed: 'left', align: 'center', render: (_v, _r, idx) => idx + 1 },
                                         { title: 'Mfg. code', dataIndex: 'mfg_code', key: 'mfg_code', width: 100, fixed: 'left', render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'mfg_code', e.target.value)} /> },
                                         { title: 'D. No.', dataIndex: 'diamond_no', key: 'diamond_no', width: 90, fixed: 'left', render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'diamond_no', e.target.value)} /> },
-                                        { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 120, fixed: 'left', render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'sku', e.target.value)} onBlur={(e) => handleSkuLookup(idx, e.target.value, false)} onPressEnter={(e) => handleSkuLookup(idx, e.target.value, false)} /> },
+                                        { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 170, fixed: 'left', render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'sku', e.target.value)} onBlur={(e) => handleSkuLookup(idx, e.target.value, false)} onPressEnter={(e) => handleSkuLookup(idx, e.target.value, false)} /> },
                                         { title: 'Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', width: 80, render: (val, _r, idx) => <Input type="number" value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'polish_pcs', e.target.value)} /> },
                                         { title: 'Carat', dataIndex: 'polish_carat', key: 'polish_carat', width: 90, render: (val, _r, idx) => <Input type="number" value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'polish_carat', e.target.value)} /> },
-                                        { title: 'Cost', dataIndex: 'cost', key: 'cost', width: 90, render: (val, _r, idx) => <Input type="number" value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'cost', e.target.value)} /> },
-                                        { title: 'Price', dataIndex: 'sell_price', key: 'sell_price', width: 90, render: (val, _r, idx) => <Input type="number" value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'sell_price', e.target.value)} /> },
-                                        { title: 'Amount', dataIndex: 'sell_amount', key: 'sell_amount', width: 100, render: (val, _r, idx) => <Input type="number" value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'sell_amount', e.target.value)} /> },
+                                        { title: 'Cost', dataIndex: 'cost', key: 'cost', width: 130, render: (val, _r, idx) => <Input type="number" value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'cost', e.target.value)} /> },
+                                        { title: 'Price', dataIndex: 'sell_price', key: 'sell_price', width: 130, render: (val, _r, idx) => <Input type="number" value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'sell_price', e.target.value)} /> },
+                                        { title: 'Amount', dataIndex: 'sell_amount', key: 'sell_amount', width: 140, render: (val, _r, idx) => <Input type="number" value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'sell_amount', e.target.value)} /> },
                                         { title: 'LOC', dataIndex: 'location', key: 'location', width: 90, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'location', e.target.value)} /> },
-                                        { title: 'Remark', dataIndex: 'remark', key: 'remark', width: 120, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'remark', e.target.value)} /> },
                                         { title: 'Lab', dataIndex: 'lab', key: 'lab', width: 80, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'lab', e.target.value)} /> },
                                         { title: 'Group Type', dataIndex: 'group_type', key: 'group_type', width: 100, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'group_type', e.target.value)} /> },
                                         { title: 'Report No.', dataIndex: 'report_no', key: 'report_no', width: 110, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'report_no', e.target.value)} /> },
@@ -1008,6 +1007,7 @@ const OutWord = () => {
                                         { title: 'Intensity', dataIndex: 'intensity', key: 'intensity', width: 90, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'intensity', e.target.value)} /> },
                                         { title: 'Overtone', dataIndex: 'overtone', key: 'overtone', width: 90, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'overtone', e.target.value)} /> },
                                         { title: 'Color', dataIndex: 'color', key: 'color', width: 80, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'color', e.target.value)} /> },
+                                        { title: 'Remark', dataIndex: 'remark', key: 'remark', width: 140, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'remark', e.target.value)} /> },
                                         {
                                             title: '',
                                             key: 'action',
@@ -1030,7 +1030,7 @@ const OutWord = () => {
                                     rowKey={(r) => r.id ?? r._tempId}
                                     pagination={false}
                                     size="small"
-                                    scroll={{ x: 1900, y: 192 }}
+                                    scroll={{ x: 2100, y: 192 }}
                                     locale={{ emptyText: 'No products — click Add New Data' }}
                                 />
                                 {fetchedProducts.length > 0 ? (
