@@ -5,7 +5,9 @@ import dayjs from 'dayjs';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../api/endpoints';
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
-import { ReloadOutlined } from '@ant-design/icons';
+import { ReloadOutlined, FileTextOutlined } from '@ant-design/icons';
+import TransactionInvoicePreviewModal from '../../components/transaction/invoice/TransactionInvoicePreviewModal';
+import api from '../../api/client/axiosInstance';
 import ExportExcelButton from '../../components/common/ExportExcelButton';
 import { exportReportToExcel } from '../../utils/reportExcelExport';
 import styles from '../../assets/scss/pages/report/groupReport.module.scss';
@@ -45,6 +47,40 @@ const SaleStoneReport = () => {
     const [form] = Form.useForm();
     const [tableData, setTableData] = useState([]);
     const [exporting, setExporting] = useState(false);
+    const [invoiceModal, setInvoiceModal] = useState({ open: false, record: null });
+
+    const handleOpenInvoiceModal = async (record) => {
+        if (!record || !record.invoiceno) return;
+        try {
+            const stockType = record.outward || 'sale';
+            const payload = {
+                stockType,
+                invoice: record.invoiceno,
+                invoiceno: record.invoiceno,
+                company: record.company,
+                fromCompany: record.company,
+                sku: record.sku,
+                limit: 50,
+            };
+            const res = await api.post(ENDPOINTS.transactionStock.outward.list, payload);
+            const candidates = Array.isArray(res?.data?.Data) ? res.data.Data : [];
+            const matching = candidates.filter((v) => {
+                const compMatch = String(v.company || '').trim() === String(record.company || '').trim();
+                const invMatch = (v.invoiceno || v.invoice || '') === record.invoiceno;
+                const prods = Array.isArray(v.products) ? v.products : [];
+                const stoneMatch = prods.some((p) => p.sku === record.sku);
+                return compMatch && invMatch && stoneMatch;
+            });
+            if (matching.length === 1) {
+                setInvoiceModal({ open: true, record: matching[0] });
+            } else {
+                toastWarning('Invoice could not be identified.');
+            }
+        } catch (err) {
+            console.error('Failed to resolve voucher', err);
+            toastWarning('Invoice could not be identified.');
+        }
+    };
     const { data: companyData } = useFetchApi('GetCompanyAllParties', ENDPOINTS.company.options, { all: '1' });
     const { options: branchCompanies } = useBranchCompanies();
     const { mutate: fetchReport, isPending: tableLoading } = usePostApiRequest(ENDPOINTS.report.saleStock, 'saleStoneReport', { showToast: false });
@@ -142,7 +178,46 @@ const SaleStoneReport = () => {
                 );
             },
         },
-        { title: 'InvoiceNo', dataIndex: 'invoiceno', width: 105, align: 'center', render: (v) => v || '-' },
+        {
+            title: 'InvoiceNo',
+            dataIndex: 'invoiceno',
+            width: 105,
+            align: 'center',
+            render: (v, record) => {
+                if (!v || v === '-') return '-';
+                return (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <a
+                            href={`#invoice-${v}`}
+                            role="button"
+                            style={{ fontWeight: 600, textDecoration: 'none', color: '#1677ff' }}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleOpenInvoiceModal(record);
+                            }}
+                            title={`View Invoice ${v}`}
+                        >
+                            {v}
+                        </a>
+                        <FileTextOutlined
+                            style={{
+                                cursor: 'pointer',
+                                color: '#1677ff',
+                                fontSize: 13,
+                                flexShrink: 0,
+                            }}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleOpenInvoiceModal(record);
+                            }}
+                            title={`View Invoice ${v}`}
+                        />
+                    </span>
+                );
+            },
+        },
         {
             title: 'Detail Of Goods',
             key: 'detail_of_goods',
@@ -367,6 +442,14 @@ const SaleStoneReport = () => {
                         }}
                     />
                 </div>
+
+                <TransactionInvoicePreviewModal
+                    open={invoiceModal.open}
+                    onClose={() => setInvoiceModal({ open: false, record: null })}
+                    record={invoiceModal.record}
+                    printType={invoiceModal.record?.type || 'sale'}
+                    invoiceTitle="Sale Invoice"
+                />
             </Card>
         </div>
     );
