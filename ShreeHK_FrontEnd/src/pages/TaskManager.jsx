@@ -34,10 +34,13 @@ import {
     Kanban,
     ArrowLeft,
     CheckSquare,
-    RotateCcw
+    RotateCcw,
+    GripVertical
 } from 'lucide-react';
+import { toastSuccess, toastWarning, toastError, toastInfo } from '../utils/toastNotify';
 import { ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { formatDateDisplay } from '../utils/dateDisplayFormat';
 import { useNavigate } from 'react-router-dom';
 import { useFetchApi, usePostApiRequest, usePutApiRequest, useDeleteApiRequest } from '../api/ApiFunction';
 import { ENDPOINTS } from '../api/endpoints';
@@ -82,7 +85,7 @@ export default function TaskManager() {
     const { data: usersRes } = useFetchApi('usersList', ENDPOINTS.admin.users, {}, 'GET', { enabled: isSuperAdmin });
 
     const createMutation = usePostApiRequest(ENDPOINTS.quickNotes.create, 'quickNotes');
-    const updateMutation = usePutApiRequest(ENDPOINTS.quickNotes.update, 'quickNotes');
+    const updateMutation = usePutApiRequest(ENDPOINTS.quickNotes.update, 'quickNotes', { showToast: false });
     const deleteMutation = useDeleteApiRequest(ENDPOINTS.quickNotes.delete, 'quickNotes');
 
     // Local list so UI updates immediately after create/update/delete
@@ -134,6 +137,7 @@ export default function TaskManager() {
     // Modal states
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState(null);
+    const [isEditEnabled, setIsEditEnabled] = useState(false);
     const [deleteModal, setDeleteModal] = useState({ open: false, record: null, bulk: false });
     const [form] = Form.useForm();
     const [selectedRowKeys, setSelectedRowKeys] = useState([]);
@@ -280,6 +284,7 @@ export default function TaskManager() {
             );
             setEditingTask(null);
             form.resetFields();
+            toastSuccess("Task updated successfully");
 
             updateMutation.mutate(
                 { id: taskId, payload },
@@ -332,6 +337,7 @@ export default function TaskManager() {
                     : item
             )
         );
+        toastSuccess(nextCompleted ? "Task marked as completed" : "Task marked as pending");
         updateMutation.mutate(
             {
                 id: task.id,
@@ -430,13 +436,13 @@ export default function TaskManager() {
         if (!tDate) return null;
 
         if (completed) {
-            return <span style={{ color: '#64748b', fontSize: '0.8rem' }}>{dayjs(tDate).format('DD MMM YYYY')}</span>;
+            return <span style={{ color: '#64748b', fontSize: '0.8rem' }}>{formatDateDisplay(tDate)}</span>;
         }
 
         if (tDate < todayStr) {
             return (
                 <Tag color="volcano" style={{ fontWeight: 600, margin: 0 }}>
-                    Overdue ({dayjs(tDate).format('DD MMM')})
+                    Overdue ({formatDateDisplay(tDate)})
                 </Tag>
             );
         }
@@ -449,7 +455,7 @@ export default function TaskManager() {
             );
         }
 
-        return <span style={{ color: '#0f172a', fontWeight: 500, fontSize: '0.8rem' }}>{dayjs(tDate).format('DD MMM YYYY')}</span>;
+        return <span style={{ color: '#0f172a', fontWeight: 500, fontSize: '0.8rem' }}>{formatDateDisplay(tDate)}</span>;
     };
 
     // Table columns
@@ -525,7 +531,7 @@ export default function TaskManager() {
                 const timeStr = record.assigned_at || record.created_at;
                 return (
                     <span style={{ color: '#475569', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
-                        {timeStr ? dayjs(timeStr).format('DD MMM YYYY, hh:mm A') : '-'}
+                        {timeStr ? dayjs(timeStr).format('DD-MM-YYYY, hh:mm A') : '-'}
                     </span>
                 );
             },
@@ -540,7 +546,7 @@ export default function TaskManager() {
                     return <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>-</span>;
                 }
                 const doneBy = record.completed_by_name?.trim() || record.assigned_to_name?.trim() || 'User';
-                const doneTime = record.completed_at ? dayjs(record.completed_at).format('DD MMM YYYY, hh:mm A') : null;
+                const doneTime = record.completed_at ? dayjs(record.completed_at).format('DD-MM-YYYY, hh:mm A') : null;
                 return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         <Tag color="green" style={{ fontWeight: 600, margin: 0, width: 'fit-content', fontSize: '0.74rem' }}>
@@ -591,6 +597,159 @@ export default function TaskManager() {
             completed: filteredTasks.filter(t => t.completed),
         };
     }, [filteredTasks]);
+
+    // Drag and Drop states for Board View
+    const [draggedTaskId, setDraggedTaskId] = useState(null);
+    const [dragOverColKey, setDragOverColKey] = useState(null);
+
+    // Global reset on dragend or drop to guarantee draggedTaskId/dragOverColKey are never stuck
+    useEffect(() => {
+        const handleGlobalDragReset = () => {
+            setDraggedTaskId(null);
+            setDragOverColKey(null);
+        };
+        window.addEventListener('dragend', handleGlobalDragReset);
+        window.addEventListener('drop', handleGlobalDragReset);
+        return () => {
+            window.removeEventListener('dragend', handleGlobalDragReset);
+            window.removeEventListener('drop', handleGlobalDragReset);
+        };
+    }, []);
+
+    const getTaskColumnKey = (task) => {
+        const todayStr = dayjs().format('YYYY-MM-DD');
+        if (task.completed) return 'completed';
+        if (task.target_date && task.target_date < todayStr) return 'overdue';
+        if (task.target_date === todayStr) return 'today';
+        return 'upcoming';
+    };
+
+    const handleDragStart = (e, task) => {
+        setDraggedTaskId(task.id);
+        e.dataTransfer.setData('text/plain', String(task.id));
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragEnd = () => {
+        setDraggedTaskId(null);
+        setDragOverColKey(null);
+    };
+
+    const handleDragOver = (e, targetColKey) => {
+        if (targetColKey === 'overdue') return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (dragOverColKey !== targetColKey) {
+            setDragOverColKey(targetColKey);
+        }
+    };
+
+    const handleDragLeave = (e, targetColKey) => {
+        if (e.currentTarget.contains(e.relatedTarget)) return;
+        if (dragOverColKey === targetColKey) {
+            setDragOverColKey(null);
+        }
+    };
+
+    const handleDrop = (e, targetColKey) => {
+        e.preventDefault();
+        setDragOverColKey(null);
+        setDraggedTaskId(null);
+
+        if (targetColKey === 'overdue') {
+            toastInfo("Tasks automatically become overdue based on target date");
+            return;
+        }
+
+        const rawId = draggedTaskId || e.dataTransfer.getData('text/plain');
+        const taskId = Number(rawId);
+        if (!taskId) return;
+
+        const task = tasks.find(t => Number(t.id) === taskId);
+        if (!task) return;
+
+        const sourceColKey = getTaskColumnKey(task);
+
+        // Same column drop -> do nothing (no API call)
+        if (sourceColKey === targetColKey) {
+            return;
+        }
+
+        const todayStr = dayjs().format('YYYY-MM-DD');
+        let newCompleted = task.completed ? 1 : 0;
+        let newTargetDate = task.target_date;
+        let dateChanged = false;
+
+        if (targetColKey === 'completed') {
+            newCompleted = 1;
+        } else if (targetColKey === 'today') {
+            newCompleted = 0;
+            if (task.target_date !== todayStr) {
+                newTargetDate = todayStr;
+                dateChanged = true;
+            }
+        } else if (targetColKey === 'upcoming') {
+            newCompleted = 0;
+            if (!task.target_date || task.target_date <= todayStr) {
+                newTargetDate = dayjs().add(1, 'day').format('YYYY-MM-DD');
+                dateChanged = true;
+            }
+        }
+
+        // Permission check: Non-superadmin cannot change due date
+        if (dateChanged && !isSuperAdmin) {
+            toastWarning("Only admin can change due date");
+            return;
+        }
+
+        const payload = {
+            completed: Boolean(newCompleted),
+        };
+
+        if (isSuperAdmin && dateChanged) {
+            payload.target_date = newTargetDate;
+        }
+
+        // Optimistic UI update
+        const previousTasks = [...tasks];
+        setTasks(prev =>
+            prev.map(t =>
+                Number(t.id) === taskId
+                    ? { ...t, completed: newCompleted, target_date: newTargetDate }
+                    : t
+            )
+        );
+
+        if (targetColKey === 'completed') {
+            toastSuccess("Task marked as completed");
+        } else if (dateChanged) {
+            toastSuccess(`Due date changed to ${formatDateDisplay(newTargetDate)}`);
+        } else {
+            toastSuccess("Task status updated");
+        }
+
+        updateMutation.mutate(
+            { id: taskId, payload },
+            {
+                onSuccess: (data) => {
+                    if (data?.Data) {
+                        setTasks(prev =>
+                            prev.map(t =>
+                                Number(t.id) === Number(data.Data.id) ? { ...t, ...data.Data } : t
+                            )
+                        );
+                    }
+                    refreshTasks();
+                },
+                onError: (error) => {
+                    // Rollback on error
+                    setTasks(previousTasks);
+                    toastError(error?.message || "Failed to update task");
+                    refreshTasks();
+                }
+            }
+        );
+    };
 
     return (
         <div className="task-manager-page page-shell" style={{ height: '100%', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
@@ -850,118 +1009,142 @@ export default function TaskManager() {
                         wrapperClassName="task-board-spin-wrapper"
                         style={{ flex: 1, minHeight: 0, height: '100%', display: 'flex', flexDirection: 'column' }}
                     >
-                    <Row
-                        gutter={[16, 16]}
-                        className="task-board-row"
-                        style={{ flex: 1, height: '100%', minHeight: 0, overflowX: 'auto', flexWrap: 'nowrap' }}
-                    >
-                        {[
-                            { title: 'Overdue', color: '#dc2626', bg: '#fef2f2', items: boardColumns.overdue },
-                            { title: 'Due Today', color: '#0284c7', bg: '#f0f9ff', items: boardColumns.today },
-                            { title: 'Upcoming', color: '#d97706', bg: '#fffbeb', items: boardColumns.upcoming },
-                            { title: 'Completed', color: '#059669', bg: '#ecfdf5', items: boardColumns.completed },
-                        ].map((col, idx) => (
-                            <Col
-                                xs={24}
-                                sm={12}
-                                lg={6}
-                                key={idx}
-                                className="task-board-col"
-                                style={{ height: '100%', display: 'flex', flexDirection: 'column', minWidth: 260 }}
-                            >
-                                <Card
-                                    bordered={false}
-                                    className="task-board-card"
-                                    title={
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                            <span style={{ color: col.color, fontWeight: 700, fontSize: '0.9rem' }}>{col.title}</span>
-                                            <Tag color={col.color} style={{ fontWeight: 700 }}>{col.items.length}</Tag>
-                                        </div>
-                                    }
-                                    style={{
-                                        height: '100%',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        flex: 1,
-                                        minHeight: 0,
-                                        borderRadius: 16,
-                                        background: col.bg,
-                                        boxShadow: '0 4px 14px rgba(15, 23, 42, 0.04)',
-                                        overflow: 'hidden'
-                                    }}
-                                    bodyStyle={{
-                                        flex: 1,
-                                        minHeight: 0,
-                                        height: '100%',
-                                        overflowY: 'auto',
-                                        padding: '12px',
-                                        display: 'flex',
-                                        flexDirection: 'column'
-                                    }}
-                                >
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 0, justifyContent: col.items.length > 0 ? 'flex-start' : 'center' }}>
-                                        {col.items.length > 0 ? (
-                                            col.items.map(task => (
-                                                <Card
-                                                    key={task.id}
-                                                    bordered={false}
-                                                    size="small"
-                                                    style={{ borderRadius: 10, background: '#ffffff', boxShadow: '0 2px 6px rgba(15, 23, 42, 0.04)' }}
-                                                >
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                                            <Space size={4}>
-                                                                {renderPriorityTag(task.priority)}
-                                                                {isSuperAdmin && task.assigned_to_name && (
-                                                                    <Tag color="purple" style={{ fontWeight: 500, margin: 0, fontSize: '0.72rem' }}>
-                                                                        Assign To : {task.assigned_to_name}
-                                                                    </Tag>
-                                                                )}
-                                                            </Space>
-                                                            <Checkbox
-                                                                checked={!!task.completed}
-                                                                onChange={() => handleToggleComplete(task)}
-                                                            />
-                                                        </div>
-                                                        <div style={{ fontWeight: 600, fontSize: '0.86rem', color: task.completed ? '#94a3b8' : '#0f172a', textDecoration: task.completed ? 'line-through' : 'none' }}>
-                                                            {task.text}
-                                                        </div>
-                                                        <div style={{ fontSize: '0.72rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                                            <Clock size={12} />
-                                                            <span>Assign: {(task.assigned_at || task.created_at) ? dayjs(task.assigned_at || task.created_at).format('DD MMM, hh:mm A') : '-'}</span>
-                                                        </div>
-                                                        {task.completed && (
-                                                            <div style={{ background: '#ecfdf5', borderRadius: 6, padding: '4px 8px', border: '1px solid #a7f3d0' }}>
-                                                                <div style={{ color: '#047857', fontWeight: 600, fontSize: '0.72rem' }}>
-                                                                    Done by: {task.completed_by_name?.trim() || task.assigned_to_name?.trim() || 'User'}
-                                                                </div>
-                                                                {task.completed_at && (
-                                                                    <div style={{ color: '#059669', fontSize: '0.7rem' }}>
-                                                                        Done: {dayjs(task.completed_at).format('DD MMM YYYY, hh:mm A')}
+                        <Row
+                            gutter={[16, 16]}
+                            className="task-board-row"
+                            style={{ flex: 1, height: '100%', minHeight: 0, overflowX: 'auto', flexWrap: 'nowrap' }}
+                        >
+                            {[
+                                { key: 'overdue', title: 'Overdue', color: '#dc2626', bg: '#fef2f2', items: boardColumns.overdue, isDropTarget: false },
+                                { key: 'today', title: 'Due Today', color: '#0284c7', bg: '#f0f9ff', items: boardColumns.today, isDropTarget: true },
+                                { key: 'upcoming', title: 'Upcoming', color: '#d97706', bg: '#fffbeb', items: boardColumns.upcoming, isDropTarget: true },
+                                { key: 'completed', title: 'Completed', color: '#059669', bg: '#ecfdf5', items: boardColumns.completed, isDropTarget: true },
+                            ].map((col) => {
+                                const isOver = col.isDropTarget && dragOverColKey === col.key;
+                                return (
+                                    <Col
+                                        xs={24}
+                                        sm={12}
+                                        lg={6}
+                                        key={col.key}
+                                        className="task-board-col"
+                                        style={{ height: '100%', display: 'flex', flexDirection: 'column', minWidth: 260 }}
+                                    >
+                                        <Card
+                                            bordered={false}
+                                            className="task-board-card"
+                                            onDragOver={(e) => col.isDropTarget && handleDragOver(e, col.key)}
+                                            onDragLeave={(e) => col.isDropTarget && handleDragLeave(e, col.key)}
+                                            onDrop={(e) => col.isDropTarget && handleDrop(e, col.key)}
+                                            title={
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                    <span style={{ color: col.color, fontWeight: 700, fontSize: '0.9rem' }}>{col.title}</span>
+                                                    <Tag color={col.color} style={{ fontWeight: 700 }}>{col.items.length}</Tag>
+                                                </div>
+                                            }
+                                            style={{
+                                                height: '100%',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                flex: 1,
+                                                minHeight: 0,
+                                                borderRadius: 16,
+                                                background: col.bg,
+                                                border: isOver ? `2px dashed ${col.color}` : '2px solid transparent',
+                                                boxShadow: isOver ? `0 8px 24px ${col.color}25` : '0 4px 14px rgba(15, 23, 42, 0.04)',
+                                                transition: 'border 0.2s ease, background 0.2s ease, box-shadow 0.2s ease',
+                                                overflow: 'hidden'
+                                            }}
+                                            bodyStyle={{
+                                                flex: 1,
+                                                minHeight: 0,
+                                                height: '100%',
+                                                overflowY: 'auto',
+                                                padding: '12px',
+                                                display: 'flex',
+                                                flexDirection: 'column'
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 0, justifyContent: col.items.length > 0 ? 'flex-start' : 'center' }}>
+                                                {col.items.length > 0 ? (
+                                                    col.items.map(task => {
+                                                        const isDragging = draggedTaskId === task.id;
+                                                        return (
+                                                            <Card
+                                                                key={task.id}
+                                                                bordered={false}
+                                                                size="small"
+                                                                draggable={true}
+                                                                onDragStart={(e) => handleDragStart(e, task)}
+                                                                onDragEnd={handleDragEnd}
+                                                                style={{
+                                                                    borderRadius: 10,
+                                                                    background: '#ffffff',
+                                                                    boxShadow: isDragging ? '0 8px 20px rgba(15, 23, 42, 0.15)' : '0 2px 6px rgba(15, 23, 42, 0.04)',
+                                                                    cursor: isDragging ? 'grabbing' : 'grab',
+                                                                    opacity: isDragging ? 0.45 : 1,
+                                                                    transform: isDragging ? 'scale(0.98)' : 'none',
+                                                                    transition: 'all 0.15s ease',
+                                                                    userSelect: 'none',
+                                                                }}
+                                                            >
+                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                                        <Space size={4}>
+                                                                            <GripVertical size={14} style={{ color: '#94a3b8', cursor: 'grab', flexShrink: 0 }} />
+                                                                            {renderPriorityTag(task.priority)}
+                                                                            {isSuperAdmin && task.assigned_to_name && (
+                                                                                <Tag color="purple" style={{ fontWeight: 500, margin: 0, fontSize: '0.72rem' }}>
+                                                                                    Assign To : {task.assigned_to_name}
+                                                                                </Tag>
+                                                                            )}
+                                                                        </Space>
+                                                                        <Checkbox
+                                                                            checked={!!task.completed}
+                                                                            onChange={() => handleToggleComplete(task)}
+                                                                        />
                                                                     </div>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4, borderTop: '1px solid #f1f5f9' }}>
-                                                            {renderTargetDateTag(task.target_date, task.completed)}
-                                                            {isSuperAdmin && (
-                                                                <Space size={4}>
-                                                                    <Button type="text" size="small" icon={<Edit2 size={13} />} onClick={() => handleOpenEdit(task)} />
-                                                                    <Button type="text" size="small" icon={<Trash2 size={13} style={{ color: '#ef4444' }} />} onClick={() => openDeleteTask(task)} />
-                                                                </Space>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </Card>
-                                            ))
-                                        ) : (
-                                            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No tasks" style={{ margin: 0 }} />
-                                        )}
-                                    </div>
-                                </Card>
-                            </Col>
-                        ))}
-                    </Row>
+                                                                    <div style={{ fontWeight: 600, fontSize: '0.86rem', color: task.completed ? '#94a3b8' : '#0f172a', textDecoration: task.completed ? 'line-through' : 'none' }}>
+                                                                        {task.text}
+                                                                    </div>
+                                                                    <div style={{ fontSize: '0.72rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                                        <Clock size={12} />
+                                                                        <span>Assign: {(task.assigned_at || task.created_at) ? dayjs(task.assigned_at || task.created_at).format('DD-MM-YYYY, hh:mm A') : '-'}</span>
+                                                                    </div>
+                                                                    {task.completed && (
+                                                                        <div style={{ background: '#ecfdf5', borderRadius: 6, padding: '4px 8px', border: '1px solid #a7f3d0' }}>
+                                                                            <div style={{ color: '#047857', fontWeight: 600, fontSize: '0.72rem' }}>
+                                                                                Done by: {task.completed_by_name?.trim() || task.assigned_to_name?.trim() || 'User'}
+                                                                            </div>
+                                                                            {task.completed_at && (
+                                                                                <div style={{ color: '#059669', fontSize: '0.7rem' }}>
+                                                                                    Done: {dayjs(task.completed_at).format('DD-MM-YYYY, hh:mm A')}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+                                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4, borderTop: '1px solid #f1f5f9' }}>
+                                                                        {renderTargetDateTag(task.target_date, task.completed)}
+                                                                        {isSuperAdmin && (
+                                                                            <Space size={4}>
+                                                                                <Button type="text" size="small" icon={<Edit2 size={13} />} onClick={() => handleOpenEdit(task)} />
+                                                                                <Button type="text" size="small" icon={<Trash2 size={13} style={{ color: '#ef4444' }} />} onClick={() => openDeleteTask(task)} />
+                                                                            </Space>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </Card>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No tasks" style={{ margin: 0 }} />
+                                                )}
+                                            </div>
+                                        </Card>
+                                    </Col>
+                                );
+                            })}
+                        </Row>
                     </Spin>
                 )}
             </div>
@@ -984,9 +1167,20 @@ export default function TaskManager() {
             {/* Create / Edit Modal (Super Admin only) */}
             {isSuperAdmin && (
                 <Modal
-                    title={editingTask ? "Edit Task" : "Create New Task"}
+                    title={(
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', paddingRight: 24 }}>
+                            <span>{editingTask ? "Edit Task" : "Create New Task"}</span>
+                            {editingTask ? (
+                                <EnableEditButton
+                                    isEnabled={isEditEnabled}
+                                    onToggle={() => setIsEditEnabled((prev) => !prev)}
+                                />
+                            ) : null}
+                        </div>
+                    )}
                     open={isAddModalOpen || !!editingTask}
                     onCancel={() => {
+                        setIsEditEnabled(false);
                         setIsAddModalOpen(false);
                         setEditingTask(null);
                         form.resetFields();
@@ -1002,6 +1196,7 @@ export default function TaskManager() {
                     <Form
                         form={form}
                         layout="vertical"
+                        disabled={Boolean(editingTask) && !isEditEnabled}
                         onFinish={handleFormSubmit}
                         initialValues={{
                             priority: 'Medium',

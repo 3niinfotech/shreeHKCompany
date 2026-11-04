@@ -84,6 +84,11 @@ const parseCompanyJson = (raw) => {
 
 const userCanAccessCompany = async (rollId, companyId) => {
   if (!companyId) return false;
+  const compRows = await metaQuery(
+    "SELECT id FROM company WHERE id = ? AND (deleted = 0 OR deleted IS NULL) LIMIT 1",
+    [companyId]
+  );
+  if (!compRows?.length) return false;
   const allowed = await getRollCompanyIds(rollId);
   return allowed.includes(Number(companyId));
 };
@@ -118,7 +123,7 @@ const getRollCompanyIds = async (rollId) => {
   if (!roll) return [];
 
   if (isSuperAdminRoll(roll)) {
-    const rows = await metaQuery("SELECT id FROM company ORDER BY id");
+    const rows = await metaQuery("SELECT id FROM company WHERE (deleted = 0 OR deleted IS NULL) ORDER BY id");
     return rows.map((r) => r.id);
   }
 
@@ -129,7 +134,7 @@ const getRollCompanyIds = async (rollId) => {
   if (allowed.length) return allowed;
 
   // Legacy roles may have permissions but empty company — allow all companies in meta DB
-  const allCompanies = await metaQuery("SELECT id FROM company ORDER BY id");
+  const allCompanies = await metaQuery("SELECT id FROM company WHERE (deleted = 0 OR deleted IS NULL) ORDER BY id");
   return allCompanies.map((r) => r.id);
 };
 
@@ -169,7 +174,7 @@ async function getCompanyIdsByBranchId(branchId) {
   if (!bid) return [];
   try {
     const rows = await metaQuery(
-      `SELECT id FROM company WHERE branch_id = ? ORDER BY id ASC`,
+      `SELECT id FROM company WHERE branch_id = ? AND (deleted = 0 OR deleted IS NULL) ORDER BY id ASC`,
       [bid]
     );
     return (rows || []).map((r) => Number(r.id)).filter((id) => id > 0);
@@ -187,7 +192,7 @@ async function getBranchCompanyIds(sessionCompanyId) {
   if (!sid) return [];
   try {
     const sessionRows = await metaQuery(
-      `SELECT branch_id FROM company WHERE id = ? LIMIT 1`,
+      `SELECT branch_id FROM company WHERE id = ? AND (deleted = 0 OR deleted IS NULL) LIMIT 1`,
       [sid]
     );
     const branchId =

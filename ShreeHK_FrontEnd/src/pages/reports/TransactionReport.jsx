@@ -5,6 +5,7 @@ import {
 import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { formatDateDisplay } from '../../utils/dateDisplayFormat';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../api/endpoints';
 import useFormHandleChange from '../../hooks/useFormHandleChange';
@@ -102,10 +103,10 @@ const formatExcelDate = (value) => {
         const dd = m[1].padStart(2, '0');
         const mm = m[2].padStart(2, '0');
         const yyyy = m[3].length === 2 ? `20${m[3]}` : m[3];
-        return `${dd} ${mm} ${yyyy}`;
+        return `${dd}-${mm}-${yyyy}`;
     }
     const d = dayjs(s);
-    return d.isValid() ? d.format('DD MM YYYY') : s;
+    return d.isValid() ? d.format('DD-MM-YYYY') : s;
 };
 
 const PARTY_EXCEL_HEADERS = [

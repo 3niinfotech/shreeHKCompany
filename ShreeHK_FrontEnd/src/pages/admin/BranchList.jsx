@@ -77,6 +77,7 @@ const BranchList = () => {
   const [permDeleteOpen, setPermDeleteOpen] = useState(false);
   const [permDeleteEntity, setPermDeleteEntity] = useState(null);
   const [editing, setEditing] = useState(null);
+  const [isEditEnabled, setIsEditEnabled] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerBranch, setDrawerBranch] = useState(null);
   const [form] = Form.useForm();
@@ -178,20 +179,28 @@ const BranchList = () => {
   };
 
   const modalTitle = (
-    <div className={styles.modalTitle}>
-      <span className={styles.modalTitleIcon}>
-        <ApartmentOutlined />
-      </span>
-      <div>
-        <div className={styles.modalTitleText}>
-          {editing ? "Edit Branch" : "Add New Branch"}
+    <div className={styles.modalTitle} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span className={styles.modalTitleIcon}>
+          <ApartmentOutlined />
+        </span>
+        <div>
+          <div className={styles.modalTitleText}>
+            {editing ? "Edit Branch" : "Add New Branch"}
+          </div>
+          <Text className={styles.modalTitleSub}>
+            {editing
+              ? "Update branch profile used on login Branch → Company flow."
+              : "Create a branch (HK / Dubai / Surat) for login selection."}
+          </Text>
         </div>
-        <Text className={styles.modalTitleSub}>
-          {editing
-            ? "Update branch profile used on login Branch → Company flow."
-            : "Create a branch (HK / Dubai / Surat) for login selection."}
-        </Text>
       </div>
+      {editing ? (
+        <EnableEditButton
+          isEnabled={isEditEnabled}
+          onToggle={() => setIsEditEnabled((prev) => !prev)}
+        />
+      ) : null}
     </div>
   );
 
@@ -384,6 +393,7 @@ const BranchList = () => {
           title={modalTitle}
           open={modalOpen}
           onCancel={() => {
+            setIsEditEnabled(false);
             setModalOpen(false);
             form.resetFields();
           }}
@@ -415,6 +425,7 @@ const BranchList = () => {
           <Form
             form={form}
             layout="vertical"
+            disabled={Boolean(editing) && !isEditEnabled}
             onFinish={handleSave}
             onFinishFailed={(errorInfo) => {
               if (errorInfo.errorFields?.length) {
@@ -426,7 +437,7 @@ const BranchList = () => {
             <Form.Item name="id" hidden>
               <input type="hidden" />
             </Form.Item>
-            <DynamicForm fields={branchFields} />
+            <DynamicForm fields={branchFields.map((f) => ({ ...f, disabled: Boolean(f.disabled) || (Boolean(editing) && !isEditEnabled) }))} />
           </Form>
         </Modal>
 

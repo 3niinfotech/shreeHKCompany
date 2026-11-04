@@ -101,6 +101,7 @@ async function aggregateProducts(companyIds, extraWhere = "") {
       COUNT(p.id) AS count
     FROM dai_product p
     WHERE ${companySql}
+      AND (p.deleted = 0 OR p.deleted IS NULL)
     ${extraWhere}
   `;
   const rows = await helper.query(sql, params);
@@ -208,6 +209,7 @@ async function getSaleExportSummary(companyIds) {
     FROM dai_outward o
     WHERE ${companySql.replace(/p\.company/g, "o.company")}
       AND (o.type = 'sale' OR o.type = 'export')
+      AND (o.deleted = 0 OR o.deleted IS NULL)
   `;
   const rows = await helper.query(sql, params);
   const row = rows[0] || {};
@@ -228,6 +230,7 @@ async function getPurchaseSummary(companyIds) {
     FROM dai_inward i
     WHERE ${companySql.replace(/p\.company/g, "i.company")}
       AND i.inward_type = 'purchase'
+      AND (i.deleted = 0 OR i.deleted IS NULL)
   `;
   const rows = await helper.query(sql, params);
   const row = rows[0] || {};
@@ -259,6 +262,7 @@ async function getOnHandBreakdowns(companyIds) {
     FROM dai_product p
     JOIN dai_product_value pv ON p.id = pv.product_id
     WHERE ${companySql}
+      AND (p.deleted = 0 OR p.deleted IS NULL)
       AND p.visibility = 1
       AND p.polish_carat <> 0
       AND (p.outward = '' OR p.outward IS NULL)
@@ -325,6 +329,7 @@ async function getDueSalePayments(companyIds, userId, isAdmin) {
       AND (o.type = 'sale' OR o.type = 'export')
       AND (o.status = 'on_sale' OR o.status = 'on_export')
       AND o.products <> ''
+      AND (o.deleted = 0 OR o.deleted IS NULL)
       AND ${companySql.replace(/p\.company/g, "o.company")}
   `;
   const params = [ndate, ...companyParams];
@@ -381,6 +386,7 @@ async function getRecentTransactions(companyIds, limit = 5) {
       FROM dai_outward o
       LEFT JOIN dai_party p ON o.party = p.id
       WHERE ${oCompany} AND (o.type = 'sale' OR o.type = 'export')
+        AND (o.deleted = 0 OR o.deleted IS NULL)
     )
     UNION ALL
     (
@@ -413,6 +419,7 @@ async function getTopParties(companyIds, limit = 5) {
     LEFT JOIN dai_party p ON o.party = p.id
     WHERE ${companySql.replace(/p\.company/g, "o.company")}
       AND (o.type = 'sale' OR o.type = 'export')
+      AND (o.deleted = 0 OR o.deleted IS NULL)
     GROUP BY o.party, p.name
     ORDER BY amount DESC
     LIMIT ?

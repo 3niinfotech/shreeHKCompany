@@ -10,6 +10,7 @@ import {
   Legend,
 } from "recharts";
 import dayjs from "dayjs";
+import { formatDateDisplay } from "../../utils/dateDisplayFormat";
 import { SkeletonChart } from "../common/skeleton";
 import { fmtAxisAmount, fmtMoney, RANGE_OPTIONS } from "./dashboardFormatters";
 
@@ -54,7 +55,7 @@ const FlowBarCard = ({
               <CartesianGrid strokeDasharray="3 3" stroke={muted} vertical={false} />
               <XAxis
                 dataKey="period"
-                tickFormatter={(value) => dayjs(value).format("DD MMM")}
+                tickFormatter={(value) => dayjs(value).format("DD-MM")}
                 tick={{ fontSize: 11, fill: muted }}
                 axisLine={false}
                 tickLine={false}
@@ -69,7 +70,7 @@ const FlowBarCard = ({
               />
               <Tooltip
                 formatter={(value, name) => [fmtMoney(value), name]}
-                labelFormatter={(label) => dayjs(label).format("DD MMM YYYY")}
+                labelFormatter={(label) => formatDateDisplay(label)}
               />
               <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
               <Bar dataKey="purchase" name="Purchase" fill={purchaseColor} radius={[4, 4, 0, 0]} maxBarSize={14} isAnimationActive={false} />

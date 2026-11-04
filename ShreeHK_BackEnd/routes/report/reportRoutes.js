@@ -61,7 +61,7 @@ reportRouter.post("/report/sale-stock", authenticateToken, async (req, res) => {
     const type = req.body?.type || "sale";
     const allCompanies =
       req.body?.allCompanies === true ||
-      req.body?.allCompanies === "1" ||
+      req.body?.allCompanies === "1" || 
       req.body?.allCompanies === 1 ||
       !companyId;
     const scopeCompanyId = allCompanies ? null : companyId;
@@ -202,6 +202,7 @@ reportRouter.post("/report/outstanding", authenticateToken, async (req, res) => 
       query = `${saleSelect}
                          ${saleFrom}
                          WHERE o.company = ?
+                         AND (o.deleted = 0 OR o.deleted IS NULL)
                          AND o.type IN ('sale', 'export')
                          AND o.status IN ('on_sale', 'on_export')
                          ${userFilter}
@@ -224,7 +225,7 @@ reportRouter.post("/report/outstanding", authenticateToken, async (req, res) => 
                          LEFT JOIN dai_party p ON o.party = p.id AND p.company = ?
                          WHERE o.company = ?
                          AND o.inward_type IN ('purchase', 'import')
-                         AND (deleted = 0 OR deleted IS NULL)
+                         AND (o.deleted = 0 OR o.deleted IS NULL)
                          ${userFilter}
                          ${party} ${invoice} ${dateFilter}
                          ORDER BY o.date DESC, o.id DESC`;
@@ -282,7 +283,7 @@ reportRouter.post("/report/outstandingRecords", authenticateToken, async (req, r
                       o.due_amount                                
                FROM dai_outward o
                LEFT JOIN dai_party p ON o.party = p.id AND p.company = ?
-               WHERE o.id = ? AND o.company = ?`;
+               WHERE o.id = ? AND o.company = ? AND (o.deleted = 0 OR o.deleted IS NULL)`;
     } else if (normalizedType === "purchase" || normalizedType === "import") {
       idQuery = "AND purchase_id = ?";
       query = `SELECT o.id, o.entryno, o.inward_type as type, o.invoiceno, p.name, o.reference, 
@@ -295,7 +296,7 @@ reportRouter.post("/report/outstandingRecords", authenticateToken, async (req, r
                       o.due_amount                                
                FROM dai_inward o
                LEFT JOIN dai_party p ON o.party = p.id AND p.company = ?
-               WHERE o.id = ? AND o.company = ?`;
+               WHERE o.id = ? AND o.company = ? AND (o.deleted = 0 OR o.deleted IS NULL)`;
     } else {
       return res.status(400).json({ error: "Invalid type. Allowed values: sale, purchase, export, import" });
     }
@@ -361,7 +362,7 @@ reportRouter.post("/report/outstanding/charge", authenticateToken, async (req, r
   if (!id || !target) return res.status(400).json({ status: false, message: "Invalid entry" });
 
   try {
-    const rows = await reportQuery(`SELECT * FROM ${target.table} WHERE id = ? AND company = ?`, [id, companyId]);
+    const rows = await reportQuery(`SELECT * FROM ${target.table} WHERE id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL)`, [id, companyId]);
     if (!rows.length) return res.status(404).json({ status: false, message: "Entry not found" });
 
     const row = rows[0];
@@ -413,7 +414,7 @@ reportRouter.post("/report/outstanding/installment", authenticateToken, async (r
 
   try {
     const result = await helper.runInTransaction(async (q) => {
-      const rows = await q(`SELECT * FROM ${target.table} WHERE id = ? AND company = ? FOR UPDATE`, [id, companyId]);
+      const rows = await q(`SELECT * FROM ${target.table} WHERE id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL) FOR UPDATE`, [id, companyId]);
       if (!rows.length) throw new Error("Entry not found");
       const row = rows[0];
       const dueAmount = Number(row.due_amount) || 0;

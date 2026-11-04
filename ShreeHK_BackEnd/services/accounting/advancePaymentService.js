@@ -61,24 +61,12 @@ async function saveAdvancePayment(payload, contextCompanyId, auditContext = {}) 
     isUpdate,
   } = payload;
 
-  const newValue = {
-    party,
-    other_party: "",
-    date,
-    type,
-    book,
-    cheque,
-    amount,
-    use_amount,
-    balance_amount,
-    invoice,
-    assign_date,
-    description,
-    company,
-    user,
-  };
-
   let oldValue = null;
+  const numAmount = Number(amount || 0);
+  const numUseAmount = Number(use_amount || 0);
+  let computedBalance = Number((numAmount - numUseAmount).toFixed(2));
+  let finalAmount = numAmount;
+  let finalUseAmount = numUseAmount;
 
   if (isUpdate) {
     const existingRow = await advanceRepository.getAdvancePaymentByIdAndCompany(id, contextCompanyId);
@@ -90,6 +78,16 @@ async function saveAdvancePayment(payload, contextCompanyId, auditContext = {}) 
     }
     oldValue = existingRow;
 
+    finalAmount =
+      payload.amount !== undefined && payload.amount !== null && payload.amount !== ""
+        ? Number(payload.amount)
+        : Number(existingRow.amount || 0);
+    finalUseAmount =
+      payload.use_amount !== undefined && payload.use_amount !== null && payload.use_amount !== ""
+        ? Number(payload.use_amount)
+        : Number(existingRow.use_amount || 0);
+    computedBalance = Number((finalAmount - finalUseAmount).toFixed(2));
+
     await advanceRepository.updateAdvancePayment({
       id,
       party,
@@ -97,9 +95,9 @@ async function saveAdvancePayment(payload, contextCompanyId, auditContext = {}) 
       type,
       book,
       cheque,
-      amount,
-      use_amount,
-      balance_amount,
+      amount: finalAmount,
+      use_amount: finalUseAmount,
+      balance_amount: computedBalance,
       invoice,
       assign_date,
       description,
@@ -114,9 +112,9 @@ async function saveAdvancePayment(payload, contextCompanyId, auditContext = {}) 
       type,
       book,
       cheque,
-      amount,
-      use_amount,
-      balance_amount,
+      amount: numAmount,
+      use_amount: numUseAmount,
+      balance_amount: computedBalance,
       invoice,
       assign_date,
       description,
@@ -125,6 +123,23 @@ async function saveAdvancePayment(payload, contextCompanyId, auditContext = {}) 
     });
     payload.id = insertId;
   }
+
+  const newValue = {
+    party,
+    other_party: "",
+    date,
+    type,
+    book,
+    cheque,
+    amount: finalAmount,
+    use_amount: finalUseAmount,
+    balance_amount: computedBalance,
+    invoice,
+    assign_date,
+    description,
+    company,
+    user,
+  };
 
   const savedId = isUpdate ? id : payload.id;
 
@@ -184,7 +199,7 @@ async function saveAdvancePayment(payload, contextCompanyId, auditContext = {}) 
  * @param {number} companyId
  * @param {Object} auditContext
  */
-async function deleteAdvancePayment(id, companyId, auditContext = {}) {
+async function deleteAdvancePayment(id, companyId, auditContext = {}, userId = null) {
   const oldRow = await advanceRepository.getAdvancePaymentFullByIdAndCompany(id, companyId);
   if (!oldRow) {
     return {
@@ -193,7 +208,7 @@ async function deleteAdvancePayment(id, companyId, auditContext = {}) {
     };
   }
 
-  await advanceRepository.deleteAdvancePaymentByIdAndCompany(id, companyId);
+  await advanceRepository.deleteAdvancePaymentByIdAndCompany(id, companyId, userId);
 
   logAudit({
     actionType: "DELETE",

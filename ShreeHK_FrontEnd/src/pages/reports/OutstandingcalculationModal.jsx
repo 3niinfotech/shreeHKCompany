@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, DatePicker, Input, InputNumber, Modal, Select, Table } from "antd";
 import dayjs from "dayjs";
+import { formatDateDisplay } from "../../utils/dateDisplayFormat";
 import {
   CalendarDays,
   Check,
@@ -327,11 +328,11 @@ const OutstandingCalculationModal = ({ open, onClose, data, onSaved }) => {
 
           <section className={styles.infoCard}>
             <div className={styles.infoGrid}>
-              <InfoItem icon={CalendarDays} label="Date" value={data.date || "-"} />
+              <InfoItem icon={CalendarDays} label="Date" value={formatDateDisplay(data.date)} />
               <InfoItem icon={ReceiptText} label="Reference" value={data.reference || "-"} />
               <InfoItem icon={FileText} label="Invoice No" value={data.invoiceno || "-"} />
               <InfoItem icon={Hash} label="Entry No" value={data.entryno} />
-              <InfoItem icon={CalendarDays} label="Invoice Date" value={data.invoicedate || "-"} />
+              <InfoItem icon={CalendarDays} label="Invoice Date" value={formatDateDisplay(data.invoicedate)} />
             </div>
             <div className={styles.infoBottom}>
               <span>
@@ -339,7 +340,7 @@ const OutstandingCalculationModal = ({ open, onClose, data, onSaved }) => {
               </span>
               <i />
               <span>
-                Due Date <b>{data.due_date || "-"}</b>
+                Due Date <b>{formatDateDisplay(data.due_date)}</b>
               </span>
               <i />
               <span>

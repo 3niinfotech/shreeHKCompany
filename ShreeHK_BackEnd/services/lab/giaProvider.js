@@ -137,7 +137,16 @@ class GiaProvider extends LabProviderInterface {
 
     // Check if live credentials exist
     if (this.isConfigured(credential)) {
-      return this._fetchFromLiveApi(reportNum, credential, options);
+      const liveRes = await this._fetchFromLiveApi(reportNum, credential, options);
+      if (liveRes.status === "SUCCESS" || liveRes.status === "NOT_FOUND") {
+        return liveRes;
+      }
+      // If live failed (e.g. network/dummy key) but mock is allowed in env, fall back gracefully
+      if (this.isMockAllowed()) {
+        console.warn(`[GIA Provider] Live API call failed (${liveRes.error}), falling back to mock provider because LAB_ALLOW_MOCK=true`);
+        return this._fetchMockReport(reportNum);
+      }
+      return liveRes;
     }
 
     // Check if mock mode is allowed

@@ -6,6 +6,7 @@ const { diffFields } = require("../../services/auditService.js");
 const { buildFullProductAuditSnapshot } = require("../../services/auditProductSnapshot.js");
 const stockMovement = require("../../services/stockMovementService.js");
 const { getBranchCompanyIds } = require("../../tenantHelper.js");
+const { getAuditFlag, computeExpectedInvoiceTotal } = require("../../services/auditFlagService.js");
 const { DEFAULT_COMPANY_ID, DEFAULT_USER_ID } = helper;
 
 function normalizeCompanyIds(companyIdOrIds) {
@@ -641,7 +642,7 @@ async function sendTo(rawPost, userContext = {}) {
     const qRead = (sql, vals) => helper.query(sql, vals);
     const ph = productIds.map(() => "?").join(",");
     const stoneRows = await qRead(
-      `SELECT id, sku, company, polish_pcs, polish_carat, onhand_pcs, onhand_carat, price, amount FROM ${TABLE_PRODUCT} WHERE id IN (${ph})`,
+      `SELECT id, sku, company, polish_pcs, polish_carat, onhand_pcs, onhand_carat, price, amount FROM ${TABLE_PRODUCT} WHERE id IN (${ph}) AND (deleted = 0 OR deleted IS NULL)`,
       productIds
     );
 
@@ -1011,6 +1012,24 @@ async function sendTo(rawPost, userContext = {}) {
       post.final_amount = Number.isFinite(mappedFinalAmount) ? mappedFinalAmount : amount;
       post.due_amount = post.final_amount;
       post.paid_amount = 0;
+
+      const verifyTotalsFlag = getAuditFlag("FLAG_VERIFY_INVOICE_TOTALS");
+      if (verifyTotalsFlag === "LOG_ONLY") {
+        try {
+          const expected = computeExpectedInvoiceTotal(amount, post);
+          const diff = Math.abs(post.final_amount - expected);
+          if (diff > 0.05) {
+            console.warn("[AUDIT_FLAG:FLAG_VERIFY_INVOICE_TOTALS] Invoice total mismatch in sendTo:", {
+              type,
+              invoiceno: post.invoiceno,
+              storedFinalAmount: post.final_amount,
+              expectedFinalAmount: expected,
+              difference: Number(diff.toFixed(2)),
+              subtotal: amount,
+            });
+          }
+        } catch (_) {}
+      }
 
       if (!OutProducts.length) {
         throw new Error("Please select item or enter required value for box/parcel ");

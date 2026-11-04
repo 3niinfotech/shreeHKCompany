@@ -149,6 +149,25 @@ const mapProductToMemoRow = (p, rowKey, { isManual = false } = {}) => {
     groupType: p.group_type || "",
     outward: p.outward || "",
     inward: p.inward || "",
+    mfg_code: p.mfg_code || p.mfgCode || "",
+    diamond_no: p.diamond_no || p.d_no || p.diamondNo || "",
+    cost: p.cost != null ? p.cost : (p.purchase_price || 0),
+    location: p.location || p.loc || "",
+    report_no: p.report_no || p.certificate || "",
+    intensity: p.intensity || "",
+    overtone: p.overtone || "",
+    size: p.size || "",
+    polish: p.polish || "",
+    symmentry: p.symmentry || p.symm || p.symmetry || "",
+    cut: p.cut || "",
+    f_intensity: p.f_intensity || p.floIntensity || p.flo_intensity || "",
+    mesurment: p.mesurment || p.measurements || p.measurement || "",
+    table_pc: p.table_pc || p.tablePer || "",
+    depth_pc: p.depth_pc || p.depthPer || "",
+    gridle: p.gridle || p.girdle || "",
+    bgm: p.bgm || "",
+    eyeclean: p.eyeclean || p.eye_clean || "",
+    remark: p.remark || "",
     _isManual: isManual,
     _resolved: true,
   };
@@ -166,6 +185,29 @@ const mapSelectedRowToMemoRow = (row) => {
   return {
     ...row,
     rowKey: `sel-${row.id}`,
+    mfg_code: row.mfg_code || row.mfgCode || "",
+    diamond_no: row.diamond_no || row.d_no || row.diamondNo || "",
+    cost: row.cost != null ? row.cost : (row.purchase_price || 0),
+    location: row.location || row.loc || "",
+    report_no: row.report_no || row.certificate || "",
+    shape: row.shape || "",
+    clarity: row.clarity || "",
+    intensity: row.intensity || "",
+    overtone: row.overtone || "",
+    lab: row.lab || "",
+    color: row.color || row.main_color || "",
+    size: row.size || "",
+    polish: row.polish || "",
+    symmentry: row.symmentry || row.symm || row.symmetry || "",
+    cut: row.cut || "",
+    f_intensity: row.f_intensity || row.floIntensity || row.flo_intensity || "",
+    mesurment: row.mesurment || row.measurements || row.measurement || "",
+    table_pc: row.table_pc || row.tablePer || "",
+    depth_pc: row.depth_pc || row.depthPer || "",
+    gridle: row.gridle || row.girdle || "",
+    bgm: row.bgm || "",
+    eyeclean: row.eyeclean || row.eye_clean || "",
+    remark: row.remark || "",
     disc: +disc.toFixed(2),
     price,
     amount: calcAmount(carat, price) || Number(row.amount) || 0,
@@ -731,7 +773,136 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
     return map;
   }, [branchCompanyOptions]);
 
-  const columns = [
+  const sellMasterColumns = [
+    { title: "No", width: 50, fixed: "left", align: "center", render: (_, __, idx) => idx + 1 },
+    { title: "Mfg. code", dataIndex: "mfg_code", width: 100 },
+    { title: "D. No.", dataIndex: "diamond_no", width: 90 },
+    {
+      title: "SKU",
+      dataIndex: "sku",
+      width: 240,
+      fixed: "left",
+      render: (text, record) => {
+        if (record._isManual && !record._resolved) {
+          return (
+            <Input
+              value={text}
+              placeholder="Enter SKU"
+              disabled={lookupRowKey === record.rowKey}
+              onChange={(e) => handleManualSkuChange(record.rowKey, e.target.value)}
+              onPressEnter={(e) => lookupSkuForRow(record.rowKey, e.target.value)}
+              onBlur={(e) => lookupSkuForRow(record.rowKey, e.target.value)}
+              className="memo-editable-cell"
+              style={{ width: 120 }}
+            />
+          );
+        }
+        return <SkuLink sku={text} record={record} />;
+      },
+    },
+    {
+      title: "Pcs",
+      dataIndex: "polishPcs",
+      width: 105,
+      render: (value, record) => (
+        <InputNumber
+          value={value}
+          min={0}
+          step={1}
+          precision={0}
+          disabled={!canEditPcsCarat(record)}
+          readOnly={!canEditPcsCarat(record)}
+          className="memo-editable-cell"
+          onChange={(val) => {
+            if (!canEditPcsCarat(record)) return;
+            handlePcsChange(record.rowKey, val);
+          }}
+        />
+      ),
+    },
+    {
+      title: "Carat",
+      dataIndex: "polishCarat",
+      width: 115,
+      render: (value, record) => (
+        <InputNumber
+          value={value}
+          min={0}
+          step={0.001}
+          disabled={!canEditPcsCarat(record)}
+          readOnly={!canEditPcsCarat(record)}
+          className="memo-editable-cell"
+          onChange={(val) => {
+            if (!canEditPcsCarat(record)) return;
+            handleCaratChange(record.rowKey, val);
+          }}
+        />
+      ),
+    },
+    {
+      title: "Cost",
+      dataIndex: "cost",
+      width: 120,
+      render: (v) => Number(v || 0).toFixed(2),
+    },
+    {
+      title: "Price",
+      dataIndex: "price",
+      width: 120,
+      render: (value, record) => (
+        <InputNumber
+          value={value}
+          step={0.01}
+          disabled={!record._resolved}
+          className="memo-editable-cell"
+          onChange={(val) => handlePriceChange(record.rowKey, val)}
+        />
+      ),
+    },
+    {
+      title: "Amount",
+      dataIndex: "amount",
+      width: 130,
+      align: "right",
+      render: (value) => <strong>{Number(value || 0).toFixed(2)}</strong>,
+    },
+    { title: "LOC", dataIndex: "location", width: 90 },
+    { title: "Report No.", dataIndex: "report_no", width: 110 },
+    { title: "Shape", dataIndex: "shape", width: 110 },
+    { title: "Clarity", dataIndex: "clarity", width: 80 },
+    { title: "Intensity", dataIndex: "intensity", width: 90 },
+    { title: "Overtone", dataIndex: "overtone", width: 90 },
+    { title: "Lab", dataIndex: "lab", width: 70 },
+    { title: "Color", dataIndex: "color", width: 80 },
+    { title: "Size", dataIndex: "size", width: 70 },
+    { title: "Polish", dataIndex: "polish", width: 70 },
+    { title: "Symm", dataIndex: "symmentry", width: 70 },
+    { title: "Cut", dataIndex: "cut", width: 70 },
+    { title: "Flo. Intensity", dataIndex: "f_intensity", width: 110 },
+    { title: "Measurements", dataIndex: "mesurment", width: 180 },
+    { title: "Table%", dataIndex: "table_pc", width: 70 },
+    { title: "Depth%", dataIndex: "depth_pc", width: 70 },
+    { title: "Gridle", dataIndex: "gridle", width: 80 },
+    { title: "BGM", dataIndex: "bgm", width: 60 },
+    { title: "Eyeclean", dataIndex: "eyeclean", width: 80 },
+    { title: "Remark", dataIndex: "remark", width: 650 },
+    {
+      title: "",
+      width: 60,
+      fixed: "right",
+      align: "center",
+      render: (_, record) => (
+        <Button
+          type="text"
+          danger
+          icon={<DeleteOutlined />}
+          onClick={() => handleRemoveRow(record.rowKey)}
+        />
+      ),
+    },
+  ];
+
+  const genericColumns = [
     { title: "No", width: 50, align: "center", render: (_, __, idx) => idx + 1 },
     {
       title: "Company",
@@ -1149,7 +1320,7 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
           </Button>
         </div>
         <Table
-          columns={columns}
+          columns={actionType === "sell" ? sellMasterColumns : genericColumns}
           dataSource={memoRows}
           rowKey="rowKey"
           pagination={false}

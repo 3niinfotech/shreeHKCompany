@@ -689,7 +689,7 @@ productRouter.get("/product/detail", authenticateToken, (req, res) => {
   loadDetail()
     .then(async (data) => {
       if (!data) {
-        return res.status(404).json({ error: "Stone not found", Data: null });
+        return res.status(200).json({ status: false, error: "Stone not found", message: "Stone not found", Data: null });
       }
       if (sessionCompanyId) {
         const branchIds = await getBranchCompanyIds(sessionCompanyId);
@@ -697,10 +697,10 @@ productRouter.get("/product/detail", authenticateToken, (req, res) => {
           (branchIds.length ? branchIds : [sessionCompanyId]).map(String)
         );
         if (!allowed.has(String(data.company))) {
-          return res.status(404).json({ error: "Stone not found", Data: null });
+          return res.status(200).json({ status: false, error: "Stone not found", message: "Stone not found", Data: null });
         }
       }
-      res.json({ Data: data });
+      res.json({ status: true, Data: data });
     })
     .catch((error) => {
       console.error(error);
@@ -727,6 +727,16 @@ productRouter.post("/product/save", authenticateToken, async (req, res) => {
       const oldRow = oldRows[0] || null;
       const oldValRows = await q("SELECT * FROM dai_product_value WHERE product_id=?", [id]);
       const oldValRow = oldValRows[0] || null;
+      if (body.polish_pcs !== undefined && body.polish_pcs !== null) {
+        const memoPcs = Number(oldRow?.memo_pcs || 0);
+        const soldPcs = Number(oldRow?.sold_pcs || 0);
+        body.onhand_pcs = Math.max(0, Number(body.polish_pcs || 0) - memoPcs - soldPcs);
+      }
+      if (body.polish_carat !== undefined && body.polish_carat !== null) {
+        const memoCarat = Number(oldRow?.memo_carat || 0);
+        const soldCarat = Number(oldRow?.sold_carat || 0);
+        body.onhand_carat = Math.max(0, Number((Number(body.polish_carat || 0) - memoCarat - soldCarat).toFixed(3)));
+      }
 
       const updateResponse = helper.updateString(body);
       const valuesResponse = helper.updateString(values || {});
@@ -881,7 +891,13 @@ productRouter.post("/product/change-price", authenticateToken, async (req, res) 
 
     const userContext = buildUserContext(req);
 
-    await changePriceService.updatePrice(validation.product, userContext);
+    const updateRes = await changePriceService.updatePrice(validation.product, userContext);
+    if (!updateRes?.updatedCount) {
+      return res.status(200).json({
+        status: false,
+        message: "No matching stone found in your accessible companies to update price",
+      });
+    }
     return res.status(200).json({
       status: true,
       message: "Price updated successfully",
@@ -1232,7 +1248,7 @@ productRouter.post("/product/package/assign", authenticateToken, async (req, res
     for (const pid of productIds) {
       await new Promise((resolve, reject) => {
         connection.query(
-          "UPDATE dai_product_value SET package = ? WHERE product_id = ?",
+          "UPDATE dai_product_value SET package = ? WHERE product_id = ? AND (deleted = 0 OR deleted IS NULL)",
           [packageName, pid],
           (err) => (err ? reject(err) : resolve())
         );

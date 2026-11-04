@@ -312,18 +312,47 @@ export async function exportPartyReportToExcel({
       let cellType = 's';
       let cellValue = rawVal == null ? '' : String(rawVal);
       let numVal = null;
+      let cellFormat = null;
 
-      if (h.key === 'date') {
+      const isDateCol =
+        h.key === 'date' ||
+        h.key === 'invoicedate' ||
+        h.key === 'due_date' ||
+        h.key === 'dueDate' ||
+        h.key === 'received_date' ||
+        h.key === 'out_date' ||
+        String(h.key || '').toLowerCase().includes('date');
+
+      if (isDateCol) {
         if (rawVal) {
-          const dStr = String(rawVal);
-          // if already in DD-MM-YYYY format, leave as is, otherwise format if valid
-          if (dStr.includes('T') || dStr.includes('-')) {
-            const parts = dStr.split(/[-T /]/);
-            if (parts.length >= 3 && parts[0].length === 4) {
-              // YYYY-MM-DD
-              cellValue = `${parts[2].slice(0, 2)}-${parts[1]}-${parts[0]}`;
+          const dStr = String(rawVal).trim();
+          if (dStr && dStr !== '-' && dStr !== '—' && dStr !== '0000-00-00') {
+            let dd, mm, yyyy;
+            const ymd = dStr.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+            const dmy = dStr.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
+            if (ymd) {
+              yyyy = parseInt(ymd[1], 10);
+              mm = parseInt(ymd[2], 10);
+              dd = parseInt(ymd[3], 10);
+            } else if (dmy) {
+              dd = parseInt(dmy[1], 10);
+              mm = parseInt(dmy[2], 10);
+              yyyy = dmy[3].length === 2 ? parseInt('20' + dmy[3], 10) : parseInt(dmy[3], 10);
             } else {
-              cellValue = dStr.split('T')[0];
+              const parsed = new Date(dStr);
+              if (!Number.isNaN(parsed.getTime())) {
+                yyyy = parsed.getFullYear();
+                mm = parsed.getMonth() + 1;
+                dd = parsed.getDate();
+              }
+            }
+
+            if (dd && mm && yyyy && yyyy > 1900 && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
+              cellType = 'd';
+              cellValue = new Date(Date.UTC(yyyy, mm - 1, dd));
+              cellFormat = 'dd-mm-yyyy';
+            } else {
+              cellValue = dStr;
             }
           }
         }
@@ -347,7 +376,7 @@ export async function exportPartyReportToExcel({
         }
       }
 
-      ws[XLSX.utils.encode_cell({ r: rowNum, c })] = {
+      const cellObj = {
         v: cellValue,
         t: cellType,
         s: {
@@ -363,6 +392,11 @@ export async function exportPartyReportToExcel({
           },
         },
       };
+      if (cellFormat) {
+        cellObj.z = cellFormat;
+      }
+
+      ws[XLSX.utils.encode_cell({ r: rowNum, c })] = cellObj;
     });
   });
 

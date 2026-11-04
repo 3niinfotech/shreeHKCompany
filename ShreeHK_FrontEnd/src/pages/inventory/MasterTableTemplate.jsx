@@ -4,6 +4,7 @@ import { Edit2, Trash2, Plus, Search, PackagePlus } from 'lucide-react';
 import { Table, Button, Input, Space, Card, Typography, Form, Tag, Checkbox } from 'antd';
 import DynamicFormField from "../../components/common/ui/DynamicFormField";
 import { BaseModal } from "../../components/common/modals";
+import EnableEditButton from "../../components/common/ui/EnableEditButton";
 import PageHeroHeader from "../../components/common/PageHeroHeader";
 import { DatabaseOutlined } from "@ant-design/icons";
 import styles from '../../assets/scss/pages/inventory/mastertabletemplate.module.scss';
@@ -48,17 +49,20 @@ const MasterTableTemplate = ({
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalLoading, setModalLoading] = useState(false);
     const [modalConfig, setModalConfig] = useState({ title: '', mode: 'add' });
+    const [isEditEnabled, setIsEditEnabled] = useState(false);
     const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
     const handleAddClick = () => {
         form.resetFields();
         setModalConfig({ title: `Add ${title} Details`, mode: 'add' });
+        setIsEditEnabled(false);
         setIsModalOpen(true);
     };
 
     const handleEditClick = (record) => {
         setModalConfig({ title: `Edit ${title}: ${record.Name || ''}`, mode: 'edit' });
         form.setFieldsValue(record);
+        setIsEditEnabled(false);
         setIsModalOpen(true);
     };
 
@@ -271,21 +275,34 @@ const MasterTableTemplate = ({
             <BaseModal
                 title={modalConfig.title}
                 isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+                onClose={() => {
+                    setIsModalOpen(false);
+                    setIsEditEnabled(false);
+                }}
                 onSave={handleInternalSave}
                 loading={modalLoading}
                 width={modalWidth}
                 saveBtnText={modalConfig.mode === 'add' ? "Save" : "Update"}
                 cancelBtnText="Close"
+                extraHeaderRight={modalConfig.mode === 'edit' ? (
+                    <EnableEditButton
+                        isEnabled={isEditEnabled}
+                        onToggle={() => setIsEditEnabled((prev) => !prev)}
+                    />
+                ) : null}
                 content={
                     <Form
                         form={form}
                         layout="vertical"
                         preserve={false}
+                        disabled={modalConfig.mode === 'edit' && !isEditEnabled}
                     >
                         {Array.isArray(formFields) ? (
                             <DynamicFormField
-                                fields={formFields}
+                                fields={formFields.map((f) => ({
+                                    ...f,
+                                    disabled: modalConfig.mode === 'edit' ? (Boolean(f.disabled) || !isEditEnabled) : Boolean(f.disabled),
+                                }))}
                                 forceFullWidth={formFields.length <= 2}
                             />
                         ) : (

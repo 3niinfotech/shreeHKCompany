@@ -6,7 +6,7 @@ const TABLE_HOLD = "dai_hold";
  * @param {(sql: string, values?: any[]) => Promise<any>} q
  */
 async function getHoldByProductId(q, productId) {
-  const rows = await q(`SELECT * FROM ${TABLE_HOLD} WHERE product_id = ? LIMIT 1`, [
+  const rows = await q(`SELECT * FROM ${TABLE_HOLD} WHERE product_id = ? AND (deleted = 0 OR deleted IS NULL) LIMIT 1`, [
     String(productId),
   ]);
   return rows.length ? rows[0] : null;
@@ -50,8 +50,8 @@ async function upsertHoldRow(q, { product_id, date, description, user }) {
 /**
  * @param {(sql: string, values?: any[]) => Promise<any>} q
  */
-async function deleteHoldByProductId(q, productId) {
-  await q(`DELETE FROM ${TABLE_HOLD} WHERE product_id = ?`, [String(productId)]);
+async function deleteHoldByProductId(q, productId, userId = null) {
+  await q(`UPDATE ${TABLE_HOLD} SET deleted = 1, deleted_at = NOW(), deleted_by = ? WHERE product_id = ? AND (deleted = 0 OR deleted IS NULL)`, [userId, String(productId)]);
 }
 
 /**
@@ -59,7 +59,7 @@ async function deleteHoldByProductId(q, productId) {
  * @param {(sql: string, values?: any[]) => Promise<any>} q
  */
 async function findExpiredHolds(q, beforeDate) {
-  return q(`SELECT * FROM ${TABLE_HOLD} WHERE date < ?`, [beforeDate]);
+  return q(`SELECT * FROM ${TABLE_HOLD} WHERE date < ? AND (deleted = 0 OR deleted IS NULL)`, [beforeDate]);
 }
 
 module.exports = {

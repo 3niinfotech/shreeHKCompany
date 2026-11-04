@@ -6,10 +6,10 @@ import styles from '../../../assets/scss/pages/accountings/mybalance.module.scss
 import { cssVar } from '../../../theme';
 
 const initialRates = [
-    { id: 1, currency: 'USD - US Dollar', usd: '83.25', hkd: '10.65', status: 'LIVE', updatedAt: '25 May 2026, 10:30 AM' },
-    { id: 2, currency: 'EUR - Euro', usd: '7.81', hkd: '1.00', status: 'LIVE', updatedAt: '25 May 2026, 10:30 AM' },
-    { id: 3, currency: 'INR - Indian Rupee', usd: '0.012', hkd: '0.094', status: 'LIVE', updatedAt: '25 May 2026, 10:30 AM' },
-    { id: 4, currency: 'GBP - British Pound', usd: '1.27', hkd: '9.92', status: 'LIVE', updatedAt: '25 May 2026, 10:30 AM' },
+    { id: 1, currency: 'USD - US Dollar', usd: '83.25', hkd: '10.65', status: 'LIVE', updatedAt: '25-05-2026, 10:30 AM' },
+    { id: 2, currency: 'EUR - Euro', usd: '7.81', hkd: '1.00', status: 'LIVE', updatedAt: '25-05-2026, 10:30 AM' },
+    { id: 3, currency: 'INR - Indian Rupee', usd: '0.012', hkd: '0.094', status: 'LIVE', updatedAt: '25-05-2026, 10:30 AM' },
+    { id: 4, currency: 'GBP - British Pound', usd: '1.27', hkd: '9.92', status: 'LIVE', updatedAt: '25-05-2026, 10:30 AM' },
 ];
 
 const LiveRates = () => {
@@ -20,7 +20,10 @@ const LiveRates = () => {
         setLoading(true);
         setTimeout(() => {
             const now = new Date();
-            const timeStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+            const dd = String(now.getDate()).padStart(2, '0');
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const yyyy = now.getFullYear();
+            const timeStr = `${dd}-${mm}-${yyyy}`
                 + ', ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
             const updatedRates = rates.map(item => ({

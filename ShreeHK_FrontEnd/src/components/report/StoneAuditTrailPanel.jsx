@@ -18,7 +18,7 @@ const formatLogDateTime = (dateVal) => {
         minute: '2-digit',
         second: '2-digit',
         hour12: false,
-    }).replace(',', '');
+    }).replace(',', '').replace(/\//g, '-');
 };
 
 const getActionColor = (action) => {

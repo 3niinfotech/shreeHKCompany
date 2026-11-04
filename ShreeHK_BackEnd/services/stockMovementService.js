@@ -287,7 +287,11 @@ async function setInitialBalances(q, productId, pcs, carat) {
  * returnMemo / lab_return → reverse back to onhand
  */
 async function applyOutwardQty(q, productId, type, pcs, carat) {
-  const rows = await q("SELECT * FROM dai_product WHERE id = ? LIMIT 1", [productId]);
+  const isTx = Boolean(q && typeof q === "function" && q !== helper.query);
+  const selectSql = isTx
+    ? "SELECT * FROM dai_product WHERE id = ? LIMIT 1 FOR UPDATE"
+    : "SELECT * FROM dai_product WHERE id = ? LIMIT 1";
+  const rows = await q(selectSql, [productId]);
   if (!rows.length) throw new Error(`Product ${productId} not found`);
   const row = rows[0];
   const b = readBalances(row);

@@ -1,0 +1,84 @@
+diff --git a/ShreeHK_BackEnd/routes/transaction/transactionStockService.js b/ShreeHK_BackEnd/routes/transaction/transactionStockService.js
+index 1b7853a..10083cf 100644
+--- a/ShreeHK_BackEnd/routes/transaction/transactionStockService.js
++++ b/ShreeHK_BackEnd/routes/transaction/transactionStockService.js
+@@ -1188,38 +1188,49 @@ async function returnInwardMemo(post, userContext = {}) {
+   const inProducts = (inData.products || "").split(",").filter(Boolean);
+   let returnProducts = (inData.return_products || "").split(",").filter(Boolean);
+   const updateProduct = [];
++  const pendingAudits = [];
+ 
+-  for (const pid of inProducts) {
+-    if (products.includes(parseInt(pid, 10)) || products.includes(pid)) {
+-      const product = await getProductDetail(pid);
+-      if (!product || product.outward) continue;
+-      returnProducts.push(pid);
+-      await query("UPDATE dai_product SET visibility=0, inward_id='' WHERE id = ?", [pid]);
+-      await addHistoryAudited({
+-        product_id: product.id,
+-        action: "purchase_return",
+-        party: inData.party,
+-        narretion: inData.narretion,
+-        date: moment().format("YYYY-MM-DD"),
+-        description: "Purchase Return",
+-        pcs: product.polish_pcs,
+-        carat: product.polish_carat,
+-        amount: product.amount,
+-        price: product.price,
+-        sku: product.sku,
+-        type: "dr",
+-        invoice: inData.invoiceno,
+-        entry_from: "inward",
+-      });
+-    } else {
+-      updateProduct.push(pid);
++  await helper.runInTransaction(async (q) => {
++    for (const pid of inProducts) {
++      if (products.includes(parseInt(pid, 10)) || products.includes(pid)) {
++        const product = await getProductDetail(pid, q);
++        if (!product || product.outward) continue;
++        returnProducts.push(pid);
++        await q("UPDATE dai_product SET visibility=0, inward_id='' WHERE id = ?", [pid]);
++        await recordAuditedHistoryTx(q, {
++          product_id: product.id,
++          action: "purchase_return",
++          party: inData.party,
++          narretion: inData.narretion,
++          date: moment().format("YYYY-MM-DD"),
++          description: "Purchase Return",
++          pcs: product.polish_pcs,
++          carat: product.polish_carat,
++          amount: product.amount,
++          price: product.price,
++          sku: product.sku,
++          type: "dr",
++          invoice: inData.invoiceno,
++          entry_from: "inward",
++        }, "Transaction Stock", "UPDATE", {}, pendingAudits);
++      } else {
++        updateProduct.push(pid);
++      }
+     }
+-  }
+ 
+-  await query(
+-    "UPDATE dai_inward SET return_products=?, products=? WHERE id = ?",
+-    [[...new Set(returnProducts)].join(","), updateProduct.join(","), post.id]
+-  );
++    await q(
++      "UPDATE dai_inward SET return_products=?, products=? WHERE id = ?",
++      [[...new Set(returnProducts)].join(","), updateProduct.join(","), post.id]
++    );
++  });
++
++  for (const a of pendingAudits) {
++    try {
++      await logAudit(a);
++    } catch (e) {
++      console.error("transactionStock audit:", e);
++    }
++  }
+ 
+   const skus = [];
+   for (const pid of products) {
+

@@ -224,10 +224,11 @@ const deleteQuickNote = async (userId, companyId, noteId, isSuperAdmin = false) 
     return false;
   }
   const sql = `
-    DELETE FROM dai_quick_notes
-    WHERE id = ?
+    UPDATE dai_quick_notes
+    SET deleted = 1, deleted_at = NOW(), deleted_by = ?
+    WHERE id = ? AND (deleted = 0 OR deleted IS NULL)
   `;
-  const result = await helper.query(sql, [noteId]);
+  const result = await helper.query(sql, [userId, noteId]);
   return result.affectedRows > 0;
 };
 

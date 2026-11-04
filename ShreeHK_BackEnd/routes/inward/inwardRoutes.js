@@ -6,6 +6,42 @@ const { authenticateToken } = require("../../authMiddleware.js");
 const { buildUserContext } = require("../../tenantHelper.js");
 const stockMovement = require("../../services/stockMovementService.js");
 const { logAudit } = require("../../services/auditIntegration.js");
+const { getAuditFlag } = require("../../services/auditFlagService.js");
+
+const INWARD_HEADER_BLACKLIST = [
+  "id",
+  "company",
+  "entryno",
+  "user",
+  "deleted",
+  "deleted_at",
+  "deleted_by",
+];
+
+const INWARD_PRODUCT_BLACKLIST = [
+  "id",
+  "company",
+  "inward_id",
+  "visibility",
+  "outward",
+  "outward_parent",
+  "purchased_pcs",
+  "purchased_carat",
+  "memo_pcs",
+  "memo_carat",
+  "sold_pcs",
+  "sold_carat",
+  "onhand_pcs",
+  "onhand_carat",
+  "site_upload",
+  "rapnet_upload",
+  "is_uploadsite",
+  "is_uploadrapnet",
+  "deleted",
+  "deleted_at",
+  "deleted_by",
+];
+
 const inwardRouter = express.Router();
 const moment = require("moment");
 inwardRouter.use(express.json({ limit: "150mb" }));
@@ -274,6 +310,28 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
   const userid = ctx.userId || 1;
   const post = body;
 
+  const stripInwardKeysFlag = getAuditFlag("FLAG_STRIP_INWARD_KEYS");
+  if (stripInwardKeysFlag !== "OFF") {
+    const strippedHeaderKeys = INWARD_HEADER_BLACKLIST.filter((k) =>
+      Object.prototype.hasOwnProperty.call(post, k)
+    );
+    if (strippedHeaderKeys.length > 0) {
+      if (stripInwardKeysFlag === "LOG_ONLY") {
+        try {
+          console.warn(
+            "[AUDIT_FLAG:FLAG_STRIP_INWARD_KEYS] Inward header contains blacklisted client keys:",
+            {
+              userId: userid,
+              keys: strippedHeaderKeys,
+            }
+          );
+        } catch (_) {}
+      } else if (stripInwardKeysFlag === "ENFORCE") {
+        strippedHeaderKeys.forEach((k) => delete post[k]);
+      }
+    }
+  }
+
   try {
     const { resolveOperatingCompanyId } = require("../../tenantHelper.js");
     if (!post.operating_company_id && !post.operating_company && !post.tenant_company_id) {
@@ -470,6 +528,27 @@ inwardRouter.post("/inward/save", authenticateToken, async (req, res) => {
         iTotal += itemAmount;
         iCarat += itemCarat;
         if (itemPcs) iPcs += itemPcs;
+
+        if (stripInwardKeysFlag !== "OFF") {
+          const strippedProductKeys = INWARD_PRODUCT_BLACKLIST.filter((k) =>
+            Object.prototype.hasOwnProperty.call(r, k)
+          );
+          if (strippedProductKeys.length > 0) {
+            if (stripInwardKeysFlag === "LOG_ONLY") {
+              try {
+                console.warn(
+                  "[AUDIT_FLAG:FLAG_STRIP_INWARD_KEYS] Inward product row contains blacklisted client keys:",
+                  {
+                    sku: r.sku,
+                    keys: strippedProductKeys,
+                  }
+                );
+              } catch (_) {}
+            } else if (stripInwardKeysFlag === "ENFORCE") {
+              strippedProductKeys.forEach((k) => delete r[k]);
+            }
+          }
+        }
 
         r.date = new Date().toISOString().slice(0, 19).replace("T", " ");
         r.inward_id = lid;

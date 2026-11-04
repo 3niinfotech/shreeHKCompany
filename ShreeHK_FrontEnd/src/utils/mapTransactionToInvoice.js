@@ -1,10 +1,7 @@
 import useAuthStore from "../store/Auth.Store";
+import { formatDateDisplay } from "./dateDisplayFormat";
 
-const fmtDate = (value) => {
-  if (!value) return "—";
-  const str = String(value);
-  return str.length >= 10 ? str.slice(0, 10) : str;
-};
+const fmtDate = (value) => formatDateDisplay(value, "—");
 
 const toNumber = (value) => {
   const n = Number(value);

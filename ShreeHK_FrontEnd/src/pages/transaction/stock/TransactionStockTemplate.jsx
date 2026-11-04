@@ -23,6 +23,7 @@ import { useFetchApi, useDeleteApiRequest, usePostApiRequest } from '../../../ap
 import { api } from '../../../api/client/axiosInstance';
 import { ENDPOINTS, QUERY_KEYS } from '../../../api/endpoints';
 import { ConfirmDeleteModal, BaseModal } from '../../../components/common/modals';
+import EnableEditButton from '../../../components/common/ui/EnableEditButton';
 import DynamicForm from '../../../components/common/ui/DynamicFormField';
 import GiaReturnModal from '../../../components/transaction/stock/GiaReturnModal';
 import MemoConvertModal from '../../../components/transaction/stock/MemoConvertModal';
@@ -40,6 +41,7 @@ import { Pencil, CircleCheck } from 'lucide-react';
 import { cssVar } from '../../../theme';
 import styles from '../../../assets/scss/pages/outward.module.scss';
 import { SkuLink } from '../../../hooks/useSkuModalAction';
+import { calculateAmount } from '../../../utils/diamondCalculations';
 import { resolveCompanyLogoUrl } from '../../../utils/companyLogo';
 import '../../../assets/scss/masterEdit.scss';
 
@@ -53,7 +55,6 @@ export const defaultProductColumns = [
   { title: 'Sr No', key: 'srNo', width: 70, align: 'center', render: (_, __, index) => index + 1 },
   { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 120, render: (text, record) => <SkuLink sku={text} record={record} /> },
   { title: 'Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', width: 60, align: 'center', render: (v, row) => (v != null ? Number(v) : (row.pcs ?? row.purchase_pcs ?? row.rought_pcs ?? 0)) },
-  { title: 'Shape', dataIndex: 'shape', key: 'shape', width: 80, align: 'center', render: (v, row) => v || row.shape || '-' },
   { title: 'Carat', dataIndex: 'polish_carat', key: 'polish_carat', width: 90, align: 'center', render: (v, row) => { const c = v != null && v !== '' ? Number(v) : (row.purchase_carat ?? row.carat ?? row.rought_carat); return c != null && !isNaN(c) ? Number(c).toFixed(2) : '-'; } },
   { title: 'Color', dataIndex: 'color', key: 'color', width: 90, align: 'center', render: (v, row) => v || row.color || row.main_color || '-' },
   { title: 'Clarity', dataIndex: 'clarity', key: 'clarity', width: 90, align: 'center', render: (v, row) => v || row.clarity || '-' },
@@ -61,6 +62,7 @@ export const defaultProductColumns = [
   { title: 'Price', dataIndex: 'sell_price', key: 'sell_price', width: 100, align: 'right', render: (v, row) => { const p = v || row.sell_price || row.purchase_price || row.price; return p != null && p !== '' ? (typeof p === 'number' ? p.toFixed(2) : p) : '-'; } },
   { title: 'Amount', dataIndex: 'sell_amount', key: 'sell_amount', width: 100, align: 'right', render: (v, row) => { const a = v || row.sell_amount || row.purchase_amount || row.amount; return a != null && a !== '' ? (typeof a === 'number' ? a.toFixed(2) : a) : '-'; } },
   { title: 'Certificate', dataIndex: 'report_no', key: 'report_no', width: 130, render: (v, row) => v || row.report_no || row.certificate || '-' },
+  { title: 'Shape', dataIndex: 'shape', key: 'shape', width: 80, align: 'center', render: (v, row) => v || row.shape || '-' },
   { title: 'Lab', dataIndex: 'lab', key: 'lab', width: 80, render: (v, row) => v || row.lab || '-' },
   { title: 'Location', dataIndex: 'location', key: 'location', width: 100, render: (v, row) => v || row.location || row.loc || '-' },
   { title: 'Intensity', dataIndex: 'intensity', key: 'intensity', width: 80, align: 'center', render: (v, row) => v || row.intensity || row.f_intensity || '-' },
@@ -184,6 +186,7 @@ const TransactionStockTemplate = ({
   });
   const [toExportLoading, setToExportLoading] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isEditEnabled, setIsEditEnabled] = useState(false);
   const [editId, setEditId] = useState(null);
   const [editingRecord, setEditingRecord] = useState(null);
   const [fetchedProducts, setFetchedProducts] = useState([]);
@@ -377,6 +380,17 @@ const TransactionStockTemplate = ({
       intensity: p.intensity ?? "",
       overtone: p.overtone ?? "",
       color: p.color ?? p.main_color ?? "",
+      size: p.size ?? "",
+      polish: p.polish ?? "",
+      symm: p.symm ?? p.symmentry ?? p.symmetry ?? "",
+      cut: p.cut ?? "",
+      floIntensity: p.floIntensity ?? p.f_intensity ?? p.flo_intensity ?? p.fluorescence ?? "",
+      measurements: p.measurements ?? p.measurement ?? p.mesurment ?? "",
+      tablePer: p.tablePer ?? p.table_pc ?? p.table_pct ?? "",
+      depthPer: p.depthPer ?? p.depth_pc ?? p.depth_pct ?? "",
+      girdle: p.girdle ?? p.gridle ?? p.griddle_pc ?? "",
+      bgm: p.bgm ?? "",
+      eyeclean: p.eyeclean ?? p.eye_clean ?? "",
     }));
 
     const rawCompany = details.company != null && details.company !== ''
@@ -647,21 +661,48 @@ const TransactionStockTemplate = ({
     // 5 fields per row (account for Row gutter)
     const c5 = '1 1 calc(20% - 13px)';
     if (isVenyaSaleEdit) {
-      // Match Venya sform.php header (no Type field — type is hidden)
+      // User specified sequence: Company, Invoice No, Reference, Sale, Invoice Date, Terms, Due Date, Party, Other Party, Paid Amount, Due Amount
       return [
-        { name: 'entryno', label: 'Entry', type: 'text', required: true, flex: c5, disabled: true },
         { name: 'company', label: 'Company', type: 'text', flex: c5, disabled: true },
-        { name: 'place', label: 'Sale @', type: 'text', flex: c5 },
-        { name: 'date', label: 'Date', type: 'date', required: true, flex: c5 },
+        { name: 'invoiceno', label: 'Invoice No', type: 'text', required: true, flex: c5, disabled: true },
         { name: 'reference', label: 'Reference', type: 'text', flex: c5 },
-        { name: 'invoiceno', label: 'Invoice No.', type: 'text', required: true, flex: c5, disabled: true },
+        { name: 'place', label: 'Sale', type: 'text', flex: c5 },
         { name: 'invoicedate', label: 'Invoice Date', type: 'date', flex: c5 },
         { name: 'terms', label: 'Terms', type: 'text', flex: c5 },
         { name: 'duedate', label: 'Due Date', type: 'date', flex: c5 },
-        { name: 'paid_amount', label: 'Paid Amount', type: 'number', flex: c5 },
-        { name: 'due_amount', label: 'Due Amount', type: 'number', flex: c5 },
-        { name: 'party', label: 'Party Name', type: 'select', options: partyOptions, required: true, flex: c5 },
+        { name: 'party', label: 'Party', type: 'select', options: partyOptions, required: true, flex: c5 },
         { name: 'other_party', label: 'Other Party', type: 'select', options: partyOptions, flex: c5 },
+        { name: 'paid_amount', label: 'Paid Amount', type: 'number', flex: c5, disabled: true },
+        { name: 'due_amount', label: 'Due Amount', type: 'number', flex: '0 0 calc(20% - 13px)', disabled: true },
+        {
+          type: 'custom',
+          noFormItem: true,
+          flex: '0 0 calc(40% - 10px)',
+          render: () => (
+            <Form.Item
+              label="Bank"
+              colon={false}
+            >
+              <div className={`${styles.stockEditBankSlot} ${styles.stockEditBankSlotWide}`}>
+                {editCompanyBanks.length > 0 ? (
+                  <Form.Item name="selected_bank_indices" noStyle>
+                    <Checkbox.Group
+                      style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}
+                      options={editCompanyBanks.map((b, idx) => ({
+                        label: b.bank_label || b.bank_name || `Bank #${idx + 1}`,
+                        value: idx,
+                      }))}
+                    />
+                  </Form.Item>
+                ) : (
+                  <span style={{ fontSize: '12px', color: 'var(--color-text-muted, #8c8c8c)', fontStyle: 'italic', whiteSpace: 'nowrap' }}>
+                    No bank details added for this company
+                  </span>
+                )}
+              </div>
+            </Form.Item>
+          ),
+        },
       ];
     }
     return [
@@ -900,6 +941,7 @@ const TransactionStockTemplate = ({
   const handleEditClick = (record) => {
     setEditingRecord(record);
     setEditId(record.id);
+    setIsEditEnabled(false);
     setIsEditModalOpen(true);
     setFetchedProducts([]);
     setOriginalSproducts('');
@@ -991,6 +1033,17 @@ const TransactionStockTemplate = ({
           intensity: p.intensity ?? "",
           overtone: p.overtone ?? "",
           color: p.color ?? p.main_color ?? "",
+          size: p.size ?? "",
+          polish: p.polish ?? "",
+          symm: p.symm ?? p.symmentry ?? p.symmetry ?? "",
+          cut: p.cut ?? "",
+          floIntensity: p.floIntensity ?? p.f_intensity ?? p.flo_intensity ?? p.fluorescence ?? "",
+          measurements: p.measurements ?? p.measurement ?? p.mesurment ?? "",
+          tablePer: p.tablePer ?? p.table_pc ?? p.table_pct ?? "",
+          depthPer: p.depthPer ?? p.depth_pc ?? p.depth_pct ?? "",
+          girdle: p.girdle ?? p.gridle ?? p.griddle_pc ?? "",
+          bgm: p.bgm ?? "",
+          eyeclean: p.eyeclean ?? p.eye_clean ?? "",
         };
         return updated;
       });
@@ -1012,6 +1065,7 @@ const TransactionStockTemplate = ({
   const closeEditModal = () => {
     Object.values(skuLookupDebounceTimers.current).forEach(clearTimeout);
     skuLookupDebounceTimers.current = {};
+    setIsEditEnabled(false);
     setIsEditModalOpen(false);
     setEditId(null);
     setEditingRecord(null);
@@ -1028,7 +1082,7 @@ const TransactionStockTemplate = ({
       if (field === "sell_price" || field === "polish_carat") {
         const price = Number(field === "sell_price" ? value : row.sell_price ?? row.price) || 0;
         const carat = Number(field === "polish_carat" ? value : row.polish_carat) || 0;
-        row.sell_amount = (price * carat).toFixed(2);
+        row.sell_amount = calculateAmount(carat, price).toFixed(2);
         row.amount = row.sell_amount;
       }
       updated[index] = row;
@@ -1076,6 +1130,17 @@ const TransactionStockTemplate = ({
         intensity: "",
         overtone: "",
         color: "",
+        size: "",
+        polish: "",
+        symm: "",
+        cut: "",
+        floIntensity: "",
+        measurements: "",
+        tablePer: "",
+        depthPer: "",
+        girdle: "",
+        bgm: "",
+        eyeclean: "",
       },
     ]);
   };
@@ -1139,6 +1204,7 @@ const TransactionStockTemplate = ({
           type={opts.type || "text"}
           value={val ?? ""}
           placeholder={opts.placeholder || ""}
+          disabled={opts.disabled || !isEditEnabled}
           className={styles.stockEditCellInput}
           onChange={(e) => handleProductFieldChange(idx, field, e.target.value)}
           onBlur={field === "sku" ? (e) => handleSkuLookup(idx, e.target.value, false) : undefined}
@@ -1147,6 +1213,7 @@ const TransactionStockTemplate = ({
       ),
     });
 
+    // Master 29 Product Table Columns matching MemoConvertModal.jsx
     const cols = [
       {
         title: "No",
@@ -1156,38 +1223,34 @@ const TransactionStockTemplate = ({
         align: "center",
         render: (_v, _r, idx) => idx + 1,
       },
-      ...(isVenyaSaleEditGrid
-        ? [
-          textCol("SKU", "sku", 120, { fixed: "left", placeholder: "SKU" }),
-          textCol("P.Pcs", "polish_pcs", 80, { type: "number", placeholder: "0" }),
-          textCol("P.Carat", "polish_carat", 90, { type: "number", placeholder: "0.00" }),
-          textCol("Cost", "cost", 90, { type: "number", placeholder: "0.00" }),
-          textCol("Price", "sell_price", 90, { type: "number", placeholder: "0.00" }),
-          textCol("Amount", "sell_amount", 100, { type: "number", placeholder: "0.00" }),
-          textCol("LOC", "location", 90, { placeholder: "LOC" }),
-          textCol("Remark", "remark", 650, { placeholder: "Remark" }),
-          textCol("Lab", "lab", 80, { placeholder: "Lab" }),
-        ]
-        : [
-          textCol("Mfg. code", "mfg_code", 100, { fixed: "left", placeholder: "Mfg" }),
-          textCol("D. No.", "diamond_no", 90, { fixed: "left", placeholder: "D.No" }),
-          textCol("SKU", "sku", 120, { fixed: "left", placeholder: "SKU" }),
-          textCol("Pcs", "polish_pcs", 80, { type: "number", placeholder: "0" }),
-          textCol("Carat", "polish_carat", 90, { type: "number", placeholder: "0.00" }),
-          textCol("Cost", "cost", 90, { type: "number", placeholder: "0.00" }),
-          textCol("Price", "sell_price", 90, { type: "number", placeholder: "0.00" }),
-          textCol("Amount", "sell_amount", 100, { type: "number", placeholder: "0.00" }),
-          textCol("LOC", "location", 90, { placeholder: "LOC" }),
-          textCol("Remark", "remark", 650, { placeholder: "Remark" }),
-          textCol("Lab", "lab", 80, { placeholder: "Lab" }),
-          textCol("Group Type", "group_type", 100, { placeholder: "Group" }),
-          textCol("Report No.", "report_no", 110, { placeholder: "Report" }),
-          textCol("Shape", "shape", 90, { placeholder: "Shape" }),
-          textCol("Clarity", "clarity", 90, { placeholder: "Clarity" }),
-          textCol("Intensity", "intensity", 90, { placeholder: "Intensity" }),
-          textCol("Overtone", "overtone", 90, { placeholder: "Overtone" }),
-          textCol("Color", "color", 80, { placeholder: "Color" }),
-        ]),
+      textCol("Mfg. code", "mfg_code", 100, { placeholder: "Mfg" }),
+      textCol("D. No.", "diamond_no", 90, { placeholder: "D.No" }),
+      textCol("SKU", "sku", 240, { fixed: "left", placeholder: "SKU" }),
+      textCol("Pcs", "polish_pcs", 105, { type: "number", placeholder: "0" }),
+      textCol("Carat", "polish_carat", 115, { type: "number", placeholder: "0.00" }),
+      textCol("Cost", "cost", 120, { type: "number", placeholder: "0.00" }),
+      textCol("Price", "sell_price", 120, { type: "number", placeholder: "0.00" }),
+      textCol("Amount", "sell_amount", 130, { type: "number", placeholder: "0.00" }),
+      textCol("LOC", "location", 90, { placeholder: "LOC" }),
+      textCol("Report No.", "report_no", 110, { placeholder: "Report No." }),
+      textCol("Shape", "shape", 110, { placeholder: "Shape" }),
+      textCol("Clarity", "clarity", 80, { placeholder: "Clarity" }),
+      textCol("Intensity", "intensity", 90, { placeholder: "Intensity" }),
+      textCol("Overtone", "overtone", 90, { placeholder: "Overtone" }),
+      textCol("Lab", "lab", 70, { placeholder: "Lab" }),
+      textCol("Color", "color", 80, { placeholder: "Color" }),
+      textCol("Size", "size", 70, { placeholder: "Size" }),
+      textCol("Polish", "polish", 70, { placeholder: "Polish" }),
+      textCol("Symm", "symm", 70, { placeholder: "Symm" }),
+      textCol("Cut", "cut", 70, { placeholder: "Cut" }),
+      textCol("Flo. Intensity", "floIntensity", 110, { placeholder: "Flo. Intensity" }),
+      textCol("Measurements", "measurements", 180, { placeholder: "Measurements" }),
+      textCol("Table%", "tablePer", 70, { placeholder: "Table%" }),
+      textCol("Depth%", "depthPer", 70, { placeholder: "Depth%" }),
+      textCol("Gridle", "girdle", 80, { placeholder: "Gridle" }),
+      textCol("BGM", "bgm", 60, { placeholder: "BGM" }),
+      textCol("Eyeclean", "eyeclean", 80, { placeholder: "Eyeclean" }),
+      textCol("Remark", "remark", 650, { placeholder: "Remark" }),
     ];
 
     if (allowAddProductInEdit) {
@@ -1202,6 +1265,7 @@ const TransactionStockTemplate = ({
             type="text"
             danger
             size="small"
+            disabled={!isEditEnabled}
             icon={<DeleteOutlined />}
             onClick={() => handleRemoveProductRow(idx)}
             aria-label="Remove row"
@@ -1210,7 +1274,7 @@ const TransactionStockTemplate = ({
       });
     }
     return cols;
-  }, [allowAddProductInEdit, isVenyaSaleEditGrid, handleSkuLookup]);
+  }, [allowAddProductInEdit, isVenyaSaleEditGrid, handleSkuLookup, isEditEnabled]);
 
   const editProductSkeletonColumns = useMemo(
     () =>
@@ -1279,7 +1343,8 @@ const TransactionStockTemplate = ({
         sc: scVal,
         boc_sksm: values.boc_sksm ? 1 : 0,
         citi_sksm: values.citi_sksm ? 1 : 0,
-        date: values.date?.format?.('YYYY-MM-DD') ?? values.date,
+        date: values.date?.format?.('YYYY-MM-DD') ?? values.date ?? (editingRecord?.date ? dayjs(editingRecord.date).format('YYYY-MM-DD') : undefined),
+        entryno: values.entryno ?? editingRecord?.entryno,
         invoicedate: values.invoicedate?.format?.('YYYY-MM-DD') ?? values.invoicedate,
         duedate: values.duedate?.format?.('YYYY-MM-DD') ?? values.duedate,
         shipping_charge: values.shipping_charge ?? 0,
@@ -1693,6 +1758,25 @@ const TransactionStockTemplate = ({
       key: 'invoiceno',
       width: actions.invoiceWidth || 130,
       ellipsis: true,
+      render: (v, record) => {
+        if (!v) return '-';
+        return (
+          <a
+            href={`#invoice-${v}`}
+            role="button"
+            className={styles.invoice}
+            style={{ fontWeight: 600, textDecoration: 'none' }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              openInvoice(record);
+            }}
+            title={`View Invoice ${v}`}
+          >
+            {v}
+          </a>
+        );
+      },
     },
     {
       title: 'Reference',
@@ -2305,6 +2389,12 @@ const TransactionStockTemplate = ({
           title={editModalTitle}
           subtitle={editModalSubtitle}
           variant="edit"
+          extraHeaderRight={(
+            <EnableEditButton
+              isEnabled={isEditEnabled}
+              onToggle={() => setIsEditEnabled((prev) => !prev)}
+            />
+          )}
           headerIcon={<Pencil size={16} strokeWidth={2} />}
           saveIcon={<CircleCheck size={15} strokeWidth={2.25} />}
           isOpen={isEditModalOpen}
@@ -2339,40 +2429,12 @@ const TransactionStockTemplate = ({
                   -webkit-text-fill-color: #e2e8f0 !important;
                 }
               `}</style>
-              <Form form={editForm} layout="vertical" className={`edit-modal-form-readable ${styles.stockEditForm}`}>
+              <Form form={editForm} layout="vertical" disabled={!isEditEnabled} className={`edit-modal-form-readable ${styles.stockEditForm}`}>
                 {isEditLoading ? (
                   <SkeletonForm fields={6} />
                 ) : (
                   <>
-                    <DynamicForm fields={editMainFields} />
-                    {isVenyaSaleEdit ? (
-                      <Row gutter={[16, 0]} className={styles.stockEditPayRow}>
-                        <Col span={24}>
-                          <Form.Item
-                            label={<span className={styles.stockEditBankLabel}>Bank</span>}
-                            colon={false}
-                          >
-                            <div className={`${styles.stockEditBankSlot} ${styles.stockEditBankSlotWide}`}>
-                              {editCompanyBanks.length > 0 ? (
-                                <Form.Item name="selected_bank_indices" noStyle>
-                                  <Checkbox.Group
-                                    style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}
-                                    options={editCompanyBanks.map((b, idx) => ({
-                                      label: b.bank_label || b.bank_name || `Bank #${idx + 1}`,
-                                      value: idx,
-                                    }))}
-                                  />
-                                </Form.Item>
-                              ) : (
-                                <span style={{ fontSize: '11px', color: 'var(--color-text-muted, #8c8c8c)', fontStyle: 'italic', whiteSpace: 'nowrap' }}>
-                                  No bank details added for this company
-                                </span>
-                              )}
-                            </div>
-                          </Form.Item>
-                        </Col>
-                      </Row>
-                    ) : null}
+                    <DynamicForm fields={editMainFields.map((f) => ({ ...f, disabled: Boolean(f.disabled) || !isEditEnabled }))} />
                   </>
                 )}
                 <div className={styles.stockEditProductsHead}>
@@ -2381,6 +2443,7 @@ const TransactionStockTemplate = ({
                     <Button
                       type="primary"
                       size="small"
+                      disabled={!isEditEnabled}
                       icon={<PlusOutlined />}
                       className={styles.stockEditAddProductBtn}
                       onClick={handleAddProductRow}
@@ -2398,7 +2461,7 @@ const TransactionStockTemplate = ({
                     rowKey={(r) => r.id ?? r._tempId}
                     pagination={false}
                     size="small"
-                    scroll={{ x: isVenyaSaleEditGrid ? 1510 : 2430, y: 180 }}
+                    scroll={{ x: 3350, y: 180 }}
                     locale={
                       allowAddProductInEdit
                         ? { emptyText: 'No products — click Add New Data' }
@@ -2414,14 +2477,12 @@ const TransactionStockTemplate = ({
                         <span>Amount : <b>{editProductTotals.amount.toFixed(2)}</b></span>
                       </div>
                       {!isVenyaSaleEdit ? (
-                        <Form.Item
-                          name="narretion"
-                          label="Narration"
-                          colon={false}
-                          className={styles.stockEditTotalsNarration}
-                        >
-                          <Input placeholder="Enter Narration" allowClear />
-                        </Form.Item>
+                        <div className={styles.stockEditTotalsNarration}>
+                          <span className={styles.stockEditTotalsNarrationLabel}>Narration</span>
+                          <Form.Item name="narretion" noStyle>
+                            <Input placeholder="Enter Narration" allowClear />
+                          </Form.Item>
+                        </div>
                       ) : null}
                     </div>
                   ) : null}

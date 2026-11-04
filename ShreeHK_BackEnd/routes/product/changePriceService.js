@@ -1,6 +1,7 @@
 const helper = require("../../helper.js");
 const repository = require("./changePriceRepository.js");
 const { logBulkRowAudit } = require("../../services/auditIntegration.js");
+const { resolveListCompanyIds } = require("../../tenantHelper.js");
 
 const toNumber = (value) => {
   if (value === "" || value === null || value === undefined) return null;
@@ -38,6 +39,7 @@ const updatePrice = async (productMap, userContext) => {
   let result = 0;
   const skuList = [];
   const pidList = [];
+  const companyIds = await resolveListCompanyIds(userContext, userContext?.companyId || 1);
 
   for (const [pidKey, entry] of Object.entries(productMap)) {
     const pid = toNumber(pidKey);
@@ -46,15 +48,14 @@ const updatePrice = async (productMap, userContext) => {
     const isAllEmpty = entry?.price === "" && entry?.cost === "" && entry?.rap_price === "";
     if (isAllEmpty) continue;
 
-    const companyId = userContext?.companyId || null;
-    const detail = await repository.getProductDetail(pid, companyId);
+    const detail = await repository.getProductDetail(pid, companyIds);
     if (!detail) continue;
 
     pidList.push(pid);
     skuList.push(detail.sku);
 
     const { updates, hasPrice } = buildUpdatePayload(entry, detail);
-    result = await repository.updateProductById(pid, updates, companyId);
+    result = await repository.updateProductById(pid, updates, detail.company);
 
     if (hasPrice) {
       const oldPrice = detail.price;
@@ -78,16 +79,18 @@ const updatePrice = async (productMap, userContext) => {
     }
   }
 
-  await helper.addUserTrack({
-    product_id: pidList.join(","),
-    action: "price_change",
-    date: new Date(),
-    description: `cost price or base price are changed of ${skuList.join(",")}`,
-    user: userContext.userId,
-    company: userContext.companyId,
-  });
+  if (pidList.length > 0) {
+    await helper.addUserTrack({
+      product_id: pidList.join(","),
+      action: "price_change",
+      date: new Date(),
+      description: `cost price or base price are changed of ${skuList.join(",")}`,
+      user: userContext.userId,
+      company: userContext.companyId,
+    });
+  }
 
-  return result;
+  return { updatedCount: pidList.length, result };
 };
 
 module.exports = {

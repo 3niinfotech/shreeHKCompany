@@ -44,8 +44,8 @@ Roll.get('/permission-registry', authenticateToken, isSuperAdmin, (req, res) => 
 Roll.get('/role-list', authenticateToken, isSuperAdmin, async (req, res) => {
     try {
         const [rolesRows, companies] = await Promise.all([
-            helper.query(`SELECT id, name, resource, date, company FROM roll ORDER BY id ASC`),
-            metaQuery('SELECT id, name FROM company ORDER BY name ASC').catch(() => []),
+            helper.query(`SELECT id, name, resource, date, company FROM roll WHERE (deleted = 0 OR deleted IS NULL) ORDER BY id ASC`),
+            metaQuery('SELECT id, name FROM company WHERE (deleted = 0 OR deleted IS NULL) ORDER BY name ASC').catch(() => []),
         ]);
 
         const roles = rolesRows.map(mapRoleRow);
@@ -91,7 +91,7 @@ Roll.post('/role-add', authenticateToken, isSuperAdmin, async (req, res) => {
 
     try {
         const existing = await helper.query(
-            `SELECT id FROM roll WHERE name = ? AND company = ?`,
+            `SELECT id FROM roll WHERE name = ? AND company = ? AND (deleted = 0 OR deleted IS NULL)`,
             [name, JSON.stringify(company)],
         );
         if (existing.length > 0) {
@@ -229,7 +229,7 @@ Roll.put('/role-update/:id', authenticateToken, isSuperAdmin, async (req, res) =
 });
 
 // DELETE /role-delete/:id
-const deleteRoleById = async (id, res) => {
+const deleteRoleById = async (id, res, deletedBy = null) => {
     if (!id || isNaN(id)) {
         return res.status(400).json({ status: false, message: 'Invalid role ID' });
     }
@@ -242,15 +242,26 @@ const deleteRoleById = async (id, res) => {
     }
 
     try {
-        const exists = await helper.query('SELECT id, name FROM roll WHERE id = ?', [id]);
+        const userCount = await helper.query(
+            "SELECT COUNT(*) AS total FROM user WHERE roll = ? AND (deleted = 0 OR deleted IS NULL)",
+            [id]
+        );
+        if (Number(userCount[0]?.total) > 0) {
+            return res.status(400).json({
+                status: false,
+                message: `Cannot delete role: ${userCount[0].total} user(s) are currently assigned to this role.`
+            });
+        }
+
+        const exists = await helper.query('SELECT id, name FROM roll WHERE id = ? AND (deleted = 0 OR deleted IS NULL)', [id]);
         if (exists.length === 0) {
             return res.status(404).json({ status: false, message: 'Role not found' });
         }
 
         await helper.runInTransaction(async (q) => {
-            const rows = await q("SELECT * FROM roll WHERE id = ?", [id]);
+            const rows = await q("SELECT * FROM roll WHERE id = ? AND (deleted = 0 OR deleted IS NULL)", [id]);
             const oldRow = rows[0];
-            await q('DELETE FROM roll WHERE id = ?', [id]);
+            await q('UPDATE roll SET deleted = 1, deleted_at = NOW(), deleted_by = ? WHERE id = ? AND (deleted = 0 OR deleted IS NULL)', [deletedBy, id]);
             await logAuditInTx(q, {
                 actionType: "DELETE",
                 moduleName: "Role",
@@ -278,7 +289,7 @@ const deleteRoleById = async (id, res) => {
 
 Roll.delete('/role-delete', authenticateToken, isSuperAdmin, (req, res) => {
     const id = req.query.deleteId || req.query.id;
-    deleteRoleById(id, res);
+    deleteRoleById(id, res, req.user?.user_id || null);
 });
 
 Roll.delete('/role-delete/:id', authenticateToken, isSuperAdmin, (req, res) => {

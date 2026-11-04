@@ -93,6 +93,7 @@ const parseCompanyBanks = (company) => {
 const TenantCompanyList = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [isEditEnabled, setIsEditEnabled] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerCompany, setDrawerCompany] = useState(null);
   const [form] = Form.useForm();
@@ -277,20 +278,28 @@ const TenantCompanyList = () => {
   };
 
   const modalTitle = (
-    <div className={styles.modalTitle}>
-      <span className={styles.modalTitleIcon}>
-        <BankOutlined />
-      </span>
-      <div>
-        <div className={styles.modalTitleText}>
-          {editing ? "Edit Company" : "Add New Company"}
+    <div className={styles.modalTitle} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span className={styles.modalTitleIcon}>
+          <BankOutlined />
+        </span>
+        <div>
+          <div className={styles.modalTitleText}>
+            {editing ? "Edit Company" : "Add New Company"}
+          </div>
+          <Text className={styles.modalTitleSub}>
+            {editing
+              ? "Update tenant company profile and registration details."
+              : "Create a new tenant company for portal context mapping."}
+          </Text>
         </div>
-        <Text className={styles.modalTitleSub}>
-          {editing
-            ? "Update tenant company profile and registration details."
-            : "Create a new tenant company for portal context mapping."}
-        </Text>
       </div>
+      {editing ? (
+        <EnableEditButton
+          isEnabled={isEditEnabled}
+          onToggle={() => setIsEditEnabled((prev) => !prev)}
+        />
+      ) : null}
     </div>
   );
 
@@ -481,7 +490,7 @@ const TenantCompanyList = () => {
         <Modal
           title={modalTitle}
           open={modalOpen}
-          onCancel={() => { setModalOpen(false); form.resetFields(); }}
+          onCancel={() => { setIsEditEnabled(false); setModalOpen(false); form.resetFields(); }}
           footer={[
             <Button key="cancel" onClick={() => setModalOpen(false)} danger>Cancel</Button>,
             <Button key="save" type="primary" loading={isSaving} onClick={() => form.submit()} style={{ backgroundColor: "var(--color-success, #38a169)", borderColor: "var(--color-success, #38a169)", color: "#fff" }}>
@@ -499,6 +508,7 @@ const TenantCompanyList = () => {
           <Form 
             form={form} 
             layout="vertical" 
+            disabled={Boolean(editing) && !isEditEnabled}
             onFinish={handleSave} 
             onFinishFailed={(errorInfo) => {
               if (errorInfo.errorFields && errorInfo.errorFields.length > 0) {

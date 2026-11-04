@@ -970,13 +970,13 @@ async function getGroupReport(post, companyId, userId) {
     const productsClause =
       report === "close_memo" || report === "close_sale" ? "" : " AND products <> ''";
 
-    let sql = `SELECT * FROM dai_outward WHERE company = ?${userFilter}${statusSql}${typeSql}${partyFilter.sql}${dateCol.sql}${productsClause} ORDER BY date DESC, id DESC`;
+    let sql = `SELECT * FROM dai_outward WHERE company = ? AND (deleted = 0 OR deleted IS NULL)${userFilter}${statusSql}${typeSql}${partyFilter.sql}${dateCol.sql}${productsClause} ORDER BY date DESC, id DESC`;
     const values = [companyId];
     if (typeVal) values.push(typeVal);
     values.push(...partyFilter.values, ...dateCol.values);
 
     if (!typeVal) {
-      sql = `SELECT * FROM dai_outward WHERE company = ?${userFilter}${statusSql}${typeSql}${partyFilter.sql}${dateCol.sql}${productsClause} ORDER BY date DESC, id DESC`;
+      sql = `SELECT * FROM dai_outward WHERE company = ? AND (deleted = 0 OR deleted IS NULL)${userFilter}${statusSql}${typeSql}${partyFilter.sql}${dateCol.sql}${productsClause} ORDER BY date DESC, id DESC`;
     }
 
     // perf: outward rows and party map are independent reads
@@ -1185,7 +1185,7 @@ async function getStoneSaleReport(post, companyId) {
     values.push(post.invoice || post.invoiceNo);
   }
 
-  const outwardSql = `SELECT * FROM dai_outward WHERE products <> ''${companySql}
+  const outwardSql = `SELECT * FROM dai_outward WHERE products <> '' AND (deleted = 0 OR deleted IS NULL)${companySql}
     AND status NOT IN ('sale_close','close_sale','close_export')
     AND type IN ('sale','export')${partySql}${dateSql}${invoiceSql}
     ORDER BY date DESC, id DESC LIMIT ?`;
@@ -2505,11 +2505,11 @@ async function getFilterOptions(companyId) {
   // perf: main/sub group DISTINCT queries are independent
   const [mainGroups, subGroups] = await Promise.all([
     queryAsync(
-      "SELECT DISTINCT main_group AS value FROM dai_product WHERE company = ? AND main_group <> ''",
+      "SELECT DISTINCT main_group AS value FROM dai_product WHERE company = ? AND (deleted = 0 OR deleted IS NULL) AND main_group <> ''",
       [companyId]
     ),
     queryAsync(
-      "SELECT DISTINCT sub_group AS value FROM dai_product WHERE company = ? AND sub_group <> ''",
+      "SELECT DISTINCT sub_group AS value FROM dai_product WHERE company = ? AND (deleted = 0 OR deleted IS NULL) AND sub_group <> ''",
       [companyId]
     ),
   ]);
@@ -2625,7 +2625,7 @@ async function getOutwardTransactionRows(post, companyId, userId) {
   const productsClause =
     report === "close_memo" || report === "close_sale" ? "" : " AND products <> ''";
 
-  const outwardSql = `SELECT * FROM dai_outward WHERE company = ?${userFilter}${statusSql}${typeSql}${partyFilter.sql}${dateFilter.sql}${invoiceFilter.sql}${productsClause} ORDER BY date DESC, id DESC LIMIT ?`;
+  const outwardSql = `SELECT * FROM dai_outward WHERE company = ? AND (deleted = 0 OR deleted IS NULL)${userFilter}${statusSql}${typeSql}${partyFilter.sql}${dateFilter.sql}${invoiceFilter.sql}${productsClause} ORDER BY date DESC, id DESC LIMIT ?`;
   const outwardValues = [
     companyId,
     ...typeValues,

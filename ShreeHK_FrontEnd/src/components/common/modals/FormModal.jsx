@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Form } from "antd";
 import { toast } from "sonner";
 import DynamicFormField from "../../../components/common/ui/DynamicFormField";
+import EnableEditButton from "../ui/EnableEditButton";
 import BaseModal from "./BaseModal";
 
 /**
@@ -31,8 +32,14 @@ const FormModal = ({
     className,
     rootClassName,
 }) => {
+    const [isEditEnabled, setIsEditEnabled] = useState(false);
+
     useEffect(() => {
-        if (!isOpen) return;
+        if (!isOpen) {
+            setIsEditEnabled(false);
+            return;
+        }
+        setIsEditEnabled(false);
 
         if (initialValues && Object.keys(initialValues).length > 0) {
             form?.setFieldsValue(initialValues);
@@ -69,12 +76,17 @@ const FormModal = ({
     const resolvedFormKey =
         formKey ?? (initialValues?.id != null ? initialValues.id : initialValues ? "edit" : "add");
 
+    const isEdit = variant === "edit";
+
     const modalContent =
         content ??
         (Array.isArray(formFields) || formFields ? (
-            <Form form={form} layout="vertical" key={resolvedFormKey}>
+            <Form form={form} layout="vertical" disabled={isEdit && !isEditEnabled} key={resolvedFormKey}>
                 <DynamicFormField
-                    fields={formFields}
+                    fields={Array.isArray(formFields) ? formFields.map((f) => ({
+                        ...f,
+                        disabled: isEdit ? (Boolean(f.disabled) || !isEditEnabled) : Boolean(f.disabled),
+                    })) : formFields}
                     forceFullWidth={Array.isArray(formFields) && formFields.length <= 2}
                 />
             </Form>
@@ -88,7 +100,10 @@ const FormModal = ({
             saveIcon={saveIcon}
             variant={variant}
             isOpen={isOpen}
-            onClose={onClose}
+            onClose={() => {
+                setIsEditEnabled(false);
+                onClose?.();
+            }}
             onSave={handleSaveWithToast}
             loading={loading}
             contentLoading={contentLoading}
@@ -96,6 +111,12 @@ const FormModal = ({
             width={width}
             saveBtnText={saveBtnText}
             cancelBtnText={cancelBtnText}
+            extraHeaderRight={isEdit ? (
+                <EnableEditButton
+                    isEnabled={isEditEnabled}
+                    onToggle={() => setIsEditEnabled((prev) => !prev)}
+                />
+            ) : null}
             content={modalContent}
             className={className}
             rootClassName={rootClassName}

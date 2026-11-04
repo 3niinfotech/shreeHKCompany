@@ -5,7 +5,7 @@ const { metaQuery } = require("../tenantHelper.js");
  * Returns how many companies were moved.
  */
 async function reassignSuratCompanies() {
-  const branches = await metaQuery("SELECT id, name, status FROM branch ORDER BY id");
+  const branches = await metaQuery("SELECT id, name, status FROM branch WHERE (deleted = 0 OR deleted IS NULL) ORDER BY id");
   const surat = (branches || []).find(
     (b) => /^surat$/i.test(String(b.name || "").trim())
   );
@@ -33,7 +33,7 @@ async function reassignSuratCompanies() {
   if (!targets.length) return { moved: 0, detail: [], error: "No HK/Dubai target branch" };
 
   const companies = await metaQuery(
-    "SELECT id, name FROM company WHERE branch_id = ? ORDER BY id",
+    "SELECT id, name FROM company WHERE branch_id = ? AND (deleted = 0 OR deleted IS NULL) ORDER BY id",
     [surat.id]
   );
   if (!companies.length) return { moved: 0, detail: [] };

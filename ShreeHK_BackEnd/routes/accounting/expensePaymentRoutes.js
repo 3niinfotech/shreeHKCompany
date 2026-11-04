@@ -53,7 +53,7 @@ ExpansePayment.delete("/expanse-delete", authenticateToken, async (req, res) => 
       pageLabel: req.headers["x-audit-page-label"],
     };
 
-    const result = await expenseService.deleteExpensePayment(validation.id, companyId, auditContext);
+    const result = await expenseService.deleteExpensePayment(validation.id, companyId, auditContext, req.user?.user_id || null);
     res.status(result.status).json(result.data);
   } catch (err) {
     res.status(500).json({ error: err.message });

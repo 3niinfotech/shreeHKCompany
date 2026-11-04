@@ -21,16 +21,20 @@
 
 /** Tables that live in tenant DBs (company_year.db_name), keyed by company column */
 const TENANT_TABLES = [
-  // -- Inventory / Product ----------------------------------------------------
+  // -- Inventory / Product Children (Must be deleted BEFORE dai_product) ------
   { table: "dai_history",               moduleLabel: "Inventory/History",    dbScope: "tenant", deleteType: "subquery", parentTable: "dai_product", parentJoinColumn: "product_id", companyColumn: "company", deleteOrder: 1 },
-  { table: "dai_gia",                   moduleLabel: "Inventory/GIA",        dbScope: "tenant", deleteType: "gia_special", companyColumn: null, deleteOrder: 2 },
-  { table: "dai_product",               moduleLabel: "Inventory/Product",    dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 3 },
+  { table: "dai_product_value",         moduleLabel: "Inventory/ProductValue", dbScope: "tenant", deleteType: "subquery", parentTable: "dai_product", parentJoinColumn: "product_id", companyColumn: "company", deleteOrder: 1 },
+  { table: "dai_product_return",        moduleLabel: "Inventory/ProductReturn", dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 2 },
+  { table: "dai_balance",               moduleLabel: "Inventory/Balance",     dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 2 },
+  { table: "dai_inward_item",           moduleLabel: "Stock/InwardItem",     dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 3 },
+  { table: "dai_outward_item",          moduleLabel: "Stock/OutwardItem",    dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 4 },
+  { table: "dai_gia",                   moduleLabel: "Inventory/GIA",        dbScope: "tenant", deleteType: "gia_special", companyColumn: null, deleteOrder: 5 },
+  // -- Parent Product Table (Deleted AFTER all child items/subqueries) ---------
+  { table: "dai_product",               moduleLabel: "Inventory/Product",    dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 6 },
 
-  // -- Stock / Inward / Outward -----------------------------------------------
-  { table: "dai_inward_item",           moduleLabel: "Stock/InwardItem",     dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 4 },
-  { table: "dai_outward_item",          moduleLabel: "Stock/OutwardItem",    dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 5 },
-  { table: "dai_inward",                moduleLabel: "Stock/Inward",         dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 6 },
-  { table: "dai_outward",               moduleLabel: "Stock/Outward",        dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 7 },
+  // -- Stock / Inward / Outward Headers ---------------------------------------
+  { table: "dai_inward",                moduleLabel: "Stock/Inward",         dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 7 },
+  { table: "dai_outward",               moduleLabel: "Stock/Outward",        dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 8 },
 
   // -- Invoice / Sale ---------------------------------------------------------
   { table: "dai_invoice_item",          moduleLabel: "Invoice/Item",         dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 8 },
@@ -72,6 +76,26 @@ const TENANT_TABLES = [
 
   // -- Increment ID -----------------------------------------------------------
   { table: "dai_incrementid",           moduleLabel: "Settings/IncrementId", dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 32 },
+
+  // -- Accounting / Transactions (Children) -----------------------------------
+  { table: "acc_transaction_copy",      moduleLabel: "Accounting/TransactionCopy", dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 25 },
+  { table: "acc_transaction",           moduleLabel: "Accounting/Transaction", dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 25 },
+  { table: "acc_advance",               moduleLabel: "Accounting/AdvanceAcc", dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 25 },
+  { table: "dai_note",                  moduleLabel: "Accounting/Note",      dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 25 },
+
+  // -- Accounts / Master Groups (Parents) -------------------------------------
+  { table: "dai_book",                  moduleLabel: "Accounting/Book",      dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 33 },
+  { table: "acc_subgroup",              moduleLabel: "Accounting/SubGroup",  dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 34 },
+  { table: "acc_group",                 moduleLabel: "Accounting/Group",     dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 35 },
+  { table: "dai_party",                 moduleLabel: "Master/Party",         dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 36 },
+
+  // -- Master Catalogues ------------------------------------------------------
+  { table: "category",                  moduleLabel: "Master/Category",      dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 37 },
+  { table: "dai_attribute",             moduleLabel: "Master/Attribute",     dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 38 },
+  { table: "dai_currencyrate",          moduleLabel: "Master/CurrencyRate",  dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 39 },
+  { table: "dai_lab",                   moduleLabel: "Master/Lab",           dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 40 },
+  { table: "dai_origin",                moduleLabel: "Master/Origin",        dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 41 },
+  { table: "dai_shipping",              moduleLabel: "Master/Shipping",      dbScope: "tenant", deleteType: "direct", companyColumn: "company", deleteOrder: 42 },
 ];
 
 /**
@@ -91,7 +115,10 @@ const META_TABLES = [
 /**
  * Tables/data explicitly SKIPPED and why:
  *
- * - dai_activity_log         : Audit trail - must never be deleted (must preserve history)
+ * - dai_activity_log         : Audit trail - must never be deleted (permanent compliance & security audit trail)
+ * - roll                     : Roles handled by removeCompanyFromRolls (JSON array update, not delete)
+ * - company_demo             : Demo/seed table - template definitions, not tenant data
+ * - applist                  : System application definitions - shared global list
  * - company_year             : No company_id column; defines shared fiscal periods for ALL companies
  * - branch_year              : Shared fiscal year -> branch linkage; not per-company
  * - dai_rapnetprice          : Global shared price sheet - no company column
@@ -103,7 +130,6 @@ const META_TABLES = [
  * - dai_mail                 : Legacy PHP table - unused
  * - dai_errors               : Legacy PHP table - unused
  * - user                     : Users are global; deleting users is out of scope (clear company references only)
- * - roll                     : Roles handled by removeCompanyFromRolls (JSON array update, not delete)
  */
 
 module.exports = { TENANT_TABLES, META_TABLES };

@@ -9,9 +9,10 @@ import {
     buildActivityNarrative,
     formatActivityRelativeTime,
 } from "../../utils/activityLogFormatters";
+import { formatDateDisplay } from "../../utils/dateDisplayFormat";
 import styles from "../../assets/scss/pages/admin/userQuickInspect.module.scss";
 
-const formatDate = (value) => (value && dayjs(value).isValid() ? dayjs(value).format("DD-MMM-YYYY") : "—");
+const formatDate = (value) => formatDateDisplay(value);
 
 const getDisplayName = (user) => {
     const full = [user?.fname, user?.lname].filter(Boolean).join(" ").trim();

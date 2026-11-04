@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, Form, Input, Tag, Button, Switch, Tabs, Tooltip, Badge, Modal, Spin, Table } from 'antd';
 import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
-import { ReloadOutlined } from '@ant-design/icons';
+import { ReloadOutlined, FileTextOutlined } from '@ant-design/icons';
+import { fetchOutwardById } from '../../api/services/outwardService';
+import TransactionInvoicePreviewModal from '../../components/transaction/invoice/TransactionInvoicePreviewModal';
+import useAuthStore from '../../store/Auth.Store';
+import { hasPagePermission } from '../../config/permissionRegistry';
 import dayjs from 'dayjs';
 import {
     CircleDot, ScanText, History, BookOpen, Image,
@@ -37,7 +41,7 @@ const formatHistoryDateTime = (row) => {
         minute: '2-digit',
         second: '2-digit',
         hour12: false,
-    }).replace(',', '');
+    }).replace(',', '').replace(/\//g, '-');
 };
 
 const formatHistoryDate = (row) => {
@@ -136,10 +140,87 @@ const getInvoiceLinkForAction = (action, invoice) => {
     return `${path}?${params.toString()}`;
 };
 
-const renderInvoiceCell = (invoice, row, allRows, onJump) => {
+
+const KNOWN_INVOICE_PREFIXES = [
+    'ANT-INV-', 'ANT-MEMO-', 'ANT-LAB-',
+    'HK-INV-', 'HK-MEMO-', 'HK-LAB-',
+    'IND-INV-', 'IND-MEMO-', 'IND-LAB-',
+    'DXB-INV-', 'DXB-MEMO-', 'DXB-LAB-',
+    'USA-INV-', 'USA-MEMO-', 'USA-LAB-',
+    'ANT-', 'HK-', 'IND-', 'DXB-', 'USA-',
+    'INV-', 'MEMO-', 'LAB-', 'TRF-',
+];
+
+const stripExactInvoicePrefix = (value) => {
+    if (!value) return '';
+    const upper = String(value).trim().toUpperCase();
+    for (const prefix of KNOWN_INVOICE_PREFIXES) {
+        if (upper.startsWith(prefix)) {
+            return upper.slice(prefix.length);
+        }
+    }
+    return upper;
+};
+
+const isExactInvoiceMatch = (invA, invB) => {
+    const a = String(invA || '').trim().toUpperCase();
+    const b = String(invB || '').trim().toUpperCase();
+    if (!a || !b) return false;
+    if (a === b) return true;
+    const cleanA = stripExactInvoicePrefix(a);
+    const cleanB = stripExactInvoicePrefix(b);
+    return cleanA === cleanB;
+};
+
+const canViewInvoiceVoucher = (row, user, permissions) => {
+    if (!row) return false;
+    const inv = String(row.invoice || '').trim();
+    if (!inv || inv === '-' || inv === '—') return false;
+
+    if (user?.roll === 1 || permissions?.includes?.('all')) return true;
+
+    const action = String(row.action || '').toLowerCase().trim();
+    const entryFrom = String(row.entry_from || '').toLowerCase().trim();
+    const isInward = entryFrom === 'inward' || ['import', 'in_import', 'purchase', 'in_memo', 'in_consign'].includes(action);
+
+    if (isInward) {
+        return (
+            hasPagePermission(permissions, 'transaction.inward') ||
+            hasPagePermission(permissions, 'transaction.purchase_stock') ||
+            hasPagePermission(permissions, 'transaction.in_memo')
+        );
+    }
+
+    return (
+        hasPagePermission(permissions, 'outward.main') ||
+        hasPagePermission(permissions, 'transaction.sale_stock') ||
+        hasPagePermission(permissions, 'transaction.out_memo')
+    );
+};
+
+const renderInvoiceCell = (invoice, row, allRows, onJump, onOpenInvoice, canViewInvoice) => {
     const value = String(invoice || '').trim();
     if (!value) return '—';
     const to = getInvoiceLinkForAction(row?.action, value);
+    const showIcon = canViewInvoice ? canViewInvoice(row) : false;
+
+    const invoiceIcon = showIcon && onOpenInvoice ? (
+        <FileTextOutlined
+            style={{
+                cursor: 'pointer',
+                color: '#1677ff',
+                marginLeft: 4,
+                fontSize: 13,
+                flexShrink: 0,
+                verticalAlign: 'middle',
+            }}
+            onClick={(e) => {
+                e.stopPropagation();
+                onOpenInvoice(row);
+            }}
+            title={`View Invoice ${value}`}
+        />
+    ) : null;
 
     const hasRelatedRow = (allRows || []).some(
         (r) =>
@@ -164,6 +245,7 @@ const renderInvoiceCell = (invoice, row, allRows, onJump) => {
                 >
                     {value}
                 </button>
+                {invoiceIcon}
             </div>
         );
     }
@@ -182,6 +264,7 @@ const renderInvoiceCell = (invoice, row, allRows, onJump) => {
             ) : (
                 <span className={styles.invoiceText}>{value}</span>
             )}
+            {invoiceIcon}
         </div>
     );
 };
@@ -910,6 +993,10 @@ const StoneHistory = () => {
     const [showForm, setShowForm] = useState(true);
     const [activeTab, setActiveTab] = useState('history');
     const [historyRows, setHistoryRows] = useState([]);
+    const [invoiceModal, setInvoiceModal] = useState({ open: false, record: null, invoiceTitle: 'Sale Invoice', printType: 'sale' });
+    const authUser = useAuthStore((s) => s.user);
+    const authPermissions = useAuthStore((s) => s.permissions);
+    const authCompanyId = useAuthStore((s) => s.companyId);
     const [oldHistoryRows, setOldHistoryRows] = useState([]);
     const [highlightedRowKey, setHighlightedRowKey] = useState(null);
     const highlightTimerRef = React.useRef(null);
@@ -1248,6 +1335,162 @@ const StoneHistory = () => {
         );
     };
 
+
+    const handleOpenInvoiceModal = async (row) => {
+        const rawInvoice = String(row?.invoice || '').trim();
+        if (!rawInvoice || rawInvoice === '-' || rawInvoice === '—') return;
+
+        const action = String(row?.action || '').toLowerCase().trim();
+        const entryFrom = String(row?.entry_from || '').toLowerCase().trim();
+        const isInward = entryFrom === 'inward' || ['import', 'in_import', 'purchase', 'in_memo', 'in_consign'].includes(action);
+
+        let printType = 'sale';
+        let invoiceTitle = 'Sale Invoice';
+        if (['memo', 'memo_return', 'memo_close', 'consign', 'consign_return', 'consign_close'].includes(action)) {
+            printType = 'memo';
+            invoiceTitle = action.includes('consign') ? 'Consignment Note' : 'Memo Invoice';
+        } else if (['export', 'export_close'].includes(action)) {
+            printType = 'export';
+            invoiceTitle = 'Export Invoice';
+        } else if (['lab', 'lab_return', 'lab_close', 'close_lab'].includes(action)) {
+            printType = 'lab';
+            invoiceTitle = 'Lab Memo Note';
+        } else if (['purchase', 'import', 'in_import'].includes(action)) {
+            printType = 'purchase';
+            invoiceTitle = 'Purchase Invoice';
+        } else if (['in_memo', 'in_consign'].includes(action)) {
+            printType = 'in_memo';
+            invoiceTitle = 'In Memo Note';
+        } else if (action === 'transfer') {
+            printType = 'transfer';
+            invoiceTitle = 'Company Transfer Invoice';
+        }
+
+        try {
+            let voucherRecord = null;
+            const sessionCompId = String(authCompanyId || '').trim();
+            const accessibleCompanies = Array.isArray(authUser?.accessible_companies) ? authUser.accessible_companies : [];
+            const accessibleCompanyIds = [
+                sessionCompId,
+                ...accessibleCompanies.map((c) => String(c?.id ?? c).trim()),
+            ].filter(Boolean);
+
+            const targetCompanyId = String(stoneDetail?.company || '').trim();
+            if (!targetCompanyId || !accessibleCompanyIds.length) {
+                toastWarning('Invoice could not be identified.');
+                return;
+            }
+
+            // 1. entryno present: open by (type from entry_from, id)
+            if (row?.entryno != null && String(row.entryno).trim() !== '' && !isNaN(Number(row.entryno))) {
+                const entryId = Number(row.entryno);
+                if (isInward) {
+                    const res = await api.get(`/inward/?id=${entryId}`);
+                    if (res?.data?.status && res?.data?.Data) {
+                        voucherRecord = {
+                            ...res.data.Data,
+                            products: Array.isArray(res.data.products) ? res.data.products : [],
+                        };
+                    }
+                } else {
+                    const res = await fetchOutwardById(entryId);
+                    if (res?.status && res?.Data) {
+                        voucherRecord = {
+                            ...res.Data,
+                            products: Array.isArray(res.products) ? res.products : [],
+                        };
+                    }
+                }
+
+                if (!voucherRecord) {
+                    toastWarning('Invoice record not found or voucher has been deleted.');
+                    return;
+                }
+
+                // Strict company check for EVERY role: voucher company must equal targetCompanyId AND be accessible
+                const voucherCompId = String(voucherRecord.company || '').trim();
+                if (voucherCompId !== targetCompanyId || !accessibleCompanyIds.includes(voucherCompId)) {
+                    toastWarning('You do not have access to this company voucher.');
+                    return;
+                }
+
+                // Strict exact-equality invoice verification
+                const recInv = voucherRecord.invoiceno || voucherRecord.invoice || voucherRecord.entryno || '';
+                if (!isExactInvoiceMatch(recInv, rawInvoice)) {
+                    toastWarning('Invoice could not be identified.');
+                    return;
+                }
+            } else {
+                // 2. entryno null: resolve using company + type (from action) + invoiceno + stone in voucher products
+                const sku = stoneDetail?.sku || row?.sku;
+                const productId = stoneDetail?.id || row?.product_id;
+
+                let stockType = 'memo';
+                if (['sale', 'sale_return', 'close_sale'].includes(action)) stockType = 'sale';
+                else if (['export', 'close_export'].includes(action)) stockType = 'export';
+                else if (['consign', 'consign_return'].includes(action)) stockType = 'consign';
+
+                const cleanInv = stripExactInvoicePrefix(rawInvoice);
+                const listEndpoint = isInward
+                    ? ENDPOINTS.transactionStock.inward.list
+                    : ENDPOINTS.transactionStock.outward.list;
+
+                const payload = {
+                    stockType,
+                    invoice: cleanInv,
+                    invoiceno: cleanInv,
+                    company: targetCompanyId,
+                    fromCompany: targetCompanyId,
+                    sku: sku || undefined,
+                    limit: 50,
+                };
+
+                const listRes = await api.post(listEndpoint, payload);
+                const candidates = Array.isArray(listRes?.data?.Data) ? listRes.data.Data : [];
+
+                // Filter strictly: company must equal targetCompanyId and be accessible + exact invoice match + stone in products
+                const matchingVouchers = candidates.filter((v) => {
+                    const vCompId = String(v.company || '').trim();
+                    const compMatch = vCompId === targetCompanyId && accessibleCompanyIds.includes(vCompId);
+
+                    const vInv = v.invoiceno || v.invoice || '';
+                    const invMatch = isExactInvoiceMatch(vInv, rawInvoice);
+
+                    const prods = Array.isArray(v.products) ? v.products : [];
+                    const stoneMatch = prods.some(
+                        (p) =>
+                            (sku && p.sku === sku) ||
+                            (productId && Number(p.id) === Number(productId))
+                    );
+
+                    return compMatch && invMatch && stoneMatch;
+                });
+
+                if (matchingVouchers.length !== 1) {
+                    toastWarning('Invoice could not be identified.');
+                    return;
+                }
+
+                voucherRecord = matchingVouchers[0];
+            }
+
+            if (voucherRecord) {
+                setInvoiceModal({
+                    open: true,
+                    record: voucherRecord,
+                    invoiceTitle,
+                    printType,
+                });
+            }
+        } catch (err) {
+            if (err?.response?.status === 403) {
+                toastWarning('You do not have permission to view this invoice voucher.');
+            } else {
+                toastWarning('Invoice record not found or voucher has been deleted.');
+            }
+        }
+    };
+
     const handleJumpToInvoice = (invoice, preferredAction, sourceRow, directKey) => {
         if (directKey) {
             handleJumpToRow(directKey, invoice);
@@ -1527,7 +1770,9 @@ const StoneHistory = () => {
                     value,
                     row,
                     [...historyRows, ...oldHistoryRows],
-                    handleJumpToInvoice
+                    handleJumpToInvoice,
+                    handleOpenInvoiceModal,
+                    (r) => canViewInvoiceVoucher(r, authUser, authPermissions)
                 ),
         },
         {
@@ -2386,6 +2631,14 @@ const StoneHistory = () => {
                     </div>
                 )}
             </Modal>
+
+            <TransactionInvoicePreviewModal
+                open={invoiceModal.open}
+                onClose={() => setInvoiceModal((p) => ({ ...p, open: false, record: null }))}
+                record={invoiceModal.record}
+                invoiceTitle={invoiceModal.invoiceTitle}
+                printType={invoiceModal.printType}
+            />
         </div>
     );
 };

@@ -133,7 +133,7 @@ async function saveExpensePayment(payload, companyId, auditContext = {}) {
  * @param {number} companyId
  * @param {Object} auditContext
  */
-async function deleteExpensePayment(id, companyId, auditContext = {}) {
+async function deleteExpensePayment(id, companyId, auditContext = {}, userId = null) {
   const oldRow = await expenseRepository.getExpensePaymentFullByIdAndCompany(id, companyId);
   if (!oldRow) {
     return {
@@ -142,7 +142,16 @@ async function deleteExpensePayment(id, companyId, auditContext = {}) {
     };
   }
 
-  await expenseRepository.deleteExpensePaymentByIdAndCompany(id, companyId);
+  const hasSaleId = oldRow.sale_id != null && String(oldRow.sale_id).trim() !== "" && String(oldRow.sale_id).trim() !== "0";
+  const hasPurchaseId = oldRow.purchase_id != null && String(oldRow.purchase_id).trim() !== "" && String(oldRow.purchase_id).trim() !== "0";
+  if (hasSaleId || hasPurchaseId) {
+    return {
+      status: 400,
+      data: { error: "This payment belongs to an invoice installment; remove it from Outstanding" },
+    };
+  }
+
+  await expenseRepository.deleteExpensePaymentByIdAndCompany(id, companyId, userId);
 
   await logAudit({
     actionType: "DELETE",

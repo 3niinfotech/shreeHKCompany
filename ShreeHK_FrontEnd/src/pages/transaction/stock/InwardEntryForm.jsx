@@ -13,6 +13,7 @@ import useFormHandleChange from '../../../hooks/useFormHandleChange';
 import useBranchCompanies from '../../../hooks/useBranchCompanies';
 import ValidationTableModal from '../../../components/common/modals/ValidationTableModal';
 import styles from '../../../assets/scss/pages/transaction/inwardpurchase.module.scss';
+import { calculateAmount, calculateCaratFromAmount } from '../../../utils/diamondCalculations';
 import PageHeroHeader, { pageHeroHeaderStyles } from '../../../components/common/PageHeroHeader';
 import { SwapOutlined } from '@ant-design/icons';
 
@@ -80,9 +81,9 @@ function normalizeLineItem(item) {
   let amount = Number(item.amount) || 0;
 
   if (pCarat > 0 && price > 0) {
-    amount = Math.round(pCarat * price * 100) / 100;
+    amount = calculateAmount(pCarat, price);
   } else if (price > 0 && amount > 0) {
-    pCarat = Math.round((amount / price) * 10000) / 10000;
+    pCarat = calculateCaratFromAmount(amount, price);
   }
 
   return { ...item, pCarat, price, amount };
@@ -225,7 +226,7 @@ const InwardEntryForm = ({
         }
 
         const price = Number(record.price) || 0;
-        const amount = newCarat > 0 && price > 0 ? Math.round(newCarat * price * 100) / 100 : record.amount;
+        const amount = newCarat > 0 && price > 0 ? calculateAmount(newCarat, price) : record.amount;
 
         setItems((prevItems) =>
           prevItems.map((item) => {
@@ -380,13 +381,13 @@ const InwardEntryForm = ({
       if (field === 'pCarat' || field === 'price') {
         const carat = field === 'pCarat' ? (value || 0) : (updatedItem.pCarat || 0);
         const price = field === 'price' ? (value || 0) : (updatedItem.price || 0);
-        return { ...updatedItem, amount: Math.round(carat * price * 100) / 100 };
+        return { ...updatedItem, amount: calculateAmount(carat, price) };
       }
       if (field === 'amount') {
         const amount = value || 0;
         const price = updatedItem.price || 0;
         if (price > 0 && amount > 0) {
-          return { ...updatedItem, amount, pCarat: Math.round((amount / price) * 10000) / 10000 };
+          return { ...updatedItem, amount, pCarat: calculateCaratFromAmount(amount, price) };
         }
         return { ...updatedItem, amount };
       }

@@ -449,7 +449,7 @@ const LabComparisonModal = ({
               icon={<Search size={15} />}
               loading={fetching}
               onClick={handleFetchLabData}
-              style={{ width: "100%", background: "#1e3a8a" }}
+              style={{ width: "100%", background: "#1e3a8a", marginTop: "18px" }}
             >
               Fetch from Lab
             </Button>
@@ -476,7 +476,7 @@ const LabComparisonModal = ({
               type="warning"
               showIcon
               icon={<AlertTriangle size={18} color="#ea580c" />}
-              message={
+              message={                   
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <span style={{ fontWeight: 700, letterSpacing: "0.3px" }}>
                     MOCK DATA (SIMULATION PREVIEW)

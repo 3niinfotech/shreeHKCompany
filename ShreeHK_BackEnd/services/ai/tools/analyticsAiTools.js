@@ -32,7 +32,7 @@ async function detectAnomalies(params = {}, context = {}) {
     SELECT p.id, p.sku, p.price, p.cost, pv.shape, pv.color, pv.clarity
     FROM dai_product p
     LEFT JOIN dai_product_value pv ON p.id = pv.product_id
-    WHERE p.company = ? AND p.cost > 0 AND p.price < p.cost
+    WHERE p.company = ? AND (p.deleted = 0 OR p.deleted IS NULL) AND p.cost > 0 AND p.price < p.cost
     LIMIT 20
   `, [companyId]);
 
@@ -51,7 +51,7 @@ async function detectAnomalies(params = {}, context = {}) {
     SELECT pv.report_no, COUNT(*) as cnt
     FROM dai_product_value pv
     JOIN dai_product p ON pv.product_id = p.id
-    WHERE p.company = ? AND pv.report_no IS NOT NULL AND pv.report_no <> ''
+    WHERE p.company = ? AND (p.deleted = 0 OR p.deleted IS NULL) AND pv.report_no IS NOT NULL AND pv.report_no <> ''
     GROUP BY pv.report_no
     HAVING cnt > 1
     LIMIT 10
@@ -72,7 +72,7 @@ async function detectAnomalies(params = {}, context = {}) {
     SELECT o.id, o.entryno, p.name AS party_name, o.type, o.final_amount
     FROM dai_outward o
     LEFT JOIN dai_party p ON o.party = p.id
-    WHERE o.company = ? AND o.type = 'sale' AND o.final_amount > 0
+    WHERE o.company = ? AND (o.deleted = 0 OR o.deleted IS NULL) AND o.type = 'sale' AND o.final_amount > 0
     ORDER BY o.final_amount ASC
     LIMIT 5
   `, [companyId]);
@@ -113,7 +113,7 @@ async function forecastDemand(params = {}, context = {}) {
       COALESCE(SUM(p.amount), 0) AS total_revenue
     FROM dai_product p
     LEFT JOIN dai_product_value pv ON p.id = pv.product_id
-    WHERE p.company = ? AND p.outward IN ('sale', 'export')
+    WHERE p.company = ? AND (p.deleted = 0 OR p.deleted IS NULL) AND p.outward IN ('sale', 'export')
     GROUP BY pv.shape
     ORDER BY stones_sold DESC
   `, [companyId]);
@@ -126,7 +126,7 @@ async function forecastDemand(params = {}, context = {}) {
       COALESCE(SUM(p.polish_carat), 0) AS carats_on_hand
     FROM dai_product p
     LEFT JOIN dai_product_value pv ON p.id = pv.product_id
-    WHERE p.company = ? AND p.visibility = 1 AND (p.outward = '' OR p.outward IS NULL)
+    WHERE p.company = ? AND (p.deleted = 0 OR p.deleted IS NULL) AND p.visibility = 1 AND (p.outward = '' OR p.outward IS NULL)
     GROUP BY pv.shape
   `, [companyId]);
 
@@ -169,7 +169,7 @@ async function suggestPrice(params = {}, context = {}) {
     SELECT p.price, p.amount, p.polish_carat, p.cost, pv.shape, pv.color, pv.clarity
     FROM dai_product p
     LEFT JOIN dai_product_value pv ON p.id = pv.product_id
-    WHERE p.company = ? AND p.outward IN ('sale', 'export')
+    WHERE p.company = ? AND (p.deleted = 0 OR p.deleted IS NULL) AND p.outward IN ('sale', 'export')
   `;
   const qParams = [companyId];
   if (shape) { sql += " AND pv.shape = ?"; qParams.push(String(shape).trim()); }

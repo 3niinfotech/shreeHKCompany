@@ -5,6 +5,7 @@ import { Bell, CheckCheck, IndianRupee, LogIn, Package, Sparkles } from "lucide-
 import { api } from "../../api/client/axiosInstance";
 import { PAUSE_BACKGROUND_API } from "../../api/pauseBackgroundApi";
 import { playNotificationSound } from "../../utils/soundNotify";
+import { formatDateDisplay } from "../../utils/dateDisplayFormat";
 import styles from "../../assets/scss/components/notificationDropdown.module.scss";
 
 const POLLING_MS = 10000;
@@ -23,7 +24,7 @@ const formatNotificationTime = (value) => {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
-  return date.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
+  return formatDateDisplay(date);
 };
 
 const cleanTitle = (title) => {

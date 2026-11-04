@@ -70,7 +70,7 @@ async function getAdvancePaymentsByCompany(companyId, limit = null, offset = 0) 
  * @param {number} companyId
  */
 async function getAdvancePaymentByIdAndCompany(id, companyId) {
-  const sql = `SELECT party, date, type, book, cheque, amount, use_amount, balance_amount, invoice, assign_date, description, company, user FROM acc_advance WHERE id = ? AND company = ?`;
+  const sql = `SELECT party, date, type, book, cheque, amount, use_amount, balance_amount, invoice, assign_date, description, company, user FROM acc_advance WHERE id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL)`;
   const rows = await queryAsync(sql, [id, companyId]);
   return rows && rows.length > 0 ? rows[0] : null;
 }
@@ -116,9 +116,9 @@ async function updateAdvancePayment({ id, party, date, type, book, cheque, amoun
  * @param {number} id
  * @param {number} companyId
  */
-async function deleteAdvancePaymentByIdAndCompany(id, companyId) {
-  const sql = `DELETE FROM acc_advance WHERE id = ? AND company = ?`;
-  return queryAsync(sql, [id, companyId]);
+async function deleteAdvancePaymentByIdAndCompany(id, companyId, userId = null) {
+  const sql = `UPDATE acc_advance SET deleted = 1, deleted_at = NOW(), deleted_by = ? WHERE id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL)`;
+  return queryAsync(sql, [userId, id, companyId]);
 }
 
 /**
@@ -139,7 +139,7 @@ async function getAssignedInvoiceDetails(invoiceId, type = "outward", companyId)
       `SELECT o.*, p.name AS party_name, p.address AS party_address, p.contact_number AS party_contact
        FROM dai_outward o
        LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.name) AND (p.company = ? OR p.company IS NULL)
-       WHERE o.company = ? AND (o.id = ? OR o.invoiceno = ? OR o.entryno = ?)
+       WHERE o.company = ? AND (o.deleted = 0 OR o.deleted IS NULL) AND (o.id = ? OR o.invoiceno = ? OR o.entryno = ?)
        LIMIT 1`,
       [companyId, companyId, invoiceId, invoiceId, invoiceId]
     );
@@ -178,7 +178,7 @@ async function getAssignedInvoiceDetails(invoiceId, type = "outward", companyId)
       `SELECT i.*, p.name AS party_name, p.address AS party_address, p.contact_number AS party_contact
        FROM dai_inward i
        LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party = p.name) AND (p.company = ? OR p.company IS NULL)
-       WHERE i.company = ? AND (i.id = ? OR i.invoiceno = ? OR i.entryno = ?)
+       WHERE i.company = ? AND (i.deleted = 0 OR i.deleted IS NULL) AND (i.id = ? OR i.invoiceno = ? OR i.entryno = ?)
        LIMIT 1`,
       [companyId, companyId, invoiceId, invoiceId, invoiceId]
     );

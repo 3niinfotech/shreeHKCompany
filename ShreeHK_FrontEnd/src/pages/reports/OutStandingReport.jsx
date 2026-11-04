@@ -5,6 +5,9 @@ import dayjs from 'dayjs';
 import { cssVar } from '../../theme';
 import { useLocation } from 'react-router-dom';
 import { ReloadOutlined } from '@ant-design/icons';
+import TransactionInvoicePreviewModal from '../../components/transaction/invoice/TransactionInvoicePreviewModal';
+import { fetchOutwardById } from '../../api/services/outwardService';
+import api from '../../api/client/axiosInstance';
 import { ENDPOINTS } from '../../api/endpoints';
 import AIResultPanel from '../../components/ai/AIResultPanel';
 import useAiSalesReport from '../../components/ai/useAiSalesReport';
@@ -23,6 +26,44 @@ const OutStandingReport = () => {
     const [open, setOpen] = useState(false);
     const [selectedRow, setSelectedRow] = useState(null);
     const [exporting, setExporting] = useState(false);
+    const [invoiceModal, setInvoiceModal] = useState({ open: false, record: null });
+
+    const handleOpenInvoiceModal = async (record) => {
+        if (!record || !record.id) return;
+        const isInward = record.type === 'purchase' || record.type === 'import';
+        try {
+            if (isInward) {
+                const res = await api.get(`/inward/?id=${record.id}`);
+                if (res?.data?.status && res?.data?.Data) {
+                    setInvoiceModal({
+                        open: true,
+                        record: {
+                            ...record,
+                            ...res.data.Data,
+                            products: Array.isArray(res.data.products) ? res.data.products : [],
+                        },
+                    });
+                    return;
+                }
+            } else {
+                const res = await fetchOutwardById(record.id);
+                if (res?.status && res?.Data) {
+                    setInvoiceModal({
+                        open: true,
+                        record: {
+                            ...record,
+                            ...res.Data,
+                            products: Array.isArray(res.products) ? res.products : [],
+                        },
+                    });
+                    return;
+                }
+            }
+        } catch (err) {
+            console.error('Failed to load invoice details', err);
+        }
+        setInvoiceModal({ open: true, record });
+    };
     const location = useLocation();
     const { data: companyData, isLoading: isCompanyLoading } = useFetchApi('GetCompany', ENDPOINTS.company.options);
     const { mutate: fetchData, isPending: isSubmitting } = usePostApiRequest(ENDPOINTS.report.outstanding, 'outstanding', { showToast: false });
@@ -99,7 +140,30 @@ const OutStandingReport = () => {
             )
         },
         { title: 'Company', dataIndex: 'name', key: 'name', width: 220, align: 'center' },
-        { title: 'Invoice', dataIndex: 'invoiceno', key: 'invoiceno', align: 'center' },
+        {
+            title: 'Invoice',
+            dataIndex: 'invoiceno',
+            key: 'invoiceno',
+            align: 'center',
+            render: (v, record) => {
+                if (!v) return '-';
+                return (
+                    <a
+                        href={`#invoice-${v}`}
+                        role="button"
+                        style={{ fontWeight: 600, textDecoration: 'none', color: '#1677ff' }}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleOpenInvoiceModal(record);
+                        }}
+                        title={`View Invoice ${v}`}
+                    >
+                        {v}
+                    </a>
+                );
+            },
+        },
         { title: 'Date', dataIndex: 'invoicedate', key: 'invoicedate', align: 'center', render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
         {
             title: 'Term',
@@ -292,6 +356,20 @@ const OutStandingReport = () => {
                         closeModal();
                         handleSearch(form.getFieldsValue());
                     }}
+                />
+
+                <TransactionInvoicePreviewModal
+                    open={invoiceModal.open}
+                    onClose={() => setInvoiceModal({ open: false, record: null })}
+                    record={invoiceModal.record}
+                    printType={invoiceModal.record?.type === 'purchase' || invoiceModal.record?.type === 'import' ? 'purchase' : 'sale'}
+                    invoiceTitle={
+                        invoiceModal.record?.type === 'purchase' || invoiceModal.record?.type === 'import'
+                            ? 'Purchase Invoice'
+                            : invoiceModal.record?.type === 'export'
+                            ? 'Export Invoice'
+                            : 'Sale Invoice'
+                    }
                 />
             </Card>
         </div>

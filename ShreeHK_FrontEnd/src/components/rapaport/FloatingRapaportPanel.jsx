@@ -58,7 +58,7 @@ const FloatingRapaportPanel = () => {
   const statusLabel = status === "LIVE" ? "LIVE" : status === "STALE" ? "STALE" : "WAITING";
 
   const lastSync = live?.lastUpdated
-    ? dayjs(live.lastUpdated).format("DD MMM YYYY, HH:mm:ss")
+    ? dayjs(live.lastUpdated).format("DD-MM-YYYY, HH:mm:ss")
     : "—";
 
   const benchmarkLabel = live?.benchmark
