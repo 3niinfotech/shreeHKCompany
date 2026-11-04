@@ -378,6 +378,17 @@ const TransactionStockTemplate = ({
       intensity: p.intensity ?? "",
       overtone: p.overtone ?? "",
       color: p.color ?? p.main_color ?? "",
+      size: p.size ?? "",
+      polish: p.polish ?? "",
+      symm: p.symm ?? p.symmentry ?? p.symmetry ?? "",
+      cut: p.cut ?? "",
+      floIntensity: p.floIntensity ?? p.f_intensity ?? p.flo_intensity ?? p.fluorescence ?? "",
+      measurements: p.measurements ?? p.measurement ?? p.mesurment ?? "",
+      tablePer: p.tablePer ?? p.table_pc ?? p.table_pct ?? "",
+      depthPer: p.depthPer ?? p.depth_pc ?? p.depth_pct ?? "",
+      girdle: p.girdle ?? p.gridle ?? p.griddle_pc ?? "",
+      bgm: p.bgm ?? "",
+      eyeclean: p.eyeclean ?? p.eye_clean ?? "",
     }));
 
     const rawCompany = details.company != null && details.company !== ''
@@ -1019,6 +1030,17 @@ const TransactionStockTemplate = ({
           intensity: p.intensity ?? "",
           overtone: p.overtone ?? "",
           color: p.color ?? p.main_color ?? "",
+          size: p.size ?? "",
+          polish: p.polish ?? "",
+          symm: p.symm ?? p.symmentry ?? p.symmetry ?? "",
+          cut: p.cut ?? "",
+          floIntensity: p.floIntensity ?? p.f_intensity ?? p.flo_intensity ?? p.fluorescence ?? "",
+          measurements: p.measurements ?? p.measurement ?? p.mesurment ?? "",
+          tablePer: p.tablePer ?? p.table_pc ?? p.table_pct ?? "",
+          depthPer: p.depthPer ?? p.depth_pc ?? p.depth_pct ?? "",
+          girdle: p.girdle ?? p.gridle ?? p.griddle_pc ?? "",
+          bgm: p.bgm ?? "",
+          eyeclean: p.eyeclean ?? p.eye_clean ?? "",
         };
         return updated;
       });
@@ -1104,6 +1126,17 @@ const TransactionStockTemplate = ({
         intensity: "",
         overtone: "",
         color: "",
+        size: "",
+        polish: "",
+        symm: "",
+        cut: "",
+        floIntensity: "",
+        measurements: "",
+        tablePer: "",
+        depthPer: "",
+        girdle: "",
+        bgm: "",
+        eyeclean: "",
       },
     ]);
   };
@@ -1192,9 +1225,26 @@ const TransactionStockTemplate = ({
           textCol("Cost", "cost", 90, { type: "number", placeholder: "0.00" }),
           textCol("Price", "sell_price", 90, { type: "number", placeholder: "0.00" }),
           textCol("Amount", "sell_amount", 100, { type: "number", placeholder: "0.00" }),
-          textCol("LOC", "location", 90, { placeholder: "LOC" }),
-          textCol("Remark", "remark", 650, { placeholder: "Remark" }),
           textCol("Lab", "lab", 80, { placeholder: "Lab" }),
+          textCol("Report No.", "report_no", 110, { placeholder: "Report No." }),
+          textCol("Shape", "shape", 90, { placeholder: "Shape" }),
+          textCol("Clarity", "clarity", 90, { placeholder: "Clarity" }),
+          textCol("Intensity", "intensity", 90, { placeholder: "Intensity" }),
+          textCol("Overtone", "overtone", 90, { placeholder: "Overtone" }),
+          textCol("Color", "color", 80, { placeholder: "Color" }),
+          textCol("Size", "size", 90, { placeholder: "Size" }),
+          textCol("Polish", "polish", 90, { placeholder: "Polish" }),
+          textCol("Symm", "symm", 90, { placeholder: "Symm" }),
+          textCol("Cut", "cut", 90, { placeholder: "Cut" }),
+          textCol("Flo. Intensity", "floIntensity", 110, { placeholder: "Flo. Intensity" }),
+          textCol("Measurements", "measurements", 130, { placeholder: "Measurements" }),
+          textCol("Table%", "tablePer", 90, { placeholder: "Table%" }),
+          textCol("Depth%", "depthPer", 90, { placeholder: "Depth%" }),
+          textCol("Gridle", "girdle", 90, { placeholder: "Gridle" }),
+          textCol("BGM", "bgm", 80, { placeholder: "BGM" }),
+          textCol("Eyeclean", "eyeclean", 90, { placeholder: "Eyeclean" }),
+          textCol("LOC", "location", 90, { placeholder: "LOC" }),
+          textCol("Remark", "remark", 180, { placeholder: "Remark" }),
         ]
         : [
           textCol("Mfg. code", "mfg_code", 100, { fixed: "left", placeholder: "Mfg" }),
@@ -2418,7 +2468,7 @@ const TransactionStockTemplate = ({
                     rowKey={(r) => r.id ?? r._tempId}
                     pagination={false}
                     size="small"
-                    scroll={{ x: isVenyaSaleEditGrid ? 1510 : 2430, y: 180 }}
+                    scroll={{ x: isVenyaSaleEditGrid ? 2450 : 2430, y: 180 }}
                     locale={
                       allowAddProductInEdit
                         ? { emptyText: 'No products — click Add New Data' }
