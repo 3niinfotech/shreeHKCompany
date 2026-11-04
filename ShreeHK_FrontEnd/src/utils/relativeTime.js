@@ -1,3 +1,5 @@
+import { formatDateDisplay } from "./dateDisplayFormat";
+
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
@@ -19,7 +21,7 @@ export const formatLastActive = (timestamp) => {
   if (diff < DAY) return plural(Math.floor(diff / HOUR), "hour");
   if (diff < 7 * DAY) return plural(Math.floor(diff / DAY), "day");
 
-  return new Date(time).toLocaleDateString();
+  return formatDateDisplay(time);
 };
 
 export default formatLastActive;
