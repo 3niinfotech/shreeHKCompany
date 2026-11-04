@@ -48,7 +48,7 @@ const INITIAL_ITEM_STATE = {
   mfgCode: '', dNo: '', sku: '', rPcs: 0, pPcs: 0, pCarat: 0, cost: 0, price: 0, amount: 0,
   mainColor: '', loc: '', lab: '', reportNo: '', shape: '', clarity: '', intensity: '',
   overtone: '', color: '', size: '', polish: '', symm: '', cut: '', floIntensity: '',
-  measurements: '', tablePer: '', depthPer: '', girdle: '', bgm: '', package: '', remark: '', groupType: ''
+  measurements: '', tablePer: '', depthPer: '', girdle: '', bgm: '', eyeclean: '', package: '', remark: '', groupType: ''
 };
 
 function createInitialLineItems(count = 1) {
@@ -93,7 +93,7 @@ function formatProductsPayload(items) {
       depth_pc: item.depthPer || "",
       gridle: item.girdle || "",
       f_intensity: item.floIntensity || "",
-      eyeclean: ""
+      eyeclean: item.eyeclean || ""
     }
   }));
 }
@@ -845,7 +845,7 @@ const InwardTransactionForm = ({
 
   const restColumns = [
     {
-      title: <span>Polish Pcs <span style={{ color: '#ff4d4f' }}>*</span></span>,
+      title: <span>Pcs <span style={{ color: '#ff4d4f' }}>*</span></span>,
       width: 78,
       render: (_, r) => renderInput(r, 'pPcs', 'Pcs', 'number', 64),
     },
