@@ -5,7 +5,7 @@ import dayjs from 'dayjs';
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../api/endpoints';
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
-import { ReloadOutlined, FileTextOutlined } from '@ant-design/icons';
+import { ReloadOutlined } from '@ant-design/icons';
 import TransactionInvoicePreviewModal from '../../components/transaction/invoice/TransactionInvoicePreviewModal';
 import api from '../../api/client/axiosInstance';
 import ExportExcelButton from '../../components/common/ExportExcelButton';
@@ -186,35 +186,19 @@ const SaleStoneReport = () => {
             render: (v, record) => {
                 if (!v || v === '-') return '-';
                 return (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <a
-                            href={`#invoice-${v}`}
-                            role="button"
-                            style={{ fontWeight: 600, textDecoration: 'none', color: '#1677ff' }}
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                handleOpenInvoiceModal(record);
-                            }}
-                            title={`View Invoice ${v}`}
-                        >
-                            {v}
-                        </a>
-                        <FileTextOutlined
-                            style={{
-                                cursor: 'pointer',
-                                color: '#1677ff',
-                                fontSize: 13,
-                                flexShrink: 0,
-                            }}
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                handleOpenInvoiceModal(record);
-                            }}
-                            title={`View Invoice ${v}`}
-                        />
-                    </span>
+                    <a
+                        href={`#invoice-${v}`}
+                        role="button"
+                        style={{ fontWeight: 600, textDecoration: 'none', color: '#1677ff' }}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleOpenInvoiceModal(record);
+                        }}
+                        title={`View Invoice ${v}`}
+                    >
+                        {v}
+                    </a>
                 );
             },
         },

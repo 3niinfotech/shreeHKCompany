@@ -1269,7 +1269,7 @@ async function returnOutwardMemo(post, userContext = {}) {
   const products = (post.products || []).map(String);
   const recordMap = post.record || {};
   let returnProduct = (mdata.return_products || "").split(",").filter(Boolean);
-  const mp = [];
+  let mp = [];
 
   // Load once per voucher (not per product)
   const outwardItems = await stockMovement.getOutwardItems(query, post.id);

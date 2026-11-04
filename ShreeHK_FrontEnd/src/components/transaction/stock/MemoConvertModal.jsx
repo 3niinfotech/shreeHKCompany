@@ -338,6 +338,15 @@ const MemoConvertModal = ({
       prev.map((row) => {
         if (String(row.id) !== String(id)) return row;
         const next = { ...row, [field]: value };
+        if (field === "polish_pcs") {
+          const maxP = Number(row.maxPcs) || 0;
+          const maxC = Number(row.maxCarat) || 0;
+          if (maxP > 0 && maxC > 0) {
+            const avgCaratPerPc = maxC / maxP;
+            const newPcs = Number(value) || 0;
+            next.polish_carat = Number((newPcs * avgCaratPerPc).toFixed(3));
+          }
+        }
         const carat = Number(next.polish_carat) || 0;
         const price = Number(next.price) || 0;
         next.amount = Math.round(carat * price * 100) / 100;
@@ -417,14 +426,7 @@ const MemoConvertModal = ({
       toastWarning("Select Company");
       return;
     }
-    if (isSale && !header.shipping_name) {
-      toastWarning("Select Shipping");
-      return;
-    }
-    if (isSale && !header.origin_of) {
-      toastWarning("Select Origin");
-      return;
-    }
+    // Shipping & Origin are optional per requirements
 
     const payloadRecord = {};
     const productsOut = [];
@@ -521,7 +523,7 @@ const MemoConvertModal = ({
         title: "Pcs",
         dataIndex: "polish_pcs",
         key: "polish_pcs",
-        width: 80,
+        width: 105,
         render: (v, row) =>
           isSaleReturn ? (
             <Text strong>{v}</Text>
@@ -540,7 +542,7 @@ const MemoConvertModal = ({
         title: "Carat",
         dataIndex: "polish_carat",
         key: "polish_carat",
-        width: 90,
+        width: 115,
         render: (v, row) =>
           isSaleReturn ? (
             <Text strong>{Number(v || 0).toFixed(3)}</Text>
@@ -560,7 +562,7 @@ const MemoConvertModal = ({
         title: "Cost",
         dataIndex: "cost",
         key: "cost",
-        width: 90,
+        width: 120,
         render: (v, row) =>
           (isSale || isPurchase) && !isSaleReturn ? (
             <InputNumber
@@ -579,7 +581,7 @@ const MemoConvertModal = ({
         title: "Price",
         dataIndex: "price",
         key: "price",
-        width: 90,
+        width: 120,
         render: (v, row) =>
           isSaleReturn ? (
             Number(v || 0).toFixed(2)
@@ -598,7 +600,7 @@ const MemoConvertModal = ({
         title: "Amount",
         dataIndex: "amount",
         key: "amount",
-        width: 100,
+        width: 130,
         align: "right",
         render: (v) => <Text strong>{Number(v || 0).toFixed(2)}</Text>,
       },
@@ -615,7 +617,7 @@ const MemoConvertModal = ({
     return cols;
   }, [isSale, isPurchase, isSaleReturn]);
 
-  const scrollX = 48 + 100 + 90 + 240 + 80 + 90 + 90 + 90 + 100 + 90
+  const scrollX = 48 + 100 + 90 + 240 + 105 + 115 + 120 + 120 + 130 + 90
     + ATTR_COLS.reduce((s, c) => s + c.width, 0);
 
   const titleNode = (
@@ -695,6 +697,7 @@ const MemoConvertModal = ({
                       <label className={styles.memoConvertLbl}>Invoice</label>
                       <Input
                         value={header.invoice}
+                        disabled
                         onChange={(e) => setHeader((h) => ({ ...h, invoice: e.target.value }))}
                       />
                     </div>
@@ -706,7 +709,7 @@ const MemoConvertModal = ({
                       />
                     </div>
                     <div className={`${styles.memoConvertField} ${styles.memoConvertFieldCompany}`}>
-                      <label className={styles.memoConvertLbl}>Party</label>
+                      <label className={styles.memoConvertLbl}>Party<span style={{ color: "#dc2626", marginLeft: 4 }}>*</span></label>
                       <Select
                         showSearch
                         allowClear
@@ -719,7 +722,7 @@ const MemoConvertModal = ({
                       />
                     </div>
                     <div className={`${styles.memoConvertField} ${styles.memoConvertFieldCompany}`}>
-                      <label className={styles.memoConvertLbl}>Company</label>
+                      <label className={styles.memoConvertLbl}>Company<span style={{ color: "#dc2626", marginLeft: 4 }}>*</span></label>
                       <Select
                         showSearch
                         optionFilterProp="label"
@@ -732,9 +735,7 @@ const MemoConvertModal = ({
                       />
                     </div>
                     <div className={`${styles.memoConvertField} ${styles.memoConvertFieldMd}`}>
-                      <label className={styles.memoConvertLbl}>
-                        Shipping{isSale && <span style={{ color: "#dc2626", marginLeft: 4 }}>*</span>}
-                      </label>
+                      <label className={styles.memoConvertLbl}>Shipping</label>
                       <Select
                         allowClear
                         showSearch
@@ -748,10 +749,8 @@ const MemoConvertModal = ({
                     </div>
                   </div>
                   <div className={`${styles.memoConvertHeaderRow} ${styles.memoConvertHeaderRowSingle}`}>
-                    <div className={`${styles.memoConvertField} ${styles.memoConvertFieldMd}`}>
-                      <label className={styles.memoConvertLbl}>
-                        Origin{isSale && <span style={{ color: "#dc2626", marginLeft: 4 }}>*</span>}
-                      </label>
+                    <div className={styles.memoConvertField}>
+                      <label className={styles.memoConvertLbl}>Origin</label>
                       <Select
                         allowClear
                         showSearch
@@ -772,7 +771,7 @@ const MemoConvertModal = ({
                         onChange={(v) => setHeader((h) => ({ ...h, date: v }))}
                       />
                     </div>
-                    <div className={`${styles.memoConvertField} ${styles.memoConvertFieldTerms}`}>
+                    <div className={`${styles.memoConvertField} ${styles.memoConvertFieldCompany}`}>
                       <label className={styles.memoConvertLbl}>Terms</label>
                       <InputNumber
                         min={0}
@@ -781,7 +780,7 @@ const MemoConvertModal = ({
                         onChange={(v) => setHeader((h) => ({ ...h, terms: v ?? 0 }))}
                       />
                     </div>
-                    <div className={styles.memoConvertField}>
+                    <div className={`${styles.memoConvertField} ${styles.memoConvertFieldCompany}`}>
                       <label className={styles.memoConvertLbl}>Due Date</label>
                       <DatePicker
                         style={{ width: "100%" }}
@@ -790,7 +789,7 @@ const MemoConvertModal = ({
                         onChange={(v) => setHeader((h) => ({ ...h, duedate: v }))}
                       />
                     </div>
-                    <div className={styles.memoConvertField}>
+                    <div className={`${styles.memoConvertField} ${styles.memoConvertFieldMd}`}>
                       <label className={styles.memoConvertLbl}>Charge</label>
                       <InputNumber
                         min={0}
@@ -807,6 +806,7 @@ const MemoConvertModal = ({
                     <label className={styles.memoConvertLbl}>Invoice</label>
                     <Input
                       value={header.invoice}
+                      disabled
                       onChange={(e) => setHeader((h) => ({ ...h, invoice: e.target.value }))}
                     />
                   </div>

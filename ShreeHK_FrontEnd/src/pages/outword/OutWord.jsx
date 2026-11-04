@@ -809,35 +809,19 @@ const OutWord = () => {
             render: (v, record) => {
                 if (!v) return '-';
                 return (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <a
-                            href={`#invoice-${v}`}
-                            role="button"
-                            style={{ fontWeight: 600, textDecoration: 'none', color: '#1677ff' }}
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                handleOpenInvoiceModal(record);
-                            }}
-                            title={`View Invoice ${v}`}
-                        >
-                            {v}
-                        </a>
-                        <FileTextOutlined
-                            style={{
-                                cursor: 'pointer',
-                                color: '#1677ff',
-                                fontSize: 13,
-                                flexShrink: 0,
-                            }}
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                handleOpenInvoiceModal(record);
-                            }}
-                            title={`View Invoice ${v}`}
-                        />
-                    </span>
+                    <a
+                        href={`#invoice-${v}`}
+                        role="button"
+                        style={{ fontWeight: 600, textDecoration: 'none', color: '#1677ff' }}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleOpenInvoiceModal(record);
+                        }}
+                        title={`View Invoice ${v}`}
+                    >
+                        {v}
+                    </a>
                 );
             }
         },
