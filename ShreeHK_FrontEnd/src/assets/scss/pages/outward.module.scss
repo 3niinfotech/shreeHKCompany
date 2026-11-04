@@ -1580,14 +1580,31 @@
   display: flex !important;
   align-items: center !important;
   align-self: center !important;
+  gap: 8px !important;
   height: 28px !important;
 
-  :global(.ant-form-item) {
-    margin: 0 !important;
-    margin-bottom: 0 !important;
-    padding: 0 !important;
-    align-items: center !important;
+  :global(.ant-input),
+  :global(.ant-input-affix-wrapper) {
+    flex: 1 1 auto !important;
+    width: 100% !important;
     height: 28px !important;
+    min-height: 28px !important;
+    font-size: 13px !important;
+    line-height: 26px !important;
+    border-radius: 6px !important;
+    box-sizing: border-box !important;
+  }
+
+  :global(.ant-input-affix-wrapper) {
+    display: inline-flex !important;
+    align-items: center !important;
+
+    .ant-input {
+      height: auto !important;
+      min-height: 0 !important;
+      padding: 0 !important;
+      line-height: 26px !important;
+    }
   }
 
   :global(.ant-form-item-row) {
@@ -1654,29 +1671,17 @@
     min-height: 0 !important;
     height: 0 !important;
   }
+}
 
-  :global(.ant-input),
-  :global(.ant-input-affix-wrapper) {
-    width: 100% !important;
-    height: 28px !important;
-    min-height: 28px !important;
-    font-size: 13px !important;
-    line-height: 26px !important;
-    border-radius: 6px !important;
-    box-sizing: border-box !important;
-  }
-
-  :global(.ant-input-affix-wrapper) {
-    display: inline-flex !important;
-    align-items: center !important;
-
-    .ant-input {
-      height: auto !important;
-      min-height: 0 !important;
-      padding: 0 !important;
-      line-height: 26px !important;
-    }
-  }
+.stockEditTotalsNarrationLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  line-height: 28px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .stockEditProductTable {

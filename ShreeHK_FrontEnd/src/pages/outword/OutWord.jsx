@@ -1041,9 +1041,12 @@ const OutWord = () => {
                                             <span>Price : <b>{editProductTotals.price.toFixed(2)}</b></span>
                                             <span>Amount : <b>{editProductTotals.amount.toFixed(2)}</b></span>
                                         </div>
-                                        <Form.Item name="narretion" label="Narration" colon={false} className={styles.stockEditTotalsNarration}>
-                                            <Input placeholder="Narration..." />
-                                        </Form.Item>
+                                        <div className={styles.stockEditTotalsNarration}>
+                                            <span className={styles.stockEditTotalsNarrationLabel}>Narration</span>
+                                            <Form.Item name="narretion" noStyle>
+                                                <Input placeholder="Narration..." />
+                                            </Form.Item>
+                                        </div>
                                     </div>
                                 ) : null}
                             </div>
