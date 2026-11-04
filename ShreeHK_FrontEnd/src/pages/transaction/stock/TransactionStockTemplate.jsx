@@ -675,7 +675,7 @@ const TransactionStockTemplate = ({
         {
           type: 'custom',
           noFormItem: true,
-          flex: '1 1 calc(80% - 13px)',
+          flex: '0 0 calc(40% - 10px)',
           render: () => (
             <Form.Item
               label="Bank"
@@ -1219,12 +1219,12 @@ const TransactionStockTemplate = ({
       },
       ...(isVenyaSaleEditGrid
         ? [
-          textCol("SKU", "sku", 120, { fixed: "left", placeholder: "SKU" }),
+          textCol("SKU", "sku", 170, { fixed: "left", placeholder: "SKU" }),
           textCol("P.Pcs", "polish_pcs", 80, { type: "number", placeholder: "0" }),
           textCol("P.Carat", "polish_carat", 90, { type: "number", placeholder: "0.00" }),
-          textCol("Cost", "cost", 90, { type: "number", placeholder: "0.00" }),
-          textCol("Price", "sell_price", 90, { type: "number", placeholder: "0.00" }),
-          textCol("Amount", "sell_amount", 100, { type: "number", placeholder: "0.00" }),
+          textCol("Cost", "cost", 130, { type: "number", placeholder: "0.00" }),
+          textCol("Price", "sell_price", 130, { type: "number", placeholder: "0.00" }),
+          textCol("Amount", "sell_amount", 140, { type: "number", placeholder: "0.00" }),
           textCol("Lab", "lab", 80, { placeholder: "Lab" }),
           textCol("Report No.", "report_no", 110, { placeholder: "Report No." }),
           textCol("Shape", "shape", 90, { placeholder: "Shape" }),
@@ -1249,12 +1249,12 @@ const TransactionStockTemplate = ({
         : [
           textCol("Mfg. code", "mfg_code", 100, { fixed: "left", placeholder: "Mfg" }),
           textCol("D. No.", "diamond_no", 90, { fixed: "left", placeholder: "D.No" }),
-          textCol("SKU", "sku", 120, { fixed: "left", placeholder: "SKU" }),
+          textCol("SKU", "sku", 170, { fixed: "left", placeholder: "SKU" }),
           textCol("Pcs", "polish_pcs", 80, { type: "number", placeholder: "0" }),
           textCol("Carat", "polish_carat", 90, { type: "number", placeholder: "0.00" }),
-          textCol("Cost", "cost", 90, { type: "number", placeholder: "0.00" }),
-          textCol("Price", "sell_price", 90, { type: "number", placeholder: "0.00" }),
-          textCol("Amount", "sell_amount", 100, { type: "number", placeholder: "0.00" }),
+          textCol("Cost", "cost", 130, { type: "number", placeholder: "0.00" }),
+          textCol("Price", "sell_price", 130, { type: "number", placeholder: "0.00" }),
+          textCol("Amount", "sell_amount", 140, { type: "number", placeholder: "0.00" }),
           textCol("LOC", "location", 90, { placeholder: "LOC" }),
           textCol("Remark", "remark", 650, { placeholder: "Remark" }),
           textCol("Lab", "lab", 80, { placeholder: "Lab" }),
@@ -2468,7 +2468,7 @@ const TransactionStockTemplate = ({
                     rowKey={(r) => r.id ?? r._tempId}
                     pagination={false}
                     size="small"
-                    scroll={{ x: isVenyaSaleEditGrid ? 2450 : 2430, y: 180 }}
+                    scroll={{ x: isVenyaSaleEditGrid ? 2620 : 2600, y: 180 }}
                     locale={
                       allowAddProductInEdit
                         ? { emptyText: 'No products — click Add New Data' }
