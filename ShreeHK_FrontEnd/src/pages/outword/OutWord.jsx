@@ -347,7 +347,36 @@ const OutWord = () => {
         { name: 'duedate', label: 'Due Date', type: 'date', required: true, span: 6 },
         { name: 'party', label: 'Party Name', type: 'select', options: partyOptions, required: true, span: 6 },
         { name: 'other_party', label: 'Other Party', type: 'select', options: partyOptions, required: true, span: 6 },
-    ], [branchCompanyOptions, partyOptions]);
+        {
+            type: 'custom',
+            noFormItem: true,
+            span: 12,
+            render: () => (
+                <Form.Item
+                    label={<span className={styles.stockEditBankLabel}>Bank</span>}
+                    colon={false}
+                >
+                    <div className={styles.stockEditBankSlot}>
+                        {editCompanyBanks.length > 0 ? (
+                            <Form.Item name="selected_bank_indices" noStyle>
+                                <Checkbox.Group
+                                    style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}
+                                    options={editCompanyBanks.map((b, idx) => ({
+                                        label: b.bank_label || b.bank_name || `Bank #${idx + 1}`,
+                                        value: idx,
+                                    }))}
+                                />
+                            </Form.Item>
+                        ) : (
+                            <span style={{ fontSize: '11px', color: 'var(--color-text-muted, #8c8c8c)', fontStyle: 'italic', whiteSpace: 'nowrap' }}>
+                                No bank details added for this company
+                            </span>
+                        )}
+                    </div>
+                </Form.Item>
+            ),
+        },
+    ], [branchCompanyOptions, partyOptions, editCompanyBanks]);
 
     const skuLookupDebounceTimers = useRef({});
     const fetchedProductsRef = useRef(fetchedProducts);
@@ -901,32 +930,6 @@ const OutWord = () => {
                         `}</style>
                         <Form form={editForm} layout="vertical" className={`edit-modal-form-readable ${styles.stockEditForm}`}>
                             <DynamicForm fields={editMainFields} />
-                            <Row gutter={[16, 0]} className={styles.stockEditPayRow}>
-                                <Col span={24}>
-                                    <Form.Item
-                                        label={<span className={styles.stockEditBankLabel}>Bank</span>}
-                                        colon={false}
-                                    >
-                                        <div className={styles.stockEditBankSlot}>
-                                            {editCompanyBanks.length > 0 ? (
-                                                <Form.Item name="selected_bank_indices" noStyle>
-                                                    <Checkbox.Group
-                                                        style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}
-                                                        options={editCompanyBanks.map((b, idx) => ({
-                                                            label: b.bank_label || b.bank_name || `Bank #${idx + 1}`,
-                                                            value: idx,
-                                                        }))}
-                                                    />
-                                                </Form.Item>
-                                            ) : (
-                                                <span style={{ fontSize: '11px', color: 'var(--color-text-muted, #8c8c8c)', fontStyle: 'italic', whiteSpace: 'nowrap' }}>
-                                                    No bank details added for this company
-                                                </span>
-                                            )}
-                                        </div>
-                                    </Form.Item>
-                                </Col>
-                            </Row>
                             <div className={styles.stockEditProductsHead}>
                                 <span>Products</span>
                                 <Button
