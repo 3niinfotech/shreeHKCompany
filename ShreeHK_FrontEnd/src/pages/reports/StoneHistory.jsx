@@ -141,6 +141,37 @@ const getInvoiceLinkForAction = (action, invoice) => {
 };
 
 
+const KNOWN_INVOICE_PREFIXES = [
+    'ANT-INV-', 'ANT-MEMO-', 'ANT-LAB-',
+    'HK-INV-', 'HK-MEMO-', 'HK-LAB-',
+    'IND-INV-', 'IND-MEMO-', 'IND-LAB-',
+    'DXB-INV-', 'DXB-MEMO-', 'DXB-LAB-',
+    'USA-INV-', 'USA-MEMO-', 'USA-LAB-',
+    'ANT-', 'HK-', 'IND-', 'DXB-', 'USA-',
+    'INV-', 'MEMO-', 'LAB-', 'TRF-',
+];
+
+const stripExactInvoicePrefix = (value) => {
+    if (!value) return '';
+    const upper = String(value).trim().toUpperCase();
+    for (const prefix of KNOWN_INVOICE_PREFIXES) {
+        if (upper.startsWith(prefix)) {
+            return upper.slice(prefix.length);
+        }
+    }
+    return upper;
+};
+
+const isExactInvoiceMatch = (invA, invB) => {
+    const a = String(invA || '').trim().toUpperCase();
+    const b = String(invB || '').trim().toUpperCase();
+    if (!a || !b) return false;
+    if (a === b) return true;
+    const cleanA = stripExactInvoicePrefix(a);
+    const cleanB = stripExactInvoicePrefix(b);
+    return cleanA === cleanB;
+};
+
 const canViewInvoiceVoucher = (row, user, permissions) => {
     if (!row) return false;
     const inv = String(row.invoice || '').trim();
@@ -1338,13 +1369,17 @@ const StoneHistory = () => {
         try {
             let voucherRecord = null;
             const sessionCompId = String(authCompanyId || '').trim();
-            const activeCompId = String(stoneDetail?.company || authCompanyId || '').trim();
             const accessibleCompanies = Array.isArray(authUser?.accessible_companies) ? authUser.accessible_companies : [];
             const accessibleCompanyIds = [
                 sessionCompId,
-                activeCompId,
                 ...accessibleCompanies.map((c) => String(c?.id ?? c).trim()),
             ].filter(Boolean);
+
+            const targetCompanyId = String(stoneDetail?.company || '').trim();
+            if (!targetCompanyId || !accessibleCompanyIds.length) {
+                toastWarning('Invoice could not be identified.');
+                return;
+            }
 
             // 1. entryno present: open by (type from entry_from, id)
             if (row?.entryno != null && String(row.entryno).trim() !== '' && !isNaN(Number(row.entryno))) {
@@ -1372,24 +1407,16 @@ const StoneHistory = () => {
                     return;
                 }
 
-                // Strict company check for EVERY role (including admin / roll === 1)
+                // Strict company check for EVERY role: voucher company must equal targetCompanyId AND be accessible
                 const voucherCompId = String(voucherRecord.company || '').trim();
-                const isAccessible = accessibleCompanyIds.includes(voucherCompId);
-
-                if (!isAccessible) {
+                if (voucherCompId !== targetCompanyId || !accessibleCompanyIds.includes(voucherCompId)) {
                     toastWarning('You do not have access to this company voucher.');
                     return;
                 }
 
-                // Strict exact-equality invoice verification (NO .includes)
-                const recInv = String(voucherRecord.invoiceno || voucherRecord.invoice || voucherRecord.entryno || '').trim().toLowerCase();
-                const targetInv = rawInvoice.toLowerCase();
-                const cleanTargetInv = targetInv.replace(/^[a-z]{2,5}-/, '');
-                const cleanRecInv = recInv.replace(/^[a-z]{2,5}-/, '');
-
-                const invMatches = recInv === targetInv || cleanRecInv === cleanTargetInv;
-
-                if (!invMatches) {
+                // Strict exact-equality invoice verification
+                const recInv = voucherRecord.invoiceno || voucherRecord.invoice || voucherRecord.entryno || '';
+                if (!isExactInvoiceMatch(recInv, rawInvoice)) {
                     toastWarning('Invoice could not be identified.');
                     return;
                 }
@@ -1403,7 +1430,7 @@ const StoneHistory = () => {
                 else if (['export', 'close_export'].includes(action)) stockType = 'export';
                 else if (['consign', 'consign_return'].includes(action)) stockType = 'consign';
 
-                const cleanInv = rawInvoice.replace(/^[A-Za-z]{2,5}-/, '');
+                const cleanInv = stripExactInvoicePrefix(rawInvoice);
                 const listEndpoint = isInward
                     ? ENDPOINTS.transactionStock.inward.list
                     : ENDPOINTS.transactionStock.outward.list;
@@ -1412,9 +1439,8 @@ const StoneHistory = () => {
                     stockType,
                     invoice: cleanInv,
                     invoiceno: cleanInv,
-                    company: activeCompId || sessionCompId,
-                    fromCompany: activeCompId || sessionCompId,
-                    companyId: activeCompId || sessionCompId,
+                    company: targetCompanyId,
+                    fromCompany: targetCompanyId,
                     sku: sku || undefined,
                     limit: 50,
                 };
@@ -1422,14 +1448,13 @@ const StoneHistory = () => {
                 const listRes = await api.post(listEndpoint, payload);
                 const candidates = Array.isArray(listRes?.data?.Data) ? listRes.data.Data : [];
 
-                // Filter strictly: company (no admin bypass) + exact-equality invoiceno + stone product_id/sku in voucher products
+                // Filter strictly: company must equal targetCompanyId and be accessible + exact invoice match + stone in products
                 const matchingVouchers = candidates.filter((v) => {
                     const vCompId = String(v.company || '').trim();
-                    const compMatch = accessibleCompanyIds.includes(vCompId);
+                    const compMatch = vCompId === targetCompanyId && accessibleCompanyIds.includes(vCompId);
 
-                    const vInv = String(v.invoiceno || v.invoice || '').trim().toLowerCase();
-                    const vCleanInv = vInv.replace(/^[a-z]{2,5}-/, '');
-                    const invMatch = vInv === rawInvoice.toLowerCase() || vCleanInv === cleanInv.toLowerCase();
+                    const vInv = v.invoiceno || v.invoice || '';
+                    const invMatch = isExactInvoiceMatch(vInv, rawInvoice);
 
                     const prods = Array.isArray(v.products) ? v.products : [];
                     const stoneMatch = prods.some(
