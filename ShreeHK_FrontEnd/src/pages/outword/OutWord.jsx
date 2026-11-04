@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Table, Card, Typography, Space, Button, Tag, Checkbox, Form, Input, Row, Col, Spin } from 'antd';
-import { EditOutlined, PrinterOutlined, DeleteOutlined, ReloadOutlined, PlusOutlined } from '@ant-design/icons';
+import { EditOutlined, PrinterOutlined, DeleteOutlined, ReloadOutlined, PlusOutlined, FileTextOutlined } from '@ant-design/icons';
+import TransactionInvoicePreviewModal from '../../components/transaction/invoice/TransactionInvoicePreviewModal';
+import { fetchOutwardById } from '../../api/services/outwardService';
 import { Pencil, CircleCheck } from 'lucide-react';
 import dayjs from 'dayjs';
 import { useSearchParams } from 'react-router-dom';
@@ -81,6 +83,32 @@ const OutWord = () => {
     const [editingRecord, setEditingRecord] = useState(null);
     const [fetchedProducts, setFetchedProducts] = useState([]);
     const [deleteModal, setDeleteModal] = useState({ open: false, record: null });
+    const [invoiceModal, setInvoiceModal] = useState({ open: false, record: null });
+
+    const handleOpenInvoiceModal = async (record) => {
+        if (!record) return;
+        if (Array.isArray(record.products) && record.products.length && typeof record.products[0] === 'object') {
+            setInvoiceModal({ open: true, record });
+            return;
+        }
+        try {
+            const res = await fetchOutwardById(record.id);
+            if (res?.status && res?.Data) {
+                setInvoiceModal({
+                    open: true,
+                    record: {
+                        ...record,
+                        ...res.Data,
+                        products: Array.isArray(res.products) ? res.products : (record.products || []),
+                    }
+                });
+                return;
+            }
+        } catch (err) {
+            console.error('Failed to load outward invoice details', err);
+        }
+        setInvoiceModal({ open: true, record });
+    };
     const [printData, setPrintData] = useState(null);
     const [editForm] = Form.useForm();
 
@@ -774,7 +802,45 @@ const OutWord = () => {
                 return <Tag color={colors[type] || 'default'} style={{ textTransform: 'uppercase', fontWeight: 600 }}>{type}</Tag>;
             }
         },
-        { title: 'Invoice', dataIndex: 'invoiceno', key: 'invoiceno' },
+        {
+            title: 'Invoice',
+            dataIndex: 'invoiceno',
+            key: 'invoiceno',
+            render: (v, record) => {
+                if (!v) return '-';
+                return (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <a
+                            href={`#invoice-${v}`}
+                            role="button"
+                            style={{ fontWeight: 600, textDecoration: 'none', color: '#1677ff' }}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleOpenInvoiceModal(record);
+                            }}
+                            title={`View Invoice ${v}`}
+                        >
+                            {v}
+                        </a>
+                        <FileTextOutlined
+                            style={{
+                                cursor: 'pointer',
+                                color: '#1677ff',
+                                fontSize: 13,
+                                flexShrink: 0,
+                            }}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleOpenInvoiceModal(record);
+                            }}
+                            title={`View Invoice ${v}`}
+                        />
+                    </span>
+                );
+            }
+        },
         { title: 'Party', dataIndex: 'party', key: 'party', ellipsis: true },
         { title: 'Date', dataIndex: 'date', key: 'date', render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
         {
@@ -1064,6 +1130,22 @@ const OutWord = () => {
                 loading={isDeleting}
                 onCancel={closeDelete}
                 onConfirm={handleDelete}
+            />
+
+            <TransactionInvoicePreviewModal
+                open={invoiceModal.open}
+                onClose={() => setInvoiceModal({ open: false, record: null })}
+                record={invoiceModal.record}
+                printType={invoiceModal.record?.type || 'sale'}
+                invoiceTitle={
+                    invoiceModal.record?.type === 'memo'
+                        ? 'Memo Invoice'
+                        : invoiceModal.record?.type === 'export'
+                        ? 'Export Invoice'
+                        : invoiceModal.record?.type === 'consign'
+                        ? 'Consignment Note'
+                        : 'Sale Invoice'
+                }
             />
         </div>
     );
