@@ -141,7 +141,7 @@ const OutWord = () => {
     const { data: companyData, isLoading: isCompanyLoading, refetch: refetchCompanyOptions } = useFetchApi(
         'GetCompany',
         ENDPOINTS.company.options,
-        {},
+        { all: '1' },
         'GET',
         { staleTime: 60 * 1000 }
     );
@@ -172,10 +172,26 @@ const OutWord = () => {
 
     useEffect(() => {
         const d = companyData?.Data || companyData?.data;
+        const comps = companyData?.operatingCompanies || branchCompanies || [];
         if (Array.isArray(d)) {
-            setPartyOptions(d.map(item => ({ label: item.name, value: item.id })));
+            const partyList = d.map(item => ({ label: item.name, value: String(item.id) }));
+            const compList = Array.isArray(comps)
+                ? comps.map(c => ({ label: c.name || c.label, value: String(c.id || c.value || c.name) }))
+                : [];
+            const map = new Map();
+            [...partyList, ...compList].forEach(opt => {
+                if (opt.value && !map.has(opt.value)) {
+                    map.set(opt.value, opt);
+                }
+            });
+            d.forEach(item => {
+                if (item.name && !map.has(item.name)) {
+                    map.set(item.name, { label: item.name, value: item.name });
+                }
+            });
+            setPartyOptions(Array.from(map.values()));
         }
-    }, [companyData]);
+    }, [companyData, branchCompanies]);
 
     useEffect(() => {
         const details = editDetailData?.Data || editDetailData?.data;
@@ -222,9 +238,24 @@ const OutWord = () => {
                 if (selectedIndices.length === 0) selectedIndices = [0];
             }
 
+            const partyVal = details.party != null && details.party !== '' ? String(details.party) : (details.party_name || undefined);
+            const otherPartyVal = details.other_party != null && details.other_party !== '' ? String(details.other_party) : undefined;
+
+            if (details.party_name && details.party != null) {
+                setPartyOptions(prev => {
+                    const exists = prev.some(opt => opt.value === String(details.party) || opt.label === details.party_name);
+                    if (!exists) {
+                        return [{ label: details.party_name, value: String(details.party) }, ...prev];
+                    }
+                    return prev;
+                });
+            }
+
             editForm.setFieldsValue({
                 ...details,
                 company: resolvedCompName,
+                party: partyVal,
+                other_party: otherPartyVal,
                 selected_bank_indices: selectedIndices,
                 date: details.date ? dayjs(details.date) : null,
                 invoicedate: details.invoicedate ? dayjs(details.invoicedate) : null,
@@ -577,14 +608,25 @@ const OutWord = () => {
             (compId ? companyMap.get(compId) : '') ||
             (typeof rawComp === 'string' && isNaN(Number(rawComp)) ? rawComp : '') ||
             '';
+        const partyVal = record.party != null && record.party !== '' ? String(record.party) : undefined;
+        const otherPartyVal = record.other_party != null && record.other_party !== '' ? String(record.other_party) : undefined;
+        if (record.party) {
+            setPartyOptions(prev => {
+                const exists = prev.some(opt => opt.value === String(record.party) || opt.label === record.party);
+                if (!exists) {
+                    return [{ label: record.party, value: String(record.party) }, ...prev];
+                }
+                return prev;
+            });
+        }
         editForm.setFieldsValue({
             ...record,
             company: resolvedCompName,
             date: record.date ? dayjs(record.date) : null,
             invoicedate: record.invoicedate ? dayjs(record.invoicedate) : null,
             duedate: record.duedate ? dayjs(record.duedate) : null,
-            party: record.party != null ? String(record.party) : undefined,
-            other_party: record.other_party != null ? String(record.other_party) : undefined,
+            party: partyVal,
+            other_party: otherPartyVal,
         });
     };
 
