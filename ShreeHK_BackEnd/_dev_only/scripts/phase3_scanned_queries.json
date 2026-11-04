@@ -1,0 +1,4268 @@
+{
+  "routes/accounting/accGroupRoutes.js": [
+    {
+      "file": "routes/accounting/accGroupRoutes.js",
+      "line": 13,
+      "type": "FROM",
+      "table": "acc_group",
+      "snippet": "const companyId = buildUserContext(req).companyId;   const query = \"SELECT * FROM acc_group WHERE (company = ? OR company = 1 OR company IS NULL) ORDE"
+    },
+    {
+      "file": "routes/accounting/accGroupRoutes.js",
+      "line": 30,
+      "type": "FROM",
+      "table": "acc_group",
+      "snippet": "if (id) {         const rows = await q(\"SELECT * FROM acc_group WHERE id=? AND company=? AND (deleted = 0 OR deleted IS NULL)\", [id, companyId]);     "
+    },
+    {
+      "file": "routes/accounting/accGroupRoutes.js",
+      "line": 41,
+      "type": "FROM",
+      "table": "acc_group",
+      "snippet": "await q(\"UPDATE acc_group SET name = ? WHERE id = ? AND company = ?\", [name, id, companyId]);         const newRows = await q(\"SELECT * FROM acc_group"
+    },
+    {
+      "file": "routes/accounting/accGroupRoutes.js",
+      "line": 53,
+      "type": "FROM",
+      "table": "acc_group",
+      "snippet": "const result = await q(\"INSERT INTO acc_group (name, company) VALUES (?, ?)\", [name, companyId]);         const newRows = await q(\"SELECT * FROM acc_g"
+    },
+    {
+      "file": "routes/accounting/accGroupRoutes.js",
+      "line": 79,
+      "type": "FROM",
+      "table": "acc_group",
+      "snippet": "await helper.runInTransaction(async (q) => {       const rows = await q(\"SELECT * FROM acc_group WHERE id=? AND company=?\", [id, companyId]);       co"
+    }
+  ],
+  "routes/accounting/accSubgroupRoutes.js": [
+    {
+      "file": "routes/accounting/accSubgroupRoutes.js",
+      "line": 15,
+      "type": "FROM",
+      "table": "acc_subgroup",
+      "snippet": "SELECT s.id, s.name, s.under, g.name AS under_name     FROM acc_subgroup s     LEFT JOIN acc_group g ON (s.under = g.id OR s.under = g.name)"
+    },
+    {
+      "file": "routes/accounting/accSubgroupRoutes.js",
+      "line": 16,
+      "type": "JOIN",
+      "table": "acc_group",
+      "snippet": "FROM acc_subgroup s     LEFT JOIN acc_group g ON (s.under = g.id OR s.under = g.name)     WHERE (s.company = ? OR s.company = 1 OR s.company IS NULL)"
+    },
+    {
+      "file": "routes/accounting/accSubgroupRoutes.js",
+      "line": 36,
+      "type": "FROM",
+      "table": "acc_subgroup",
+      "snippet": "if (id) {         const rows = await q(\"SELECT * FROM acc_subgroup WHERE id=? AND company=? AND (deleted = 0 OR deleted IS NULL)\", [id, companyId]);  "
+    },
+    {
+      "file": "routes/accounting/accSubgroupRoutes.js",
+      "line": 52,
+      "type": "FROM",
+      "table": "acc_subgroup",
+      "snippet": "]);         const newRows = await q(\"SELECT * FROM acc_subgroup WHERE id=? AND company=?\", [id, companyId]);         await logAuditInTx(q, {"
+    },
+    {
+      "file": "routes/accounting/accSubgroupRoutes.js",
+      "line": 68,
+      "type": "FROM",
+      "table": "acc_subgroup",
+      "snippet": "]);         const newRows = await q(\"SELECT * FROM acc_subgroup WHERE id=? AND company=?\", [result.insertId, companyId]);         await logAuditInTx(q"
+    },
+    {
+      "file": "routes/accounting/accSubgroupRoutes.js",
+      "line": 94,
+      "type": "FROM",
+      "table": "acc_subgroup",
+      "snippet": "await helper.runInTransaction(async (q) => {       const rows = await q(\"SELECT * FROM acc_subgroup WHERE id=? AND company=?\", [id, companyId]);      "
+    }
+  ],
+  "routes/accounting/PartyWiseTransaction.js": [
+    {
+      "file": "routes/accounting/PartyWiseTransaction.js",
+      "line": 26,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": "const countQuery = `SELECT COUNT(*) AS total FROM dai_party WHERE company = ?`;     const query = `SELECT id, under_group, under_subgroup, address, co"
+    },
+    {
+      "file": "routes/accounting/PartyWiseTransaction.js",
+      "line": 27,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": "const countQuery = `SELECT COUNT(*) AS total FROM dai_party WHERE company = ?`;     const query = `SELECT id, under_group, under_subgroup, address, co"
+    },
+    {
+      "file": "routes/accounting/PartyWiseTransaction.js",
+      "line": 53,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": "//     let query = `DELETE FROM dai_party WHERE id=${id}`;"
+    },
+    {
+      "file": "routes/accounting/PartyWiseTransaction.js",
+      "line": 91,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": "if (recordId !== 0) {                 const rows = await q(\"SELECT * FROM dai_party WHERE id=?\", [recordId]);                 oldRow = rows[0] || null"
+    },
+    {
+      "file": "routes/accounting/PartyWiseTransaction.js",
+      "line": 101,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": "const newId = result.insertId;                 const newRows = await q(\"SELECT * FROM dai_party WHERE id=?\", [newId]);                 message = 'Part"
+    },
+    {
+      "file": "routes/accounting/PartyWiseTransaction.js",
+      "line": 113,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": "await q(`UPDATE dai_party SET ${updateResponse} WHERE id=?`, [recordId]);                 const newRows = await q(\"SELECT * FROM dai_party WHERE id=?\""
+    },
+    {
+      "file": "routes/accounting/PartyWiseTransaction.js",
+      "line": 146,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": "const errorMsg = await helper.runInTransaction(async (q) => {             const rows = await q(\"SELECT * FROM dai_party WHERE id = ? AND company = ? A"
+    },
+    {
+      "file": "routes/accounting/PartyWiseTransaction.js",
+      "line": 154,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "const inw = await q(                 \"SELECT id FROM dai_inward WHERE (party = ? OR party = ?) AND company = ? AND (deleted = 0 OR deleted IS NULL) LI"
+    },
+    {
+      "file": "routes/accounting/PartyWiseTransaction.js",
+      "line": 163,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "const out = await q(                 \"SELECT id FROM dai_outward WHERE (party = ? OR party = ?) AND company = ? LIMIT 1\",                 [String(id),"
+    },
+    {
+      "file": "routes/accounting/PartyWiseTransaction.js",
+      "line": 172,
+      "type": "FROM",
+      "table": "acc_transaction",
+      "snippet": "const txn = await q(                 \"SELECT id FROM acc_transaction WHERE (party = ? OR other_party = ? OR party = ? OR other_party = ?) AND company "
+    },
+    {
+      "file": "routes/accounting/PartyWiseTransaction.js",
+      "line": 181,
+      "type": "FROM",
+      "table": "acc_advance",
+      "snippet": "const adv = await q(                 \"SELECT id FROM acc_advance WHERE (party = ? OR party = ?) AND company = ? AND (deleted = 0 OR deleted IS NULL) L"
+    }
+  ],
+  "routes/admin/activityLogRoutes.js": [
+    {
+      "file": "routes/admin/activityLogRoutes.js",
+      "line": 57,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "connection.query(       \"SELECT user_id, user_name, pass, roll FROM user WHERE user_id = ? LIMIT 1\",       [userId],"
+    },
+    {
+      "file": "routes/admin/activityLogRoutes.js",
+      "line": 177,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "pv.shape, pv.color, pv.clarity, pv.cut, pv.polish, pv.symmentry, pv.report_no, pv.mesurment         FROM dai_product p         LEFT JOIN dai_product_v"
+    },
+    {
+      "file": "routes/admin/activityLogRoutes.js",
+      "line": 178,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p         LEFT JOIN dai_product_value pv ON p.id = pv.product_id         WHERE p.id IN (${placeholders})`,"
+    },
+    {
+      "file": "routes/admin/activityLogRoutes.js",
+      "line": 196,
+      "type": "FROM",
+      "table": "category",
+      "snippet": "const catRows = await helper.query(         `SELECT id, name FROM category WHERE id IN (${placeholders})`,         cids,"
+    },
+    {
+      "file": "routes/admin/activityLogRoutes.js",
+      "line": 304,
+      "type": "FROM",
+      "table": "dai_activity_log",
+      "snippet": "where.push(           `(company_id = ? OR (action_type IN (${AUTH_ACTION_TYPES.map(() => \"?\").join(\", \")}) AND user_id IN (SELECT DISTINCT user_id FRO"
+    },
+    {
+      "file": "routes/admin/activityLogRoutes.js",
+      "line": 629,
+      "type": "FROM",
+      "table": "dai_activity_log",
+      "snippet": "const countRows = await auditQuery(         `SELECT COUNT(*) AS total FROM dai_activity_log WHERE ${where}`,         values,"
+    },
+    {
+      "file": "routes/admin/activityLogRoutes.js",
+      "line": 635,
+      "type": "FROM",
+      "table": "dai_activity_log",
+      "snippet": "const rows = await auditQuery(         `SELECT * FROM dai_activity_log WHERE ${where} ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`,         [.."
+    },
+    {
+      "file": "routes/admin/activityLogRoutes.js",
+      "line": 681,
+      "type": "FROM",
+      "table": "dai_activity_log",
+      "snippet": "MAX(created_at) AS latest_at         FROM dai_activity_log         WHERE ${where}`,"
+    },
+    {
+      "file": "routes/admin/activityLogRoutes.js",
+      "line": 724,
+      "type": "FROM",
+      "table": "dai_activity_log",
+      "snippet": "const countRows = await auditQuery(         `SELECT COUNT(*) AS total FROM dai_activity_log WHERE ${where}`,         values,"
+    },
+    {
+      "file": "routes/admin/activityLogRoutes.js",
+      "line": 728,
+      "type": "FROM",
+      "table": "dai_activity_log",
+      "snippet": "const rows = await auditQuery(         `SELECT * FROM dai_activity_log          WHERE ${where}"
+    },
+    {
+      "file": "routes/admin/activityLogRoutes.js",
+      "line": 767,
+      "type": "FROM",
+      "table": "dai_activity_log",
+      "snippet": "SELECT user_id, user_name, user_role, DATE(created_at) AS activity_date           FROM dai_activity_log           WHERE ${where}"
+    },
+    {
+      "file": "routes/admin/activityLogRoutes.js",
+      "line": 785,
+      "type": "FROM",
+      "table": "dai_activity_log",
+      "snippet": "GROUP_CONCAT(DISTINCT action_type ORDER BY action_type SEPARATOR ',') AS action_types         FROM dai_activity_log         WHERE ${where}"
+    },
+    {
+      "file": "routes/admin/activityLogRoutes.js",
+      "line": 836,
+      "type": "FROM",
+      "table": "dai_activity_log",
+      "snippet": "const rows = await auditQuery(         `SELECT * FROM dai_activity_log WHERE ${where} ORDER BY created_at ASC, id ASC LIMIT 2000`,         values,"
+    },
+    {
+      "file": "routes/admin/activityLogRoutes.js",
+      "line": 867,
+      "type": "FROM",
+      "table": "dai_activity_log",
+      "snippet": "const rows = await auditQuery(         `SELECT * FROM dai_activity_log WHERE ${where} ORDER BY created_at DESC, id DESC LIMIT 5000`,         values,"
+    },
+    {
+      "file": "routes/admin/activityLogRoutes.js",
+      "line": 910,
+      "type": "FROM",
+      "table": "dai_activity_log",
+      "snippet": "const countRows = await auditQuery(         `SELECT COUNT(*) AS total FROM dai_activity_log WHERE ${where} AND (deleted = 0 OR deleted IS NULL)`,     "
+    },
+    {
+      "file": "routes/admin/activityLogRoutes.js",
+      "line": 969,
+      "type": "FROM",
+      "table": "dai_activity_log",
+      "snippet": "const rows = await auditQuery(         `SELECT * FROM dai_activity_log WHERE ${idWhere} AND (deleted = 0 OR deleted IS NULL) LIMIT 1`,         idValue"
+    },
+    {
+      "file": "routes/admin/activityLogRoutes.js",
+      "line": 1021,
+      "type": "FROM",
+      "table": "dai_activity_log",
+      "snippet": "const rows = await auditQuery(         `SELECT * FROM dai_activity_log WHERE ${idWhere} LIMIT 1`,         idValues,"
+    }
+  ],
+  "routes/admin/branchRoutes.js": [
+    {
+      "file": "routes/admin/branchRoutes.js",
+      "line": 39,
+      "type": "FROM",
+      "table": "branch",
+      "snippet": "const rows = await metaQuery(       \"SELECT id, name, shortcutName, color_code FROM branch WHERE status = 1 ORDER BY name ASC\"     );"
+    },
+    {
+      "file": "routes/admin/branchRoutes.js",
+      "line": 60,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "SELECT b.id, b.name, b.shortcutName, b.address, b.number, b.city, b.country, b.status, b.color_code, b.created_at,         (SELECT COUNT(*) FROM compa"
+    },
+    {
+      "file": "routes/admin/branchRoutes.js",
+      "line": 62,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "(SELECT GROUP_CONCAT(c.name ORDER BY c.id SEPARATOR '||')            FROM company c WHERE c.branch_id = b.id) AS company_names       FROM branch b"
+    },
+    {
+      "file": "routes/admin/branchRoutes.js",
+      "line": 63,
+      "type": "FROM",
+      "table": "branch",
+      "snippet": "FROM company c WHERE c.branch_id = b.id) AS company_names       FROM branch b     `;"
+    },
+    {
+      "file": "routes/admin/branchRoutes.js",
+      "line": 105,
+      "type": "FROM",
+      "table": "branch",
+      "snippet": "if (!id) return res.status(400).json({ status: false, message: \"Invalid id\" });     const rows = await metaQuery(\"SELECT * FROM branch WHERE id = ? LI"
+    },
+    {
+      "file": "routes/admin/branchRoutes.js",
+      "line": 202,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "connection.query(       \"SELECT pass FROM user WHERE user_id = ? LIMIT 1\",       [userId],"
+    },
+    {
+      "file": "routes/admin/branchRoutes.js",
+      "line": 266,
+      "type": "FROM",
+      "table": "branch",
+      "snippet": "// Verify branch name matches     const existing = await metaQuery(\"SELECT id, name FROM branch WHERE id = ? LIMIT 1\", [id]);     if (!existing.length"
+    },
+    {
+      "file": "routes/admin/branchRoutes.js",
+      "line": 279,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "const sessionCompanyRows = await metaQuery(         \"SELECT branch_id FROM company WHERE id = ? LIMIT 1\",         [sessionCompanyId]"
+    },
+    {
+      "file": "routes/admin/branchRoutes.js",
+      "line": 302,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "const sessionCompanyBranchId = sessionCompanyId       ? (await metaQuery(\"SELECT branch_id FROM company WHERE id = ? LIMIT 1\", [sessionCompanyId]))[0]"
+    }
+  ],
+  "routes/admin/tenantCompanyRoutes.js": [
+    {
+      "file": "routes/admin/tenantCompanyRoutes.js",
+      "line": 109,
+      "type": "FROM",
+      "table": "dai_incrementid",
+      "snippet": "const seedIncrementId = (companyId, pool, cb) => {   pool.query(\"SELECT * FROM dai_incrementid WHERE company = ? LIMIT 1\", [companyId], (existsErr, ex"
+    },
+    {
+      "file": "routes/admin/tenantCompanyRoutes.js",
+      "line": 113,
+      "type": "FROM",
+      "table": "dai_incrementid",
+      "snippet": "pool.query(\"SHOW COLUMNS FROM dai_incrementid\", (colsErr, columns) => {       if (colsErr) return cb(colsErr);"
+    },
+    {
+      "file": "routes/admin/tenantCompanyRoutes.js",
+      "line": 152,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "`SELECT c.id, c.name, c.shortcutName, c.branch_id, c.bank_details, b.name AS branch_name        FROM company c        LEFT JOIN branch b ON b.id = c.b"
+    },
+    {
+      "file": "routes/admin/tenantCompanyRoutes.js",
+      "line": 153,
+      "type": "JOIN",
+      "table": "branch",
+      "snippet": "FROM company c        LEFT JOIN branch b ON b.id = c.branch_id        ORDER BY c.name ASC`"
+    },
+    {
+      "file": "routes/admin/tenantCompanyRoutes.js",
+      "line": 174,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "SELECT ${COMPANY_SAFE_SELECT}, b.name AS branch_name, b.shortcutName AS branch_shortcut       FROM company c       LEFT JOIN branch b ON b.id = c.bran"
+    },
+    {
+      "file": "routes/admin/tenantCompanyRoutes.js",
+      "line": 175,
+      "type": "JOIN",
+      "table": "branch",
+      "snippet": "FROM company c       LEFT JOIN branch b ON b.id = c.branch_id     `;"
+    },
+    {
+      "file": "routes/admin/tenantCompanyRoutes.js",
+      "line": 219,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "`SELECT ${COMPANY_SAFE_SELECT}, b.name AS branch_name        FROM company c        LEFT JOIN branch b ON b.id = c.branch_id"
+    },
+    {
+      "file": "routes/admin/tenantCompanyRoutes.js",
+      "line": 220,
+      "type": "JOIN",
+      "table": "branch",
+      "snippet": "FROM company c        LEFT JOIN branch b ON b.id = c.branch_id        WHERE c.id = ? LIMIT 1`,"
+    },
+    {
+      "file": "routes/admin/tenantCompanyRoutes.js",
+      "line": 340,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "connection.query(       \"SELECT pass FROM user WHERE user_id = ? LIMIT 1\",       [userId],"
+    },
+    {
+      "file": "routes/admin/tenantCompanyRoutes.js",
+      "line": 413,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "// Verify company name matches       const existing = await metaQuery(\"SELECT id, name FROM company WHERE id = ? LIMIT 1\", [id]);       if (!existing."
+    }
+  ],
+  "routes/adminUser/addAdminUserRoutes.js": [
+    {
+      "file": "routes/adminUser/addAdminUserRoutes.js",
+      "line": 82,
+      "type": "FROM",
+      "table": "roll",
+      "snippet": "const roles = await helper.query(\"SELECT id FROM roll WHERE id = ? LIMIT 1\", [userroll]);     if (!roles.length) return \"Selected role does not exist."
+    },
+    {
+      "file": "routes/adminUser/addAdminUserRoutes.js",
+      "line": 94,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "const usernameConflict = await helper.query(             \"SELECT user_id FROM user WHERE LOWER(TRIM(user_name)) = LOWER(?) AND user_id <> ? AND (delet"
+    },
+    {
+      "file": "routes/adminUser/addAdminUserRoutes.js",
+      "line": 102,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "const emailConflict = await helper.query(             \"SELECT user_id FROM user WHERE LOWER(TRIM(user_email)) = ? AND user_id <> ? AND (deleted = 0 OR"
+    },
+    {
+      "file": "routes/adminUser/addAdminUserRoutes.js",
+      "line": 137,
+      "type": "FROM",
+      "table": "user",
+      "snippet": ") AS created_by_name         FROM user u         LEFT JOIN user cb ON u.created_by = cb.user_id"
+    },
+    {
+      "file": "routes/adminUser/addAdminUserRoutes.js",
+      "line": 138,
+      "type": "JOIN",
+      "table": "user",
+      "snippet": "FROM user u         LEFT JOIN user cb ON u.created_by = cb.user_id     `);"
+    },
+    {
+      "file": "routes/adminUser/addAdminUserRoutes.js",
+      "line": 203,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "if (userId) {             const existingRows = await helper.query(\"SELECT * FROM user WHERE user_id = ? LIMIT 1\", [userId]);             const existin"
+    },
+    {
+      "file": "routes/adminUser/addAdminUserRoutes.js",
+      "line": 218,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "await helper.runInTransaction(async (q) => {                 const rows = await q(\"SELECT * FROM user WHERE user_id = ?\", [userId]);                 c"
+    },
+    {
+      "file": "routes/adminUser/addAdminUserRoutes.js",
+      "line": 236,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "const counts = await q(                         \"SELECT COUNT(*) AS total FROM user WHERE roll = ? AND COALESCE(is_active, 1) = 1\",                   "
+    },
+    {
+      "file": "routes/adminUser/addAdminUserRoutes.js",
+      "line": 266,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "const newRows = await q(\"SELECT user_id, first_name, last_name, user_name, user_email, mobile, roll, is_active FROM user WHERE user_id = ?\", [userId])"
+    },
+    {
+      "file": "routes/adminUser/addAdminUserRoutes.js",
+      "line": 297,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "const newRows = await q(                 \"SELECT user_id, first_name, last_name, user_name, user_email, mobile, roll, is_active FROM user WHERE user_i"
+    },
+    {
+      "file": "routes/adminUser/addAdminUserRoutes.js",
+      "line": 333,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "await helper.runInTransaction(async (q) => {             const rows = await q(\"SELECT * FROM user WHERE user_id = ? AND (deleted = 0 OR deleted IS NUL"
+    },
+    {
+      "file": "routes/adminUser/addAdminUserRoutes.js",
+      "line": 342,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "const counts = await q(                     \"SELECT COUNT(*) AS total FROM user WHERE roll = ? AND COALESCE(is_active, 1) = 1 AND (deleted = 0 OR dele"
+    },
+    {
+      "file": "routes/adminUser/addAdminUserRoutes.js",
+      "line": 369,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "// New alias API: get all login users from user table AdminUserRouter.get('/getLoginAllUsers', authenticateToken, isSuperAdmin, (req, res) => {"
+    },
+    {
+      "file": "routes/adminUser/addAdminUserRoutes.js",
+      "line": 380,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "roll AS userroll         FROM user     `;"
+    },
+    {
+      "file": "routes/adminUser/addAdminUserRoutes.js",
+      "line": 434,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "// New alias API: delete user from user table AdminUserRouter.delete('/deleteUser', authenticateToken, isSuperAdmin, async (req, res) => {"
+    },
+    {
+      "file": "routes/adminUser/addAdminUserRoutes.js",
+      "line": 447,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "const deletedBy = req.user?.user_id || null;         const rows = await helper.query(\"SELECT roll FROM user WHERE user_id = ? AND (deleted = 0 OR dele"
+    },
+    {
+      "file": "routes/adminUser/addAdminUserRoutes.js",
+      "line": 453,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "const counts = await helper.query(                 \"SELECT COUNT(*) AS total FROM user WHERE roll = ? AND COALESCE(is_active, 1) = 1 AND (deleted = 0 "
+    }
+  ],
+  "routes/adminUser/rollRoutes.js": [
+    {
+      "file": "routes/adminUser/rollRoutes.js",
+      "line": 47,
+      "type": "FROM",
+      "table": "roll",
+      "snippet": "const [rolesRows, companies] = await Promise.all([             helper.query(`SELECT id, name, resource, date, company FROM roll ORDER BY id ASC`),    "
+    },
+    {
+      "file": "routes/adminUser/rollRoutes.js",
+      "line": 48,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "helper.query(`SELECT id, name, resource, date, company FROM roll ORDER BY id ASC`),             metaQuery('SELECT id, name FROM company ORDER BY name "
+    },
+    {
+      "file": "routes/adminUser/rollRoutes.js",
+      "line": 94,
+      "type": "FROM",
+      "table": "roll",
+      "snippet": "const existing = await helper.query(             `SELECT id FROM roll WHERE name = ? AND company = ? AND (deleted = 0 OR deleted IS NULL)`,           "
+    },
+    {
+      "file": "routes/adminUser/rollRoutes.js",
+      "line": 110,
+      "type": "FROM",
+      "table": "roll",
+      "snippet": ");             const newRows = await q(\"SELECT * FROM roll WHERE id = ?\", [result.insertId]);             await logAuditInTx(q, {"
+    },
+    {
+      "file": "routes/adminUser/rollRoutes.js",
+      "line": 175,
+      "type": "FROM",
+      "table": "roll",
+      "snippet": "try {         const exists = await helper.query('SELECT * FROM roll WHERE id = ?', [id]);         if (exists.length === 0) {"
+    },
+    {
+      "file": "routes/adminUser/rollRoutes.js",
+      "line": 197,
+      "type": "FROM",
+      "table": "roll",
+      "snippet": "const newRows = await q(\"SELECT * FROM roll WHERE id = ?\", [id]);             await logAuditInTx(q, {"
+    },
+    {
+      "file": "routes/adminUser/rollRoutes.js",
+      "line": 246,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "const userCount = await helper.query(             \"SELECT COUNT(*) AS total FROM user WHERE roll = ? AND (deleted = 0 OR deleted IS NULL)\",           "
+    },
+    {
+      "file": "routes/adminUser/rollRoutes.js",
+      "line": 256,
+      "type": "FROM",
+      "table": "roll",
+      "snippet": "const exists = await helper.query('SELECT id, name FROM roll WHERE id = ? AND (deleted = 0 OR deleted IS NULL)', [id]);         if (exists.length === "
+    },
+    {
+      "file": "routes/adminUser/rollRoutes.js",
+      "line": 262,
+      "type": "FROM",
+      "table": "roll",
+      "snippet": "await helper.runInTransaction(async (q) => {             const rows = await q(\"SELECT * FROM roll WHERE id = ? AND (deleted = 0 OR deleted IS NULL)\", "
+    }
+  ],
+  "routes/bulk/bulkRoutes.js": [
+    {
+      "file": "routes/bulk/bulkRoutes.js",
+      "line": 80,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "const allowedCompanyIds = isSuperAdmin       ? (await helper.query(\"SELECT id FROM company\")).map((r) => Number(r.id)).filter((id) => id > 0)       : "
+    }
+  ],
+  "routes/common/commonRoutes.js": [
+    {
+      "file": "routes/common/commonRoutes.js",
+      "line": 23,
+      "type": "FROM",
+      "table": "dai_incrementid",
+      "snippet": "const existingRows = await queryAsync(     \"SELECT * FROM dai_incrementid WHERE company=? LIMIT 1\",     [companyId]"
+    },
+    {
+      "file": "routes/common/commonRoutes.js",
+      "line": 30,
+      "type": "FROM",
+      "table": "dai_incrementid",
+      "snippet": "try {     const columns = await queryAsync(\"SHOW COLUMNS FROM dai_incrementid\");     const available = new Set((columns || []).map((c) => c.Field));"
+    },
+    {
+      "file": "routes/common/commonRoutes.js",
+      "line": 61,
+      "type": "FROM",
+      "table": "dai_incrementid",
+      "snippet": "const again = await queryAsync(     \"SELECT * FROM dai_incrementid WHERE company=? LIMIT 1\",     [companyId]"
+    },
+    {
+      "file": "routes/common/commonRoutes.js",
+      "line": 104,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "const used = await queryAsync(           \"SELECT entryno, invoiceno FROM dai_outward WHERE company = ? OR company = ?\",           [companyId, String(c"
+    },
+    {
+      "file": "routes/common/commonRoutes.js",
+      "line": 135,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "const companies = await metaQuery(           \"SELECT name, invoice_prefix, memo_prefix, purchase_prefix, lab_prefix FROM company WHERE id = ? LIMIT 1\""
+    }
+  ],
+  "routes/integration/integrationRoutes.js": [
+    {
+      "file": "routes/integration/integrationRoutes.js",
+      "line": 17,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "connection.query(       `SELECT COUNT(*) AS cnt FROM dai_product p WHERE visibility = 1 AND polish_carat <> 0        AND (p.outward = '' OR p.outward "
+    },
+    {
+      "file": "routes/integration/integrationRoutes.js",
+      "line": 40,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "`SELECT p.sku, p.lab, pv.report_no, pv.shape, pv.color, pv.clarity, pv.cut, pv.polish          FROM dai_product p JOIN dai_product_value pv ON p.id = "
+    },
+    {
+      "file": "routes/integration/integrationRoutes.js",
+      "line": 40,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "`SELECT p.sku, p.lab, pv.report_no, pv.shape, pv.color, pv.clarity, pv.cut, pv.polish          FROM dai_product p JOIN dai_product_value pv ON p.id = "
+    },
+    {
+      "file": "routes/integration/integrationRoutes.js",
+      "line": 65,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "connection.query(         `SELECT p.id, p.sku FROM dai_product p          WHERE p.visibility = 1 AND p.site_upload = 0 AND p.polish_carat > 0"
+    }
+  ],
+  "routes/inward/inwardRoutes.js": [
+    {
+      "file": "routes/inward/inwardRoutes.js",
+      "line": 68,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "try {         const compRows = await helper.query(\"SELECT name FROM company WHERE id = ? LIMIT 1\", [targetCompanyId]);         if (compRows?.[0]?.name"
+    },
+    {
+      "file": "routes/inward/inwardRoutes.js",
+      "line": 99,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "c.name AS company_name          FROM dai_product p          LEFT JOIN company c ON c.id = p.company"
+    },
+    {
+      "file": "routes/inward/inwardRoutes.js",
+      "line": 100,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "FROM dai_product p          LEFT JOIN company c ON c.id = p.company          WHERE UPPER(TRIM(p.sku)) IN (?)"
+    },
+    {
+      "file": "routes/inward/inwardRoutes.js",
+      "line": 117,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "FROM dai_inward_item ii            LEFT JOIN company c ON c.id = ii.company            WHERE UPPER(TRIM(ii.sku)) IN (?)"
+    },
+    {
+      "file": "routes/inward/inwardRoutes.js",
+      "line": 248,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "const compRows = await q(       \"SELECT memo_prefix, invoice_prefix FROM company WHERE id = ? LIMIT 1\",       [cid]"
+    },
+    {
+      "file": "routes/inward/inwardRoutes.js",
+      "line": 257,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "const rows = await q(     `SELECT invoiceno FROM dai_inward      WHERE (company = ? OR company = ?)"
+    },
+    {
+      "file": "routes/inward/inwardRoutes.js",
+      "line": 370,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "onhand_pcs, onhand_carat, memo_pcs, memo_carat, sold_pcs, sold_carat, price, cost, amount, outward            FROM dai_product            WHERE compan"
+    },
+    {
+      "file": "routes/inward/inwardRoutes.js",
+      "line": 386,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "`SELECT p.id, p.sku, p.company, c.name AS company_name              FROM dai_product p              LEFT JOIN company c ON c.id = p.company"
+    },
+    {
+      "file": "routes/inward/inwardRoutes.js",
+      "line": 387,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "FROM dai_product p              LEFT JOIN company c ON c.id = p.company              WHERE UPPER(TRIM(p.sku)) IN (?)"
+    },
+    {
+      "file": "routes/inward/inwardRoutes.js",
+      "line": 404,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "FROM dai_inward_item ii                LEFT JOIN company c ON c.id = ii.company                WHERE UPPER(TRIM(ii.sku)) IN (?)"
+    },
+    {
+      "file": "routes/inward/inwardRoutes.js",
+      "line": 1125,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "c.logo AS company_logo     FROM dai_inward i     LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party = p.id OR i.party = p.name)"
+    },
+    {
+      "file": "routes/inward/inwardRoutes.js",
+      "line": 1126,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "FROM dai_inward i     LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party = p.id OR i.party = p.name)     LEFT JOIN company comp ON (i.p"
+    },
+    {
+      "file": "routes/inward/inwardRoutes.js",
+      "line": 1127,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party = p.id OR i.party = p.name)     LEFT JOIN company comp ON (i.party = CAST(comp.id AS"
+    },
+    {
+      "file": "routes/inward/inwardRoutes.js",
+      "line": 1128,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "LEFT JOIN company comp ON (i.party = CAST(comp.id AS CHAR) OR i.party = comp.id OR i.party = comp.name OR i.party = comp.shortcutName)     LEFT JOIN c"
+    },
+    {
+      "file": "routes/inward/inwardRoutes.js",
+      "line": 1155,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "const pquery = `SELECT p.*, pv.* FROM dai_product p         JOIN dai_product_value pv ON p.id = pv.product_id"
+    },
+    {
+      "file": "routes/inward/inwardRoutes.js",
+      "line": 1156,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "const pquery = `SELECT p.*, pv.* FROM dai_product p         JOIN dai_product_value pv ON p.id = pv.product_id         WHERE p.id IN (${products})`;"
+    },
+    {
+      "file": "routes/inward/inwardRoutes.js",
+      "line": 1192,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "try {     const rows = await helper.query(\"SELECT * FROM dai_inward WHERE id = ?\", [id]);     if (!rows.length) return res.status(404).json({ status: "
+    }
+  ],
+  "routes/master/attributeRoutes.js": [
+    {
+      "file": "routes/master/attributeRoutes.js",
+      "line": 17,
+      "type": "FROM",
+      "table": "dai_attribute",
+      "snippet": "const searchInput = req.query.searchInput;   let query = `SELECT * FROM dai_attribute WHERE company = ?`;   const params = [companyId];"
+    },
+    {
+      "file": "routes/master/attributeRoutes.js",
+      "line": 43,
+      "type": "FROM",
+      "table": "dai_attribute",
+      "snippet": "if (id && id !== 0) {         const rows = await q(\"SELECT * FROM dai_attribute WHERE id=? AND company=?\", [id, companyId]);         oldRow = rows[0] "
+    },
+    {
+      "file": "routes/master/attributeRoutes.js",
+      "line": 57,
+      "type": "FROM",
+      "table": "dai_attribute",
+      "snippet": ");         const newRows = await q(\"SELECT * FROM dai_attribute WHERE id=? AND company=?\", [result.insertId, companyId]);         await logAuditInTx(q"
+    },
+    {
+      "file": "routes/master/attributeRoutes.js",
+      "line": 69,
+      "type": "FROM",
+      "table": "dai_attribute",
+      "snippet": "await q(`UPDATE dai_attribute SET ${upd} WHERE id = ? AND company = ?`, [id, companyId]);         const newRows = await q(\"SELECT * FROM dai_attribute"
+    },
+    {
+      "file": "routes/master/attributeRoutes.js",
+      "line": 95,
+      "type": "FROM",
+      "table": "dai_attribute",
+      "snippet": "await helper.runInTransaction(async (q) => {       const rows = await q(\"SELECT * FROM dai_attribute WHERE id=? AND company=? AND (deleted = 0 OR dele"
+    },
+    {
+      "file": "routes/master/attributeRoutes.js",
+      "line": 127,
+      "type": "FROM",
+      "table": "dai_attribute",
+      "snippet": "connection.query(     \"SELECT code, name, value FROM dai_attribute WHERE company = ? ORDER BY short_order\",     [companyId],"
+    }
+  ],
+  "routes/master/categoryRoutes.js": [
+    {
+      "file": "routes/master/categoryRoutes.js",
+      "line": 26,
+      "type": "FROM",
+      "table": "category",
+      "snippet": "SELECT c.*, p.name AS parent_name           FROM category c           LEFT JOIN category p ON c.parent = p.id AND c.parent <> 0 AND p.company = ?"
+    },
+    {
+      "file": "routes/master/categoryRoutes.js",
+      "line": 27,
+      "type": "JOIN",
+      "table": "category",
+      "snippet": "FROM category c           LEFT JOIN category p ON c.parent = p.id AND c.parent <> 0 AND p.company = ?           WHERE c.company = ?"
+    },
+    {
+      "file": "routes/master/categoryRoutes.js",
+      "line": 30,
+      "type": "FROM",
+      "table": "category",
+      "snippet": "`;         let countSql = `SELECT COUNT(*) as totalItems FROM category WHERE company = ?`;         const dataParams = [cid, cid];"
+    },
+    {
+      "file": "routes/master/categoryRoutes.js",
+      "line": 65,
+      "type": "FROM",
+      "table": "category",
+      "snippet": "if (id != 0) {         const rows = await q(\"SELECT * FROM category WHERE id=?\", [id]);         oldRow = rows[0] || null;"
+    },
+    {
+      "file": "routes/master/categoryRoutes.js",
+      "line": 71,
+      "type": "FROM",
+      "table": "category",
+      "snippet": "const result = await q(\"INSERT INTO category (name, parent, company) VALUES (?, ?, ?)\", [name, parent, companyId]);         const newRows = await q(\"S"
+    },
+    {
+      "file": "routes/master/categoryRoutes.js",
+      "line": 82,
+      "type": "FROM",
+      "table": "category",
+      "snippet": "await q(\"UPDATE category SET name=?, parent=? WHERE id=? AND company=?\", [name, parent, id, companyId]);         const newRows = await q(\"SELECT * FRO"
+    },
+    {
+      "file": "routes/master/categoryRoutes.js",
+      "line": 110,
+      "type": "FROM",
+      "table": "category",
+      "snippet": "await helper.runInTransaction(async (q) => {       const rows = await q(\"SELECT * FROM category WHERE id=? AND (deleted = 0 OR deleted IS NULL)\", [id]"
+    }
+  ],
+  "routes/master/companyRoutes.js": [
+    {
+      "file": "routes/master/companyRoutes.js",
+      "line": 21,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": "let query = `SELECT * FROM dai_party WHERE company = ? `;   let countQuery = `SELECT COUNT(*) as totalItems FROM dai_party WHERE company = ? `;"
+    },
+    {
+      "file": "routes/master/companyRoutes.js",
+      "line": 22,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": "let query = `SELECT * FROM dai_party WHERE company = ? `;   let countQuery = `SELECT COUNT(*) as totalItems FROM dai_party WHERE company = ? `;   cons"
+    },
+    {
+      "file": "routes/master/companyRoutes.js",
+      "line": 76,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": "if (id != 0) {         const rows = await q(\"SELECT * FROM dai_party WHERE id=? AND company=? AND (deleted = 0 OR deleted IS NULL)\", [id, companyId]);"
+    },
+    {
+      "file": "routes/master/companyRoutes.js",
+      "line": 87,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": "const newId = insertResult.insertId;         const newRows = await q(\"SELECT * FROM dai_party WHERE id=?\", [newId]);         message = \"New Company ha"
+    },
+    {
+      "file": "routes/master/companyRoutes.js",
+      "line": 100,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": "await q(`UPDATE dai_party SET ${updateResponse} WHERE id=? AND company=?`, [id, companyId]);         const newRows = await q(\"SELECT * FROM dai_party "
+    },
+    {
+      "file": "routes/master/companyRoutes.js",
+      "line": 133,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": "const errorMsg = await helper.runInTransaction(async (q) => {       const rows = await q(\"SELECT * FROM dai_party WHERE id=? AND company=?\", [id, comp"
+    },
+    {
+      "file": "routes/master/companyRoutes.js",
+      "line": 141,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "const inw = await q(         \"SELECT id FROM dai_inward WHERE (party = ? OR party = ?) AND company = ? AND (deleted = 0 OR deleted IS NULL) LIMIT 1\", "
+    },
+    {
+      "file": "routes/master/companyRoutes.js",
+      "line": 150,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "const out = await q(         \"SELECT id FROM dai_outward WHERE (party = ? OR party = ?) AND company = ? LIMIT 1\",         [String(id), oldRow.name || "
+    },
+    {
+      "file": "routes/master/companyRoutes.js",
+      "line": 159,
+      "type": "FROM",
+      "table": "acc_transaction",
+      "snippet": "const txn = await q(         \"SELECT id FROM acc_transaction WHERE (party = ? OR other_party = ? OR party = ? OR other_party = ?) AND company = ? AND "
+    },
+    {
+      "file": "routes/master/companyRoutes.js",
+      "line": 168,
+      "type": "FROM",
+      "table": "acc_advance",
+      "snippet": "const adv = await q(         \"SELECT id FROM acc_advance WHERE (party = ? OR party = ?) AND company = ? AND (deleted = 0 OR deleted IS NULL) LIMIT 1\","
+    },
+    {
+      "file": "routes/master/companyRoutes.js",
+      "line": 211,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": "? `SELECT id, name, address, country, pincode, email, contact_number, fax, contact_person, company        FROM dai_party        ORDER BY name`"
+    },
+    {
+      "file": "routes/master/companyRoutes.js",
+      "line": 214,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": ": `SELECT id, name, address, country, pincode, email, contact_number, fax, contact_person        FROM dai_party        WHERE company = ?"
+    },
+    {
+      "file": "routes/master/companyRoutes.js",
+      "line": 225,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "`SELECT id, name, shortcutName, address, city, state, pincode, country, number, email, website, logo, rapnet_id, branch_id, bank_details          FROM"
+    }
+  ],
+  "routes/master/labRoutes.js": [
+    {
+      "file": "routes/master/labRoutes.js",
+      "line": 23,
+      "type": "FROM",
+      "table": "dai_lab",
+      "snippet": "buildQueries: (cid) => {         let dataSql = `SELECT * FROM dai_lab WHERE company = ?`;         let countSql = `SELECT COUNT(*) as totalItems FROM d"
+    },
+    {
+      "file": "routes/master/labRoutes.js",
+      "line": 24,
+      "type": "FROM",
+      "table": "dai_lab",
+      "snippet": "let dataSql = `SELECT * FROM dai_lab WHERE company = ?`;         let countSql = `SELECT COUNT(*) as totalItems FROM dai_lab WHERE company = ?`;       "
+    },
+    {
+      "file": "routes/master/labRoutes.js",
+      "line": 58,
+      "type": "FROM",
+      "table": "dai_lab",
+      "snippet": "if (id != 0) {         const rows = await q(\"SELECT * FROM dai_lab WHERE id=? AND company=?\", [id, companyId]);         oldRow = rows[0] || null;"
+    },
+    {
+      "file": "routes/master/labRoutes.js",
+      "line": 72,
+      "type": "FROM",
+      "table": "dai_lab",
+      "snippet": ");         const newRows = await q(\"SELECT * FROM dai_lab WHERE id=? AND company=?\", [result.insertId, companyId]);         await logAuditInTx(q, {"
+    },
+    {
+      "file": "routes/master/labRoutes.js",
+      "line": 87,
+      "type": "FROM",
+      "table": "dai_lab",
+      "snippet": ");         const newRows = await q(\"SELECT * FROM dai_lab WHERE id=? AND company=?\", [id, companyId]);         await logAuditInTx(q, {"
+    },
+    {
+      "file": "routes/master/labRoutes.js",
+      "line": 116,
+      "type": "FROM",
+      "table": "dai_lab",
+      "snippet": "await helper.runInTransaction(async (q) => {       const rows = await q(\"SELECT * FROM dai_lab WHERE id=? AND company=? AND (deleted = 0 OR deleted IS"
+    }
+  ],
+  "routes/master/originRoutes.js": [
+    {
+      "file": "routes/master/originRoutes.js",
+      "line": 24,
+      "type": "FROM",
+      "table": "dai_origin",
+      "snippet": "buildQueries: (cid) => {         let dataSql = `SELECT * FROM dai_origin WHERE company = ?`;         let countSql = `SELECT COUNT(*) as totalItems FRO"
+    },
+    {
+      "file": "routes/master/originRoutes.js",
+      "line": 25,
+      "type": "FROM",
+      "table": "dai_origin",
+      "snippet": "let dataSql = `SELECT * FROM dai_origin WHERE company = ?`;         let countSql = `SELECT COUNT(*) as totalItems FROM dai_origin WHERE company = ?`; "
+    },
+    {
+      "file": "routes/master/originRoutes.js",
+      "line": 61,
+      "type": "FROM",
+      "table": "dai_origin",
+      "snippet": "if (id != 0) {         const rows = await q(\"SELECT * FROM dai_origin WHERE id=? AND company=?\", [id, companyId]);         oldRow = rows[0] || null;"
+    },
+    {
+      "file": "routes/master/originRoutes.js",
+      "line": 72,
+      "type": "FROM",
+      "table": "dai_origin",
+      "snippet": "const result = await q(\"INSERT INTO dai_origin (name, company) VALUES (?, ?)\", [name, companyId]);         const newRows = await q(\"SELECT * FROM dai_"
+    },
+    {
+      "file": "routes/master/originRoutes.js",
+      "line": 83,
+      "type": "FROM",
+      "table": "dai_origin",
+      "snippet": "await q(\"UPDATE dai_origin SET name=? WHERE id=? AND company=?\", [name, id, companyId]);         const newRows = await q(\"SELECT * FROM dai_origin WHE"
+    },
+    {
+      "file": "routes/master/originRoutes.js",
+      "line": 113,
+      "type": "FROM",
+      "table": "dai_origin",
+      "snippet": "await helper.runInTransaction(async (q) => {       const rows = await q(\"SELECT * FROM dai_origin WHERE id=? AND company=? AND (deleted = 0 OR deleted"
+    }
+  ],
+  "routes/master/shippingRoutes.js": [
+    {
+      "file": "routes/master/shippingRoutes.js",
+      "line": 24,
+      "type": "FROM",
+      "table": "dai_shipping",
+      "snippet": "buildQueries: (cid) => {         let dataSql = `SELECT * FROM dai_shipping WHERE company = ?`;         let countSql = `SELECT COUNT(*) as totalItems F"
+    },
+    {
+      "file": "routes/master/shippingRoutes.js",
+      "line": 25,
+      "type": "FROM",
+      "table": "dai_shipping",
+      "snippet": "let dataSql = `SELECT * FROM dai_shipping WHERE company = ?`;         let countSql = `SELECT COUNT(*) as totalItems FROM dai_shipping WHERE company = "
+    },
+    {
+      "file": "routes/master/shippingRoutes.js",
+      "line": 58,
+      "type": "FROM",
+      "table": "dai_shipping",
+      "snippet": "if (id != 0) {         const rows = await q(\"SELECT * FROM dai_shipping WHERE id=? AND company=?\", [id, companyId]);         oldRow = rows[0] || null;"
+    },
+    {
+      "file": "routes/master/shippingRoutes.js",
+      "line": 69,
+      "type": "FROM",
+      "table": "dai_shipping",
+      "snippet": "const result = await q(\"INSERT INTO dai_shipping (name, company) VALUES (?, ?)\", [name, companyId]);         const newRows = await q(\"SELECT * FROM da"
+    },
+    {
+      "file": "routes/master/shippingRoutes.js",
+      "line": 80,
+      "type": "FROM",
+      "table": "dai_shipping",
+      "snippet": "await q(\"UPDATE dai_shipping SET name=? WHERE id=? AND company=?\", [name, id, companyId]);         const newRows = await q(\"SELECT * FROM dai_shipping"
+    },
+    {
+      "file": "routes/master/shippingRoutes.js",
+      "line": 109,
+      "type": "FROM",
+      "table": "dai_shipping",
+      "snippet": "await helper.runInTransaction(async (q) => {       const rows = await q(\"SELECT * FROM dai_shipping WHERE id=? AND company=? AND (deleted = 0 OR delet"
+    }
+  ],
+  "routes/my_Balance/balanceBookRoutes.js": [
+    {
+      "file": "routes/my_Balance/balanceBookRoutes.js",
+      "line": 174,
+      "type": "FROM",
+      "table": "dai_book",
+      "snippet": "0 AS credit         FROM dai_book         ORDER BY book ASC, currency ASC, id ASC"
+    },
+    {
+      "file": "routes/my_Balance/balanceBookRoutes.js",
+      "line": 184,
+      "type": "FROM",
+      "table": "dai_book",
+      "snippet": "0 AS credit         FROM dai_book         WHERE company = ?"
+    },
+    {
+      "file": "routes/my_Balance/balanceBookRoutes.js",
+      "line": 250,
+      "type": "FROM",
+      "table": "dai_book",
+      "snippet": "connection.query(                 \"SELECT * FROM dai_book WHERE book = ? AND currency = ? AND company = ? LIMIT 1\",                 [safeBook, safeCur"
+    },
+    {
+      "file": "routes/my_Balance/balanceBookRoutes.js",
+      "line": 298,
+      "type": "FROM",
+      "table": "dai_book",
+      "snippet": "connection.query(                 `SELECT * FROM dai_book WHERE id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL) LIMIT 1`,                 "
+    }
+  ],
+  "routes/my_Balance/Currency_Rate.js": [
+    {
+      "file": "routes/my_Balance/Currency_Rate.js",
+      "line": 18,
+      "type": "FROM",
+      "table": "dai_currencyrate",
+      "snippet": "const query = `SELECT id, currency, USD, HKD FROM dai_currencyrate WHERE company = ?`;"
+    },
+    {
+      "file": "routes/my_Balance/Currency_Rate.js",
+      "line": 54,
+      "type": "FROM",
+      "table": "dai_currencyrate",
+      "snippet": "const existingRows = await new Promise((resolve) => {             connection.query(\"SELECT * FROM dai_currencyrate WHERE currency = ? AND company = ? "
+    },
+    {
+      "file": "routes/my_Balance/Currency_Rate.js",
+      "line": 113,
+      "type": "FROM",
+      "table": "dai_currencyrate",
+      "snippet": "const oldRows = await new Promise((resolve) => {             connection.query(\"SELECT * FROM dai_currencyrate WHERE id = ? AND company = ? AND (delete"
+    }
+  ],
+  "routes/my_Profile/myProfile.js": [
+    {
+      "file": "routes/my_Profile/myProfile.js",
+      "line": 111,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "u.company_name, u.tel_no, r.name AS role_name\r         FROM user u\r         LEFT JOIN roll r ON u.roll = r.id"
+    },
+    {
+      "file": "routes/my_Profile/myProfile.js",
+      "line": 112,
+      "type": "JOIN",
+      "table": "roll",
+      "snippet": "FROM user u\r         LEFT JOIN roll r ON u.roll = r.id\r         WHERE u.user_id = ?`;"
+    },
+    {
+      "file": "routes/my_Profile/myProfile.js",
+      "line": 166,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "// Step 1: Purana password verify karo\r     connection.query('SELECT pass FROM user WHERE user_id = ?', [userId], (err, results) => {\r         if (err"
+    },
+    {
+      "file": "routes/my_Profile/myProfile.js",
+      "line": 196,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "mobile, roll, profile_image, company_name, designation\r         FROM user\r         ORDER BY roll ASC, first_name ASC"
+    },
+    {
+      "file": "routes/my_Profile/myProfile.js",
+      "line": 216,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "mobile, roll, profile_image, address, company_name\r         FROM user WHERE user_id = ?\r     `;"
+    },
+    {
+      "file": "routes/my_Profile/myProfile.js",
+      "line": 246,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "// Email duplicate check\r     connection.query('SELECT user_id FROM user WHERE (user_email = ? OR user_name = ?) AND (deleted = 0 OR deleted IS NULL)'"
+    }
+  ],
+  "routes/outward/holdRepository.js": [
+    {
+      "file": "routes/outward/holdRepository.js",
+      "line": 20,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "const rows = await q(\r     `SELECT first_name, last_name FROM user WHERE user_id = ? LIMIT 1`,\r     [userId]"
+    }
+  ],
+  "routes/outward/outwardRoutes.js": [
+    {
+      "file": "routes/outward/outwardRoutes.js",
+      "line": 156,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "// Branch-wide: sale/memo saved under operating company must still appear     const baseFromWhere = `FROM dai_outward o                    LEFT JOIN d"
+    },
+    {
+      "file": "routes/outward/outwardRoutes.js",
+      "line": 157,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "const baseFromWhere = `FROM dai_outward o                    LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.n"
+    },
+    {
+      "file": "routes/outward/outwardRoutes.js",
+      "line": 158,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name)                    LEFT JOIN company comp ON (o.party = "
+    },
+    {
+      "file": "routes/outward/outwardRoutes.js",
+      "line": 244,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "c.logo AS company_logo     FROM dai_outward o     LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name)"
+    },
+    {
+      "file": "routes/outward/outwardRoutes.js",
+      "line": 245,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "FROM dai_outward o     LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name)     LEFT JOIN company comp ON (o."
+    },
+    {
+      "file": "routes/outward/outwardRoutes.js",
+      "line": 246,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name)     LEFT JOIN company comp ON (o.party = CAST(comp.id AS"
+    },
+    {
+      "file": "routes/outward/outwardRoutes.js",
+      "line": 247,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "LEFT JOIN company comp ON (o.party = CAST(comp.id AS CHAR) OR o.party = comp.id OR o.party = comp.name OR o.party = comp.shortcutName)     LEFT JOIN c"
+    },
+    {
+      "file": "routes/outward/outwardRoutes.js",
+      "line": 322,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "const placeholders = productIds.map(() => \"?\").join(\",\");         const pquery = `SELECT p.*, pv.* FROM dai_product p           LEFT JOIN dai_product_"
+    },
+    {
+      "file": "routes/outward/outwardRoutes.js",
+      "line": 323,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "const pquery = `SELECT p.*, pv.* FROM dai_product p           LEFT JOIN dai_product_value pv ON p.id = pv.product_id           WHERE p.id IN (${placeh"
+    },
+    {
+      "file": "routes/outward/outwardRoutes.js",
+      "line": 342,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "connection.query(\"SELECT * FROM dai_outward WHERE id = ?\", [id], (err2, data2) => {         if (err2 || !data2?.length) {"
+    },
+    {
+      "file": "routes/outward/outwardRoutes.js",
+      "line": 379,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "let query = `SELECT * FROM dai_outward WHERE id = ? AND company IN (${companyPlaceholders})`;"
+    },
+    {
+      "file": "routes/outward/outwardRoutes.js",
+      "line": 392,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "// Fallback: id only (memo/sale under sibling company)         connection.query(\"SELECT * FROM dai_outward WHERE id = ?\", [id], (err2, data2) => {    "
+    },
+    {
+      "file": "routes/outward/outwardRoutes.js",
+      "line": 408,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "/** LEFT JOIN dai_product_value can multiply one product into many rows (5+5+5=15 totals). */ function dedupeProductsById(rows) {"
+    },
+    {
+      "file": "routes/outward/outwardRoutes.js",
+      "line": 511,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "const placeholders = productIds.map(() => \"?\").join(\",\");   const pquery = `SELECT p.*, pv.* FROM dai_product p     LEFT JOIN dai_product_value pv ON "
+    },
+    {
+      "file": "routes/outward/outwardRoutes.js",
+      "line": 512,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "const pquery = `SELECT p.*, pv.* FROM dai_product p     LEFT JOIN dai_product_value pv ON p.id = pv.product_id     WHERE p.id IN (${placeholders})"
+    },
+    {
+      "file": "routes/outward/outwardRoutes.js",
+      "line": 531,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "connection.query(       `SELECT p.*, pv.* FROM dai_product p        LEFT JOIN dai_product_value pv ON p.id = pv.product_id"
+    },
+    {
+      "file": "routes/outward/outwardRoutes.js",
+      "line": 532,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "`SELECT p.*, pv.* FROM dai_product p        LEFT JOIN dai_product_value pv ON p.id = pv.product_id        WHERE p.id IN (${placeholders})`,"
+    }
+  ],
+  "routes/outward/outwardService.js": [
+    {
+      "file": "routes/outward/outwardService.js",
+      "line": 106,
+      "type": "FROM",
+      "table": "dai_incrementid",
+      "snippet": "let seqRows = await q(     \"SELECT outward, invoice FROM dai_incrementid WHERE company = ? FOR UPDATE\",     [cid]"
+    },
+    {
+      "file": "routes/outward/outwardService.js",
+      "line": 121,
+      "type": "FROM",
+      "table": "dai_incrementid",
+      "snippet": "seqRows = await q(       \"SELECT outward, invoice FROM dai_incrementid WHERE company = ? FOR UPDATE\",       [cid]"
+    },
+    {
+      "file": "routes/outward/outwardService.js",
+      "line": 127,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "const existing = await q(     \"SELECT entryno, invoiceno, type FROM dai_outward WHERE company = ? OR company = ?\",     [cid, String(cid)]"
+    },
+    {
+      "file": "routes/outward/outwardService.js",
+      "line": 150,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "compRows = await q(       \"SELECT invoice_prefix, memo_prefix, purchase_prefix, lab_prefix FROM company WHERE id = ? LIMIT 1\",       [cid]"
+    },
+    {
+      "file": "routes/outward/outwardService.js",
+      "line": 237,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "if (outwardTableColumnsCache) return outwardTableColumnsCache;   const rows = await q(\"SHOW COLUMNS FROM dai_outward\");   outwardTableColumnsCache = r"
+    },
+    {
+      "file": "routes/outward/outwardService.js",
+      "line": 309,
+      "type": "FROM",
+      "table": "dai_incrementid",
+      "snippet": "const rows = await q(     `SELECT ${field} FROM dai_incrementid WHERE company = ? LIMIT 1`,     [companyId]"
+    },
+    {
+      "file": "routes/outward/outwardService.js",
+      "line": 656,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "const otherComps = await qRead(         \"SELECT id, name FROM company WHERE id <> ?\",         [sourceCompanyId]"
+    },
+    {
+      "file": "routes/outward/outwardService.js",
+      "line": 679,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "const compRows = await qRead(         `SELECT id, name FROM company WHERE id IN (${involvedCompanyIds.map(() => \"?\").join(\",\")})`,         involvedCom"
+    },
+    {
+      "file": "routes/outward/outwardService.js",
+      "line": 1401,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "return await withTransaction(async (q) => {       const rows = await q(\"SELECT * FROM dai_outward WHERE id = ?\", [id]);       if (!rows.length) return"
+    }
+  ],
+  "routes/portal/portalRoutes.js": [
+    {
+      "file": "routes/portal/portalRoutes.js",
+      "line": 47,
+      "type": "FROM",
+      "table": "company_year",
+      "snippet": "const yearsRaw = await metaQuery(       `SELECT id, year, fromDate, toDate, db_name FROM company_year ORDER BY id DESC`     );"
+    },
+    {
+      "file": "routes/portal/portalRoutes.js",
+      "line": 52,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "b.name AS branch_name, b.shortcutName AS branch_shortcut, b.address AS branch_address, b.color_code AS branch_color_code        FROM company c        "
+    },
+    {
+      "file": "routes/portal/portalRoutes.js",
+      "line": 53,
+      "type": "JOIN",
+      "table": "branch",
+      "snippet": "FROM company c        LEFT JOIN branch b ON b.id = c.branch_id        ORDER BY COALESCE(b.name, 'zzz'), c.name ASC`"
+    },
+    {
+      "file": "routes/portal/portalRoutes.js",
+      "line": 59,
+      "type": "FROM",
+      "table": "branch",
+      "snippet": "`SELECT id, name, shortcutName, address, number, color_code        FROM branch        WHERE status = 1"
+    },
+    {
+      "file": "routes/portal/portalRoutes.js",
+      "line": 71,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "const sessionRows = await metaQuery(         `SELECT branch_id FROM company WHERE id = ? LIMIT 1`,         [sessionCompanyId]"
+    },
+    {
+      "file": "routes/portal/portalRoutes.js",
+      "line": 216,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "`SELECT c.id, c.name, c.branch_id, b.name AS branch_name, b.color_code AS branch_color_code          FROM company c          LEFT JOIN branch b ON b.i"
+    },
+    {
+      "file": "routes/portal/portalRoutes.js",
+      "line": 217,
+      "type": "JOIN",
+      "table": "branch",
+      "snippet": "FROM company c          LEFT JOIN branch b ON b.id = c.branch_id          WHERE c.id = ? LIMIT 1`,"
+    },
+    {
+      "file": "routes/portal/portalRoutes.js",
+      "line": 229,
+      "type": "FROM",
+      "table": "branch",
+      "snippet": "const branchRows = await metaQuery(         `SELECT id, name, color_code FROM branch WHERE id = ? LIMIT 1`,         [sessionBranchId]"
+    },
+    {
+      "file": "routes/portal/portalRoutes.js",
+      "line": 248,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "b.name AS branch_name, b.color_code AS branch_color_code          FROM company c          LEFT JOIN branch b ON b.id = c.branch_id"
+    },
+    {
+      "file": "routes/portal/portalRoutes.js",
+      "line": 249,
+      "type": "JOIN",
+      "table": "branch",
+      "snippet": "FROM company c          LEFT JOIN branch b ON b.id = c.branch_id          WHERE c.branch_id = ?"
+    },
+    {
+      "file": "routes/portal/portalRoutes.js",
+      "line": 258,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "NULL AS branch_name, NULL AS branch_color_code          FROM company c          WHERE c.id = ?"
+    },
+    {
+      "file": "routes/portal/portalRoutes.js",
+      "line": 309,
+      "type": "FROM",
+      "table": "company_year",
+      "snippet": "const rows = await metaQuery(       `SELECT id, year, fromDate, toDate, db_name FROM company_year ORDER BY id DESC`     );"
+    }
+  ],
+  "routes/product/boxParcelService.js": [
+    {
+      "file": "routes/product/boxParcelService.js",
+      "line": 358,
+      "type": "FROM",
+      "table": "category",
+      "snippet": "const categories = await helper.query(\r     `SELECT id, name, parent FROM category ORDER BY name`,\r   );"
+    },
+    {
+      "file": "routes/product/boxParcelService.js",
+      "line": 361,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "const counts = await helper.query(\r     `SELECT category, COUNT(*) AS cnt FROM dai_product WHERE visibility = 1 AND category IS NOT NULL AND category "
+    },
+    {
+      "file": "routes/product/boxParcelService.js",
+      "line": 411,
+      "type": "FROM",
+      "table": "category",
+      "snippet": "const catRows = await helper.query(\r       \"SELECT id, name FROM category WHERE id = ? LIMIT 1\",\r       [cat],"
+    },
+    {
+      "file": "routes/product/boxParcelService.js",
+      "line": 428,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "pv.shape, pv.color, pv.clarity, pv.cut, pv.polish, pv.symmentry, pv.report_no, pv.mesurment\r       FROM dai_product p\r       LEFT JOIN dai_product_val"
+    },
+    {
+      "file": "routes/product/boxParcelService.js",
+      "line": 429,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r       LEFT JOIN dai_product_value pv ON p.id = pv.product_id\r       WHERE p.id IN (${placeholders})`,"
+    },
+    {
+      "file": "routes/product/boxParcelService.js",
+      "line": 499,
+      "type": "FROM",
+      "table": "category",
+      "snippet": "const nameRows = await helper.query(\r     `SELECT DISTINCT name FROM category WHERE id IN (${idPlaceholders})`,\r     ids,"
+    },
+    {
+      "file": "routes/product/boxParcelService.js",
+      "line": 506,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "`SELECT COUNT(*) AS total, SUM(polish_pcs) AS pcs, SUM(polish_carat) AS carat, SUM(amount) AS amount\r      FROM dai_product WHERE visibility = 1 AND c"
+    },
+    {
+      "file": "routes/product/boxParcelService.js",
+      "line": 584,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "pv.shape, pv.color, pv.clarity, pv.cut, pv.polish, pv.symmentry, pv.report_no, pv.mesurment, pv.table_pc, pv.depth_pc\r     FROM dai_product p\r     LEF"
+    },
+    {
+      "file": "routes/product/boxParcelService.js",
+      "line": 585,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r     LEFT JOIN dai_product_value pv ON p.id = pv.product_id\r     WHERE p.company = ? AND p.visibility = 1 AND p.id <> ?"
+    },
+    {
+      "file": "routes/product/boxParcelService.js",
+      "line": 679,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "pv.shape, pv.color, pv.clarity, pv.cut, pv.polish, pv.symmentry, pv.report_no\r     FROM dai_product p\r     LEFT JOIN dai_product_value pv ON p.id = pv"
+    },
+    {
+      "file": "routes/product/boxParcelService.js",
+      "line": 680,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r     LEFT JOIN dai_product_value pv ON p.id = pv.product_id\r     WHERE p.company = ? AND (p.parent_id = ? OR p.box_id = ? OR p.parc"
+    }
+  ],
+  "routes/product/changePriceRepository.js": [
+    {
+      "file": "routes/product/changePriceRepository.js",
+      "line": 6,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "SELECT p.*, pv.*\r     FROM dai_product p\r     LEFT JOIN dai_product_value pv ON p.id = pv.product_id"
+    },
+    {
+      "file": "routes/product/changePriceRepository.js",
+      "line": 7,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r     LEFT JOIN dai_product_value pv ON p.id = pv.product_id\r     WHERE p.id = ?"
+    }
+  ],
+  "routes/product/iExportRepository.js": [
+    {
+      "file": "routes/product/iExportRepository.js",
+      "line": 20,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "const sql = `SELECT * FROM dai_product p\r     LEFT JOIN dai_product_value pv ON p.id = pv.product_id"
+    },
+    {
+      "file": "routes/product/iExportRepository.js",
+      "line": 21,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "const sql = `SELECT * FROM dai_product p\r     LEFT JOIN dai_product_value pv ON p.id = pv.product_id\r     WHERE p.id IN (${placeholders})${companyFilt"
+    }
+  ],
+  "routes/product/inventoryFilterHelper.js": [
+    {
+      "file": "routes/product/inventoryFilterHelper.js",
+      "line": 63,
+      "type": "FROM",
+      "table": "category",
+      "snippet": "if (categoryTreeCache) return categoryTreeCache;   const rows = await helper.query(\"SELECT id, parent FROM category\");   const childrenByParent = new "
+    }
+  ],
+  "routes/product/inventorySuggestService.js": [
+    {
+      "file": "routes/product/inventorySuggestService.js",
+      "line": 24,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "p.polish_carat     FROM dai_product p     JOIN dai_product_value pv ON p.id = pv.product_id"
+    },
+    {
+      "file": "routes/product/inventorySuggestService.js",
+      "line": 25,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p     JOIN dai_product_value pv ON p.id = pv.product_id     WHERE p.company IN (${companyPlaceholders}) AND p.visibility = 1"
+    }
+  ],
+  "routes/product/labelA4Repository.js": [
+    {
+      "file": "routes/product/labelA4Repository.js",
+      "line": 6,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "const placeholders = ids.map(() => \"?\").join(\",\");\r   const sql = `SELECT * FROM dai_product p\r     INNER JOIN dai_product_value pv ON p.id = pv.produ"
+    },
+    {
+      "file": "routes/product/labelA4Repository.js",
+      "line": 7,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "const sql = `SELECT * FROM dai_product p\r     INNER JOIN dai_product_value pv ON p.id = pv.product_id\r     WHERE p.id IN (${placeholders})"
+    },
+    {
+      "file": "routes/product/labelA4Repository.js",
+      "line": 15,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "const rows = await helper.query(\r     `SELECT * FROM dai_product p\r       INNER JOIN dai_product_value pv ON p.id = pv.product_id"
+    },
+    {
+      "file": "routes/product/labelA4Repository.js",
+      "line": 16,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "`SELECT * FROM dai_product p\r       INNER JOIN dai_product_value pv ON p.id = pv.product_id\r       WHERE p.sku = ?"
+    },
+    {
+      "file": "routes/product/labelA4Repository.js",
+      "line": 26,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "const rows = await helper.query(\r     \"SELECT MAX(barcode) AS barcode FROM dai_product WHERE barcode IS NOT NULL AND barcode != '' AND barcode != 0\"\r "
+    }
+  ],
+  "routes/product/productRoutes.js": [
+    {
+      "file": "routes/product/productRoutes.js",
+      "line": 425,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "const inventoryBaseFrom =\r     ` FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id WHERE p.company IN (${companyPlaceholders}) and "
+    },
+    {
+      "file": "routes/product/productRoutes.js",
+      "line": 425,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "const inventoryBaseFrom =\r     ` FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id WHERE p.company IN (${companyPlaceholders}) and "
+    },
+    {
+      "file": "routes/product/productRoutes.js",
+      "line": 617,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "const companyRows = await metaQuery(\r             `SELECT id, name, shortcutName, address, number, email, website, rapnet_id FROM company WHERE id IN "
+    },
+    {
+      "file": "routes/product/productRoutes.js",
+      "line": 726,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "await helper.runInTransaction(async (q) => {\r       const oldRows = await q(\"SELECT * FROM dai_product WHERE id=?\", [id]);\r       const oldRow = oldRo"
+    },
+    {
+      "file": "routes/product/productRoutes.js",
+      "line": 728,
+      "type": "FROM",
+      "table": "dai_product_value",
+      "snippet": "const oldRow = oldRows[0] || null;\r       const oldValRows = await q(\"SELECT * FROM dai_product_value WHERE product_id=?\", [id]);\r       const oldValR"
+    },
+    {
+      "file": "routes/product/productRoutes.js",
+      "line": 743,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "const newRows = await q(\"SELECT * FROM dai_product WHERE id=?\", [id]);\r       const newValRows = await q(\"SELECT * FROM dai_product_value WHERE produc"
+    },
+    {
+      "file": "routes/product/productRoutes.js",
+      "line": 744,
+      "type": "FROM",
+      "table": "dai_product_value",
+      "snippet": "const newRows = await q(\"SELECT * FROM dai_product WHERE id=?\", [id]);\r       const newValRows = await q(\"SELECT * FROM dai_product_value WHERE produc"
+    },
+    {
+      "file": "routes/product/productRoutes.js",
+      "line": 811,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "await helper.runInTransaction(async (q) => {\r       const rows = await q(\"SELECT id, sku, remark, price, amount, polish_pcs, polish_carat FROM dai_pro"
+    },
+    {
+      "file": "routes/product/productRoutes.js",
+      "line": 1089,
+      "type": "FROM",
+      "table": "dai_history",
+      "snippet": "const history = await new Promise((resolve, reject) => {\r       const historySql = \"SELECT * FROM dai_history WHERE product_id = ? ORDER BY id\";\r     "
+    },
+    {
+      "file": "routes/product/productRoutes.js",
+      "line": 1206,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "//       console.log(id);\r //       let query = `SELECT  * FROM dai_product p JOIN dai_product_value v ON p.id = v.product_id WHERE ${by}='${id}'`;\r /"
+    },
+    {
+      "file": "routes/product/productRoutes.js",
+      "line": 1206,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "//       console.log(id);\r //       let query = `SELECT  * FROM dai_product p JOIN dai_product_value v ON p.id = v.product_id WHERE ${by}='${id}'`;\r /"
+    }
+  ],
+  "routes/report/reportRoutes.js": [
+    {
+      "file": "routes/report/reportRoutes.js",
+      "line": 194,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "o.due_amount`;     const saleFrom = `FROM dai_outward o                          LEFT JOIN dai_party p ON o.party = p.id AND p.company = ?"
+    },
+    {
+      "file": "routes/report/reportRoutes.js",
+      "line": 195,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "const saleFrom = `FROM dai_outward o                          LEFT JOIN dai_party p ON o.party = p.id AND p.company = ?                          LEFT "
+    },
+    {
+      "file": "routes/report/reportRoutes.js",
+      "line": 196,
+      "type": "JOIN",
+      "table": "dai_product",
+      "snippet": "LEFT JOIN dai_party p ON o.party = p.id AND p.company = ?                          LEFT JOIN dai_product dp ON FIND_IN_SET(dp.id, o.products) AND dp.c"
+    },
+    {
+      "file": "routes/report/reportRoutes.js",
+      "line": 223,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "o.due_amount                          FROM dai_inward o                          LEFT JOIN dai_party p ON o.party = p.id AND p.company = ?"
+    },
+    {
+      "file": "routes/report/reportRoutes.js",
+      "line": 224,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "FROM dai_inward o                          LEFT JOIN dai_party p ON o.party = p.id AND p.company = ?                          WHERE o.company = ?"
+    },
+    {
+      "file": "routes/report/reportRoutes.js",
+      "line": 283,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "o.due_amount                                                FROM dai_outward o                LEFT JOIN dai_party p ON o.party = p.id AND p.company = "
+    },
+    {
+      "file": "routes/report/reportRoutes.js",
+      "line": 284,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "FROM dai_outward o                LEFT JOIN dai_party p ON o.party = p.id AND p.company = ?                WHERE o.id = ? AND o.company = ?`;"
+    },
+    {
+      "file": "routes/report/reportRoutes.js",
+      "line": 296,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "o.due_amount                                                FROM dai_inward o                LEFT JOIN dai_party p ON o.party = p.id AND p.company = ?"
+    },
+    {
+      "file": "routes/report/reportRoutes.js",
+      "line": 297,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "FROM dai_inward o                LEFT JOIN dai_party p ON o.party = p.id AND p.company = ?                WHERE o.id = ? AND o.company = ?`;"
+    },
+    {
+      "file": "routes/report/reportRoutes.js",
+      "line": 319,
+      "type": "FROM",
+      "table": "acc_transaction",
+      "snippet": "sg.name AS account_name         FROM acc_transaction t         LEFT JOIN dai_party p ON (t.party = CAST(p.id AS CHAR) OR t.party = p.name) AND p.compa"
+    },
+    {
+      "file": "routes/report/reportRoutes.js",
+      "line": 320,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "FROM acc_transaction t         LEFT JOIN dai_party p ON (t.party = CAST(p.id AS CHAR) OR t.party = p.name) AND p.company = ?         LEFT JOIN dai_par"
+    },
+    {
+      "file": "routes/report/reportRoutes.js",
+      "line": 321,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "LEFT JOIN dai_party p ON (t.party = CAST(p.id AS CHAR) OR t.party = p.name) AND p.company = ?         LEFT JOIN dai_party p2 ON (t.other_party = CAST("
+    },
+    {
+      "file": "routes/report/reportRoutes.js",
+      "line": 322,
+      "type": "JOIN",
+      "table": "acc_subgroup",
+      "snippet": "LEFT JOIN dai_party p2 ON (t.other_party = CAST(p2.id AS CHAR) OR t.other_party = p2.name) AND p2.company = ?         LEFT JOIN acc_subgroup sg ON t.u"
+    }
+  ],
+  "routes/report/reportService.js": [
+    {
+      "file": "routes/report/reportService.js",
+      "line": 47,
+      "type": "JOIN",
+      "table": "dai_product",
+      "snippet": "let sql = `SELECT bh.*, p.sku FROM dai_boxhistory bh\r       LEFT JOIN dai_product p ON p.id = bh.product_id WHERE 1=1`;\r     const values = [];"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 80,
+      "type": "FROM",
+      "table": "dai_history",
+      "snippet": "// Fallback / main store in dai_history\r   let sql = `SELECT h.*, COALESCE(h.sku, p.sku) AS sku FROM dai_history h\r     LEFT JOIN dai_product p ON p.i"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 81,
+      "type": "JOIN",
+      "table": "dai_product",
+      "snippet": "let sql = `SELECT h.*, COALESCE(h.sku, p.sku) AS sku FROM dai_history h\r     LEFT JOIN dai_product p ON p.id = h.product_id WHERE 1=1`;\r   const value"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 205,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "const outRows = await queryAsync(\r       `SELECT invoiceno, user FROM dai_outward\r        WHERE invoiceno IN (${placeholders}) AND user IS NOT NULL AN"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 219,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "const inRows = await queryAsync(\r       `SELECT invoiceno, user FROM dai_inward\r        WHERE invoiceno IN (${placeholders}) AND user IS NOT NULL AND "
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 573,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "let parentEntry = null;\r         // 0. Exact database reference map from dai_outward / dai_outward_item\r         if (mappedMemoInv) {"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 887,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": "async function getPartyMap() {\r   const rows = await queryAsync(\"SELECT id, name FROM dai_party\");\r   const map = {};"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 909,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "await metaQuery(\r         \"SELECT user_id, first_name, last_name, user_name FROM user\"\r       )"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 919,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "await queryAsync(\r           \"SELECT user_id, first_name, last_name, user_name FROM user\"\r         )"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 973,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "let sql = `SELECT * FROM dai_outward WHERE company = ?${userFilter}${statusSql}${typeSql}${partyFilter.sql}${dateCol.sql}${productsClause} ORDER BY da"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 979,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "if (!typeVal) {\r       sql = `SELECT * FROM dai_outward WHERE company = ?${userFilter}${statusSql}${typeSql}${partyFilter.sql}${dateCol.sql}${products"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1007,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "const placeholders = uniqueProductIds.map(() => \"?\").join(\",\");\r       const prodSql = `SELECT p.*, pv.* FROM dai_product p JOIN dai_product_value pv "
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1007,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "const placeholders = uniqueProductIds.map(() => \"?\").join(\",\");\r       const prodSql = `SELECT p.*, pv.* FROM dai_product p JOIN dai_product_value pv "
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1019,
+      "type": "JOIN",
+      "table": "dai_product",
+      "snippet": "FROM dai_product_return pr\r         INNER JOIN dai_product p ON p.id = pr.product_id\r         INNER JOIN dai_product_value pv ON pr.product_id = pv.pr"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1020,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "INNER JOIN dai_product p ON p.id = pr.product_id\r         INNER JOIN dai_product_value pv ON pr.product_id = pv.product_id\r         WHERE pr.id IN (${"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1062,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "} else if (report === \"purchase\" || report === \"import\") {\r     const sql = `SELECT * FROM dai_inward WHERE deleted = 0 AND company = ?${userFilter}\r "
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1074,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "const placeholders = inwardIds.map(() => \"?\").join(\",\");\r       const prodSql = `SELECT p.*, pv.* FROM dai_product p JOIN dai_product_value pv ON p.id"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1074,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "const placeholders = inwardIds.map(() => \"?\").join(\",\");\r       const prodSql = `SELECT p.*, pv.* FROM dai_product p JOIN dai_product_value pv ON p.id"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1188,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "const outwardSql = `SELECT * FROM dai_outward WHERE products <> ''${companySql}\r     AND status NOT IN ('sale_close','close_sale','close_export')"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1212,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "pv.shape, pv.clarity, pv.color, pv.report_no\r      FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id\r      WHERE p.id IN (${uniqueI"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1212,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "pv.shape, pv.clarity, pv.color, pv.report_no\r      FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id\r      WHERE p.id IN (${uniqueI"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1295,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "const inwardSql = `SELECT * FROM dai_inward\r     WHERE (deleted = 0 OR deleted IS NULL)${companySql}"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1314,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "pv.shape, pv.clarity, pv.color, pv.report_no\r      FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id\r      WHERE p.inward_id IN (${"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1314,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "pv.shape, pv.clarity, pv.color, pv.report_no\r      FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id\r      WHERE p.inward_id IN (${"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1463,
+      "type": "FROM",
+      "table": "dai_activity_log",
+      "snippet": "COALESCE(CONVERT_TZ(created_at, '+00:00', '+05:30'), created_at) AS created_at\r        FROM dai_activity_log\r        WHERE ${cond}"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1514,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "`SELECT p.*, v.report_no, v.shape, v.clarity, v.size, v.f_intensity, v.cut, v.polish, v.symmentry, v.table_pc, v.depth_pc, v.mesurment, v.gridle, v.in"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1515,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r        LEFT JOIN dai_product_value v ON p.id = v.product_id\r        WHERE UPPER(TRIM(p.sku)) = UPPER(?)"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1708,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "p.outward, p.location, p.company, pv.shape, pv.color, pv.clarity\r          FROM dai_product p\r          LEFT JOIN dai_product_value pv ON p.id = pv.pr"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1709,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r          LEFT JOIN dai_product_value pv ON p.id = pv.product_id\r          WHERE p.id = ? LIMIT 1`,"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1745,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "pv.shape, pv.color, pv.clarity, pv.cut, pv.report_no\r                       FROM dai_product p\r                       LEFT JOIN dai_product_value pv O"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1746,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r                       LEFT JOIN dai_product_value pv ON p.id = pv.product_id\r                       WHERE (p.parent_id = ? OR p.bo"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1780,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "p.outward, pv.shape, pv.color, pv.clarity\r          FROM dai_product p\r          LEFT JOIN dai_product_value pv ON p.id = pv.product_id"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1781,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r          LEFT JOIN dai_product_value pv ON p.id = pv.product_id\r          WHERE (p.parent_id = ? OR p.box_id = ? OR p.parcel_id = "
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1806,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "p.outward, pv.shape, pv.color, pv.clarity\r          FROM dai_product p\r          LEFT JOIN dai_product_value pv ON p.id = pv.product_id"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1807,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r          LEFT JOIN dai_product_value pv ON p.id = pv.product_id\r          WHERE UPPER(TRIM(p.sku)) = UPPER(?) LIMIT 1`,"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1911,
+      "type": "FROM",
+      "table": "dai_history",
+      "snippet": "let historySql = \"SELECT * FROM dai_history WHERE product_id = ?\";\r   const historyValues = [detail.id];"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1916,
+      "type": "FROM",
+      "table": "dai_history",
+      "snippet": "historySql = `\r       SELECT * FROM dai_history \r       WHERE product_id = ?"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1943,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "? metaQuery(\r           \"SELECT id, name, shortcutName FROM company WHERE id = ? LIMIT 1\",\r           [stockCompanyId]"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 1948,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "queryAsync(\r       `SELECT id, invoiceno, entryno, type, reference, products FROM dai_outward\r        WHERE ("
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 2298,
+      "type": "FROM",
+      "table": "dai_history",
+      "snippet": "// Step 2B: Activity logs are kept separate in the Activity Logs tab / page.\r   // Stone History table strictly displays real ledger records from dai_"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 2394,
+      "type": "FROM",
+      "table": "dai_history",
+      "snippet": "// If both originate from dai_history, their auto-increment ID is the absolute ground truth sequence of operations\r     if (numIdA != null && numIdB !"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 2418,
+      "type": "FROM",
+      "table": "dai_history",
+      "snippet": "const partyIds = await queryAsync(\r     \"SELECT DISTINCT party FROM dai_history WHERE product_id = ? AND party IS NOT NULL AND party <> ''\",\r     [det"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 2426,
+      "type": "FROM",
+      "table": "dai_history",
+      "snippet": "for (const { party } of partyIds) {\r     let sql = `SELECT * FROM dai_history WHERE product_id = ? AND party = ?`;\r     const vals = [detail.id, party"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 2469,
+      "type": "FROM",
+      "table": "company_year",
+      "snippet": "years = await metaQuery(\r       \"SELECT db_name FROM company_year WHERE db_name IS NOT NULL AND db_name <> ''\"\r     );"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 2482,
+      "type": "FROM",
+      "table": "dai_history",
+      "snippet": "const userFilter = hideUser16(userId) ? HISTORY_HIDE_USER16_SQL : \"\";\r   const sql = `SELECT * FROM dai_history WHERE product_id = ?${userFilter} ORDE"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 2508,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "queryAsync(\r       \"SELECT DISTINCT main_group AS value FROM dai_product WHERE company = ? AND main_group <> ''\",\r       [companyId]"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 2512,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "queryAsync(\r       \"SELECT DISTINCT sub_group AS value FROM dai_product WHERE company = ? AND sub_group <> ''\",\r       [companyId]"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 2628,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "const outwardSql = `SELECT * FROM dai_outward WHERE company = ?${userFilter}${statusSql}${typeSql}${partyFilter.sql}${dateFilter.sql}${invoiceFilter.s"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 2675,
+      "type": "JOIN",
+      "table": "dai_product",
+      "snippet": "FROM dai_product_return pr\r       INNER JOIN dai_product p ON p.id = pr.product_id\r       INNER JOIN dai_product_value pv ON pr.product_id = pv.produc"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 2676,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "INNER JOIN dai_product p ON p.id = pr.product_id\r       INNER JOIN dai_product_value pv ON pr.product_id = pv.product_id\r       WHERE pr.id IN (${plac"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 2689,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "const sql = `SELECT p.*, pv.*\r       FROM dai_product p\r       JOIN dai_product_value pv ON p.id = pv.product_id"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 2690,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r       JOIN dai_product_value pv ON p.id = pv.product_id\r       WHERE p.id IN (${placeholders})${giaSql}`;"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 2787,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": "const contactRows = await queryAsync(\r       `SELECT id, contact_person FROM dai_party WHERE id IN (${contactPlaceholders})`,\r       partyIds"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 2804,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "p.remark AS product_remark\r       FROM dai_product AS p\r       JOIN dai_product_return AS r ON p.id = r.product_id"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 2818,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "const sql = `SELECT p.*, pv.*\r       FROM dai_product AS p\r       JOIN dai_product_value AS pv ON p.id = pv.product_id"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 2819,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product AS p\r       JOIN dai_product_value AS pv ON p.id = pv.product_id\r       WHERE p.id IN (${placeholders})${giaSql}`;"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 2956,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "const inwardSql = `SELECT * FROM dai_inward\r     WHERE (deleted = 0 OR deleted IS NULL) AND company = ?${userFilter}"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 2977,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "const productSql = `SELECT p.*, pv.*\r     FROM dai_product p\r     JOIN dai_product_value pv ON p.id = pv.product_id"
+    },
+    {
+      "file": "routes/report/reportService.js",
+      "line": 2978,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r     JOIN dai_product_value pv ON p.id = pv.product_id\r     WHERE p.inward_id IN (${placeholders})${giaSql}`;"
+    }
+  ],
+  "routes/session/sessionRoutes.js": [
+    {
+      "file": "routes/session/sessionRoutes.js",
+      "line": 115,
+      "type": "FROM",
+      "table": "branch",
+      "snippet": "const branches = await metaQuery(         \"SELECT id, name, shortcutName, color_code FROM branch WHERE id = ? AND status = 1 LIMIT 1\",         [branch"
+    },
+    {
+      "file": "routes/session/sessionRoutes.js",
+      "line": 126,
+      "type": "FROM",
+      "table": "company_year",
+      "snippet": "const yearRows = yearId         ? await metaQuery(\"SELECT year FROM company_year WHERE id = ? LIMIT 1\", [yearId]).catch(() => [])         : [];"
+    },
+    {
+      "file": "routes/session/sessionRoutes.js",
+      "line": 202,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "b.name AS branch_name, b.shortcutName AS branch_shortcut, b.color_code AS branch_color_code          FROM company c          LEFT JOIN branch b ON b.i"
+    },
+    {
+      "file": "routes/session/sessionRoutes.js",
+      "line": 203,
+      "type": "JOIN",
+      "table": "branch",
+      "snippet": "FROM company c          LEFT JOIN branch b ON b.id = c.branch_id          WHERE c.id = ? LIMIT 1`,"
+    },
+    {
+      "file": "routes/session/sessionRoutes.js",
+      "line": 210,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "companies = await metaQuery(           \"SELECT id, name, shortcutName, logo, address, number, city, state, pincode, country, email, website, rapnet_id"
+    },
+    {
+      "file": "routes/session/sessionRoutes.js",
+      "line": 216,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "companies = await metaQuery(             \"SELECT id, name, shortcutName, logo, address, number, city, state, pincode, country, email, website, rapnet_"
+    },
+    {
+      "file": "routes/session/sessionRoutes.js",
+      "line": 221,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "companies = await metaQuery(             \"SELECT id, name, shortcutName FROM company WHERE id = ? LIMIT 1\",             [companyId]"
+    },
+    {
+      "file": "routes/session/sessionRoutes.js",
+      "line": 236,
+      "type": "FROM",
+      "table": "company_year",
+      "snippet": "const yearRows = yearId       ? await metaQuery(\"SELECT year FROM company_year WHERE id = ? LIMIT 1\", [yearId]).catch(() => [])       : [];"
+    }
+  ],
+  "routes/transaction/transactionPrintService.js": [
+    {
+      "file": "routes/transaction/transactionPrintService.js",
+      "line": 13,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "`SELECT o.*, p.name AS party_name, p.address AS party_address, p.pincode AS party_pincode, p.country AS party_country, p.contact_number AS party_conta"
+    },
+    {
+      "file": "routes/transaction/transactionPrintService.js",
+      "line": 13,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "`SELECT o.*, p.name AS party_name, p.address AS party_address, p.pincode AS party_pincode, p.country AS party_country, p.contact_number AS party_conta"
+    },
+    {
+      "file": "routes/transaction/transactionPrintService.js",
+      "line": 24,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "pv.shape, pv.color, pv.clarity, pv.report_no, pv.size        FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id        WHERE p.id IN"
+    },
+    {
+      "file": "routes/transaction/transactionPrintService.js",
+      "line": 24,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "pv.shape, pv.color, pv.clarity, pv.report_no, pv.size        FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id        WHERE p.id IN"
+    },
+    {
+      "file": "routes/transaction/transactionPrintService.js",
+      "line": 35,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "`SELECT o.*, p.name AS party_name, p.address AS party_address, p.pincode AS party_pincode, p.country AS party_country, p.contact_number AS party_conta"
+    },
+    {
+      "file": "routes/transaction/transactionPrintService.js",
+      "line": 35,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "`SELECT o.*, p.name AS party_name, p.address AS party_address, p.pincode AS party_pincode, p.country AS party_country, p.contact_number AS party_conta"
+    },
+    {
+      "file": "routes/transaction/transactionPrintService.js",
+      "line": 43,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "pv.shape, pv.color, pv.clarity, pv.report_no      FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id WHERE p.inward_id = ?`,     [id"
+    },
+    {
+      "file": "routes/transaction/transactionPrintService.js",
+      "line": 43,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "pv.shape, pv.color, pv.clarity, pv.report_no      FROM dai_product p JOIN dai_product_value pv ON p.id = pv.product_id WHERE p.inward_id = ?`,     [id"
+    }
+  ],
+  "routes/transaction/transactionStockService.js": [
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 153,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "`SELECT ${PRODUCT_WITH_VALUE_SELECT}\r      FROM dai_product p\r      LEFT JOIN dai_product_value pv ON p.id = pv.product_id"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 154,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r      LEFT JOIN dai_product_value pv ON p.id = pv.product_id\r      WHERE p.inward_id = ?`,"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 295,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "/** Deduplicate product rows (LEFT JOIN dai_product_value can multiply rows). */\r function dedupeProductsById(rows) {"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 312,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "`SELECT ${PRODUCT_WITH_VALUE_SELECT}\r      FROM dai_product p\r      LEFT JOIN dai_product_value pv ON p.id = pv.product_id"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 313,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r      LEFT JOIN dai_product_value pv ON p.id = pv.product_id\r      WHERE p.id IN (${placeholders})`,"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 586,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "const countRows = await query(\r     `SELECT COUNT(*) AS total FROM dai_outward o\r      WHERE ${companySql.clause} AND o.type = 'lab' AND o.status = 'o"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 592,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "const rows = await query(\r     `SELECT o.*, ${PARTY_FIELDS} FROM dai_outward o\r      LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 593,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "`SELECT o.*, ${PARTY_FIELDS} FROM dai_outward o\r      LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name)\r  "
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 594,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name)\r      LEFT JOIN company comp ON (o.party = CAST(comp.id "
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 595,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "LEFT JOIN company comp ON (o.party = CAST(comp.id AS CHAR) OR o.party = comp.id OR o.party = comp.name OR o.party = comp.shortcutName)\r      LEFT JOIN"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 655,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "const rows = await query(\r     `SELECT i.*, ${PARTY_FIELDS} FROM dai_inward i\r      LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party "
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 656,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "`SELECT i.*, ${PARTY_FIELDS} FROM dai_inward i\r      LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party = p.id OR i.party = p.name)\r   "
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 657,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party = p.id OR i.party = p.name)\r      LEFT JOIN company comp ON (i.party = CAST(comp.id "
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 658,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "LEFT JOIN company comp ON (i.party = CAST(comp.id AS CHAR) OR i.party = comp.id OR i.party = comp.name OR i.party = comp.shortcutName)\r      LEFT JOIN"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 723,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "const countRows = await query(\r     `SELECT COUNT(*) AS total FROM dai_inward i\r      LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.part"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 724,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "`SELECT COUNT(*) AS total FROM dai_inward i\r      LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party = p.id OR i.party = p.name)\r      "
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 725,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party = p.id OR i.party = p.name)\r      LEFT JOIN company comp ON (i.party = CAST(comp.id "
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 733,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "const rows = await query(\r     `SELECT i.*, ${PARTY_FIELDS} FROM dai_inward i\r      LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party "
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 734,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "`SELECT i.*, ${PARTY_FIELDS} FROM dai_inward i\r      LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party = p.id OR i.party = p.name)\r   "
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 735,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party = p.id OR i.party = p.name)\r      LEFT JOIN company comp ON (i.party = CAST(comp.id "
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 736,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "LEFT JOIN company comp ON (i.party = CAST(comp.id AS CHAR) OR i.party = comp.id OR i.party = comp.name OR i.party = comp.shortcutName)\r      LEFT JOIN"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 821,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "skuClause = ` AND EXISTS (\r       SELECT 1 FROM dai_product pr\r       LEFT JOIN dai_product_value pv ON pr.id = pv.product_id"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 822,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "SELECT 1 FROM dai_product pr\r       LEFT JOIN dai_product_value pv ON pr.id = pv.product_id\r       WHERE FIND_IN_SET(pr.id, o.products) > 0"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 835,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "const countRows = await query(\r     `SELECT COUNT(*) AS total FROM dai_outward o\r      LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.par"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 836,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "`SELECT COUNT(*) AS total FROM dai_outward o\r      LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name)\r     "
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 837,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name)\r      LEFT JOIN company comp ON (o.party = CAST(comp.id "
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 844,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "const rows = await query(\r     `SELECT o.*, ${PARTY_FIELDS} FROM dai_outward o\r      LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 845,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "`SELECT o.*, ${PARTY_FIELDS} FROM dai_outward o\r      LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name)\r  "
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 846,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name)\r      LEFT JOIN company comp ON (o.party = CAST(comp.id "
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 847,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "LEFT JOIN company comp ON (o.party = CAST(comp.id AS CHAR) OR o.party = comp.id OR o.party = comp.name OR o.party = comp.shortcutName)\r      LEFT JOIN"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 892,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "if (companyId) {\r     const rows = await query(\"SELECT * FROM dai_outward WHERE id = ? AND company = ?\", [id, companyId]);\r     return rows[0] || null"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 895,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "}\r   const rows = await query(\"SELECT * FROM dai_outward WHERE id = ?\", [id]);\r   return rows[0] || null;"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 901,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "if (companyId) {\r     const rows = await query(\"SELECT * FROM dai_inward WHERE id = ? AND company = ?\", [id, companyId]);\r     return rows[0] || null;"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 904,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "}\r   const rows = await query(\"SELECT * FROM dai_inward WHERE id = ?\", [id]);\r   return rows[0] || null;"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 919,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "let labRows = await query(\r     `SELECT * FROM dai_outward WHERE id = ? AND company IN (${companyPlaceholders})`,\r     [outid, ...companyParams]"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 923,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "if (!labRows.length) {\r     labRows = await query(\"SELECT * FROM dai_outward WHERE id = ?\", [outid]);\r   }"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 980,
+      "type": "FROM",
+      "table": "dai_history",
+      "snippet": "const hist = await query(\r         `SELECT pcs, carat FROM dai_history\r          WHERE product_id = ? AND action IN ('lab','gia')"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 1189,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "let memoRows = await query(\r     `SELECT * FROM dai_outward WHERE id = ? AND company IN (${companyPlaceholders})`,\r     [post.id, ...companyParams]"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 1193,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "if (!memoRows.length) {\r     memoRows = await query(\"SELECT * FROM dai_outward WHERE id = ?\", [post.id]);\r   }"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 1535,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "const remainingRows = await query(\r           `SELECT SUM(COALESCE(sell_amount, amount, 0)) AS total_amount FROM dai_product WHERE id IN (${placeholde"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 1574,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "let memoRows = await q(\r       `SELECT * FROM dai_outward WHERE id = ? AND company IN (${companyPlaceholders})`,\r       [memoId, ...companyParams]"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 1578,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "if (!memoRows.length) {\r       memoRows = await q(\"SELECT * FROM dai_outward WHERE id = ?\", [memoId]);\r     }"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 1603,
+      "type": "FROM",
+      "table": "dai_incrementid",
+      "snippet": "let seqRows = await q(\r       \"SELECT outward, invoice FROM dai_incrementid WHERE company = ? FOR UPDATE\",\r       [companyId]"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 1616,
+      "type": "FROM",
+      "table": "dai_incrementid",
+      "snippet": "seqRows = await q(\r         \"SELECT outward, invoice FROM dai_incrementid WHERE company = ? FOR UPDATE\",\r         [companyId]"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 1621,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "const existingOut = await q(\r       \"SELECT entryno, invoiceno, type FROM dai_outward WHERE company = ? OR company = ?\",\r       [companyId, String(com"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 1645,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "const compRows = await q(\r         \"SELECT invoice_prefix, memo_prefix FROM company WHERE id = ? LIMIT 1\",\r         [companyId]"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 1673,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "let prodRows = await q(\r         `SELECT * FROM dai_product WHERE id = ? AND company IN (${companyPlaceholders})`,\r         [pid, ...companyParams]"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 1677,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "if (!prodRows.length) {\r         prodRows = await q(\"SELECT * FROM dai_product WHERE id = ?\", [pid]);\r       }"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 1979,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "const remainingRows = await q(\r             `SELECT SUM(COALESCE(sell_amount, amount, 0)) AS total_amount FROM dai_product WHERE id IN (${placeholders"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 2035,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "return helper.runInTransaction(async (q) => {\r     const memoRows = await q(\"SELECT * FROM dai_inward WHERE id = ? AND company = ?\", [memoId, companyI"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 2042,
+      "type": "FROM",
+      "table": "dai_incrementid",
+      "snippet": "const seqRows = await q(\"SELECT inward, reference FROM dai_incrementid WHERE company = ? FOR UPDATE\", [companyId]);\r     let curInward = seqRows?.[0]?"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 2060,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "for (const pid of products) {\r       const prodRows = await q(\"SELECT * FROM dai_product WHERE id = ?\", [pid]);\r       const pdata = prodRows[0] || nu"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 2102,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "await q(\"UPDATE dai_product SET inward_id=? WHERE id = ?\", [newId, pid]);\r       const prodRows = await q(\"SELECT * FROM dai_product WHERE id = ?\", [p"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 2229,
+      "type": "FROM",
+      "table": "acc_transaction",
+      "snippet": "const paymentRows = await query(\r     `SELECT id FROM acc_transaction WHERE purchase_id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL) LIMIT"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 2246,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "`SELECT id, sku, outward, outward_parent, child_count, box_id, parcel_id, parent_id, visibility \r        FROM dai_product \r        WHERE id IN (${plac"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 2330,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "const oRows = companyId\r       ? await q(\"SELECT * FROM dai_outward WHERE id = ? AND company = ?\", [id, companyId])\r       : await q(\"SELECT * FROM da"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 2331,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "? await q(\"SELECT * FROM dai_outward WHERE id = ? AND company = ?\", [id, companyId])\r       : await q(\"SELECT * FROM dai_outward WHERE id = ?\", [id]);"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 2341,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "for (const pid of productIds) {\r       const pRows = await q(\"SELECT * FROM dai_product WHERE id = ?\", [pid]);\r       const pdata = pRows[0] || null;"
+    },
+    {
+      "file": "routes/transaction/transactionStockService.js",
+      "line": 2347,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "if (pdata.outward_parent) {\r         const parentRows = await q(\"SELECT * FROM dai_product WHERE id = ?\", [pdata.outward_parent]);\r         const pare"
+    }
+  ],
+  "routes/user/userRoutes.js": [
+    {
+      "file": "routes/user/userRoutes.js",
+      "line": 90,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "r.name AS role_name, r.resource AS role_resource                 FROM user u                 LEFT JOIN roll r ON u.roll = r.id"
+    },
+    {
+      "file": "routes/user/userRoutes.js",
+      "line": 91,
+      "type": "JOIN",
+      "table": "roll",
+      "snippet": "FROM user u                 LEFT JOIN roll r ON u.roll = r.id                 WHERE (u.user_name = ? OR u.user_email = ?)"
+    }
+  ],
+  "repositories/accounting/advancePaymentRepository.js": [
+    {
+      "file": "repositories/accounting/advancePaymentRepository.js",
+      "line": 25,
+      "type": "FROM",
+      "table": "acc_advance",
+      "snippet": "SELECT COUNT(*) AS total     FROM acc_advance a     WHERE (a.deleted = 0 OR a.deleted IS NULL) AND a.company = ?"
+    },
+    {
+      "file": "repositories/accounting/advancePaymentRepository.js",
+      "line": 44,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": "SELECT p.name              FROM dai_party p              WHERE (a.party = CAST(p.id AS CHAR) OR a.party = p.name)"
+    },
+    {
+      "file": "repositories/accounting/advancePaymentRepository.js",
+      "line": 51,
+      "type": "FROM",
+      "table": "dai_book",
+      "snippet": "SELECT bk.book              FROM dai_book bk              WHERE (a.book = CAST(bk.id AS CHAR) OR a.book = bk.book)"
+    },
+    {
+      "file": "repositories/accounting/advancePaymentRepository.js",
+      "line": 56,
+      "type": "FROM",
+      "table": "acc_advance",
+      "snippet": ") AS book_name     FROM acc_advance a     WHERE (a.deleted = 0 OR a.deleted IS NULL) AND a.company = ?"
+    },
+    {
+      "file": "repositories/accounting/advancePaymentRepository.js",
+      "line": 73,
+      "type": "FROM",
+      "table": "acc_advance",
+      "snippet": "async function getAdvancePaymentByIdAndCompany(id, companyId) {   const sql = `SELECT party, date, type, book, cheque, amount, use_amount, balance_amo"
+    },
+    {
+      "file": "repositories/accounting/advancePaymentRepository.js",
+      "line": 84,
+      "type": "FROM",
+      "table": "acc_advance",
+      "snippet": "async function getAdvancePaymentFullByIdAndCompany(id, companyId) {   const sql = `SELECT * FROM acc_advance WHERE id = ? AND company = ? LIMIT 1`;   "
+    },
+    {
+      "file": "repositories/accounting/advancePaymentRepository.js",
+      "line": 140,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "`SELECT o.*, p.name AS party_name, p.address AS party_address, p.contact_number AS party_contact        FROM dai_outward o        LEFT JOIN dai_party "
+    },
+    {
+      "file": "repositories/accounting/advancePaymentRepository.js",
+      "line": 141,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "FROM dai_outward o        LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.name) AND (p.company = ? OR p.company IS NULL)        "
+    },
+    {
+      "file": "repositories/accounting/advancePaymentRepository.js",
+      "line": 159,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "`SELECT p.*, pv.shape, pv.color, pv.clarity, pv.cut, pv.polish, pv.symmentry AS symmetry, pv.f_intensity AS fluorescence            FROM dai_product p"
+    },
+    {
+      "file": "repositories/accounting/advancePaymentRepository.js",
+      "line": 160,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p            LEFT JOIN dai_product_value pv ON p.id = pv.product_id            WHERE p.company = ? AND p.id IN (${placeholders})`,"
+    },
+    {
+      "file": "repositories/accounting/advancePaymentRepository.js",
+      "line": 168,
+      "type": "FROM",
+      "table": "acc_transaction",
+      "snippet": "`SELECT t.*, sg.name AS subgroup_name, p.name AS party_name          FROM acc_transaction t          LEFT JOIN acc_subgroup sg ON t.under_subgroup = s"
+    },
+    {
+      "file": "repositories/accounting/advancePaymentRepository.js",
+      "line": 169,
+      "type": "JOIN",
+      "table": "acc_subgroup",
+      "snippet": "FROM acc_transaction t          LEFT JOIN acc_subgroup sg ON t.under_subgroup = sg.id          LEFT JOIN dai_party p ON (t.party = CAST(p.id AS CHAR) "
+    },
+    {
+      "file": "repositories/accounting/advancePaymentRepository.js",
+      "line": 170,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "LEFT JOIN acc_subgroup sg ON t.under_subgroup = sg.id          LEFT JOIN dai_party p ON (t.party = CAST(p.id AS CHAR) OR t.party = p.name) AND (p.comp"
+    },
+    {
+      "file": "repositories/accounting/advancePaymentRepository.js",
+      "line": 179,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "`SELECT i.*, p.name AS party_name, p.address AS party_address, p.contact_number AS party_contact        FROM dai_inward i        LEFT JOIN dai_party p"
+    },
+    {
+      "file": "repositories/accounting/advancePaymentRepository.js",
+      "line": 180,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "FROM dai_inward i        LEFT JOIN dai_party p ON (i.party = CAST(p.id AS CHAR) OR i.party = p.name) AND (p.company = ? OR p.company IS NULL)        W"
+    },
+    {
+      "file": "repositories/accounting/advancePaymentRepository.js",
+      "line": 198,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "`SELECT p.*, pv.shape, pv.color, pv.clarity, pv.cut, pv.polish, pv.symmentry AS symmetry, pv.f_intensity AS fluorescence            FROM dai_product p"
+    },
+    {
+      "file": "repositories/accounting/advancePaymentRepository.js",
+      "line": 199,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p            LEFT JOIN dai_product_value pv ON p.id = pv.product_id            WHERE p.company = ? AND (p.inward_id = ? OR p.id IN ($"
+    },
+    {
+      "file": "repositories/accounting/advancePaymentRepository.js",
+      "line": 206,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "`SELECT p.*, pv.shape, pv.color, pv.clarity, pv.cut, pv.polish, pv.symmentry AS symmetry, pv.f_intensity AS fluorescence            FROM dai_product p"
+    },
+    {
+      "file": "repositories/accounting/advancePaymentRepository.js",
+      "line": 207,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p            LEFT JOIN dai_product_value pv ON p.id = pv.product_id            WHERE p.company = ? AND p.inward_id = ?`,"
+    },
+    {
+      "file": "repositories/accounting/advancePaymentRepository.js",
+      "line": 215,
+      "type": "FROM",
+      "table": "acc_transaction",
+      "snippet": "`SELECT t.*, sg.name AS subgroup_name, p.name AS party_name          FROM acc_transaction t          LEFT JOIN acc_subgroup sg ON t.under_subgroup = s"
+    },
+    {
+      "file": "repositories/accounting/advancePaymentRepository.js",
+      "line": 216,
+      "type": "JOIN",
+      "table": "acc_subgroup",
+      "snippet": "FROM acc_transaction t          LEFT JOIN acc_subgroup sg ON t.under_subgroup = sg.id          LEFT JOIN dai_party p ON (t.party = CAST(p.id AS CHAR) "
+    },
+    {
+      "file": "repositories/accounting/advancePaymentRepository.js",
+      "line": 217,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "LEFT JOIN acc_subgroup sg ON t.under_subgroup = sg.id          LEFT JOIN dai_party p ON (t.party = CAST(p.id AS CHAR) OR t.party = p.name) AND (p.comp"
+    }
+  ],
+  "repositories/accounting/expensePaymentRepository.js": [
+    {
+      "file": "repositories/accounting/expensePaymentRepository.js",
+      "line": 26,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": "SELECT p.name                         FROM dai_party p                         WHERE (t.party = CAST(p.id AS CHAR) OR t.party = p.name)"
+    },
+    {
+      "file": "repositories/accounting/expensePaymentRepository.js",
+      "line": 33,
+      "type": "FROM",
+      "table": "dai_book",
+      "snippet": "SELECT bk.book                         FROM dai_book bk                         WHERE (t.book = CAST(bk.id AS CHAR) OR t.book = bk.book)"
+    },
+    {
+      "file": "repositories/accounting/expensePaymentRepository.js",
+      "line": 38,
+      "type": "FROM",
+      "table": "acc_transaction",
+      "snippet": ") AS book_name                FROM acc_transaction t                WHERE t.company = ?"
+    },
+    {
+      "file": "repositories/accounting/expensePaymentRepository.js",
+      "line": 50,
+      "type": "FROM",
+      "table": "acc_transaction",
+      "snippet": "async function getExpensePaymentByIdAndCompany(id, companyId) {   const sql = `SELECT party, other_party, date, type, book, cheque, amount, descriptio"
+    },
+    {
+      "file": "repositories/accounting/expensePaymentRepository.js",
+      "line": 61,
+      "type": "FROM",
+      "table": "acc_transaction",
+      "snippet": "async function getExpensePaymentFullByIdAndCompany(id, companyId) {   const sql = `SELECT * FROM acc_transaction WHERE id = ? AND company = ? LIMIT 1`"
+    }
+  ],
+  "repositories/accounting/transactionRepository.js": [
+    {
+      "file": "repositories/accounting/transactionRepository.js",
+      "line": 28,
+      "type": "FROM",
+      "table": "acc_transaction",
+      "snippet": "COALESCE(NULLIF(TRIM(bk.book), ''), t.book) AS book_name     FROM acc_transaction t     LEFT JOIN dai_party p1 ON (t.party = CAST(p1.id AS CHAR) OR t."
+    },
+    {
+      "file": "repositories/accounting/transactionRepository.js",
+      "line": 29,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "FROM acc_transaction t     LEFT JOIN dai_party p1 ON (t.party = CAST(p1.id AS CHAR) OR t.party = p1.name) AND p1.company = ?     LEFT JOIN dai_party p"
+    },
+    {
+      "file": "repositories/accounting/transactionRepository.js",
+      "line": 30,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "LEFT JOIN dai_party p1 ON (t.party = CAST(p1.id AS CHAR) OR t.party = p1.name) AND p1.company = ?     LEFT JOIN dai_party p2 ON (t.other_party = CAST("
+    },
+    {
+      "file": "repositories/accounting/transactionRepository.js",
+      "line": 31,
+      "type": "JOIN",
+      "table": "acc_subgroup",
+      "snippet": "LEFT JOIN dai_party p2 ON (t.other_party = CAST(p2.id AS CHAR) OR t.other_party = p2.name) AND p2.company = ?     LEFT JOIN acc_subgroup sg ON t.under"
+    },
+    {
+      "file": "repositories/accounting/transactionRepository.js",
+      "line": 32,
+      "type": "JOIN",
+      "table": "dai_book",
+      "snippet": "LEFT JOIN acc_subgroup sg ON t.under_subgroup = sg.id AND (sg.company = ? OR sg.company IS NULL)     LEFT JOIN dai_book bk ON (       t.book = CAST(bk"
+    },
+    {
+      "file": "repositories/accounting/transactionRepository.js",
+      "line": 47,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": "const partyIdVal = filters.partyId || filters.party;     sql += \" AND (t.party = ? OR t.party = ? OR p1.name = ? OR t.party = (SELECT CAST(id AS CHAR)"
+    },
+    {
+      "file": "repositories/accounting/transactionRepository.js",
+      "line": 52,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": "const otherP = filters.other_party || filters.otherParty;     sql += \" AND (t.other_party = ? OR p2.name = ? OR t.other_party = (SELECT CAST(id AS CHA"
+    },
+    {
+      "file": "repositories/accounting/transactionRepository.js",
+      "line": 75,
+      "type": "FROM",
+      "table": "acc_advance",
+      "snippet": "async function getAdvanceReportTransactionsFromDb(filters = {}, companyId) {   let sql = `SELECT id, party, date, type, book, cheque, amount, descript"
+    },
+    {
+      "file": "repositories/accounting/transactionRepository.js",
+      "line": 106,
+      "type": "FROM",
+      "table": "dai_book",
+      "snippet": "const sql = `SELECT DISTINCT TRIM(book) AS name                FROM dai_book                WHERE (company = ? OR company IS NULL) AND book IS NOT NUL"
+    }
+  ],
+  "repositories/lab/labLogRepository.js": [
+    {
+      "file": "repositories/lab/labLogRepository.js",
+      "line": 64,
+      "type": "JOIN",
+      "table": "user",
+      "snippet": "FROM lab_fetch_log l     LEFT JOIN user u ON l.user_id = u.user_id     WHERE l.company_id = ?"
+    }
+  ],
+  "repositories/transaction/companyTransferRepository.js": [
+    {
+      "file": "repositories/transaction/companyTransferRepository.js",
+      "line": 55,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "FROM dai_company_transfer t       LEFT JOIN company fc ON fc.id = t.from_company_id       LEFT JOIN company tc ON tc.id = t.to_company_id"
+    },
+    {
+      "file": "repositories/transaction/companyTransferRepository.js",
+      "line": 56,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "LEFT JOIN company fc ON fc.id = t.from_company_id       LEFT JOIN company tc ON tc.id = t.to_company_id       LEFT JOIN user u ON u.user_id = t.create"
+    },
+    {
+      "file": "repositories/transaction/companyTransferRepository.js",
+      "line": 57,
+      "type": "JOIN",
+      "table": "user",
+      "snippet": "LEFT JOIN company tc ON tc.id = t.to_company_id       LEFT JOIN user u ON u.user_id = t.created_by       WHERE t.id = ?"
+    },
+    {
+      "file": "repositories/transaction/companyTransferRepository.js",
+      "line": 72,
+      "type": "JOIN",
+      "table": "dai_product",
+      "snippet": "FROM dai_company_transfer_item ti       LEFT JOIN dai_product sp ON sp.id = ti.source_product_id       LEFT JOIN dai_product_value pv ON pv.product_id"
+    },
+    {
+      "file": "repositories/transaction/companyTransferRepository.js",
+      "line": 73,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "LEFT JOIN dai_product sp ON sp.id = ti.source_product_id       LEFT JOIN dai_product_value pv ON pv.product_id = sp.id       WHERE ti.transfer_id = ?"
+    },
+    {
+      "file": "repositories/transaction/companyTransferRepository.js",
+      "line": 144,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "FROM dai_company_transfer t       LEFT JOIN company fc ON fc.id = t.from_company_id       LEFT JOIN company tc ON tc.id = t.to_company_id"
+    },
+    {
+      "file": "repositories/transaction/companyTransferRepository.js",
+      "line": 145,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "LEFT JOIN company fc ON fc.id = t.from_company_id       LEFT JOIN company tc ON tc.id = t.to_company_id       LEFT JOIN user u ON u.user_id = t.create"
+    },
+    {
+      "file": "repositories/transaction/companyTransferRepository.js",
+      "line": 146,
+      "type": "JOIN",
+      "table": "user",
+      "snippet": "LEFT JOIN company tc ON tc.id = t.to_company_id       LEFT JOIN user u ON u.user_id = t.created_by       WHERE ${whereStr}"
+    }
+  ],
+  "services/ai/aiBrainService.js": [
+    {
+      "file": "services/ai/aiBrainService.js",
+      "line": 131,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "`SELECT COUNT(p.id) AS total, SUM(CASE WHEN p.hold = 1 THEN 1 ELSE 0 END) AS on_hold        FROM dai_product p        JOIN dai_product_value pv ON p.i"
+    },
+    {
+      "file": "services/ai/aiBrainService.js",
+      "line": 132,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p        JOIN dai_product_value pv ON p.id = pv.product_id        WHERE ${buildOnHandWhere()}`"
+    },
+    {
+      "file": "services/ai/aiBrainService.js",
+      "line": 138,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "p.price, p.cost, p.amount, p.hold, p.lab, p.outward        FROM dai_product p        JOIN dai_product_value pv ON p.id = pv.product_id"
+    },
+    {
+      "file": "services/ai/aiBrainService.js",
+      "line": 139,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p        JOIN dai_product_value pv ON p.id = pv.product_id        WHERE ${buildOnHandWhere()}"
+    },
+    {
+      "file": "services/ai/aiBrainService.js",
+      "line": 158,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "o.paid_amount, o.due_amount, o.status, p.name AS party_name      FROM dai_outward o      LEFT JOIN dai_party p ON o.party = p.id"
+    },
+    {
+      "file": "services/ai/aiBrainService.js",
+      "line": 159,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "FROM dai_outward o      LEFT JOIN dai_party p ON o.party = p.id      ORDER BY o.date DESC, o.id DESC"
+    },
+    {
+      "file": "services/ai/aiBrainService.js",
+      "line": 164,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": ");   const countRows = await helper.query(`SELECT COUNT(*) AS total FROM dai_outward`);   return {"
+    },
+    {
+      "file": "services/ai/aiBrainService.js",
+      "line": 173,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "async function fetchUsers(limit = MAX_RECORDS) {   const countRows = await helper.query(`SELECT COUNT(*) AS total FROM user`);   const rows = await he"
+    },
+    {
+      "file": "services/ai/aiBrainService.js",
+      "line": 176,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "`SELECT user_id, user_name, user_email, first_name, last_name, mobile, roll, profile_image      FROM user      ORDER BY user_id DESC"
+    }
+  ],
+  "services/ai/aiDataService.js": [
+    {
+      "file": "services/ai/aiDataService.js",
+      "line": 4,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "const ON_HAND_BASE = (companyId) => `\r   FROM dai_product p\r   JOIN dai_product_value pv ON p.id = pv.product_id"
+    },
+    {
+      "file": "services/ai/aiDataService.js",
+      "line": 5,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r   JOIN dai_product_value pv ON p.id = pv.product_id\r   WHERE p.company = ?"
+    },
+    {
+      "file": "services/ai/aiDataService.js",
+      "line": 102,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "o.date, o.final_amount, o.paid_amount, o.due_amount, o.status\r     FROM dai_outward o\r     LEFT JOIN dai_party p ON o.party = p.id"
+    },
+    {
+      "file": "services/ai/aiDataService.js",
+      "line": 103,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "FROM dai_outward o\r     LEFT JOIN dai_party p ON o.party = p.id\r     WHERE o.company = ?"
+    },
+    {
+      "file": "services/ai/aiDataService.js",
+      "line": 118,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": "const partySql = `SELECT id, name, address, contact_number FROM dai_party WHERE id = ? AND company = ? LIMIT 1`;\r   const partyRows = await helper.que"
+    },
+    {
+      "file": "services/ai/aiDataService.js",
+      "line": 126,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "o.final_amount, o.paid_amount, o.due_amount, o.status\r     FROM dai_outward o\r     WHERE o.company = ?"
+    },
+    {
+      "file": "services/ai/aiDataService.js",
+      "line": 147,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "p.price, p.cost, p.amount, p.hold, p.lab\r     FROM dai_product p\r     JOIN dai_product_value pv ON p.id = pv.product_id"
+    },
+    {
+      "file": "services/ai/aiDataService.js",
+      "line": 148,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r     JOIN dai_product_value pv ON p.id = pv.product_id\r     WHERE p.company = ?"
+    }
+  ],
+  "services/ai/memory/conversationDbManager.js": [
+    {
+      "file": "services/ai/memory/conversationDbManager.js",
+      "line": 29,
+      "type": "FROM",
+      "table": "dai_ai_conversation",
+      "snippet": "try {\r     const sql = `SELECT messages FROM dai_ai_conversation WHERE user_id = ? AND company_id = ? AND thread_id = ? LIMIT 1`;\r     const rows = aw"
+    },
+    {
+      "file": "services/ai/memory/conversationDbManager.js",
+      "line": 94,
+      "type": "FROM",
+      "table": "dai_ai_conversation",
+      "snippet": "SELECT thread_id, title, created_at, updated_at\r       FROM dai_ai_conversation\r       WHERE user_id = ? AND company_id = ?"
+    }
+  ],
+  "services/ai/tools/analyticsAiTools.js": [
+    {
+      "file": "services/ai/tools/analyticsAiTools.js",
+      "line": 33,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "SELECT p.id, p.sku, p.price, p.cost, pv.shape, pv.color, pv.clarity\r     FROM dai_product p\r     LEFT JOIN dai_product_value pv ON p.id = pv.product_i"
+    },
+    {
+      "file": "services/ai/tools/analyticsAiTools.js",
+      "line": 34,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r     LEFT JOIN dai_product_value pv ON p.id = pv.product_id\r     WHERE p.company = ? AND p.cost > 0 AND p.price < p.cost"
+    },
+    {
+      "file": "services/ai/tools/analyticsAiTools.js",
+      "line": 52,
+      "type": "FROM",
+      "table": "dai_product_value",
+      "snippet": "SELECT pv.report_no, COUNT(*) as cnt\r     FROM dai_product_value pv\r     JOIN dai_product p ON pv.product_id = p.id"
+    },
+    {
+      "file": "services/ai/tools/analyticsAiTools.js",
+      "line": 53,
+      "type": "JOIN",
+      "table": "dai_product",
+      "snippet": "FROM dai_product_value pv\r     JOIN dai_product p ON pv.product_id = p.id\r     WHERE p.company = ? AND pv.report_no IS NOT NULL AND pv.report_no <> ''"
+    },
+    {
+      "file": "services/ai/tools/analyticsAiTools.js",
+      "line": 73,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "SELECT o.id, o.entryno, p.name AS party_name, o.type, o.final_amount\r     FROM dai_outward o\r     LEFT JOIN dai_party p ON o.party = p.id"
+    },
+    {
+      "file": "services/ai/tools/analyticsAiTools.js",
+      "line": 74,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "FROM dai_outward o\r     LEFT JOIN dai_party p ON o.party = p.id\r     WHERE o.company = ? AND o.type = 'sale' AND o.final_amount > 0"
+    },
+    {
+      "file": "services/ai/tools/analyticsAiTools.js",
+      "line": 107,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "// Actual historical sales velocity by shape from dai_product outward states\r   const salesHistory = await helper.query(`"
+    },
+    {
+      "file": "services/ai/tools/analyticsAiTools.js",
+      "line": 114,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "COALESCE(SUM(p.amount), 0) AS total_revenue\r     FROM dai_product p\r     LEFT JOIN dai_product_value pv ON p.id = pv.product_id"
+    },
+    {
+      "file": "services/ai/tools/analyticsAiTools.js",
+      "line": 115,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r     LEFT JOIN dai_product_value pv ON p.id = pv.product_id\r     WHERE p.company = ? AND p.outward IN ('sale', 'export')"
+    },
+    {
+      "file": "services/ai/tools/analyticsAiTools.js",
+      "line": 127,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "COALESCE(SUM(p.polish_carat), 0) AS carats_on_hand\r     FROM dai_product p\r     LEFT JOIN dai_product_value pv ON p.id = pv.product_id"
+    },
+    {
+      "file": "services/ai/tools/analyticsAiTools.js",
+      "line": 128,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r     LEFT JOIN dai_product_value pv ON p.id = pv.product_id\r     WHERE p.company = ? AND p.visibility = 1 AND (p.outward = '' OR p."
+    },
+    {
+      "file": "services/ai/tools/analyticsAiTools.js",
+      "line": 170,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "SELECT p.price, p.amount, p.polish_carat, p.cost, pv.shape, pv.color, pv.clarity\r     FROM dai_product p\r     LEFT JOIN dai_product_value pv ON p.id ="
+    },
+    {
+      "file": "services/ai/tools/analyticsAiTools.js",
+      "line": 171,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r     LEFT JOIN dai_product_value pv ON p.id = pv.product_id\r     WHERE p.company = ? AND p.outward IN ('sale', 'export')"
+    }
+  ],
+  "services/ai/tools/inventoryTools.js": [
+    {
+      "file": "services/ai/tools/inventoryTools.js",
+      "line": 61,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "pv.report_no, pv.depth_pc AS depth, pv.table_pc AS table_per, pv.mesurment AS measurements\r     FROM dai_product p\r     LEFT JOIN dai_product_value pv"
+    },
+    {
+      "file": "services/ai/tools/inventoryTools.js",
+      "line": 62,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r     LEFT JOIN dai_product_value pv ON p.id = pv.product_id\r     WHERE p.company = ?"
+    },
+    {
+      "file": "services/ai/tools/inventoryTools.js",
+      "line": 144,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "pv.report_no, pv.depth_pc AS depth, pv.table_pc AS table_per, pv.mesurment AS measurements\r     FROM dai_product p\r     LEFT JOIN dai_product_value pv"
+    },
+    {
+      "file": "services/ai/tools/inventoryTools.js",
+      "line": 145,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r     LEFT JOIN dai_product_value pv ON p.id = pv.product_id\r     WHERE p.company = ? AND (p.sku = ? OR p.id = ?)"
+    },
+    {
+      "file": "services/ai/tools/inventoryTools.js",
+      "line": 192,
+      "type": "FROM",
+      "table": "dai_history",
+      "snippet": "SELECT id, sku, date, action, party, detail, user\r     FROM dai_history\r     WHERE company = ? AND sku = ?"
+    },
+    {
+      "file": "services/ai/tools/inventoryTools.js",
+      "line": 238,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "pv.shape, pv.color, pv.clarity\r     FROM dai_product p\r     LEFT JOIN dai_product_value pv ON p.id = pv.product_id"
+    },
+    {
+      "file": "services/ai/tools/inventoryTools.js",
+      "line": 239,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r     LEFT JOIN dai_product_value pv ON p.id = pv.product_id\r     WHERE p.company = ? ${extraWhere}"
+    }
+  ],
+  "services/ai/tools/partyTransactionTools.js": [
+    {
+      "file": "services/ai/tools/partyTransactionTools.js",
+      "line": 35,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": "SELECT id, name, type, country, contact_person, contact_number, email, address\r     FROM dai_party\r     WHERE company = ?"
+    },
+    {
+      "file": "services/ai/tools/partyTransactionTools.js",
+      "line": 85,
+      "type": "FROM",
+      "table": "dai_party",
+      "snippet": "SELECT id, name, type, country, contact_person, contact_number, email, address\r     FROM dai_party\r     WHERE company = ? AND (id = ? OR name LIKE ?)"
+    },
+    {
+      "file": "services/ai/tools/partyTransactionTools.js",
+      "line": 117,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "SELECT id, entryno, invoiceno, date, duedate, type, status, final_amount, paid_amount, due_amount\r     FROM dai_outward\r     WHERE company = ? AND par"
+    },
+    {
+      "file": "services/ai/tools/partyTransactionTools.js",
+      "line": 125,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "SELECT id, entryno, invoiceno, date, inward_type, final_amount, paid_amount, due_amount\r     FROM dai_inward\r     WHERE company = ? AND party = ? AND "
+    },
+    {
+      "file": "services/ai/tools/partyTransactionTools.js",
+      "line": 170,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "SELECT 'OUTWARD' AS dir, id, entryno AS ref, type AS txn_type, status, date AS txn_date, final_amount AS amount\r       FROM dai_outward\r       WHERE c"
+    },
+    {
+      "file": "services/ai/tools/partyTransactionTools.js",
+      "line": 176,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "SELECT 'INWARD' AS dir, id, entryno AS ref, inward_type AS txn_type, inward_type AS status, date AS txn_date, final_amount AS amount\r       FROM dai_i"
+    },
+    {
+      "file": "services/ai/tools/partyTransactionTools.js",
+      "line": 205,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "o.products, o.paid_amount, o.due_amount\r     FROM dai_outward o\r     LEFT JOIN dai_party p ON o.party = p.id"
+    },
+    {
+      "file": "services/ai/tools/partyTransactionTools.js",
+      "line": 206,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "FROM dai_outward o\r     LEFT JOIN dai_party p ON o.party = p.id\r     WHERE o.company = ?"
+    },
+    {
+      "file": "services/ai/tools/partyTransactionTools.js",
+      "line": 251,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "i.paid_amount, i.due_amount\r     FROM dai_inward i\r     LEFT JOIN dai_party p ON i.party = p.id"
+    },
+    {
+      "file": "services/ai/tools/partyTransactionTools.js",
+      "line": 252,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "FROM dai_inward i\r     LEFT JOIN dai_party p ON i.party = p.id\r     WHERE i.company = ? AND (i.deleted = 0 OR i.deleted IS NULL)"
+    },
+    {
+      "file": "services/ai/tools/partyTransactionTools.js",
+      "line": 300,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "const headerRows = await helper.query(\r       `SELECT i.*, p.name AS party_name FROM dai_inward i LEFT JOIN dai_party p ON i.party = p.id WHERE i.comp"
+    },
+    {
+      "file": "services/ai/tools/partyTransactionTools.js",
+      "line": 300,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "const headerRows = await helper.query(\r       `SELECT i.*, p.name AS party_name FROM dai_inward i LEFT JOIN dai_party p ON i.party = p.id WHERE i.comp"
+    },
+    {
+      "file": "services/ai/tools/partyTransactionTools.js",
+      "line": 307,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "`SELECT p.id, p.sku, p.polish_pcs AS pcs, p.polish_carat AS carat, p.amount, p.rate, pv.shape, pv.color, pv.clarity\r          FROM dai_product p\r     "
+    },
+    {
+      "file": "services/ai/tools/partyTransactionTools.js",
+      "line": 308,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r          LEFT JOIN dai_product_value pv ON p.id = pv.product_id\r          WHERE p.company = ? AND p.inward_id = ?`,"
+    },
+    {
+      "file": "services/ai/tools/partyTransactionTools.js",
+      "line": 315,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "const headerRows = await helper.query(\r       `SELECT o.*, p.name AS party_name FROM dai_outward o LEFT JOIN dai_party p ON o.party = p.id WHERE o.com"
+    },
+    {
+      "file": "services/ai/tools/partyTransactionTools.js",
+      "line": 315,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "const headerRows = await helper.query(\r       `SELECT o.*, p.name AS party_name FROM dai_outward o LEFT JOIN dai_party p ON o.party = p.id WHERE o.com"
+    },
+    {
+      "file": "services/ai/tools/partyTransactionTools.js",
+      "line": 325,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "`SELECT p.id, p.sku, p.polish_pcs AS pcs, p.polish_carat AS carat, p.amount, p.rate, pv.shape, pv.color, pv.clarity\r            FROM dai_product p\r   "
+    },
+    {
+      "file": "services/ai/tools/partyTransactionTools.js",
+      "line": 326,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p\r            LEFT JOIN dai_product_value pv ON p.id = pv.product_id\r            WHERE p.company = ? AND p.id IN (${placeholders})`,"
+    },
+    {
+      "file": "services/ai/tools/partyTransactionTools.js",
+      "line": 356,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "SELECT COALESCE(SUM(due_amount), 0) AS total_receivable, COUNT(id) AS open_sales_count\r     FROM dai_outward\r     WHERE company = ? AND due_amount <> "
+    },
+    {
+      "file": "services/ai/tools/partyTransactionTools.js",
+      "line": 362,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "SELECT COALESCE(SUM(due_amount), 0) AS total_payable, COUNT(id) AS open_purchases_count\r     FROM dai_inward\r     WHERE company = ? AND due_amount <> "
+    }
+  ],
+  "services/branchYearService.js": [
+    {
+      "file": "services/branchYearService.js",
+      "line": 63,
+      "type": "FROM",
+      "table": "branch_year",
+      "snippet": "const rows = await metaQuery(     \"SELECT branch_id, year_id FROM branch_year ORDER BY branch_id, year_id\"   );"
+    }
+  ],
+  "services/dashboardTrendsService.js": [
+    {
+      "file": "services/dashboardTrendsService.js",
+      "line": 145,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "`SELECT COALESCE(SUM(final_amount), 0) AS amount        FROM dai_outward        WHERE company = ?"
+    },
+    {
+      "file": "services/dashboardTrendsService.js",
+      "line": 153,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "`SELECT COALESCE(SUM(final_amount), 0) AS amount        FROM dai_inward        WHERE company = ?"
+    },
+    {
+      "file": "services/dashboardTrendsService.js",
+      "line": 162,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "`SELECT COALESCE(SUM(final_amount), 0) AS amount        FROM dai_outward        WHERE company = ?"
+    },
+    {
+      "file": "services/dashboardTrendsService.js",
+      "line": 183,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "`SELECT ${bucket} AS period, COALESCE(SUM(final_amount), 0) AS amount        FROM dai_outward        WHERE company = ?"
+    },
+    {
+      "file": "services/dashboardTrendsService.js",
+      "line": 193,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "`SELECT ${bucket} AS period, COALESCE(SUM(final_amount), 0) AS amount        FROM dai_inward        WHERE company = ?"
+    },
+    {
+      "file": "services/dashboardTrendsService.js",
+      "line": 204,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "`SELECT ${bucket} AS period, COALESCE(SUM(final_amount), 0) AS amount        FROM dai_outward        WHERE company = ?"
+    },
+    {
+      "file": "services/dashboardTrendsService.js",
+      "line": 231,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "`SELECT ${bucket} AS period, COALESCE(SUM(final_amount), 0) AS amount      FROM dai_outward      WHERE company = ?"
+    },
+    {
+      "file": "services/dashboardTrendsService.js",
+      "line": 264,
+      "type": "FROM",
+      "table": "dai_history",
+      "snippet": "COALESCE(SUM(CASE WHEN h.action IN (${actionList(decreaseActions)}) THEN COALESCE(h.${column}, 0) ELSE 0 END), 0) AS decrease      FROM dai_history h "
+    },
+    {
+      "file": "services/dashboardTrendsService.js",
+      "line": 265,
+      "type": "JOIN",
+      "table": "dai_product",
+      "snippet": "FROM dai_history h      INNER JOIN dai_product p ON p.id = h.product_id      WHERE p.company = ?"
+    }
+  ],
+  "services/ensureBranchSchemaService.js": [
+    {
+      "file": "services/ensureBranchSchemaService.js",
+      "line": 59,
+      "type": "FROM",
+      "table": "branch",
+      "snippet": "const found = await metaQuery(       \"SELECT id, status FROM branch WHERE LOWER(name) = LOWER(?) LIMIT 1\",       [b.name]"
+    },
+    {
+      "file": "services/ensureBranchSchemaService.js",
+      "line": 83,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "// Hide any junk branches that were previously created from company names.   // Keep only real location branches active for login (HK / Dubai / Surat "
+    },
+    {
+      "file": "services/ensureBranchSchemaService.js",
+      "line": 86,
+      "type": "FROM",
+      "table": "branch",
+      "snippet": "const defaultNames = DEFAULT_BRANCHES.map((b) => b.name.toLowerCase());   const allBranches = await metaQuery(\"SELECT id, name FROM branch\");   const "
+    },
+    {
+      "file": "services/ensureBranchSchemaService.js",
+      "line": 87,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "const allBranches = await metaQuery(\"SELECT id, name FROM branch\");   const companyNames = await metaQuery(\"SELECT LOWER(TRIM(name)) AS n FROM company"
+    },
+    {
+      "file": "services/ensureBranchSchemaService.js",
+      "line": 106,
+      "type": "FROM",
+      "table": "branch",
+      "snippet": "const branches = await metaQuery(     \"SELECT id, name, shortcutName FROM branch WHERE status = 1 AND LOWER(name) IN ('hk','dubai','surat')\"   );"
+    },
+    {
+      "file": "services/ensureBranchSchemaService.js",
+      "line": 119,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "const allCompanies = await metaQuery(     \"SELECT id, name, shortcutName, branch_id FROM company\"   );"
+    }
+  ],
+  "services/ensureCurrentFiscalYearService.js": [
+    {
+      "file": "services/ensureCurrentFiscalYearService.js",
+      "line": 60,
+      "type": "FROM",
+      "table": "company_year",
+      "snippet": "const yearsRaw = await metaQuery(     `SELECT id, year, fromDate, toDate, db_name FROM company_year ORDER BY id DESC`   );"
+    },
+    {
+      "file": "services/ensureCurrentFiscalYearService.js",
+      "line": 94,
+      "type": "FROM",
+      "table": "company_year",
+      "snippet": "const latestDb = await metaQuery(     `SELECT db_name FROM company_year      WHERE db_name IS NOT NULL AND TRIM(db_name) <> ''"
+    }
+  ],
+  "services/inventorySummaryService.js": [
+    {
+      "file": "services/inventorySummaryService.js",
+      "line": 59,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "const rows = await helper.query(     `SELECT id, amount FROM dai_product WHERE id IN (${placeholders})`,     uniqueIds"
+    },
+    {
+      "file": "services/inventorySummaryService.js",
+      "line": 102,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "COUNT(p.id) AS count     FROM dai_product p     WHERE ${companySql}"
+    },
+    {
+      "file": "services/inventorySummaryService.js",
+      "line": 208,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "COALESCE(SUM(o.final_amount), 0) AS amount     FROM dai_outward o     WHERE ${companySql.replace(/p\\.company/g, \"o.company\")}"
+    },
+    {
+      "file": "services/inventorySummaryService.js",
+      "line": 228,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "COALESCE(SUM(i.final_amount), 0) AS amount     FROM dai_inward i     WHERE ${companySql.replace(/p\\.company/g, \"i.company\")}"
+    },
+    {
+      "file": "services/inventorySummaryService.js",
+      "line": 259,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "const baseJoin = `     FROM dai_product p     JOIN dai_product_value pv ON p.id = pv.product_id"
+    },
+    {
+      "file": "services/inventorySummaryService.js",
+      "line": 260,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p     JOIN dai_product_value pv ON p.id = pv.product_id     WHERE ${companySql}"
+    },
+    {
+      "file": "services/inventorySummaryService.js",
+      "line": 320,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "SELECT o.id, o.entryno, o.party, o.final_amount, o.paid_amount, o.due_amount, o.products, p.name AS party_name     FROM dai_outward o     LEFT JOIN da"
+    },
+    {
+      "file": "services/inventorySummaryService.js",
+      "line": 321,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "FROM dai_outward o     LEFT JOIN dai_party p ON o.party = p.id     WHERE o.duedate IS NOT NULL"
+    },
+    {
+      "file": "services/inventorySummaryService.js",
+      "line": 351,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "SELECT i.id, i.entryno, i.party, i.final_amount, i.paid_amount, i.due_amount, i.products, p.name AS party_name     FROM dai_inward i     LEFT JOIN dai"
+    },
+    {
+      "file": "services/inventorySummaryService.js",
+      "line": 352,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "FROM dai_inward i     LEFT JOIN dai_party p ON i.party = p.id     WHERE i.duedate IS NOT NULL"
+    },
+    {
+      "file": "services/inventorySummaryService.js",
+      "line": 381,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "o.date AS txn_date, o.final_amount AS amount, o.status AS status, o.type AS txn_type       FROM dai_outward o       LEFT JOIN dai_party p ON o.party ="
+    },
+    {
+      "file": "services/inventorySummaryService.js",
+      "line": 382,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "FROM dai_outward o       LEFT JOIN dai_party p ON o.party = p.id       WHERE ${oCompany} AND (o.type = 'sale' OR o.type = 'export')"
+    },
+    {
+      "file": "services/inventorySummaryService.js",
+      "line": 389,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "i.date AS txn_date, i.final_amount AS amount, i.inward_type AS status, i.inward_type AS txn_type       FROM dai_inward i       LEFT JOIN dai_party p O"
+    },
+    {
+      "file": "services/inventorySummaryService.js",
+      "line": 390,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "FROM dai_inward i       LEFT JOIN dai_party p ON i.party = p.id       WHERE ${iCompany} AND i.inward_type = 'purchase'"
+    },
+    {
+      "file": "services/inventorySummaryService.js",
+      "line": 412,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "SELECT p.name, COALESCE(SUM(o.final_amount), 0) AS amount     FROM dai_outward o     LEFT JOIN dai_party p ON o.party = p.id"
+    },
+    {
+      "file": "services/inventorySummaryService.js",
+      "line": 413,
+      "type": "JOIN",
+      "table": "dai_party",
+      "snippet": "FROM dai_outward o     LEFT JOIN dai_party p ON o.party = p.id     WHERE ${companySql.replace(/p\\.company/g, \"o.company\")}"
+    }
+  ],
+  "services/lab/labService.js": [
+    {
+      "file": "services/lab/labService.js",
+      "line": 537,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "// 1. Fetch existing stone with strict tenant isolation   const oldRows = await helper.query(\"SELECT * FROM dai_product WHERE id = ? AND company = ?\","
+    },
+    {
+      "file": "services/lab/labService.js",
+      "line": 578,
+      "type": "FROM",
+      "table": "dai_product_value",
+      "snippet": "// 3. Fetch existing value record   const oldValRows = await helper.query(\"SELECT * FROM dai_product_value WHERE product_id = ?\", [pid]);   const oldV"
+    },
+    {
+      "file": "services/lab/labService.js",
+      "line": 722,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "// Fetch updated rows for snapshot     const newRows = await q(\"SELECT * FROM dai_product WHERE id = ? AND company = ?\", [pid, companyId]);     const "
+    },
+    {
+      "file": "services/lab/labService.js",
+      "line": 723,
+      "type": "FROM",
+      "table": "dai_product_value",
+      "snippet": "const newRows = await q(\"SELECT * FROM dai_product WHERE id = ? AND company = ?\", [pid, companyId]);     const newValRows = await q(\"SELECT * FROM dai"
+    }
+  ],
+  "services/permanentDeleteService.js": [
+    {
+      "file": "services/permanentDeleteService.js",
+      "line": 60,
+      "type": "FROM",
+      "table": "company_year",
+      "snippet": "/** Return all distinct tenant DB names from company_year. */ async function getAllTenantDbNames() {"
+    },
+    {
+      "file": "services/permanentDeleteService.js",
+      "line": 63,
+      "type": "FROM",
+      "table": "company_year",
+      "snippet": "const rows = await metaQ(     \"SELECT DISTINCT db_name FROM company_year WHERE db_name IS NOT NULL AND db_name != '' ORDER BY db_name\"   );"
+    },
+    {
+      "file": "services/permanentDeleteService.js",
+      "line": 104,
+      "type": "FROM",
+      "table": "roll",
+      "snippet": "async function getAffectedRolesInfo(companyId) {   const rolls = await metaQ(\"SELECT id, name, company FROM roll\");   const affected = [];"
+    },
+    {
+      "file": "services/permanentDeleteService.js",
+      "line": 113,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "const users = await metaQ(         \"SELECT user_id, user_name FROM user WHERE roll = ? AND (is_active = 1 OR is_active IS NULL)\",         [row.id]"
+    },
+    {
+      "file": "services/permanentDeleteService.js",
+      "line": 129,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "async function getUserCompanyNameRefs(companyId) {   const company = await metaQ(\"SELECT name FROM company WHERE id = ? LIMIT 1\", [companyId]);   if ("
+    },
+    {
+      "file": "services/permanentDeleteService.js",
+      "line": 133,
+      "type": "FROM",
+      "table": "user",
+      "snippet": "const users = await metaQ(     \"SELECT user_id, user_name, company_name FROM user WHERE company_name = ?\",     [compName]"
+    },
+    {
+      "file": "services/permanentDeleteService.js",
+      "line": 165,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "const placeholders = [...otherIds].map(() => \"?\").join(\",\");     const companies = await metaQ(`SELECT name FROM company WHERE id IN (${placeholders})"
+    },
+    {
+      "file": "services/permanentDeleteService.js",
+      "line": 252,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "if (cfg.matchType === \"name_string\") {         const company = await metaQ(\"SELECT name FROM company WHERE id = ? LIMIT 1\", [companyId]);         if ("
+    },
+    {
+      "file": "services/permanentDeleteService.js",
+      "line": 273,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "async function getCompanyDeleteImpact(companyId) {   const existing = await metaQ(\"SELECT id, name, shortcutName FROM company WHERE id = ? LIMIT 1\", ["
+    },
+    {
+      "file": "services/permanentDeleteService.js",
+      "line": 309,
+      "type": "FROM",
+      "table": "branch",
+      "snippet": "async function getBranchDeleteImpact(branchId) {   const existing = await metaQ(\"SELECT id, name, shortcutName FROM branch WHERE id = ? LIMIT 1\", [bra"
+    },
+    {
+      "file": "services/permanentDeleteService.js",
+      "line": 312,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "const companies = await metaQ(\"SELECT id, name, shortcutName FROM company WHERE branch_id = ?\", [branchId]);"
+    },
+    {
+      "file": "services/permanentDeleteService.js",
+      "line": 350,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "// We need the company name for user_track (name_string match)   const companyRows = await metaQ(\"SELECT name FROM company WHERE id = ? LIMIT 1\", [com"
+    },
+    {
+      "file": "services/permanentDeleteService.js",
+      "line": 478,
+      "type": "FROM",
+      "table": "roll",
+      "snippet": "// Remove company from roll JSON arrays   const rolls = await metaQ(\"SELECT id, company FROM roll\");"
+    },
+    {
+      "file": "services/permanentDeleteService.js",
+      "line": 479,
+      "type": "FROM",
+      "table": "roll",
+      "snippet": "// Remove company from roll JSON arrays   const rolls = await metaQ(\"SELECT id, company FROM roll\");   for (const row of rolls || []) {"
+    },
+    {
+      "file": "services/permanentDeleteService.js",
+      "line": 523,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "// Finally delete from company table   const compDelRes = await q(`DELETE FROM \\`${metaDb}\\`.\\`company\\` WHERE id = ?`, [companyId]);"
+    },
+    {
+      "file": "services/permanentDeleteService.js",
+      "line": 603,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "const existing = await metaQ(\"SELECT id, name, logo FROM company WHERE id = ? LIMIT 1\", [companyId]);   if (!existing.length) throw Object.assign(new "
+    },
+    {
+      "file": "services/permanentDeleteService.js",
+      "line": 687,
+      "type": "FROM",
+      "table": "branch",
+      "snippet": "const existing = await metaQ(\"SELECT id, name FROM branch WHERE id = ? LIMIT 1\", [branchId]);   if (!existing.length) throw Object.assign(new Error(\"B"
+    },
+    {
+      "file": "services/permanentDeleteService.js",
+      "line": 692,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "const companies = await metaQ(     \"SELECT id, name, logo FROM company WHERE branch_id = ? ORDER BY id\",     [branchId]"
+    }
+  ],
+  "services/quickNotesService.js": [
+    {
+      "file": "services/quickNotesService.js",
+      "line": 23,
+      "type": "JOIN",
+      "table": "user",
+      "snippet": "const JOINS = `\r   LEFT JOIN user u_assign ON q.assigned_to = u_assign.user_id\r   LEFT JOIN user u_create ON COALESCE(q.created_by, q.user_id) = u_cre"
+    },
+    {
+      "file": "services/quickNotesService.js",
+      "line": 24,
+      "type": "JOIN",
+      "table": "user",
+      "snippet": "LEFT JOIN user u_assign ON q.assigned_to = u_assign.user_id\r   LEFT JOIN user u_create ON COALESCE(q.created_by, q.user_id) = u_create.user_id\r   LEFT"
+    },
+    {
+      "file": "services/quickNotesService.js",
+      "line": 25,
+      "type": "JOIN",
+      "table": "user",
+      "snippet": "LEFT JOIN user u_create ON COALESCE(q.created_by, q.user_id) = u_create.user_id\r   LEFT JOIN user u_complete ON q.completed_by = u_complete.user_id\r `"
+    },
+    {
+      "file": "services/quickNotesService.js",
+      "line": 92,
+      "type": "FROM",
+      "table": "dai_quick_notes",
+      "snippet": "SELECT ${SELECT_FIELDS}\r       FROM dai_quick_notes q\r       ${JOINS}"
+    },
+    {
+      "file": "services/quickNotesService.js",
+      "line": 101,
+      "type": "FROM",
+      "table": "dai_quick_notes",
+      "snippet": "SELECT ${SELECT_FIELDS}\r       FROM dai_quick_notes q\r       ${JOINS}"
+    },
+    {
+      "file": "services/quickNotesService.js",
+      "line": 116,
+      "type": "FROM",
+      "table": "dai_quick_notes",
+      "snippet": "SELECT ${SELECT_FIELDS}\r     FROM dai_quick_notes q\r     ${JOINS}"
+    },
+    {
+      "file": "services/quickNotesService.js",
+      "line": 147,
+      "type": "FROM",
+      "table": "dai_quick_notes",
+      "snippet": "SELECT ${SELECT_FIELDS}\r     FROM dai_quick_notes q\r     ${JOINS}"
+    },
+    {
+      "file": "services/quickNotesService.js",
+      "line": 213,
+      "type": "FROM",
+      "table": "dai_quick_notes",
+      "snippet": "SELECT ${SELECT_FIELDS}\r     FROM dai_quick_notes q\r     ${JOINS}"
+    }
+  ],
+  "services/reassignSuratCompaniesService.js": [
+    {
+      "file": "services/reassignSuratCompaniesService.js",
+      "line": 8,
+      "type": "FROM",
+      "table": "branch",
+      "snippet": "async function reassignSuratCompanies() {   const branches = await metaQuery(\"SELECT id, name, status FROM branch ORDER BY id\");   const surat = (bran"
+    },
+    {
+      "file": "services/reassignSuratCompaniesService.js",
+      "line": 36,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "const companies = await metaQuery(     \"SELECT id, name FROM company WHERE branch_id = ? ORDER BY id\",     [surat.id]"
+    }
+  ],
+  "services/renumberOutwardEntryService.js": [
+    {
+      "file": "services/renumberOutwardEntryService.js",
+      "line": 39,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "`SELECT id, entryno, invoiceno, type      FROM dai_outward      WHERE (company = ? OR company = ?)"
+    },
+    {
+      "file": "services/renumberOutwardEntryService.js",
+      "line": 77,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "`SELECT id, entryno, invoiceno, type        FROM dai_outward        WHERE (company = ? OR company = ?)"
+    },
+    {
+      "file": "services/renumberOutwardEntryService.js",
+      "line": 118,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "const all = await queryAsync(     \"SELECT entryno, invoiceno FROM dai_outward WHERE company = ? OR company = ?\",     [companyId, String(companyId)]"
+    },
+    {
+      "file": "services/renumberOutwardEntryService.js",
+      "line": 132,
+      "type": "FROM",
+      "table": "dai_incrementid",
+      "snippet": "const inc = await queryAsync(     \"SELECT company FROM dai_incrementid WHERE company = ? LIMIT 1\",     [companyId]"
+    },
+    {
+      "file": "services/renumberOutwardEntryService.js",
+      "line": 148,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "`SELECT id, invoiceno, products      FROM dai_inward      WHERE (company = ? OR company = ?)"
+    },
+    {
+      "file": "services/renumberOutwardEntryService.js",
+      "line": 194,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "const companies = await queryAsync(     `SELECT DISTINCT company FROM dai_outward      WHERE company IS NOT NULL AND company <> ''"
+    },
+    {
+      "file": "services/renumberOutwardEntryService.js",
+      "line": 213,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "const inwardCompanies = await queryAsync(     `SELECT DISTINCT company FROM dai_inward      WHERE company IS NOT NULL AND company <> ''"
+    }
+  ],
+  "services/stockMovementService.js": [
+    {
+      "file": "services/stockMovementService.js",
+      "line": 182,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "async function applyInwardQty(q, productId, pcs, carat, price, extras = {}) {   const rows = await q(\"SELECT * FROM dai_product WHERE id = ? LIMIT 1\","
+    },
+    {
+      "file": "services/stockMovementService.js",
+      "line": 290,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "async function applyOutwardQty(q, productId, type, pcs, carat) {   const rows = await q(\"SELECT * FROM dai_product WHERE id = ? LIMIT 1\", [productId])"
+    },
+    {
+      "file": "services/stockMovementService.js",
+      "line": 504,
+      "type": "JOIN",
+      "table": "dai_outward",
+      "snippet": "FROM dai_outward_item oi        INNER JOIN dai_outward o ON o.id = oi.outward_id AND o.type = 'lab'        INNER JOIN dai_product p ON p.id = oi.produ"
+    },
+    {
+      "file": "services/stockMovementService.js",
+      "line": 505,
+      "type": "JOIN",
+      "table": "dai_product",
+      "snippet": "INNER JOIN dai_outward o ON o.id = oi.outward_id AND o.type = 'lab'        INNER JOIN dai_product p ON p.id = oi.product_id        WHERE (oi.status IS"
+    },
+    {
+      "file": "services/stockMovementService.js",
+      "line": 530,
+      "type": "FROM",
+      "table": "dai_history",
+      "snippet": "`SELECT p.id AS product_id,             (SELECT h.pcs FROM dai_history h               WHERE h.product_id = p.id AND LOWER(h.action) IN ('lab','gia')"
+    },
+    {
+      "file": "services/stockMovementService.js",
+      "line": 533,
+      "type": "FROM",
+      "table": "dai_history",
+      "snippet": "ORDER BY h.id DESC LIMIT 1) AS pcs,             (SELECT h.carat FROM dai_history h               WHERE h.product_id = p.id AND LOWER(h.action) IN ('la"
+    },
+    {
+      "file": "services/stockMovementService.js",
+      "line": 536,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "ORDER BY h.id DESC LIMIT 1) AS carat      FROM dai_product p      WHERE (p.outward = '' OR p.outward IS NULL OR p.outward = 'lab')"
+    },
+    {
+      "file": "services/stockMovementService.js",
+      "line": 541,
+      "type": "FROM",
+      "table": "dai_history",
+      "snippet": "AND EXISTS (          SELECT 1 FROM dai_history hr          WHERE hr.product_id = p.id AND LOWER(hr.action) IN ('lab_return','lab return')"
+    },
+    {
+      "file": "services/stockMovementService.js",
+      "line": 552,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "`SELECT purchased_pcs, purchased_carat, sold_pcs, sold_carat, memo_pcs, memo_carat          FROM dai_product WHERE id = ? LIMIT 1`,         [row.produ"
+    },
+    {
+      "file": "services/stockMovementService.js",
+      "line": 569,
+      "type": "FROM",
+      "table": "dai_history",
+      "snippet": "const anyQty = await q(         `SELECT pcs, carat FROM dai_history          WHERE product_id = ? AND COALESCE(carat, 0) > 0"
+    }
+  ],
+  "services/transaction/companyTransferService.js": [
+    {
+      "file": "services/transaction/companyTransferService.js",
+      "line": 29,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "q,     \"SELECT invoiceno FROM dai_outward WHERE (company = ? OR company = ?) AND LOWER(TRIM(type)) = 'sale'\",     [companyId, String(companyId)]"
+    },
+    {
+      "file": "services/transaction/companyTransferService.js",
+      "line": 43,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "q,     \"SELECT invoiceno FROM dai_inward WHERE (company = ? OR company = ?) AND LOWER(TRIM(inward_type)) = 'purchase'\",     [companyId, String(company"
+    },
+    {
+      "file": "services/transaction/companyTransferService.js",
+      "line": 57,
+      "type": "FROM",
+      "table": "dai_outward",
+      "snippet": "q,     \"SELECT entryno FROM dai_outward WHERE (company = ? OR company = ?) AND LOWER(TRIM(type)) = 'sale'\",     [companyId, String(companyId)]"
+    },
+    {
+      "file": "services/transaction/companyTransferService.js",
+      "line": 71,
+      "type": "FROM",
+      "table": "dai_inward",
+      "snippet": "q,     \"SELECT entryno FROM dai_inward WHERE company = ? OR company = ?\",     [companyId, String(companyId)]"
+    },
+    {
+      "file": "services/transaction/companyTransferService.js",
+      "line": 95,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "const sql = `     SELECT sku FROM dai_product WHERE sku LIKE ?     UNION"
+    },
+    {
+      "file": "services/transaction/companyTransferService.js",
+      "line": 131,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "// 1. Fetch and lock source stones from dai_product     const productIds = items.map((i) => i.product_id);"
+    },
+    {
+      "file": "services/transaction/companyTransferService.js",
+      "line": 140,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "pv.intensity, pv.overtone, pv.color, pv.package, pv.bgm, pv.eyeclean        FROM dai_product p        LEFT JOIN dai_product_value pv ON p.id = pv.prod"
+    },
+    {
+      "file": "services/transaction/companyTransferService.js",
+      "line": 141,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "FROM dai_product p        LEFT JOIN dai_product_value pv ON p.id = pv.product_id        WHERE p.id IN (${ph}) FOR UPDATE`,"
+    },
+    {
+      "file": "services/transaction/companyTransferService.js",
+      "line": 169,
+      "type": "FROM",
+      "table": "company",
+      "snippet": "q,         \"SELECT id, name FROM company WHERE id IN (?, ?)\",         [effectiveFromCompanyId, effectiveToCompanyId]"
+    },
+    {
+      "file": "services/transaction/companyTransferService.js",
+      "line": 564,
+      "type": "JOIN",
+      "table": "dai_product",
+      "snippet": "FROM dai_company_transfer_item ti         LEFT JOIN dai_product sp ON sp.id = ti.source_product_id         LEFT JOIN dai_product_value pv ON pv.produc"
+    },
+    {
+      "file": "services/transaction/companyTransferService.js",
+      "line": 565,
+      "type": "JOIN",
+      "table": "dai_product_value",
+      "snippet": "LEFT JOIN dai_product sp ON sp.id = ti.source_product_id         LEFT JOIN dai_product_value pv ON pv.product_id = sp.id         WHERE ti.transfer_id "
+    },
+    {
+      "file": "services/transaction/companyTransferService.js",
+      "line": 607,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "FROM dai_company_transfer t          LEFT JOIN company fc ON fc.id = t.from_company_id          LEFT JOIN company tc ON tc.id = t.to_company_id"
+    },
+    {
+      "file": "services/transaction/companyTransferService.js",
+      "line": 608,
+      "type": "JOIN",
+      "table": "company",
+      "snippet": "LEFT JOIN company fc ON fc.id = t.from_company_id          LEFT JOIN company tc ON tc.id = t.to_company_id          WHERE t.id = ? FOR UPDATE`,"
+    },
+    {
+      "file": "services/transaction/companyTransferService.js",
+      "line": 630,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "q,           \"SELECT * FROM dai_product WHERE id = ? AND company = ? FOR UPDATE\",           [item.target_product_id, transfer.to_company_id]"
+    },
+    {
+      "file": "services/transaction/companyTransferService.js",
+      "line": 676,
+      "type": "FROM",
+      "table": "dai_product",
+      "snippet": "q,           \"SELECT * FROM dai_product WHERE id = ? AND company = ? FOR UPDATE\",           [item.source_product_id, transfer.from_company_id]"
+    }
+  ]
+}

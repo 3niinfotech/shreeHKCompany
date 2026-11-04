@@ -1,0 +1,31 @@
+{
+  "timestamp": "2026-10-31T05:21:07.940Z",
+  "database": "shreehkweb_snj2024_test",
+  "stock": {
+    "total_products": 90,
+    "total_carats": 89.662,
+    "total_pcs": 98,
+    "total_amount": 464351.73
+  },
+  "transactions": {
+    "total_inward": 83,
+    "inward_amount": 2224219824.6,
+    "total_outward": 73,
+    "outward_amount": 1336934.83
+  },
+  "accounting": {
+    "total_txns": 1,
+    "total_txn_amount": 96000,
+    "total_advances": 1,
+    "total_adv_amount": 8500
+  },
+  "masters": {
+    "total_parties": 5,
+    "total_categories": 5,
+    "total_labs": 5,
+    "total_origins": 5,
+    "total_shippings": 5,
+    "total_attributes": 6,
+    "total_users": 2
+  }
+}
