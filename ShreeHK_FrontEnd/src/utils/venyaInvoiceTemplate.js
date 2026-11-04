@@ -3,6 +3,7 @@
 import { APPROVAL_MEMO_STYLES } from "./approvalMemoTemplate.js";
 import { INVOICE_A4_STYLES } from "./invoiceA4.js";
 import { buildCompanyLogoHtml, resolveCompanyLogoUrl } from "./companyLogo.js";
+import { formatDateDisplay } from "./dateDisplayFormat.js";
 
 export const VENYA_BLUE = "#4991b1";
 export const VENYA_PINK = "#cc3399";
@@ -40,14 +41,7 @@ const escapeHtml = (value) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
-const fmtDate = (value) => {
-  if (!value) return "";
-  const str = String(value);
-  const iso = str.length >= 10 ? str.slice(0, 10) : str;
-  const [y, m, d] = iso.split("-");
-  if (y && m && d) return `${d}-${m}-${y}`;
-  return str;
-};
+const fmtDate = (value) => formatDateDisplay(value, "");
 
 const fmtMoney = (value, digits = 2) =>
   Number(value || 0).toLocaleString(undefined, {
