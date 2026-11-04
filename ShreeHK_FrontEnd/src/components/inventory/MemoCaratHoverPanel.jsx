@@ -2,6 +2,7 @@ import React from "react";
 import { Typography } from "antd";
 import { FileTextOutlined, HistoryOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
+import { formatDateDisplay } from "../../utils/dateDisplayFormat";
 
 const { Text } = Typography;
 
@@ -13,8 +14,8 @@ const fmtCarat = (value) =>
 
 const fmtDate = (value) => {
   if (!value) return "—";
-  const raw = String(value).slice(0, 10);
-  return raw || "—";
+  return formatDateDisplay(value, "—");
+
 };
 
 const fmtAction = (action) => {
@@ -33,7 +34,7 @@ const stopRowClick = (event) => {
   event.stopPropagation();
 };
 
-const MemoCaratHoverPanel = ({ items = [], history = [], totalCarat = 0 }) => {
+const MemoCaratHoverPanel = ({ items = [], history = [], totalCarat = 0, totalPcs = null }) => {
   const navigate = useNavigate();
 
   const goToInvoice = (event, { invoiceno, type }) => {
@@ -66,7 +67,9 @@ const MemoCaratHoverPanel = ({ items = [], history = [], totalCarat = 0 }) => {
           <FileTextOutlined className="memo-carat-popover__icon" />
           <span className="memo-carat-popover__title">On Memo Details</span>
         </div>
-        <span className="memo-carat-popover__total">{fmtCarat(totalCarat)} ct</span>
+        <span className="memo-carat-popover__total">
+          {totalPcs != null ? `${totalPcs} pcs` : `${fmtCarat(totalCarat)} ct`}
+        </span>
       </div>
 
       {items.length > 0 ? (

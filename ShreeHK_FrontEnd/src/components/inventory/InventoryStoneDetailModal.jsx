@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import dayjs from "dayjs";
+import { formatDateDisplay } from "../../utils/dateDisplayFormat";
 import { Modal, Tag, Table, Button } from "antd";
 import { SkeletonDetail, SkeletonList } from "../common/skeleton";
 import { DollarCircleOutlined, ExperimentOutlined, InfoCircleOutlined, HistoryOutlined } from "@ant-design/icons";
@@ -21,12 +22,7 @@ const toCurrency = (value) => {
   return `$${amount.toLocaleString()}`;
 };
 
-const formatHoldDate = (value) => {
-  if (!value) return "-";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
-};
+const formatHoldDate = (value) => formatDateDisplay(value);
 
 const isEmptyValue = (value) => {
   if (value === null || value === undefined || value === "") return true;
