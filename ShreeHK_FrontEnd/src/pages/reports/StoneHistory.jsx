@@ -1337,6 +1337,14 @@ const StoneHistory = () => {
 
         try {
             let voucherRecord = null;
+            const sessionCompId = String(authCompanyId || '').trim();
+            const activeCompId = String(stoneDetail?.company || authCompanyId || '').trim();
+            const accessibleCompanies = Array.isArray(authUser?.accessible_companies) ? authUser.accessible_companies : [];
+            const accessibleCompanyIds = [
+                sessionCompId,
+                activeCompId,
+                ...accessibleCompanies.map((c) => String(c?.id ?? c).trim()),
+            ].filter(Boolean);
 
             // 1. entryno present: open by (type from entry_from, id)
             if (row?.entryno != null && String(row.entryno).trim() !== '' && !isNaN(Number(row.entryno))) {
@@ -1364,32 +1372,22 @@ const StoneHistory = () => {
                     return;
                 }
 
-                // Verify returned record company is accessible to user
+                // Strict company check for EVERY role (including admin / roll === 1)
                 const voucherCompId = String(voucherRecord.company || '').trim();
-                const sessionCompId = String(authCompanyId || '').trim();
-                const userRoll = authUser?.roll;
-                const accessibleCompanies = Array.isArray(authUser?.accessible_companies) ? authUser.accessible_companies : [];
-                const isAccessible =
-                    userRoll === 1 ||
-                    voucherCompId === sessionCompId ||
-                    accessibleCompanies.some((c) => String(c?.id || c) === voucherCompId);
+                const isAccessible = accessibleCompanyIds.includes(voucherCompId);
 
                 if (!isAccessible) {
                     toastWarning('You do not have access to this company voucher.');
                     return;
                 }
 
-                // Verify invoice number matches row.invoice
+                // Strict exact-equality invoice verification (NO .includes)
                 const recInv = String(voucherRecord.invoiceno || voucherRecord.invoice || voucherRecord.entryno || '').trim().toLowerCase();
                 const targetInv = rawInvoice.toLowerCase();
                 const cleanTargetInv = targetInv.replace(/^[a-z]{2,5}-/, '');
                 const cleanRecInv = recInv.replace(/^[a-z]{2,5}-/, '');
 
-                const invMatches =
-                    recInv === targetInv ||
-                    cleanRecInv === cleanTargetInv ||
-                    recInv.includes(cleanTargetInv) ||
-                    targetInv.includes(cleanRecInv);
+                const invMatches = recInv === targetInv || cleanRecInv === cleanTargetInv;
 
                 if (!invMatches) {
                     toastWarning('Invoice could not be identified.');
@@ -1397,7 +1395,6 @@ const StoneHistory = () => {
                 }
             } else {
                 // 2. entryno null: resolve using company + type (from action) + invoiceno + stone in voucher products
-                const activeCompanyId = stoneDetail?.company || authCompanyId;
                 const sku = stoneDetail?.sku || row?.sku;
                 const productId = stoneDetail?.id || row?.product_id;
 
@@ -1415,19 +1412,20 @@ const StoneHistory = () => {
                     stockType,
                     invoice: cleanInv,
                     invoiceno: cleanInv,
-                    companyId: activeCompanyId,
+                    company: activeCompId || sessionCompId,
+                    fromCompany: activeCompId || sessionCompId,
+                    companyId: activeCompId || sessionCompId,
+                    sku: sku || undefined,
                     limit: 50,
                 };
 
                 const listRes = await api.post(listEndpoint, payload);
                 const candidates = Array.isArray(listRes?.data?.Data) ? listRes.data.Data : [];
 
-                // Filter strictly: company + invoiceno + stone product_id/sku in voucher products
+                // Filter strictly: company (no admin bypass) + exact-equality invoiceno + stone product_id/sku in voucher products
                 const matchingVouchers = candidates.filter((v) => {
-                    const compMatch =
-                        !activeCompanyId ||
-                        String(v.company) === String(activeCompanyId) ||
-                        authUser?.roll === 1;
+                    const vCompId = String(v.company || '').trim();
+                    const compMatch = accessibleCompanyIds.includes(vCompId);
 
                     const vInv = String(v.invoiceno || v.invoice || '').trim().toLowerCase();
                     const vCleanInv = vInv.replace(/^[a-z]{2,5}-/, '');
