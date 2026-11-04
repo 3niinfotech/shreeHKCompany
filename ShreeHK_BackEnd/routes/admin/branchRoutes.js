@@ -36,7 +36,7 @@ branchRouter.use(ensureReady);
 branchRouter.get("/admin/branch/options", authenticateToken, isSuperAdmin, async (req, res) => {
   try {
     const rows = await metaQuery(
-      "SELECT id, name, shortcutName, color_code FROM branch WHERE status = 1 ORDER BY name ASC"
+      "SELECT id, name, shortcutName, color_code FROM branch WHERE status = 1 AND (deleted = 0 OR deleted IS NULL) ORDER BY name ASC"
     );
     res.json({ status: true, Data: rows });
   } catch (err) {
@@ -57,13 +57,13 @@ branchRouter.get("/admin/branch", authenticateToken, isSuperAdmin, async (req, r
     const { searchInput = "", activeOnly } = req.query;
     let sql = `
       SELECT b.id, b.name, b.shortcutName, b.address, b.number, b.city, b.country, b.status, b.color_code, b.created_at,
-        (SELECT COUNT(*) FROM company c WHERE c.branch_id = b.id) AS company_count,
+        (SELECT COUNT(*) FROM company c WHERE c.branch_id = b.id AND (c.deleted = 0 OR c.deleted IS NULL)) AS company_count,
         (SELECT GROUP_CONCAT(c.name ORDER BY c.id SEPARATOR '||')
-           FROM company c WHERE c.branch_id = b.id) AS company_names
+           FROM company c WHERE c.branch_id = b.id AND (c.deleted = 0 OR c.deleted IS NULL)) AS company_names
       FROM branch b
     `;
     const params = [];
-    const where = [];
+    const where = ["(b.deleted = 0 OR b.deleted IS NULL)"];
     // Default: show login-modal branches (active). Pass activeOnly=0 to include inactive.
     if (String(activeOnly) !== "0") {
       where.push("b.status = 1");
@@ -102,7 +102,7 @@ branchRouter.get("/admin/branch/:id", authenticateToken, isSuperAdmin, async (re
   try {
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ status: false, message: "Invalid id" });
-    const rows = await metaQuery("SELECT * FROM branch WHERE id = ? LIMIT 1", [id]);
+    const rows = await metaQuery("SELECT * FROM branch WHERE id = ? AND (deleted = 0 OR deleted IS NULL) LIMIT 1", [id]);
     if (!rows.length) {
       return res.status(404).json({ status: false, message: "Branch not found" });
     }
@@ -119,6 +119,14 @@ branchRouter.post("/admin/branch/save", authenticateToken, isSuperAdmin, async (
     const name = String(body.name || "").trim();
     if (!name) {
       return res.status(400).json({ status: false, message: "Branch name is required." });
+    }
+
+    const dupRows = await metaQuery(
+      "SELECT id FROM branch WHERE name = ? AND id != ? AND (deleted = 0 OR deleted IS NULL) LIMIT 1",
+      [name, id]
+    );
+    if (dupRows.length > 0) {
+      return res.status(400).json({ status: false, message: "Branch name already exists." });
     }
 
     const post = {};

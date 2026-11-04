@@ -156,7 +156,7 @@ outwardRouter.post("/outward/list", authenticateToken, async (req, res) => {
     const baseFromWhere = `FROM dai_outward o
                    LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name)
                    LEFT JOIN company comp ON (o.party = CAST(comp.id AS CHAR) OR o.party = comp.id OR o.party = comp.name OR o.party = comp.shortcutName)
-                   WHERE o.company IN (${companyPlaceholders})
+                   WHERE o.company IN (${companyPlaceholders}) AND (o.deleted = 0 OR o.deleted IS NULL)
                    ${typeFilter} ${userFilter} ${party} ${invoiceNo} ${dateFilter}`;
 
     const countParams = [...companyIds, ...filterParams];
@@ -166,15 +166,15 @@ outwardRouter.post("/outward/list", authenticateToken, async (req, res) => {
                           DATE_FORMAT(o.invoicedate, '%d-%m-%Y') AS invoicedate,
                           DATE_FORMAT(o.date, '%d-%m-%Y') AS date,
                           COALESCE(NULLIF(o.final_amount, 0), (
-                            SELECT SUM(oi.amount) FROM dai_outward_item oi WHERE oi.outward_id = o.id
+                            SELECT SUM(oi.amount) FROM dai_outward_item oi WHERE oi.outward_id = o.id AND (oi.deleted = 0 OR oi.deleted IS NULL)
                           ), 0) as finalAmount,
                           COALESCE((
                             SELECT SUM(oi.pcs) FROM dai_outward_item oi
-                            WHERE oi.outward_id = o.id
+                            WHERE oi.outward_id = o.id AND (oi.deleted = 0 OR oi.deleted IS NULL)
                           ), 0) as totalPcs,
                           COALESCE((
                             SELECT SUM(oi.carat) FROM dai_outward_item oi
-                            WHERE oi.outward_id = o.id
+                            WHERE oi.outward_id = o.id AND (oi.deleted = 0 OR oi.deleted IS NULL)
                           ), 0) as totalCarat
                    ${baseFromWhere}
                    GROUP BY o.id, o.entryno, o.type, o.invoiceno, p.name, o.reference, o.invoicedate, o.date, o.final_amount
@@ -245,7 +245,7 @@ outwardRouter.get("/outward/", authenticateToken, async (req, res) => {
     LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name)
     LEFT JOIN company comp ON (o.party = CAST(comp.id AS CHAR) OR o.party = comp.id OR o.party = comp.name OR o.party = comp.shortcutName)
     LEFT JOIN company c ON (o.company = c.id)
-    WHERE o.id = ? AND o.company IN (${companyPlaceholders})`;
+    WHERE o.id = ? AND o.company IN (${companyPlaceholders}) AND (o.deleted = 0 OR o.deleted IS NULL)`;
 
     connection.query(query, [id, ...companyParams], (error, data) => {
       if (error) {
@@ -339,7 +339,7 @@ outwardRouter.get("/outward/", authenticateToken, async (req, res) => {
         return finishWithRow(data[0]);
       }
 
-      connection.query("SELECT * FROM dai_outward WHERE id = ?", [id], (err2, data2) => {
+      connection.query("SELECT * FROM dai_outward WHERE id = ? AND (deleted = 0 OR deleted IS NULL)", [id], (err2, data2) => {
         if (err2 || !data2?.length) {
           return res.status(201).json({ status: false, message: "Error in Fetching data " });
         }
@@ -376,7 +376,7 @@ outwardRouter.post("/outward/getProducts", authenticateToken, async (req, res) =
     const companyPlaceholders = companyIds.map(() => "?").join(",") || "?";
     const companyParams = companyIds.length ? companyIds : [1];
 
-    let query = `SELECT * FROM dai_outward WHERE id = ? AND company IN (${companyPlaceholders})`;
+    let query = `SELECT * FROM dai_outward WHERE id = ? AND company IN (${companyPlaceholders}) AND (deleted = 0 OR deleted IS NULL)`;
 
     connection.query(query, [id, ...companyParams], async (error, data) => {
       if (error) {
@@ -389,7 +389,7 @@ outwardRouter.post("/outward/getProducts", authenticateToken, async (req, res) =
 
       if (!data || !data.length) {
         // Fallback: id only (memo/sale under sibling company)
-        connection.query("SELECT * FROM dai_outward WHERE id = ?", [id], (err2, data2) => {
+        connection.query("SELECT * FROM dai_outward WHERE id = ? AND (deleted = 0 OR deleted IS NULL)", [id], (err2, data2) => {
           if (err2 || !data2?.length) {
             return res.status(201).json({ status: false, message: "Error in Fetching data " });
           }
@@ -422,6 +422,7 @@ function overlayOutwardItemQtys(res, outwardId, products, fallbackFn) {
   connection.query(
     `SELECT * FROM dai_outward_item
      WHERE outward_id = ?
+       AND (deleted = 0 OR deleted IS NULL)
        AND (status IS NULL OR status NOT IN ('returned','cancelled'))
      ORDER BY id ASC`,
     [outwardId],

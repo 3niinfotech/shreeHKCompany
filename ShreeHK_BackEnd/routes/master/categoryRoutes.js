@@ -25,9 +25,9 @@ categoryRouter.get("/master/category", authenticateToken, async (req, res) => {
           SELECT c.*, p.name AS parent_name
           FROM category c
           LEFT JOIN category p ON c.parent = p.id AND c.parent <> 0 AND p.company = ?
-          WHERE c.company = ?
+          WHERE c.company = ? AND (c.deleted = 0 OR c.deleted IS NULL)
         `;
-        let countSql = `SELECT COUNT(*) as totalItems FROM category WHERE company = ?`;
+        let countSql = `SELECT COUNT(*) as totalItems FROM category WHERE company = ? AND (deleted = 0 OR deleted IS NULL)`;
         const dataParams = [cid, cid];
         const countParams = [cid];
 
@@ -107,9 +107,12 @@ categoryRouter.delete("/category/delete", authenticateToken, async (req, res) =>
 
   try {
     await helper.runInTransaction(async (q) => {
-      const rows = await q("SELECT * FROM category WHERE id=?", [id]);
+      const rows = await q("SELECT * FROM category WHERE id=? AND (deleted = 0 OR deleted IS NULL)", [id]);
       const oldRow = rows[0] || null;
-      await q("DELETE FROM category WHERE id=?", [id]);
+      if (!oldRow) {
+        throw new Error("Category not found or access denied");
+      }
+      await q("UPDATE category SET deleted = 1, deleted_at = NOW(), deleted_by = ? WHERE id=? AND (deleted = 0 OR deleted IS NULL)", [req.user?.user_id || null, id]);
       await logAuditInTx(q, {
         actionType: "DELETE",
         moduleName: "Category",

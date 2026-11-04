@@ -14,7 +14,7 @@ accSubgroupRouter.get("/accounting/subgroup", authenticateToken, (req, res) => {
     SELECT s.id, s.name, s.under, g.name AS under_name
     FROM acc_subgroup s
     LEFT JOIN acc_group g ON (s.under = g.id OR s.under = g.name)
-    WHERE (s.company = ? OR s.company = 1 OR s.company IS NULL)
+    WHERE (s.company = ? OR s.company = 1 OR s.company IS NULL) AND (s.deleted = 0 OR s.deleted IS NULL)
     ORDER BY s.name
   `;
   connection.query(sql, [companyId], (err, data) => {
@@ -33,7 +33,7 @@ accSubgroupRouter.post("/accounting/subgroup/save", authenticateToken, async (re
     await helper.runInTransaction(async (q) => {
       let oldRow = null;
       if (id) {
-        const rows = await q("SELECT * FROM acc_subgroup WHERE id=? AND company=?", [id, companyId]);
+        const rows = await q("SELECT * FROM acc_subgroup WHERE id=? AND company=? AND (deleted = 0 OR deleted IS NULL)", [id, companyId]);
         oldRow = rows[0] || null;
         if (!oldRow) {
           const error = new Error("Record not found or access denied");
@@ -91,14 +91,14 @@ accSubgroupRouter.delete("/accounting/subgroup/delete", authenticateToken, async
 
   try {
     await helper.runInTransaction(async (q) => {
-      const rows = await q("SELECT * FROM acc_subgroup WHERE id=? AND company=?", [id, companyId]);
+      const rows = await q("SELECT * FROM acc_subgroup WHERE id=? AND company=? AND (deleted = 0 OR deleted IS NULL)", [id, companyId]);
       const oldRow = rows[0] || null;
       if (!oldRow) {
         const error = new Error("Record not found or access denied");
         error.statusCode = 404;
         throw error;
       }
-      await q("DELETE FROM acc_subgroup WHERE id = ? AND company = ?", [id, companyId]);
+      await q("UPDATE acc_subgroup SET deleted = 1, deleted_at = NOW(), deleted_by = ? WHERE id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL)", [req.user?.user_id || null, id, companyId]);
       await logAuditInTx(q, {
         actionType: "DELETE",
         moduleName: "Accounting Sub Group",

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { InputNumber, Slider, Tag, Button, Space, Typography } from "antd";
 import { CalculatorOutlined, CopyOutlined, CheckOutlined } from "@ant-design/icons";
 import { toastSuccess } from "../../utils/toastNotify";
+import { calculateAmount, calculatePriceFromRap } from "../../utils/diamondCalculations";
 
 const { Text } = Typography;
 
@@ -15,14 +16,11 @@ const RapCalculatorWidget = () => {
 
   // Computed Values
   const netPricePerCarat = useMemo(() => {
-    const rap = Number(rapPrice) || 0;
-    const disc = Number(discountPct) || 0;
-    return Math.max(0, rap * (1 + disc / 100));
+    return calculatePriceFromRap(rapPrice, discountPct);
   }, [rapPrice, discountPct]);
 
   const totalAmount = useMemo(() => {
-    const c = Number(carat) || 0;
-    return c * netPricePerCarat;
+    return calculateAmount(carat, netPricePerCarat);
   }, [carat, netPricePerCarat]);
 
   const handleCopy = async () => {

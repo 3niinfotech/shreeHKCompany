@@ -40,11 +40,17 @@ function hashPassword(password) {
  */
 function verifyPassword(password, storedHash) {
   if (!password || !storedHash) return false;
-  if (isBcryptHash(storedHash)) {
-    return bcrypt.compareSync(password, storedHash);
+  try {
+    const pwdStr = String(password);
+    if (isBcryptHash(storedHash)) {
+      return bcrypt.compareSync(pwdStr, storedHash);
+    }
+    // Legacy MD5 fallback
+    return md5(pwdStr) === storedHash;
+  } catch (err) {
+    console.error("verifyPassword error:", err);
+    return false;
   }
-  // Legacy MD5 fallback
-  return md5(password) === storedHash;
 }
 
 /**
@@ -52,25 +58,30 @@ function verifyPassword(password, storedHash) {
  */
 function verifyAndMigratePassword(password, storedHash, onMigrate) {
   if (!password || !storedHash) return false;
-
-  if (isBcryptHash(storedHash)) {
-    return bcrypt.compareSync(password, storedHash);
-  }
-
-  // Check legacy MD5
-  if (md5(password) === storedHash) {
-    if (typeof onMigrate === "function") {
-      try {
-        const newHash = bcrypt.hashSync(password, BCRYPT_ROUNDS);
-        onMigrate(newHash);
-      } catch (err) {
-        console.error("Password auto-migration failed:", err);
-      }
+  try {
+    const pwdStr = String(password);
+    if (isBcryptHash(storedHash)) {
+      return bcrypt.compareSync(pwdStr, storedHash);
     }
-    return true;
-  }
 
-  return false;
+    // Check legacy MD5
+    if (md5(pwdStr) === storedHash) {
+      if (typeof onMigrate === "function") {
+        try {
+          const newHash = bcrypt.hashSync(pwdStr, BCRYPT_ROUNDS);
+          onMigrate(newHash);
+        } catch (err) {
+          console.error("Password auto-migration failed:", err);
+        }
+      }
+      return true;
+    }
+
+    return false;
+  } catch (err) {
+    console.error("verifyAndMigratePassword error:", err);
+    return false;
+  }
 }
 
 module.exports = {

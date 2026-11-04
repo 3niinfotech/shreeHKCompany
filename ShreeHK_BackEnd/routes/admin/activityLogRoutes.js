@@ -907,7 +907,7 @@ activityLogRouter.delete(
 
       const { where, values } = buildFilters(req.query, getAuditCompanyScope(req));
       const countRows = await auditQuery(
-        `SELECT COUNT(*) AS total FROM dai_activity_log WHERE ${where}`,
+        `SELECT COUNT(*) AS total FROM dai_activity_log WHERE ${where} AND (deleted = 0 OR deleted IS NULL)`,
         values,
       );
       const total = Number(countRows[0]?.total) || 0;
@@ -916,7 +916,8 @@ activityLogRouter.delete(
         return res.status(404).json({ status: false, message: "No matching records to delete." });
       }
 
-      await auditQuery(`DELETE FROM dai_activity_log WHERE ${where}`, values);
+      const deletedBy = passCheck.user?.user_id || req.user?.user_id || null;
+      await auditQuery(`UPDATE dai_activity_log SET deleted = 1, deleted_at = NOW(), deleted_by = ? WHERE ${where} AND (deleted = 0 OR deleted IS NULL)`, [deletedBy, ...values]);
 
       logActivity({
         actionType: "DELETE",
@@ -965,14 +966,15 @@ activityLogRouter.delete(
       const idWhere = companyScope === null ? "id = ?" : "id = ? AND company_id = ?";
       const idValues = companyScope === null ? [id] : [id, companyScope];
       const rows = await auditQuery(
-        `SELECT * FROM dai_activity_log WHERE ${idWhere} LIMIT 1`,
+        `SELECT * FROM dai_activity_log WHERE ${idWhere} AND (deleted = 0 OR deleted IS NULL) LIMIT 1`,
         idValues,
       );
       if (!rows.length) {
         return res.status(404).json({ status: false, message: "Record not found." });
       }
 
-      await auditQuery(`DELETE FROM dai_activity_log WHERE ${idWhere}`, idValues);
+      const deletedBy = passCheck.user?.user_id || req.user?.user_id || null;
+      await auditQuery(`UPDATE dai_activity_log SET deleted = 1, deleted_at = NOW(), deleted_by = ? WHERE ${idWhere} AND (deleted = 0 OR deleted IS NULL)`, [deletedBy, ...idValues]);
 
       logActivity({
         actionType: "DELETE",

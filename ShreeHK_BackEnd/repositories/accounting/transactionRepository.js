@@ -72,7 +72,7 @@ async function getTransactionsFromDb(filters = {}, companyId) {
  * @param {number} companyId
  */
 async function getAdvanceReportTransactionsFromDb(filters = {}, companyId) {
-  let sql = `SELECT id, party, date, type, book, cheque, amount, description FROM acc_advance WHERE company = ?`;
+  let sql = `SELECT id, party, date, type, book, cheque, amount, description FROM acc_advance WHERE company = ? AND (deleted = 0 OR deleted IS NULL)`;
   const values = [companyId];
 
   if (filters.party && filters.party !== "0") {
@@ -104,7 +104,7 @@ async function getAdvanceReportTransactionsFromDb(filters = {}, companyId) {
 async function getDistinctBooksFromDb(companyId) {
   const sql = `SELECT DISTINCT TRIM(book) AS name
                FROM dai_book
-               WHERE (company = ? OR company IS NULL) AND book IS NOT NULL AND TRIM(book) <> ''
+               WHERE (company = ? OR company IS NULL) AND book IS NOT NULL AND TRIM(book) <> '' AND (deleted = 0 OR deleted IS NULL)
                ORDER BY name`;
   return queryAsync(sql, [companyId]);
 }

@@ -36,7 +36,7 @@ const MyAccount = () => {
     const { mutate: changePassword, isLoading: isChangingPass } = usePostApiRequest(ENDPOINTS.profile.changePassword);
 
     const profile = profileData?.data;
-    const isSuperAdmin = profile?.roll === 1;
+    const isSuperAdmin = Number(profile?.roll) === 1 || profile?.role === 'super_admin' || String(profile?.role_name || '').trim().toLowerCase() === 'super admin';
 
     const adminShortcuts = [
         {
@@ -366,13 +366,8 @@ const MyAccount = () => {
                         <Space size={6} wrap style={{ marginBottom: 12, justifyContent: 'center' }}>
                             {isSuperAdmin
                                 ? <Tag icon={<CrownOutlined />} color="gold" style={{ fontWeight: 600 }}>Super Admin</Tag>
-                                : <Tag color="blue" style={{ fontWeight: 600 }}>{profile?.role_name || 'Admin'}</Tag>
+                                : <Tag color="blue" style={{ fontWeight: 600 }}>{String(profile?.role_name || '').trim().toLowerCase() === 'normal user' ? 'User' : (profile?.role_name || 'User')}</Tag>
                             }
-                            {Boolean(profile?.designation?.trim()) && profile.designation.trim().toLowerCase() !== (isSuperAdmin ? 'super admin' : (profile?.role_name || 'admin')).toLowerCase() && (
-                                <Tag icon={<IdcardOutlined />} color="cyan" style={{ fontWeight: 600 }}>
-                                    {profile.designation.trim()}
-                                </Tag>
-                            )}
                         </Space>
 
                         <Divider />

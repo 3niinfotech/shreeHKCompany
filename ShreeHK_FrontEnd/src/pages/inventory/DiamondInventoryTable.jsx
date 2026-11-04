@@ -1240,7 +1240,7 @@ const DiamondInventoryTable = () => {
       title: "Company Code",
       key: "companyCode",
       dataIndex: "companyCode",
-      width: 104,
+      width: 106,
       align: "center",
       ellipsis: true,
       render: (v) => v || "-",
@@ -1297,7 +1297,7 @@ const DiamondInventoryTable = () => {
       ) : null
     },
     {
-      title: "Shape", key: "shape", dataIndex: "shape", width: 84, ellipsis: true, align: "center",
+      title: "Shape", key: "shape", dataIndex: "shape", width: 82, ellipsis: true, align: "center",
       filters: [
         { text: 'Round', value: 'Round' },
         { text: 'Cushion', value: 'Cushion' },
@@ -1332,7 +1332,7 @@ const DiamondInventoryTable = () => {
         />
       ),
     },
-    { title: "Full Color", key: "color", dataIndex: "color", width: 74, ellipsis: true, align: "center" },
+    { title: "Full Color", key: "color", dataIndex: "color", width: 80, ellipsis: true, align: "center" },
     { title: "Argyle Color", key: "argyleColor", dataIndex: "argyleColor", width: 109, ellipsis: true, align: "center" },
     { title: "In-House Clarity", key: "mainClarity", dataIndex: "mainClarity", width: 130, ellipsis: true, align: "center" },
     {
@@ -1412,9 +1412,9 @@ const DiamondInventoryTable = () => {
       ),
       sorter: (a, b) => (Number(a.amount) || 0) - (Number(b.amount) || 0),
     },
-    { title: "Size", key: "size", dataIndex: "size", width: 68, ellipsis: true, align: "center" },
+    { title: "Size", key: "size", dataIndex: "size", width: 70, ellipsis: true, align: "center" },
     {
-      title: "Flourescence", key: "fluorescence", dataIndex: "fluorescence", width: 68, ellipsis: true, align: "center",
+      title: "Flourescence", key: "fluorescence", dataIndex: "fluorescence", width: 50, ellipsis: true, align: "center",
       filters: [
         { text: 'NON', value: 'NON' },
         { text: 'FNT', value: 'FNT' },

@@ -118,8 +118,8 @@ async function deleteThread(userId = 0, companyId = 1, threadId = "default") {
   const tid = String(threadId || "default").trim();
 
   try {
-    const sql = `DELETE FROM dai_ai_conversation WHERE user_id = ? AND company_id = ? AND thread_id = ?`;
-    await queryMeta(sql, [uid, cid, tid]);
+    const sql = `UPDATE dai_ai_conversation SET deleted = 1, deleted_at = NOW(), deleted_by = ? WHERE user_id = ? AND company_id = ? AND thread_id = ? AND (deleted = 0 OR deleted IS NULL)`;
+    await queryMeta(sql, [uid, uid, cid, tid]);
     aiLogger.info("ConversationDbManager", `Deleted thread: ${tid}`);
     return true;
   } catch (err) {

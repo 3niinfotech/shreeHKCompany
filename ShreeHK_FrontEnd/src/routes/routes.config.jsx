@@ -31,7 +31,7 @@ const ImportFormat = React.lazy(() => import("../pages/master/ImportFormat"));
 const Attribute = React.lazy(() => import("../pages/master/Attribute"));
 const RefreshStock = React.lazy(() => import("../pages/master/RefreshStock"));
 const Integrations = React.lazy(() => import("../pages/master/Integrations"));
-
+                   
 // --- 3. INVENTORY DROPDOWN PAGE ---
 const DiamondInventoryTable = React.lazy(() => import("../pages/inventory/DiamondInventoryTable"));
 const OnHandStock = React.lazy(() => import("../pages/inventory/OnHandStock"));

@@ -60,7 +60,7 @@ async function searchInventory(params = {}, context = {}) {
       pv.report_no, pv.depth_pc AS depth, pv.table_pc AS table_per, pv.mesurment AS measurements
     FROM dai_product p
     LEFT JOIN dai_product_value pv ON p.id = pv.product_id
-    WHERE p.company = ?
+    WHERE p.company = ? AND (p.deleted = 0 OR p.deleted IS NULL)
   `;
 
   const queryParams = [companyId];
@@ -188,14 +188,24 @@ async function getStoneHistory(params = {}, context = {}) {
   }
 
   const sql = `
-    SELECT id, sku, date, action, party, detail, user
-    FROM dai_history
-    WHERE company = ? AND sku = ?
-    ORDER BY id DESC
+    SELECT 
+      h.id, h.product_id, h.sku, h.date, h.action, h.party, h.description, h.narretion,
+      h.user, h.pcs, h.carat, h.invoice, h.price, h.amount, h.entryno, h.entry_from
+    FROM dai_history h
+    JOIN dai_product p ON h.product_id = p.id
+    WHERE p.company = ?
+      AND h.sku = ?
+      AND (h.deleted = 0 OR h.deleted IS NULL)
+      AND (p.deleted = 0 OR p.deleted IS NULL)
+    ORDER BY h.id DESC
     LIMIT 50
   `;
 
-  const rows = await helper.query(sql, [companyId, sku]);
+  const rawRows = await helper.query(sql, [companyId, sku]);
+  const rows = (rawRows || []).map((r) => ({
+    ...r,
+    detail: r.description || r.narretion || "",
+  }));
   const executionTimeMs = Date.now() - startTime;
 
   auditToolCall("getStoneHistory", context, sku, `Fetched ${rows.length} history records`);
@@ -237,7 +247,7 @@ async function queryStonesByStatus(extraWhere, queryParams = [], limit = 50, con
       pv.shape, pv.color, pv.clarity
     FROM dai_product p
     LEFT JOIN dai_product_value pv ON p.id = pv.product_id
-    WHERE p.company = ? ${extraWhere}
+    WHERE p.company = ? AND (p.deleted = 0 OR p.deleted IS NULL) ${extraWhere}
     ORDER BY p.id DESC
     LIMIT ?
   `;

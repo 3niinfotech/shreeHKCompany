@@ -83,8 +83,8 @@ const ensureBranchSchema = async () => {
   // Hide any junk branches that were previously created from company names.
   // Keep only real location branches active for login (HK / Dubai / Surat + admin-created extras that are not company clones).
   const defaultNames = DEFAULT_BRANCHES.map((b) => b.name.toLowerCase());
-  const allBranches = await metaQuery("SELECT id, name FROM branch");
-  const companyNames = await metaQuery("SELECT LOWER(TRIM(name)) AS n FROM company");
+  const allBranches = await metaQuery("SELECT id, name FROM branch WHERE (deleted = 0 OR deleted IS NULL)");
+  const companyNames = await metaQuery("SELECT LOWER(TRIM(name)) AS n FROM company WHERE (deleted = 0 OR deleted IS NULL)");
   const companyNameSet = new Set((companyNames || []).map((r) => String(r.n || "").trim()).filter(Boolean));
 
   for (const b of allBranches || []) {
@@ -103,7 +103,7 @@ const ensureBranchSchema = async () => {
 
   // Active location branches for login picker (HK / Dubai; Surat only if still present)
   const branches = await metaQuery(
-    "SELECT id, name, shortcutName FROM branch WHERE status = 1 AND LOWER(name) IN ('hk','dubai','surat')"
+    "SELECT id, name, shortcutName FROM branch WHERE status = 1 AND (deleted = 0 OR deleted IS NULL) AND LOWER(name) IN ('hk','dubai','surat')"
   );
   const branchByName = {};
   (branches || []).forEach((b) => {
@@ -116,7 +116,7 @@ const ensureBranchSchema = async () => {
   // - ShreeHK / KG Infrastructure → HK
   // - Test / Free companies → Dubai (UAE)
   const allCompanies = await metaQuery(
-    "SELECT id, name, shortcutName, branch_id FROM company"
+    "SELECT id, name, shortcutName, branch_id FROM company WHERE (deleted = 0 OR deleted IS NULL)"
   );
 
   for (const company of allCompanies || []) {

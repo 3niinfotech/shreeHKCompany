@@ -172,6 +172,7 @@ MyBalanceBook.get("/balance/get", authenticateToken, (req, res) => {
                company,
                0 AS credit
         FROM dai_book
+        WHERE (deleted = 0 OR deleted IS NULL)
         ORDER BY book ASC, currency ASC, id ASC
         `
         : `
@@ -182,7 +183,7 @@ MyBalanceBook.get("/balance/get", authenticateToken, (req, res) => {
                company,
                0 AS credit
         FROM dai_book
-        WHERE company = ?
+        WHERE company = ? AND (deleted = 0 OR deleted IS NULL)
         ORDER BY book ASC, currency ASC, id ASC
         `;
     const params = all ? [] : [companyId];
@@ -247,7 +248,7 @@ MyBalanceBook.post("/my-balance-book", authenticateToken, async (req, res) => {
 
         const existingRows = await new Promise((resolve) => {
             connection.query(
-                "SELECT * FROM dai_book WHERE book = ? AND currency = ? AND company = ? LIMIT 1",
+                "SELECT * FROM dai_book WHERE book = ? AND currency = ? AND company = ? AND (deleted = 0 OR deleted IS NULL) LIMIT 1",
                 [safeBook, safeCurrency, companyId],
                 (err, r) => resolve(r),
             );
@@ -295,7 +296,7 @@ MyBalanceBook.delete("/my-balance-delete", authenticateToken, async (req, res) =
     try {
         const rows = await new Promise((resolve, reject) => {
             connection.query(
-                `SELECT * FROM dai_book WHERE id = ? AND company = ? LIMIT 1`,
+                `SELECT * FROM dai_book WHERE id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL) LIMIT 1`,
                 [id, companyId],
                 (err, r) => (err ? reject(err) : resolve(r)),
             );
@@ -306,7 +307,7 @@ MyBalanceBook.delete("/my-balance-delete", authenticateToken, async (req, res) =
         }
 
         await new Promise((resolve, reject) => {
-            connection.query(`DELETE FROM dai_book WHERE id = ? AND company = ?`, [id, companyId], (error) => {
+            connection.query(`UPDATE dai_book SET deleted = 1, deleted_at = NOW(), deleted_by = ? WHERE id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL)`, [req.user?.user_id || null, id, companyId], (error) => {
                 if (error) reject(error);
                 else resolve();
             });

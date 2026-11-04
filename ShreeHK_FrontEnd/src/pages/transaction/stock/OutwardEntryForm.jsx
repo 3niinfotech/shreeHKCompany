@@ -23,6 +23,7 @@ import { SkuLink } from '../../../hooks/useSkuModalAction';
 import { loadXlsx } from '../../../utils/loadXlsx';
 import useBranchCompanies from '../../../hooks/useBranchCompanies';
 import { formatOutwardEntryNo, formatOutwardInvoiceNo } from '../../../utils/outwardInvoiceNo';
+import { calculateAmount, calculatePriceFromRap, calculateDiscountFromPrice } from '../../../utils/diamondCalculations';
 
 const CONFIRM_TABLE_COLUMNS = [
   { title: 'No.', width: 50, render: (_, __, i) => i + 1 },
@@ -131,12 +132,9 @@ function recalcLine(item) {
   const carat = Number(item.polishCarat) || 0;
   const price = Number(item.price) || 0;
   const rap = Number(item.rapPrice) || 0;
-  let disc = Number(item.disc) || 0;
-  if (rap > 0 && price > 0) {
-    disc = ((price * 100) / rap - 100);
-  }
-  const amount = Math.round(carat * price * 100) / 100;
-  return { ...item, disc: +disc.toFixed(2), amount };
+  const disc = calculateDiscountFromPrice(rap, price, item.disc);
+  const amount = calculateAmount(carat, price);
+  return { ...item, disc, amount };
 }
 
 function buildLineFromProduct(row, p) {
@@ -510,8 +508,8 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
         if (field === 'disc') {
           const rap = Number(next.rapPrice) || 0;
           const disc = Number(value) || 0;
-          const price = rap > 0 ? rap * (1 + disc / 100) : Number(next.price) || 0;
-          return recalcLine({ ...next, price: +price.toFixed(2) });
+          const price = calculatePriceFromRap(rap, disc, next.price);
+          return recalcLine({ ...next, price });
         }
         return recalcLine(next);
       }

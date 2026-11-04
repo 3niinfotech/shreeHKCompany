@@ -53,9 +53,6 @@ export default function AppToaster() {
       duration={4000}
       toastOptions={{
         classNames: toastClassNames.base,
-        style: {
-          opacity: 1,
-        },
       }}
       icons={toastIcons}
     />

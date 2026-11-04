@@ -33,7 +33,7 @@ async function getPartiesList(params = {}, context = {}) {
   let sql = `
     SELECT id, name, type, country, contact_person, contact_number, email, address
     FROM dai_party
-    WHERE company = ?
+    WHERE company = ? AND (deleted = 0 OR deleted IS NULL)
   `;
   const queryParams = [companyId];
 
@@ -115,7 +115,7 @@ async function getPartyOutstanding(params = {}, context = {}) {
   const outwardSql = `
     SELECT id, entryno, invoiceno, date, duedate, type, status, final_amount, paid_amount, due_amount
     FROM dai_outward
-    WHERE company = ? AND party = ? AND due_amount <> 0 AND (type = 'sale' OR type = 'export')
+    WHERE company = ? AND party = ? AND due_amount <> 0 AND (type = 'sale' OR type = 'export') AND (deleted = 0 OR deleted IS NULL)
     ORDER BY duedate ASC
   `;
 
@@ -168,7 +168,7 @@ async function getPartyTransactions(params = {}, context = {}) {
     (
       SELECT 'OUTWARD' AS dir, id, entryno AS ref, type AS txn_type, status, date AS txn_date, final_amount AS amount
       FROM dai_outward
-      WHERE company = ? AND party = ?
+      WHERE company = ? AND party = ? AND (deleted = 0 OR deleted IS NULL)
     )
     UNION ALL
     (
@@ -204,7 +204,7 @@ async function getOutwardStock(params = {}, context = {}) {
            o.products, o.paid_amount, o.due_amount
     FROM dai_outward o
     LEFT JOIN dai_party p ON o.party = p.id
-    WHERE o.company = ?
+    WHERE o.company = ? AND (o.deleted = 0 OR o.deleted IS NULL)
   `;
   const queryParams = [companyId];
 
@@ -354,7 +354,7 @@ async function getOutstandingSummary(params = {}, context = {}) {
   const outwardSql = `
     SELECT COALESCE(SUM(due_amount), 0) AS total_receivable, COUNT(id) AS open_sales_count
     FROM dai_outward
-    WHERE company = ? AND due_amount <> 0 AND (type = 'sale' OR type = 'export')
+    WHERE company = ? AND due_amount <> 0 AND (type = 'sale' OR type = 'export') AND (deleted = 0 OR deleted IS NULL)
   `;
 
   const inwardSql = `

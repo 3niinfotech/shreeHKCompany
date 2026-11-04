@@ -14,7 +14,7 @@ attributeRouter.get("/master/attribute", authenticateToken, (req, res) => {
     return res.json({ TotalItems: 0, Data: [] });
   }
   const searchInput = req.query.searchInput;
-  let query = `SELECT * FROM dai_attribute WHERE company = ?`;
+  let query = `SELECT * FROM dai_attribute WHERE company = ? AND (deleted = 0 OR deleted IS NULL)`;
   const params = [companyId];
   if (searchInput) {
     query += ` AND (name LIKE ? OR code LIKE ? OR value LIKE ?)`;
@@ -92,15 +92,16 @@ attributeRouter.delete("/attribute/delete", authenticateToken, async (req, res) 
 
   try {
     await helper.runInTransaction(async (q) => {
-      const rows = await q("SELECT * FROM dai_attribute WHERE id=? AND company=?", [id, companyId]);
+      const rows = await q("SELECT * FROM dai_attribute WHERE id=? AND company=? AND (deleted = 0 OR deleted IS NULL)", [id, companyId]);
       const oldRow = rows[0] || null;
       if (!oldRow) {
         const error = new Error("Attribute not found or access denied");
         error.statusCode = 404;
         throw error;
       }
-      await q("DELETE FROM dai_attribute WHERE id = ? AND company = ?", [id, companyId]);
-      await q("DELETE FROM dai_attribute_value WHERE attribute_id = ?", [id]);
+      const deletedBy = req.user?.user_id || null;
+      await q("UPDATE dai_attribute SET deleted = 1, deleted_at = NOW(), deleted_by = ? WHERE id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL)", [deletedBy, id, companyId]);
+      await q("UPDATE dai_attribute_value SET deleted = 1, deleted_at = NOW(), deleted_by = ? WHERE attribute_id = ? AND (deleted = 0 OR deleted IS NULL)", [deletedBy, id]);
       await logAuditInTx(q, {
         actionType: "DELETE",
         moduleName: "Attribute",
@@ -123,7 +124,7 @@ attributeRouter.get("/attribute/getOption", authenticateToken, (req, res) => {
     return res.json({ Data: [] });
   }
   connection.query(
-    "SELECT code, name, value FROM dai_attribute WHERE company = ? ORDER BY short_order",
+    "SELECT code, name, value FROM dai_attribute WHERE company = ? AND (deleted = 0 OR deleted IS NULL) ORDER BY short_order",
     [companyId],
     (err, rows) => {
       if (err) return res.status(500).json({ error: err.message });

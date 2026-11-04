@@ -145,6 +145,7 @@ const compareWindow = async (companyId, from, to) => {
        FROM dai_outward
        WHERE company = ?
          AND (type = 'sale' OR type = 'export')
+         AND (deleted = 0 OR deleted IS NULL)
          AND date >= ? AND date < ?`,
       [companyId, from, to]
     ),
@@ -162,6 +163,7 @@ const compareWindow = async (companyId, from, to) => {
        FROM dai_outward
        WHERE company = ?
          AND (type = 'memo' OR type = 'consign')
+         AND (deleted = 0 OR deleted IS NULL)
          AND date >= ? AND date < ?`,
       [companyId, from, to]
     ),
@@ -183,6 +185,7 @@ async function getFlowSeries(companyId, from, to, grain) {
        FROM dai_outward
        WHERE company = ?
          AND (type = 'sale' OR type = 'export')
+         AND (deleted = 0 OR deleted IS NULL)
          AND date >= ? AND date < ?
        GROUP BY ${bucket}
        ORDER BY period`,
@@ -204,6 +207,7 @@ async function getFlowSeries(companyId, from, to, grain) {
        FROM dai_outward
        WHERE company = ?
          AND (type = 'memo' OR type = 'consign')
+         AND (deleted = 0 OR deleted IS NULL)
          AND date >= ? AND date < ?
        GROUP BY ${bucket}
        ORDER BY period`,
@@ -231,6 +235,7 @@ async function getSaleSeries(companyId, from, to, grain) {
      FROM dai_outward
      WHERE company = ?
        AND (type = 'sale' OR type = 'export')
+       AND (deleted = 0 OR deleted IS NULL)
        AND date >= ? AND date < ?
      GROUP BY ${bucket}
      ORDER BY period`,
@@ -264,6 +269,7 @@ async function getBalanceMovements(
      FROM dai_history h
      INNER JOIN dai_product p ON p.id = h.product_id
      WHERE p.company = ?
+       AND (p.deleted = 0 OR p.deleted IS NULL)
        ${productWhere}
        AND h.action IN (${actionList([...increaseActions, ...decreaseActions])})
        AND h.date >= ? AND h.date < ?

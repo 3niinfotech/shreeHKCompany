@@ -6,6 +6,7 @@ const getProductsByIds = async (ids) => {
   const sql = `SELECT * FROM dai_product p
     INNER JOIN dai_product_value pv ON p.id = pv.product_id
     WHERE p.id IN (${placeholders})
+      AND (p.deleted = 0 OR p.deleted IS NULL)
     ORDER BY p.sku`;
   return helper.query(sql, ids);
 };
@@ -15,6 +16,7 @@ const loadDataBySku = async (sku) => {
     `SELECT * FROM dai_product p
       INNER JOIN dai_product_value pv ON p.id = pv.product_id
       WHERE p.sku = ?
+        AND (p.deleted = 0 OR p.deleted IS NULL)
       LIMIT 1`,
     [sku]
   );

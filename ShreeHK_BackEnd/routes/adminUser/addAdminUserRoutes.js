@@ -91,7 +91,7 @@ const validateUserPayload = async (
 
     if (usernameChanged) {
         const usernameConflict = await helper.query(
-            "SELECT user_id FROM user WHERE LOWER(TRIM(user_name)) = LOWER(?) AND user_id <> ? LIMIT 1",
+            "SELECT user_id FROM user WHERE LOWER(TRIM(user_name)) = LOWER(?) AND user_id <> ? AND (deleted = 0 OR deleted IS NULL) LIMIT 1",
             [trimmedUsername, userId],
         );
         if (usernameConflict.length) return "Username is already in use.";
@@ -99,7 +99,7 @@ const validateUserPayload = async (
 
     if (emailChanged) {
         const emailConflict = await helper.query(
-            "SELECT user_id FROM user WHERE LOWER(TRIM(user_email)) = ? AND user_id <> ? LIMIT 1",
+            "SELECT user_id FROM user WHERE LOWER(TRIM(user_email)) = ? AND user_id <> ? AND (deleted = 0 OR deleted IS NULL) LIMIT 1",
             [trimmedEmail, userId],
         );
         if (emailConflict.length) return "Email is already in use.";
@@ -136,6 +136,7 @@ AdminUserRouter.get('/getAdminManageUser', authenticateToken, isSuperAdmin, asyn
             ) AS created_by_name
         FROM user u
         LEFT JOIN user cb ON u.created_by = cb.user_id
+        WHERE (u.deleted = 0 OR u.deleted IS NULL)
     `);
 
         const Data = results.map((row) => ({
@@ -328,8 +329,9 @@ AdminUserRouter.delete("/manage-user/delete", authenticateToken, isSuperAdmin, a
     }
 
     try {
+        const deletedBy = req.user?.user_id || null;
         await helper.runInTransaction(async (q) => {
-            const rows = await q("SELECT * FROM user WHERE user_id = ?", [id]);
+            const rows = await q("SELECT * FROM user WHERE user_id = ? AND (deleted = 0 OR deleted IS NULL)", [id]);
             const oldRow = rows[0] || null;
             if (!oldRow) {
                 const error = new Error("User not found.");
@@ -338,7 +340,7 @@ AdminUserRouter.delete("/manage-user/delete", authenticateToken, isSuperAdmin, a
             }
             if (Number(oldRow.roll) === SUPER_ADMIN_ROLL_ID) {
                 const counts = await q(
-                    "SELECT COUNT(*) AS total FROM user WHERE roll = ? AND COALESCE(is_active, 1) = 1",
+                    "SELECT COUNT(*) AS total FROM user WHERE roll = ? AND COALESCE(is_active, 1) = 1 AND (deleted = 0 OR deleted IS NULL)",
                     [SUPER_ADMIN_ROLL_ID],
                 );
                 if (Number(counts[0]?.total) <= 1) {
@@ -347,7 +349,10 @@ AdminUserRouter.delete("/manage-user/delete", authenticateToken, isSuperAdmin, a
                     throw error;
                 }
             }
-            await q("DELETE FROM user WHERE user_id = ?", [id]);
+            await q(
+                "UPDATE user SET deleted = 1, deleted_at = NOW(), deleted_by = ?, is_active = 0 WHERE user_id = ? AND (deleted = 0 OR deleted IS NULL)",
+                [deletedBy, id]
+            );
             await logAuditInTx(q, {
                 actionType: "DELETE",
                 moduleName: "User",
@@ -374,6 +379,7 @@ AdminUserRouter.get('/getLoginAllUsers', authenticateToken, isSuperAdmin, (req, 
             mobile AS mobileno,
             roll AS userroll
         FROM user
+        WHERE (deleted = 0 OR deleted IS NULL)
     `;
 
     connection.query(query, (err, results) => {
@@ -439,20 +445,24 @@ AdminUserRouter.delete('/deleteUser', authenticateToken, isSuperAdmin, async (re
     }
 
     try {
-        const rows = await helper.query("SELECT roll FROM user WHERE user_id = ? LIMIT 1", [id]);
+        const deletedBy = req.user?.user_id || null;
+        const rows = await helper.query("SELECT roll FROM user WHERE user_id = ? AND (deleted = 0 OR deleted IS NULL) LIMIT 1", [id]);
         if (!rows.length) {
             return res.status(404).json({ status: false, message: "User not found." });
         }
         if (Number(rows[0].roll) === SUPER_ADMIN_ROLL_ID) {
             const counts = await helper.query(
-                "SELECT COUNT(*) AS total FROM user WHERE roll = ? AND COALESCE(is_active, 1) = 1",
+                "SELECT COUNT(*) AS total FROM user WHERE roll = ? AND COALESCE(is_active, 1) = 1 AND (deleted = 0 OR deleted IS NULL)",
                 [SUPER_ADMIN_ROLL_ID],
             );
             if (Number(counts[0]?.total) <= 1) {
                 return res.status(403).json({ status: false, message: "The last active Super Admin cannot be deleted." });
             }
         }
-        await helper.query("DELETE FROM user WHERE user_id = ?", [id]);
+        await helper.query(
+            "UPDATE user SET deleted = 1, deleted_at = NOW(), deleted_by = ?, is_active = 0 WHERE user_id = ? AND (deleted = 0 OR deleted IS NULL)",
+            [deletedBy, id]
+        );
         return res.status(200).json({ status: true, message: "User deleted successfully" });
     } catch (error) {
         return res.status(500).json({ status: false, message: error.message });

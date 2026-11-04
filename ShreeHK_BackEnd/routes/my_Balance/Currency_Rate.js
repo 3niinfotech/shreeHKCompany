@@ -15,7 +15,7 @@ CurrencyRate.get("/currency-rate/get", authenticateToken, (req, res) => {
         });
     }
 
-    const query = `SELECT id, currency, USD, HKD FROM dai_currencyrate WHERE company = ?`;
+    const query = `SELECT id, currency, USD, HKD FROM dai_currencyrate WHERE company = ? AND (deleted = 0 OR deleted IS NULL)`;
 
     connection.query(query, [companyId], (err, result) => {
         if (err) {
@@ -51,7 +51,7 @@ CurrencyRate.post("/currency-rate", authenticateToken, async (req, res) => {
 
     try {
         const existingRows = await new Promise((resolve) => {
-            connection.query("SELECT * FROM dai_currencyrate WHERE currency = ? AND company = ? LIMIT 1", [safeCurrency, companyId], (err, r) => resolve(r));
+            connection.query("SELECT * FROM dai_currencyrate WHERE currency = ? AND company = ? AND (deleted = 0 OR deleted IS NULL) LIMIT 1", [safeCurrency, companyId], (err, r) => resolve(r));
         });
         const existing = existingRows?.[0] || null;
 
@@ -110,7 +110,7 @@ const deleteCurrencyRateHandler = async (req, res) => {
 
     try {
         const oldRows = await new Promise((resolve) => {
-            connection.query("SELECT * FROM dai_currencyrate WHERE id = ? AND company = ? LIMIT 1", [id, companyId], (err, r) => resolve(r));
+            connection.query("SELECT * FROM dai_currencyrate WHERE id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL) LIMIT 1", [id, companyId], (err, r) => resolve(r));
         });
         const oldRow = oldRows?.[0] || null;
         if (!oldRow) {
@@ -118,7 +118,7 @@ const deleteCurrencyRateHandler = async (req, res) => {
         }
 
         await new Promise((resolve, reject) => {
-            connection.query(`DELETE FROM dai_currencyrate WHERE id = ? AND company = ?`, [id, companyId], (error) => {
+            connection.query(`UPDATE dai_currencyrate SET deleted = 1, deleted_at = NOW(), deleted_by = ? WHERE id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL)`, [req.user?.user_id || null, id, companyId], (error) => {
                 if (error) reject(error);
                 else resolve();
             });

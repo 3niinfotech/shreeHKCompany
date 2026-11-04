@@ -324,11 +324,13 @@ import styles from '../../assets/scss/components/profileDropdown.module.scss';
 const LAST_ACTIVE_REFRESH_MS = 30 * 1000;
 
 const getRoleLabel = (user) => {
-  if (!user) return 'Admin';
-  if (user.role_name) return user.role_name;
-  if (Number(user.roll) === 1 || user.role === 'super_admin') return 'Super Admin';
-  if (user.role === 'admin') return 'Admin';
-  return user.role || 'User';
+  if (!user) return 'User';
+  if (Number(user.roll) === 1 || user.role === 'super_admin' || String(user.role_name || '').toLowerCase() === 'super admin') return 'Super Admin';
+  const roleName = user.role_name || user.role;
+  if (!roleName) return 'User';
+  if (String(roleName).trim().toLowerCase() === 'normal user') return 'User';
+  if (String(roleName).trim().toLowerCase() === 'admin') return 'Admin';
+  return roleName;
 };
 
 const getUserDisplayName = (user) => {

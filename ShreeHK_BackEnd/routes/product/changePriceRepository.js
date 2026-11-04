@@ -8,7 +8,11 @@ const getProductDetail = async (id, companyId = null) => {
     WHERE p.id = ?
   `;
   const params = [id];
-  if (companyId) {
+  if (Array.isArray(companyId) && companyId.length > 0) {
+    const placeholders = companyId.map(() => "?").join(",");
+    sql += ` AND p.company IN (${placeholders})`;
+    params.push(...companyId);
+  } else if (companyId != null && !Array.isArray(companyId)) {
     sql += " AND p.company = ?";
     params.push(companyId);
   }
