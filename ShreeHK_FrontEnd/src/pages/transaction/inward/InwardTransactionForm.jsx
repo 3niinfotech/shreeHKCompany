@@ -850,7 +850,7 @@ const InwardTransactionForm = ({
       render: (_, r) => renderInput(r, 'pPcs', 'Pcs', 'number', 64),
     },
     {
-      title: <span>Polish Carat <span style={{ color: '#ff4d4f' }}>*</span></span>,
+      title: <span>Carat <span style={{ color: '#ff4d4f' }}>*</span></span>,
       width: 88,
       render: (_, r) => renderInput(r, 'pCarat', 'Carat', 'number', 72),
     },
@@ -929,6 +929,14 @@ const InwardTransactionForm = ({
     },
     { title: 'Shape', width: 140, render: (_, r) => renderInput(r, 'shape', 'Shape', 'text', '100%') },
     { title: 'Clarity', width: 140, render: (_, r) => renderInput(r, 'clarity', 'Clarity', 'text', '100%') },
+    { title: 'Intensity', width: 130, render: (_, r) => renderInput(r, 'intensity', 'Intensity', 'text', '100%') },
+    { title: 'Overtone', width: 130, render: (_, r) => renderInput(r, 'overtone', 'Overtone', 'text', '100%') },
+    { title: 'Color', width: 110, render: (_, r) => renderInput(r, 'color', 'Color', 'text', '100%') },
+    { title: 'Size', width: 100, render: (_, r) => renderInput(r, 'size', 'Size', 'text', '100%') },
+    { title: 'Polish', width: 110, render: (_, r) => renderInput(r, 'polish', 'Polish', 'text', '100%') },
+    { title: 'Symm', width: 110, render: (_, r) => renderInput(r, 'symm', 'Symm', 'text', '100%') },
+    { title: 'Cut', width: 110, render: (_, r) => renderInput(r, 'cut', 'Cut', 'text', '100%') },
+    { title: 'Flo. Intensity', width: 140, render: (_, r) => renderInput(r, 'floIntensity', 'Flo. Intensity', 'text', '100%') },
     {
       title: 'Measurements',
       width: 260,
@@ -945,6 +953,14 @@ const InwardTransactionForm = ({
         />
       ),
     },
+    { title: 'Table%', width: 100, render: (_, r) => renderInput(r, 'tablePer', 'Table%', 'text', '100%') },
+    { title: 'Depth%', width: 100, render: (_, r) => renderInput(r, 'depthPer', 'Depth%', 'text', '100%') },
+    { title: 'Gridle', width: 110, render: (_, r) => renderInput(r, 'girdle', 'Gridle', 'text', '100%') },
+    { title: 'BGM', width: 100, render: (_, r) => renderInput(r, 'bgm', 'BGM', 'text', '100%') },
+    { title: 'Eyeclean', width: 110, render: (_, r) => renderInput(r, 'eyeclean', 'Eyeclean', 'text', '100%') },
+    { title: 'Package', width: 110, render: (_, r) => renderInput(r, 'package', 'Package', 'text', '100%') },
+    { title: 'Remark', width: 140, render: (_, r) => renderInput(r, 'remark', 'Remark', 'text', '100%') },
+    { title: 'Group Type', width: 120, render: (_, r) => renderInput(r, 'groupType', 'Group Type', 'text', '100%') },
     {
       title: '', key: 'action', fixed: 'right', width: 50,
       render: (_, record) => (
