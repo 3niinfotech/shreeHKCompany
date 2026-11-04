@@ -23,7 +23,7 @@ const getInventorySuggestions = async (q, limit = 12, companyId = 1) => {
       p.polish_carat
     FROM dai_product p
     JOIN dai_product_value pv ON p.id = pv.product_id
-    WHERE p.company IN (${companyPlaceholders}) AND p.visibility = 1
+    WHERE p.company IN (${companyPlaceholders}) AND p.visibility = 1 AND (p.deleted = 0 OR p.deleted IS NULL) AND (pv.deleted = 0 OR pv.deleted IS NULL)
       AND (
         p.sku LIKE ?
         OR p.mfg_code LIKE ?

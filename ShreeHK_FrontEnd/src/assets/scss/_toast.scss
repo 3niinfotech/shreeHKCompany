@@ -31,10 +31,8 @@ $toast-accent-width: 5px;
 // ── Base Toast Card (Solid, Opaque & Elevated) ──────────────────────────────
 [data-sonner-toast][data-styled="true"].shreehk-toast,
 [data-sonner-toast][data-styled="true"] {
-  position: relative !important;
   overflow: hidden !important;
   background: #ffffff !important;
-  opacity: 1 !important;
   border: 1px solid #e2e8f0 !important;
   border-left: #{$toast-accent-width} solid #1e3a8a !important;
   border-radius: #{$toast-radius} !important;
@@ -47,7 +45,7 @@ $toast-accent-width: 5px;
   align-items: center !important;
   min-height: 56px !important;
   gap: 12px !important;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, opacity 0.2s ease !important;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, opacity 0.2s ease, height 0.2s ease !important;
 
   &:hover {
     box-shadow:
@@ -62,7 +60,6 @@ $toast-accent-width: 5px;
 [data-theme="dark"] [data-sonner-toast][data-styled="true"].shreehk-toast,
 [data-theme="dark"] [data-sonner-toast][data-styled="true"] {
   background: #1e293b !important;
-  opacity: 1 !important;
   border: 1px solid #334155 !important;
   border-left: #{$toast-accent-width} solid #3b82f6 !important;
   color: #f8fafc !important;
@@ -70,6 +67,25 @@ $toast-accent-width: 5px;
     0 16px 38px -4px rgba(0, 0, 0, 0.75),
     0 6px 16px -2px rgba(0, 0, 0, 0.55),
     0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+}
+
+// ── Removed / Invisible / Empty Toasts Cleanup (Fix Ghost Blank Boxes) ────────
+[data-sonner-toast][data-removed="true"],
+[data-sonner-toast][data-visible="false"],
+[data-sonner-toast]:not([data-mounted="true"]),
+[data-sonner-toast]:empty {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  min-height: 0 !important;
+  height: 0 !important;
+  max-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  border: none !important;
+  overflow: hidden !important;
 }
 
 // ── 1. SUCCESS VARIANT (Emerald / Green) ──────────────────────────────────────

@@ -4,6 +4,7 @@ const ON_HAND_BASE = (companyId) => `
   FROM dai_product p
   JOIN dai_product_value pv ON p.id = pv.product_id
   WHERE p.company = ?
+    AND (p.deleted = 0 OR p.deleted IS NULL)
     AND p.visibility = 1
     AND p.polish_carat <> 0
     AND (p.outward = '' OR p.outward IS NULL)
@@ -102,6 +103,7 @@ async function getSalesLast30Days(companyId) {
     FROM dai_outward o
     LEFT JOIN dai_party p ON o.party = p.id
     WHERE o.company = ?
+      AND (o.deleted = 0 OR o.deleted IS NULL)
       AND o.type IN ('sale', 'export')
       AND o.status IN ('on_sale', 'on_export', 'sold', 'exported')
       AND o.date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
@@ -125,6 +127,7 @@ async function getPartyPurchaseHistory(partyId, companyId) {
       o.final_amount, o.paid_amount, o.due_amount, o.status
     FROM dai_outward o
     WHERE o.company = ?
+      AND (o.deleted = 0 OR o.deleted IS NULL)
       AND o.party = ?
       AND o.type IN ('sale', 'export', 'memo')
     ORDER BY o.date DESC
@@ -147,6 +150,7 @@ async function lookupProductByBarcode(barcodeData, companyId) {
     FROM dai_product p
     JOIN dai_product_value pv ON p.id = pv.product_id
     WHERE p.company = ?
+      AND (p.deleted = 0 OR p.deleted IS NULL)
       AND p.visibility = 1
       AND (p.barcode = ? OR p.sku = ? OR p.barcode LIKE ? OR p.sku LIKE ?)
     LIMIT 5

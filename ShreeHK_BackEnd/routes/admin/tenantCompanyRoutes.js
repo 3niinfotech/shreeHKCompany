@@ -151,6 +151,7 @@ tenantCompanyRouter.get("/admin/tenant-company/options", authenticateToken, isSu
       `SELECT c.id, c.name, c.shortcutName, c.branch_id, c.bank_details, b.name AS branch_name
        FROM company c
        LEFT JOIN branch b ON b.id = c.branch_id
+       WHERE (c.deleted = 0 OR c.deleted IS NULL)
        ORDER BY c.name ASC`
     );
     res.json({ status: true, Data: rows });
@@ -175,7 +176,7 @@ tenantCompanyRouter.get("/admin/tenant-company", authenticateToken, isSuperAdmin
       LEFT JOIN branch b ON b.id = c.branch_id
     `;
     const params = [];
-    const where = [];
+    const where = ["(c.deleted = 0 OR c.deleted IS NULL)"];
 
     // Only the companies of the active branch are listed — the branch companies
     // are all active, so an HK session must show every HK company.
@@ -218,7 +219,7 @@ tenantCompanyRouter.get("/admin/tenant-company/:id", authenticateToken, isSuperA
       `SELECT ${COMPANY_SAFE_SELECT}, b.name AS branch_name
        FROM company c
        LEFT JOIN branch b ON b.id = c.branch_id
-       WHERE c.id = ? LIMIT 1`,
+       WHERE c.id = ? AND (c.deleted = 0 OR c.deleted IS NULL) LIMIT 1`,
       [id],
     );
     if (!rows.length) {
@@ -256,6 +257,15 @@ tenantCompanyRouter.post(
           status: false,
           message: "Value can't be Blank.",
         });
+      }
+
+      const compName = String(body.name || "").trim();
+      const dupRows = await metaQuery(
+        "SELECT id FROM company WHERE name = ? AND id != ? AND (deleted = 0 OR deleted IS NULL) LIMIT 1",
+        [compName, id]
+      );
+      if (dupRows.length > 0) {
+        return res.status(400).json({ status: false, message: "Company name already exists." });
       }
 
       const post = {};

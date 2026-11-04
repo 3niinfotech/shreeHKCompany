@@ -182,3 +182,173 @@
     box-shadow: none;
   }
 }
+
+// =============================================================================
+// NEW CENTERED CARD LOGIN DESIGN (Smart DIA)
+// Added with dedicated class names so old styles remain 100% untouched
+// =============================================================================
+.newLoginWrapper {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #f6f8fb;
+  padding: 1.5rem 1rem;
+  box-sizing: border-box;
+
+  .newCard {
+    width: 100%;
+    max-width: 440px;
+    background: #ffffff;
+    border-radius: 14px;
+    border: 1px solid #e8ecf2;
+    box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.06), 0 4px 12px -2px rgba(15, 23, 42, 0.03);
+    padding: 2.25rem 2.25rem 1.75rem;
+    box-sizing: border-box;
+
+    .brandArea {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      margin-bottom: 1.25rem;
+
+      .brandLogo {
+        display: block;
+        height: 52px;
+        width: auto;
+        max-width: 220px;
+        object-fit: contain;
+      }
+
+      .brandTagline {
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #64748b;
+        margin-top: 8px;
+      }
+    }
+
+    .brandDivider {
+      height: 1px;
+      background: #f1f5f9;
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+
+    .signInHeading {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 4px !important;
+      line-height: 1.25;
+    }
+
+    .signInSubtext {
+      font-size: 13px;
+      color: #64748b;
+      margin-bottom: 1.5rem;
+      display: block;
+
+      b {
+        color: #334155;
+        font-weight: 600;
+      }
+    }
+
+    :global(.ant-form-item-label > label) {
+      font-size: 13px;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 2px;
+    }
+
+    .inputField {
+      height: 44px;
+      background-color: #edf3fc !important;
+      border: 1px solid #dbe5f5 !important;
+      border-radius: 8px !important;
+      font-size: 14px;
+      color: #0f172a;
+      transition: all 0.2s ease;
+
+      input {
+        background-color: transparent !important;
+        font-size: 14px;
+        color: #0f172a;
+      }
+
+      &:hover,
+      &:focus,
+      &:focus-within {
+        background-color: #ffffff !important;
+        border-color: #0d7a68 !important;
+        box-shadow: 0 0 0 2px rgba(13, 122, 104, 0.12) !important;
+      }
+    }
+
+    .submitBtn {
+      height: 42px !important;
+      background-color: #0d7a68 !important;
+      border-color: #0d7a68 !important;
+      color: #ffffff !important;
+      font-weight: 600;
+      font-size: 14px !important;
+      border-radius: 8px !important;
+      margin-top: 0.75rem;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(13, 122, 104, 0.2);
+
+      &:hover,
+      &:focus {
+        background-color: #09594c !important;
+        border-color: #09594c !important;
+        box-shadow: 0 6px 16px rgba(13, 122, 104, 0.3) !important;
+      }
+    }
+
+    .securityRow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 1.5rem;
+      font-size: 12px;
+      font-weight: 500;
+      color: #64748b;
+      white-space: nowrap;
+
+      .shieldIcon {
+        color: #0d7a68;
+        flex-shrink: 0;
+      }
+
+      .dot {
+        color: #cbd5e1;
+        font-size: 12px;
+      }
+    }
+  }
+
+  .footerArea {
+    margin-top: 1.5rem;
+    text-align: center;
+    font-size: 12px;
+    color: #64748b;
+  }
+}
+
+@media (max-width: 480px) {
+  .newLoginWrapper {
+    padding: 1rem 0.75rem;
+
+    .newCard {
+      padding: 1.75rem 1.25rem 1.5rem;
+      border-radius: 12px;
+    }
+  }
+}

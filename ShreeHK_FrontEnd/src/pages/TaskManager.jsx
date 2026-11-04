@@ -34,8 +34,10 @@ import {
     Kanban,
     ArrowLeft,
     CheckSquare,
-    RotateCcw
+    RotateCcw,
+    GripVertical
 } from 'lucide-react';
+import { toastSuccess, toastWarning, toastError, toastInfo } from '../utils/toastNotify';
 import { ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
@@ -82,7 +84,7 @@ export default function TaskManager() {
     const { data: usersRes } = useFetchApi('usersList', ENDPOINTS.admin.users, {}, 'GET', { enabled: isSuperAdmin });
 
     const createMutation = usePostApiRequest(ENDPOINTS.quickNotes.create, 'quickNotes');
-    const updateMutation = usePutApiRequest(ENDPOINTS.quickNotes.update, 'quickNotes');
+    const updateMutation = usePutApiRequest(ENDPOINTS.quickNotes.update, 'quickNotes', { showToast: false });
     const deleteMutation = useDeleteApiRequest(ENDPOINTS.quickNotes.delete, 'quickNotes');
 
     // Local list so UI updates immediately after create/update/delete
@@ -280,6 +282,7 @@ export default function TaskManager() {
             );
             setEditingTask(null);
             form.resetFields();
+            toastSuccess("Task updated successfully");
 
             updateMutation.mutate(
                 { id: taskId, payload },
@@ -332,6 +335,7 @@ export default function TaskManager() {
                     : item
             )
         );
+        toastSuccess(nextCompleted ? "Task marked as completed" : "Task marked as pending");
         updateMutation.mutate(
             {
                 id: task.id,
@@ -591,6 +595,159 @@ export default function TaskManager() {
             completed: filteredTasks.filter(t => t.completed),
         };
     }, [filteredTasks]);
+
+    // Drag and Drop states for Board View
+    const [draggedTaskId, setDraggedTaskId] = useState(null);
+    const [dragOverColKey, setDragOverColKey] = useState(null);
+
+    // Global reset on dragend or drop to guarantee draggedTaskId/dragOverColKey are never stuck
+    useEffect(() => {
+        const handleGlobalDragReset = () => {
+            setDraggedTaskId(null);
+            setDragOverColKey(null);
+        };
+        window.addEventListener('dragend', handleGlobalDragReset);
+        window.addEventListener('drop', handleGlobalDragReset);
+        return () => {
+            window.removeEventListener('dragend', handleGlobalDragReset);
+            window.removeEventListener('drop', handleGlobalDragReset);
+        };
+    }, []);
+
+    const getTaskColumnKey = (task) => {
+        const todayStr = dayjs().format('YYYY-MM-DD');
+        if (task.completed) return 'completed';
+        if (task.target_date && task.target_date < todayStr) return 'overdue';
+        if (task.target_date === todayStr) return 'today';
+        return 'upcoming';
+    };
+
+    const handleDragStart = (e, task) => {
+        setDraggedTaskId(task.id);
+        e.dataTransfer.setData('text/plain', String(task.id));
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragEnd = () => {
+        setDraggedTaskId(null);
+        setDragOverColKey(null);
+    };
+
+    const handleDragOver = (e, targetColKey) => {
+        if (targetColKey === 'overdue') return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (dragOverColKey !== targetColKey) {
+            setDragOverColKey(targetColKey);
+        }
+    };
+
+    const handleDragLeave = (e, targetColKey) => {
+        if (e.currentTarget.contains(e.relatedTarget)) return;
+        if (dragOverColKey === targetColKey) {
+            setDragOverColKey(null);
+        }
+    };
+
+    const handleDrop = (e, targetColKey) => {
+        e.preventDefault();
+        setDragOverColKey(null);
+        setDraggedTaskId(null);
+
+        if (targetColKey === 'overdue') {
+            toastInfo("Tasks automatically become overdue based on target date");
+            return;
+        }
+
+        const rawId = draggedTaskId || e.dataTransfer.getData('text/plain');
+        const taskId = Number(rawId);
+        if (!taskId) return;
+
+        const task = tasks.find(t => Number(t.id) === taskId);
+        if (!task) return;
+
+        const sourceColKey = getTaskColumnKey(task);
+
+        // Same column drop -> do nothing (no API call)
+        if (sourceColKey === targetColKey) {
+            return;
+        }
+
+        const todayStr = dayjs().format('YYYY-MM-DD');
+        let newCompleted = task.completed ? 1 : 0;
+        let newTargetDate = task.target_date;
+        let dateChanged = false;
+
+        if (targetColKey === 'completed') {
+            newCompleted = 1;
+        } else if (targetColKey === 'today') {
+            newCompleted = 0;
+            if (task.target_date !== todayStr) {
+                newTargetDate = todayStr;
+                dateChanged = true;
+            }
+        } else if (targetColKey === 'upcoming') {
+            newCompleted = 0;
+            if (!task.target_date || task.target_date <= todayStr) {
+                newTargetDate = dayjs().add(1, 'day').format('YYYY-MM-DD');
+                dateChanged = true;
+            }
+        }
+
+        // Permission check: Non-superadmin cannot change due date
+        if (dateChanged && !isSuperAdmin) {
+            toastWarning("Only admin can change due date");
+            return;
+        }
+
+        const payload = {
+            completed: Boolean(newCompleted),
+        };
+
+        if (isSuperAdmin && dateChanged) {
+            payload.target_date = newTargetDate;
+        }
+
+        // Optimistic UI update
+        const previousTasks = [...tasks];
+        setTasks(prev =>
+            prev.map(t =>
+                Number(t.id) === taskId
+                    ? { ...t, completed: newCompleted, target_date: newTargetDate }
+                    : t
+            )
+        );
+
+        if (targetColKey === 'completed') {
+            toastSuccess("Task marked as completed");
+        } else if (dateChanged) {
+            toastSuccess(`Due date changed to ${dayjs(newTargetDate).format('DD MMM YYYY')}`);
+        } else {
+            toastSuccess("Task status updated");
+        }
+
+        updateMutation.mutate(
+            { id: taskId, payload },
+            {
+                onSuccess: (data) => {
+                    if (data?.Data) {
+                        setTasks(prev =>
+                            prev.map(t =>
+                                Number(t.id) === Number(data.Data.id) ? { ...t, ...data.Data } : t
+                            )
+                        );
+                    }
+                    refreshTasks();
+                },
+                onError: (error) => {
+                    // Rollback on error
+                    setTasks(previousTasks);
+                    toastError(error?.message || "Failed to update task");
+                    refreshTasks();
+                }
+            }
+        );
+    };
 
     return (
         <div className="task-manager-page page-shell" style={{ height: '100%', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
@@ -856,22 +1013,27 @@ export default function TaskManager() {
                         style={{ flex: 1, height: '100%', minHeight: 0, overflowX: 'auto', flexWrap: 'nowrap' }}
                     >
                         {[
-                            { title: 'Overdue', color: '#dc2626', bg: '#fef2f2', items: boardColumns.overdue },
-                            { title: 'Due Today', color: '#0284c7', bg: '#f0f9ff', items: boardColumns.today },
-                            { title: 'Upcoming', color: '#d97706', bg: '#fffbeb', items: boardColumns.upcoming },
-                            { title: 'Completed', color: '#059669', bg: '#ecfdf5', items: boardColumns.completed },
-                        ].map((col, idx) => (
+                            { key: 'overdue', title: 'Overdue', color: '#dc2626', bg: '#fef2f2', items: boardColumns.overdue, isDropTarget: false },
+                            { key: 'today', title: 'Due Today', color: '#0284c7', bg: '#f0f9ff', items: boardColumns.today, isDropTarget: true },
+                            { key: 'upcoming', title: 'Upcoming', color: '#d97706', bg: '#fffbeb', items: boardColumns.upcoming, isDropTarget: true },
+                            { key: 'completed', title: 'Completed', color: '#059669', bg: '#ecfdf5', items: boardColumns.completed, isDropTarget: true },
+                        ].map((col) => {
+                            const isOver = col.isDropTarget && dragOverColKey === col.key;
+                            return (
                             <Col
                                 xs={24}
                                 sm={12}
                                 lg={6}
-                                key={idx}
+                                key={col.key}
                                 className="task-board-col"
                                 style={{ height: '100%', display: 'flex', flexDirection: 'column', minWidth: 260 }}
                             >
                                 <Card
                                     bordered={false}
                                     className="task-board-card"
+                                    onDragOver={(e) => col.isDropTarget && handleDragOver(e, col.key)}
+                                    onDragLeave={(e) => col.isDropTarget && handleDragLeave(e, col.key)}
+                                    onDrop={(e) => col.isDropTarget && handleDrop(e, col.key)}
                                     title={
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                             <span style={{ color: col.color, fontWeight: 700, fontSize: '0.9rem' }}>{col.title}</span>
@@ -886,7 +1048,9 @@ export default function TaskManager() {
                                         minHeight: 0,
                                         borderRadius: 16,
                                         background: col.bg,
-                                        boxShadow: '0 4px 14px rgba(15, 23, 42, 0.04)',
+                                        border: isOver ? `2px dashed ${col.color}` : '2px solid transparent',
+                                        boxShadow: isOver ? `0 8px 24px ${col.color}25` : '0 4px 14px rgba(15, 23, 42, 0.04)',
+                                        transition: 'border 0.2s ease, background 0.2s ease, box-shadow 0.2s ease',
                                         overflow: 'hidden'
                                     }}
                                     bodyStyle={{
@@ -901,16 +1065,31 @@ export default function TaskManager() {
                                 >
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 0, justifyContent: col.items.length > 0 ? 'flex-start' : 'center' }}>
                                         {col.items.length > 0 ? (
-                                            col.items.map(task => (
+                                            col.items.map(task => {
+                                                const isDragging = draggedTaskId === task.id;
+                                                return (
                                                 <Card
                                                     key={task.id}
                                                     bordered={false}
                                                     size="small"
-                                                    style={{ borderRadius: 10, background: '#ffffff', boxShadow: '0 2px 6px rgba(15, 23, 42, 0.04)' }}
+                                                    draggable={true}
+                                                    onDragStart={(e) => handleDragStart(e, task)}
+                                                    onDragEnd={handleDragEnd}
+                                                    style={{
+                                                        borderRadius: 10,
+                                                        background: '#ffffff',
+                                                        boxShadow: isDragging ? '0 8px 20px rgba(15, 23, 42, 0.15)' : '0 2px 6px rgba(15, 23, 42, 0.04)',
+                                                        cursor: isDragging ? 'grabbing' : 'grab',
+                                                        opacity: isDragging ? 0.45 : 1,
+                                                        transform: isDragging ? 'scale(0.98)' : 'none',
+                                                        transition: 'all 0.15s ease',
+                                                        userSelect: 'none',
+                                                    }}
                                                 >
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                                             <Space size={4}>
+                                                                <GripVertical size={14} style={{ color: '#94a3b8', cursor: 'grab', flexShrink: 0 }} />
                                                                 {renderPriorityTag(task.priority)}
                                                                 {isSuperAdmin && task.assigned_to_name && (
                                                                     <Tag color="purple" style={{ fontWeight: 500, margin: 0, fontSize: '0.72rem' }}>
@@ -953,14 +1132,16 @@ export default function TaskManager() {
                                                         </div>
                                                     </div>
                                                 </Card>
-                                            ))
+                                                );
+                                            })
                                         ) : (
                                             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No tasks" style={{ margin: 0 }} />
                                         )}
                                     </div>
                                 </Card>
                             </Col>
-                        ))}
+                            );
+                        })}
                     </Row>
                     </Spin>
                 )}

@@ -21,8 +21,8 @@ originRouter.get("/master/origin", authenticateToken, async (req, res) => {
       tableName: "dai_origin",
       companyId,
       buildQueries: (cid) => {
-        let dataSql = `SELECT * FROM dai_origin WHERE company = ?`;
-        let countSql = `SELECT COUNT(*) as totalItems FROM dai_origin WHERE company = ?`;
+        let dataSql = `SELECT * FROM dai_origin WHERE company = ? AND (deleted = 0 OR deleted IS NULL)`;
+        let countSql = `SELECT COUNT(*) as totalItems FROM dai_origin WHERE company = ? AND (deleted = 0 OR deleted IS NULL)`;
         const dataParams = [cid];
         const countParams = [cid];
 
@@ -110,14 +110,14 @@ originRouter.delete("/origin/delete", authenticateToken, async (req, res) => {
   try {
     await ensureCompanyColumn("dai_origin", companyId);
     await helper.runInTransaction(async (q) => {
-      const rows = await q("SELECT * FROM dai_origin WHERE id=? AND company=?", [id, companyId]);
+      const rows = await q("SELECT * FROM dai_origin WHERE id=? AND company=? AND (deleted = 0 OR deleted IS NULL)", [id, companyId]);
       const oldRow = rows[0] || null;
       if (!oldRow) {
         const error = new Error("Origin record not found or access denied");
         error.statusCode = 404;
         throw error;
       }
-      await q("DELETE FROM dai_origin WHERE id=? AND company=?", [id, companyId]);
+      await q("UPDATE dai_origin SET deleted = 1, deleted_at = NOW(), deleted_by = ? WHERE id=? AND company=? AND (deleted = 0 OR deleted IS NULL)", [req.user?.user_id || null, id, companyId]);
       await logAuditInTx(q, {
         actionType: "DELETE",
         moduleName: "Origin",

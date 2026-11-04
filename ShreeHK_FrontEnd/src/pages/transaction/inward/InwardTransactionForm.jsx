@@ -414,7 +414,7 @@ const InwardTransactionForm = ({
 
   const inwardType = Form.useWatch('type', form) || defaultInwardType;
   const PageIcon = INWARD_PAGE_ICONS[inwardType] || FormOutlined;
-  const showRoughPcs = showRPcs || inwardType === 'purchase';
+  const showRoughPcs = Boolean(showRPcs);
 
   const queryClient = useQueryClient();
   const { data: companyData, isLoading: isCompanyLoading } = useFetchApi('GetCompany', ENDPOINTS.company.options);

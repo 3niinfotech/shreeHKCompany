@@ -44,13 +44,14 @@ portalRouter.get("/portal/company-years", authenticateToken, async (req, res) =>
     }
 
     const yearsRaw = await metaQuery(
-      `SELECT id, year, fromDate, toDate, db_name FROM company_year ORDER BY id DESC`
+      `SELECT id, year, fromDate, toDate, db_name FROM company_year WHERE (deleted = 0 OR deleted IS NULL) ORDER BY id DESC`
     );
     const companiesRaw = await metaQuery(
       `SELECT c.id, c.name, c.shortcutName, c.address, c.number, c.branch_id, c.color_code, c.email, c.website, c.rapnet_id,
               b.name AS branch_name, b.shortcutName AS branch_shortcut, b.address AS branch_address, b.color_code AS branch_color_code
        FROM company c
        LEFT JOIN branch b ON b.id = c.branch_id
+       WHERE (c.deleted = 0 OR c.deleted IS NULL)
        ORDER BY COALESCE(b.name, 'zzz'), c.name ASC`
     );
     // Login Branch step: only active branches (HK / Dubai / Surat). Never company rows.
@@ -247,7 +248,7 @@ portalRouter.get("/portal/branch-companies", authenticateToken, async (req, res)
                 b.name AS branch_name, b.color_code AS branch_color_code
          FROM company c
          LEFT JOIN branch b ON b.id = c.branch_id
-         WHERE c.branch_id = ?
+         WHERE c.branch_id = ? AND (c.deleted = 0 OR c.deleted IS NULL)
          ORDER BY c.name ASC`,
         [branchId]
       );
@@ -306,7 +307,7 @@ portalRouter.get("/portal/branch-companies", authenticateToken, async (req, res)
 portalRouter.get("/portal/years", authenticateToken, requireSuperAdmin, async (req, res) => {
   try {
     const rows = await metaQuery(
-      `SELECT id, year, fromDate, toDate, db_name FROM company_year ORDER BY id DESC`
+      `SELECT id, year, fromDate, toDate, db_name FROM company_year WHERE (deleted = 0 OR deleted IS NULL) ORDER BY id DESC`
     );
     res.json({
       status: true,
@@ -384,13 +385,17 @@ portalRouter.delete("/portal/year", authenticateToken, requireSuperAdmin, async 
     const id = Number(req.query.deleteId || req.query.id);
     if (!id) return res.status(400).json({ status: false, message: "deleteId is required" });
 
-    await new Promise((resolve, reject) => {
+    const result = await new Promise((resolve, reject) => {
       connection.getMetaPool().query(
-        "DELETE FROM company_year WHERE id = ?",
-        [id],
+        "UPDATE company_year SET deleted = 1, deleted_at = NOW(), deleted_by = ? WHERE id = ? AND (deleted = 0 OR deleted IS NULL)",
+        [req.user?.user_id || null, id],
         (err, rows) => (err ? reject(err) : resolve(rows))
       );
     });
+
+    if (result && result.affectedRows === 0) {
+      return res.status(404).json({ status: false, message: "Fiscal year not found." });
+    }
 
     res.json({ status: true, message: "Fiscal year deleted successfully." });
   } catch (err) {

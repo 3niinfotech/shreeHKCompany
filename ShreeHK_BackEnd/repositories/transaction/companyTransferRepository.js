@@ -55,7 +55,7 @@ const companyTransferRepository = {
       LEFT JOIN company fc ON fc.id = t.from_company_id
       LEFT JOIN company tc ON tc.id = t.to_company_id
       LEFT JOIN user u ON u.user_id = t.created_by
-      WHERE t.id = ?
+      WHERE t.id = ? AND (t.deleted = 0 OR t.deleted IS NULL)
       LIMIT 1
     `;
     const rows = await queryWith(executor, sql, [id]);
@@ -80,7 +80,7 @@ const companyTransferRepository = {
   async listTransfers(db, { fromDate, toDate, sku, fromCompanyId, toCompanyId, status, offset = 0, limit = 50 }, allowedCompanyIds = []) {
     const executor = db.query.bind(db);
     const values = [];
-    let whereClauses = ["1=1"];
+    let whereClauses = ["(t.deleted = 0 OR t.deleted IS NULL)"];
 
     if (allowedCompanyIds.length > 0) {
       const ph = allowedCompanyIds.map(() => "?").join(",");
@@ -154,12 +154,12 @@ const companyTransferRepository = {
   },
 
   async updateTransferStatus(q, transferId, status, returnDate = null) {
-    const sql = "UPDATE dai_company_transfer SET status = ?, return_date = ? WHERE id = ?";
+    const sql = "UPDATE dai_company_transfer SET status = ?, return_date = ? WHERE id = ? AND (deleted = 0 OR deleted IS NULL)";
     return queryWith(q, sql, [status, returnDate, transferId]);
   },
 
   async updateItemStatus(q, itemId, status) {
-    const sql = "UPDATE dai_company_transfer_item SET status = ? WHERE id = ?";
+    const sql = "UPDATE dai_company_transfer_item SET status = ? WHERE id = ? AND (deleted = 0 OR deleted IS NULL)";
     return queryWith(q, sql, [status, itemId]);
   },
 };

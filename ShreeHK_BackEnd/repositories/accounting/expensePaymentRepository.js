@@ -36,7 +36,9 @@ async function getExpensePaymentsByCompany(companyId) {
                         LIMIT 1
                       ) AS book_name
                FROM acc_transaction t
-               WHERE t.company = ?
+               WHERE (t.deleted = 0 OR t.deleted IS NULL) AND t.company = ?
+                 AND (t.sale_id IS NULL OR t.sale_id = '' OR t.sale_id = '0')
+                 AND (t.purchase_id IS NULL OR t.purchase_id = '' OR t.purchase_id = '0')
                ORDER BY t.id DESC`;
   return queryAsync(sql, [companyId, companyId, companyId]);
 }
@@ -47,7 +49,7 @@ async function getExpensePaymentsByCompany(companyId) {
  * @param {number} companyId
  */
 async function getExpensePaymentByIdAndCompany(id, companyId) {
-  const sql = `SELECT party, other_party, date, type, book, cheque, amount, description FROM acc_transaction WHERE id = ? AND company = ?`;
+  const sql = `SELECT party, other_party, date, type, book, cheque, amount, description FROM acc_transaction WHERE id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL)`;
   const rows = await queryAsync(sql, [id, companyId]);
   return rows && rows.length > 0 ? rows[0] : null;
 }
@@ -93,8 +95,11 @@ async function updateExpensePayment({ id, party, other_party, date, type, book, 
  * @param {number} id
  * @param {number} companyId
  */
-async function deleteExpensePaymentByIdAndCompany(id, companyId) {
-  const sql = `DELETE FROM acc_transaction WHERE id = ? AND company = ?`;
+async function deleteExpensePaymentByIdAndCompany(id, companyId, userId = null) {
+  const sql = `DELETE FROM acc_transaction 
+               WHERE id = ? AND company = ? 
+                 AND (sale_id IS NULL OR sale_id = '' OR sale_id = '0')
+                 AND (purchase_id IS NULL OR purchase_id = '' OR purchase_id = '0')`;
   return queryAsync(sql, [id, companyId]);
 }
 

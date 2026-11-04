@@ -7,6 +7,7 @@ import { Save, Box, ShieldCheck } from "lucide-react";
 import LabComparisonModal from './components/LabComparisonModal';
 import AIPriceSuggestBlock from '../../components/ai/AIPriceSuggestBlock';
 import { toastApiSuccess, toastApiError } from '../../utils/toastNotify';
+import { calculateAmount } from '../../utils/diamondCalculations';
 
 import { useFetchApi, usePostApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../api/endpoints';
@@ -209,7 +210,7 @@ const StoneUpdate = () => {
                                 const carat = Number(changedValues.polish_carat || 0);
                                 const price = Number(allValues.price || 0);
                                 if (carat > 0 && price > 0) {
-                                    form.setFieldsValue({ amount: Number((carat * price).toFixed(2)) });
+                                    form.setFieldsValue({ amount: calculateAmount(carat, price) });
                                 }
                             }
                         }}

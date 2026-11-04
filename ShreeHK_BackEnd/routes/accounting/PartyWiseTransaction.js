@@ -23,8 +23,8 @@ PartyWiseTransaction.get('/partywisetransaction', authenticateToken, (req, res) 
     const limit = parseInt(req.query.limit) || 100;
     const offset = parseInt(req.query.offset) || 0;
 
-    const countQuery = `SELECT COUNT(*) AS total FROM dai_party WHERE company = ?`;
-    const query = `SELECT id, under_group, under_subgroup, address, contact_number, name FROM dai_party WHERE company = ? ORDER BY id DESC LIMIT ? OFFSET ?`;
+    const countQuery = `SELECT COUNT(*) AS total FROM dai_party WHERE company = ? AND (deleted = 0 OR deleted IS NULL)`;
+    const query = `SELECT id, under_group, under_subgroup, address, contact_number, name FROM dai_party WHERE company = ? AND (deleted = 0 OR deleted IS NULL) ORDER BY id DESC LIMIT ? OFFSET ?`;
 
     connection.query(countQuery, [companyId], (countErr, countResult) => {
         if (countErr) {
@@ -143,7 +143,7 @@ PartyWiseTransaction.delete('/partywisetransaction/delete', authenticateToken, a
 
     try {
         const errorMsg = await helper.runInTransaction(async (q) => {
-            const rows = await q("SELECT * FROM dai_party WHERE id = ? AND company = ?", [id, companyId]);
+            const rows = await q("SELECT * FROM dai_party WHERE id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL)", [id, companyId]);
             const deletedData = rows[0] || null;
             if (!deletedData) {
                 throw new Error("Party not found");
@@ -160,7 +160,7 @@ PartyWiseTransaction.delete('/partywisetransaction/delete', authenticateToken, a
 
             // 2. Outward check
             const out = await q(
-                "SELECT id FROM dai_outward WHERE (party = ? OR party = ?) AND company = ? LIMIT 1",
+                "SELECT id FROM dai_outward WHERE (party = ? OR party = ?) AND company = ? AND (deleted = 0 OR deleted IS NULL) LIMIT 1",
                 [String(id), deletedData.name || "", companyId]
             );
             if (out.length > 0) {
@@ -185,7 +185,7 @@ PartyWiseTransaction.delete('/partywisetransaction/delete', authenticateToken, a
                 return "Cannot delete party: Active or historical transactions are linked to this party.";
             }
 
-            await q("DELETE FROM dai_party WHERE id = ? AND company = ?", [id, companyId]);
+            await q("UPDATE dai_party SET deleted = 1, deleted_at = NOW(), deleted_by = ? WHERE id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL)", [req.user?.user_id || null, id, companyId]);
             await logAuditInTx(q, {
                 actionType: "DELETE",
                 moduleName: "Party Wise Transaction",

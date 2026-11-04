@@ -10,7 +10,7 @@ accGroupRouter.use(express.json());
 
 accGroupRouter.get("/accounting/group", authenticateToken, (req, res) => {
   const companyId = buildUserContext(req).companyId;
-  const query = "SELECT * FROM acc_group WHERE (company = ? OR company = 1 OR company IS NULL) ORDER BY name";
+  const query = "SELECT * FROM acc_group WHERE (company = ? OR company = 1 OR company IS NULL) AND (deleted = 0 OR deleted IS NULL) ORDER BY name";
   connection.query(query, [companyId], (err, data) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ TotalItems: data.length, Data: data });
@@ -19,6 +19,7 @@ accGroupRouter.get("/accounting/group", authenticateToken, (req, res) => {
 
 accGroupRouter.post("/accounting/group/save", authenticateToken, async (req, res) => {
   const { id, name } = req.body;
+  const deletedBy = req.user?.user_id || null;
   const companyId = buildUserContext(req).companyId || 1;
   if (!name) return res.status(400).json({ error: "name required" });
 
@@ -26,7 +27,7 @@ accGroupRouter.post("/accounting/group/save", authenticateToken, async (req, res
     await helper.runInTransaction(async (q) => {
       let oldRow = null;
       if (id) {
-        const rows = await q("SELECT * FROM acc_group WHERE id=? AND company=?", [id, companyId]);
+        const rows = await q("SELECT * FROM acc_group WHERE id=? AND company=? AND (deleted = 0 OR deleted IS NULL)", [id, companyId]);
         oldRow = rows[0] || null;
         if (!oldRow) {
           const error = new Error("Record not found or access denied");
@@ -75,14 +76,14 @@ accGroupRouter.delete("/accounting/group/delete", authenticateToken, async (req,
 
   try {
     await helper.runInTransaction(async (q) => {
-      const rows = await q("SELECT * FROM acc_group WHERE id=? AND company=?", [id, companyId]);
+      const rows = await q("SELECT * FROM acc_group WHERE id=? AND company=? AND (deleted = 0 OR deleted IS NULL)", [id, companyId]);
       const oldRow = rows[0] || null;
       if (!oldRow) {
         const error = new Error("Record not found or access denied");
         error.statusCode = 404;
         throw error;
       }
-      await q("DELETE FROM acc_group WHERE id = ? AND company = ?", [id, companyId]);
+      await q("UPDATE acc_group SET deleted = 1, deleted_at = NOW(), deleted_by = ? WHERE id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL)", [req.user?.user_id || null, id, companyId]);
       await logAuditInTx(q, {
         actionType: "DELETE",
         moduleName: "Accounting Group",

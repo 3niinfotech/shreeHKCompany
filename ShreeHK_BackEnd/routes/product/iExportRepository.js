@@ -20,6 +20,7 @@ const getExportInventoryByIds = async (ids, companyIds = null) => {
   const sql = `SELECT * FROM dai_product p
     LEFT JOIN dai_product_value pv ON p.id = pv.product_id
     WHERE p.id IN (${placeholders})${companyFilter}
+      AND (p.deleted = 0 OR p.deleted IS NULL)
     ORDER BY p.sku`;
   return helper.query(sql, params);
 };

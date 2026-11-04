@@ -10,7 +10,7 @@ const queryAsync = (sql, values = []) =>
 async function fetchOutwardDoc(id) {
   const rows = await queryAsync(
     `SELECT o.*, p.name AS party_name, p.address AS party_address, p.pincode AS party_pincode, p.country AS party_country, p.contact_number AS party_contact, p.fax AS party_fax, p.contact_person
-     FROM dai_outward o LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name) WHERE o.id = ?`,
+     FROM dai_outward o LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name) WHERE o.id = ? AND (o.deleted = 0 OR o.deleted IS NULL)`,
     [id]
   );
   if (!rows.length) return null;
@@ -32,7 +32,7 @@ async function fetchOutwardDoc(id) {
 async function fetchInwardDoc(id) {
   const rows = await queryAsync(
     `SELECT o.*, p.name AS party_name, p.address AS party_address, p.pincode AS party_pincode, p.country AS party_country, p.contact_number AS party_contact, p.fax AS party_fax, p.contact_person
-     FROM dai_inward o LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name) WHERE o.id = ?`,
+     FROM dai_inward o LEFT JOIN dai_party p ON (o.party = CAST(p.id AS CHAR) OR o.party = p.id OR o.party = p.name) WHERE o.id = ? AND (o.deleted = 0 OR o.deleted IS NULL)`,
     [id]
   );
   if (!rows.length) return null;

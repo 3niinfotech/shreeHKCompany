@@ -102,7 +102,7 @@ async function attachStonesToContainer({ stones, container, containerField, acti
 
     const stoneCompany = Number(stone.company) || containerCompany;
     await helper.query(
-      `UPDATE dai_product SET visibility = 0, parent_id = ?, ${containerField} = ? WHERE id = ? AND company = ?`,
+      `UPDATE dai_product SET visibility = 0, parent_id = ?, ${containerField} = ? WHERE id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL)`,
       [container.id, container.id, stone.id, stoneCompany],
     );
 
@@ -133,7 +133,7 @@ async function attachStonesToContainer({ stones, container, containerField, acti
   const productsField = container.group_type === "parcel" ? "parcel_products" : "box_products";
 
   await helper.query(
-    `UPDATE dai_product SET polish_pcs = ?, polish_carat = ?, onhand_pcs = ?, onhand_carat = ?, amount = ?, price = ?, child_count = ?, ${productsField} = ? WHERE id = ? AND company = ?`,
+    `UPDATE dai_product SET polish_pcs = ?, polish_carat = ?, onhand_pcs = ?, onhand_carat = ?, amount = ?, price = ?, child_count = ?, ${productsField} = ? WHERE id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL)`,
     [newPcs, newCarat, newPcs, newCarat, finalAmount, newPrice, productList.length, productList.join(","), container.id, containerCompany],
   );
 
@@ -193,7 +193,7 @@ async function createContainerFromStones(stones, { groupType, sku, category, rem
 
   for (const stone of stones) {
     await helper.query(
-      `UPDATE dai_product SET visibility = 0, parent_id = ?, ${containerField} = ? WHERE id = ?`,
+      `UPDATE dai_product SET visibility = 0, parent_id = ?, ${containerField} = ? WHERE id = ? AND (deleted = 0 OR deleted IS NULL)`,
       [containerId, containerId, stone.id],
     );
     await addHistoryAudited({
@@ -355,10 +355,10 @@ function mergeTreeNodesByName(nodes, countMap) {
 
 async function getCategorizeTree() {
   const categories = await helper.query(
-    `SELECT id, name, parent FROM category ORDER BY name`,
+    `SELECT id, name, parent FROM category WHERE (deleted = 0 OR deleted IS NULL) ORDER BY name`,
   );
   const counts = await helper.query(
-    `SELECT category, COUNT(*) AS cnt FROM dai_product WHERE visibility = 1 AND category IS NOT NULL AND category <> '' GROUP BY category`,
+    `SELECT category, COUNT(*) AS cnt FROM dai_product WHERE visibility = 1 AND category IS NOT NULL AND category <> '' AND (deleted = 0 OR deleted IS NULL) GROUP BY category`,
   );
   const countMap = Object.fromEntries(
     (counts || []).map((r) => [String(r.category), Number(r.cnt) || 0]),
@@ -408,7 +408,7 @@ async function assignCategory(productIds, categoryId) {
   let categoryName = cat;
   try {
     const catRows = await helper.query(
-      "SELECT id, name FROM category WHERE id = ? LIMIT 1",
+      "SELECT id, name FROM category WHERE id = ? AND (deleted = 0 OR deleted IS NULL) LIMIT 1",
       [cat],
     );
     if (catRows.length && catRows[0].name) {
@@ -423,11 +423,11 @@ async function assignCategory(productIds, categoryId) {
   try {
     stoneRows = await helper.query(
       `SELECT 
-        p.id, p.sku, p.lab, p.polish_pcs, p.polish_carat, p.price, p.amount, p.cost, p.location, p.loc, p.mfg_code, p.category,
+        p.id, p.sku, p.lab, p.polish_pcs, p.polish_carat, p.price, p.amount, p.cost, p.location, p.location AS loc, p.mfg_code, p.category,
         pv.shape, pv.color, pv.clarity, pv.cut, pv.polish, pv.symmentry, pv.report_no, pv.mesurment
       FROM dai_product p
       LEFT JOIN dai_product_value pv ON p.id = pv.product_id
-      WHERE p.id IN (${placeholders})`,
+      WHERE p.id IN (${placeholders}) AND (p.deleted = 0 OR p.deleted IS NULL)`,
       ids,
     );
   } catch (e) {
@@ -436,7 +436,7 @@ async function assignCategory(productIds, categoryId) {
 
   // 3. Perform update
   await helper.query(
-    `UPDATE dai_product SET category = ? WHERE id IN (${placeholders})`,
+    `UPDATE dai_product SET category = ? WHERE id IN (${placeholders}) AND (deleted = 0 OR deleted IS NULL)`,
     [cat, ...ids],
   );
 
@@ -496,14 +496,14 @@ async function getCategoryStats(categoryId) {
   }
   const idPlaceholders = ids.map(() => "?").join(",");
   const nameRows = await helper.query(
-    `SELECT DISTINCT name FROM category WHERE id IN (${idPlaceholders})`,
+    `SELECT DISTINCT name FROM category WHERE id IN (${idPlaceholders}) AND (deleted = 0 OR deleted IS NULL)`,
     ids,
   );
   const keys = [...new Set([...ids, ...(nameRows || []).map((r) => String(r.name)).filter(Boolean)])];
   const placeholders = keys.map(() => "?").join(",");
   const rows = await helper.query(
     `SELECT COUNT(*) AS total, SUM(polish_pcs) AS pcs, SUM(polish_carat) AS carat, SUM(amount) AS amount
-     FROM dai_product WHERE visibility = 1 AND category IN (${placeholders})`,
+     FROM dai_product WHERE visibility = 1 AND category IN (${placeholders}) AND (deleted = 0 OR deleted IS NULL)`,
     keys,
   );
   return rows[0] || { total: 0, pcs: 0, carat: 0, amount: 0 };
@@ -519,11 +519,11 @@ async function assignPair(id1, id2, pairName = "pair") {
   }
   const label = String(pairName || "pair").trim() || "pair";
   await helper.query(
-    "UPDATE dai_product SET pair = ?, site_upload = 0, rapnet_upload = 0 WHERE id = ?",
+    "UPDATE dai_product SET pair = ?, site_upload = 0, rapnet_upload = 0 WHERE id = ? AND (deleted = 0 OR deleted IS NULL)",
     [stone2.sku, stone1.id],
   );
   await helper.query(
-    "UPDATE dai_product SET pair = ?, site_upload = 0, rapnet_upload = 0 WHERE id = ?",
+    "UPDATE dai_product SET pair = ?, site_upload = 0, rapnet_upload = 0 WHERE id = ? AND (deleted = 0 OR deleted IS NULL)",
     [stone1.sku, stone2.id],
   );
   await logAudit({
@@ -551,12 +551,12 @@ async function unpairProducts(rawIds) {
     if (!stone) continue;
     const partnerSku = stone.pair;
     await helper.query(
-      "UPDATE dai_product SET pair = '', site_upload = 0, rapnet_upload = 0 WHERE id = ?",
+      "UPDATE dai_product SET pair = '', site_upload = 0, rapnet_upload = 0 WHERE id = ? AND (deleted = 0 OR deleted IS NULL)",
       [id],
     );
     if (partnerSku) {
       await helper.query(
-        "UPDATE dai_product SET pair = '', site_upload = 0, rapnet_upload = 0 WHERE sku = ? AND id <> ?",
+        "UPDATE dai_product SET pair = '', site_upload = 0, rapnet_upload = 0 WHERE sku = ? AND id <> ? AND (deleted = 0 OR deleted IS NULL)",
         [partnerSku, id],
       );
     }
@@ -579,11 +579,11 @@ async function findPairCandidates(productId, options = {}) {
 
   const sql = `
     SELECT 
-      p.id, p.sku, p.lab, p.polish_carat, p.price, p.amount, p.cost, p.location, p.loc, p.mfg_code,
+      p.id, p.sku, p.lab, p.polish_carat, p.price, p.amount, p.cost, p.location, p.location AS loc, p.mfg_code,
       pv.shape, pv.color, pv.clarity, pv.cut, pv.polish, pv.symmentry, pv.report_no, pv.mesurment, pv.table_pc, pv.depth_pc
     FROM dai_product p
     LEFT JOIN dai_product_value pv ON p.id = pv.product_id
-    WHERE p.company = ? AND p.visibility = 1 AND p.id <> ?
+    WHERE p.company = ? AND p.visibility = 1 AND p.id <> ? AND (p.deleted = 0 OR p.deleted IS NULL)
       AND (p.hold = 0 OR p.hold IS NULL)
       AND (p.outward IS NULL OR p.outward = '')
       AND (p.pair IS NULL OR p.pair = '')
@@ -767,7 +767,7 @@ async function unboxStonesFromContainer({ containerId, stoneIds }, userContext =
     // Restore stone to active inventory and detach from container
     const stoneCompany = Number(stone.company) || effectiveCompanyId;
     await helper.query(
-      `UPDATE dai_product SET visibility = 1, parent_id = 0, ${containerField} = NULL, rapnet_upload = 0 WHERE id = ? AND company = ?`,
+      `UPDATE dai_product SET visibility = 1, parent_id = 0, ${containerField} = NULL, rapnet_upload = 0 WHERE id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL)`,
       [stoneId, stoneCompany]
     );
 
@@ -793,7 +793,7 @@ async function unboxStonesFromContainer({ containerId, stoneIds }, userContext =
   const newPrice = newCarat > 0 ? Number((newAmount / newCarat).toFixed(2)) : container.price;
 
   await helper.query(
-    `UPDATE dai_product SET polish_pcs = ?, polish_carat = ?, onhand_pcs = ?, onhand_carat = ?, amount = ?, price = ?, child_count = ?, ${productsField} = ? WHERE id = ? AND company = ?`,
+    `UPDATE dai_product SET polish_pcs = ?, polish_carat = ?, onhand_pcs = ?, onhand_carat = ?, amount = ?, price = ?, child_count = ?, ${productsField} = ? WHERE id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL)`,
     [newPcs, newCarat, newPcs, newCarat, newAmount, newPrice, updatedProductList.length, updatedProductList.join(","), cid, effectiveCompanyId]
   );
 
@@ -939,7 +939,7 @@ async function separateContainerStones({ containerId, records }, userContext = {
 
   const effectiveCompanyId = Number(container.company) || companyId;
   await helper.query(
-    `UPDATE dai_product SET polish_pcs = ?, polish_carat = ?, onhand_pcs = ?, onhand_carat = ?, amount = ?, price = ? WHERE id = ? AND company = ?`,
+    `UPDATE dai_product SET polish_pcs = ?, polish_carat = ?, onhand_pcs = ?, onhand_carat = ?, amount = ?, price = ? WHERE id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL)`,
     [newPcs, newCarat, newPcs, newCarat, finalAmount, newPrice, cid, effectiveCompanyId]
   );
 

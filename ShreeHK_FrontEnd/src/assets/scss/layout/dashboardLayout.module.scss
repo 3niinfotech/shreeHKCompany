@@ -153,7 +153,9 @@
         border-radius: v.$radius-control;
         color: var(--color-neutral);
 
-        &:hover, &:focus, &:global(.ant-input-affix-wrapper-focused) {
+        &:hover,
+        &:focus,
+        &:global(.ant-input-affix-wrapper-focused) {
           border-color: var(--color-primary);
         }
 
@@ -245,10 +247,11 @@
       }
 
       &:global(.ant-menu-inline-collapsed) {
+
         > :global(.ant-menu-item),
-        > :global(.ant-menu-item-group) > :global(.ant-menu-item-group-list) > :global(.ant-menu-item),
-        > :global(.ant-menu-item-group) > :global(.ant-menu-item-group-list) > :global(.ant-menu-submenu) > :global(.ant-menu-submenu-title),
-        > :global(.ant-menu-submenu) > :global(.ant-menu-submenu-title) {
+        > :global(.ant-menu-item-group)> :global(.ant-menu-item-group-list)> :global(.ant-menu-item),
+        > :global(.ant-menu-item-group)> :global(.ant-menu-item-group-list)> :global(.ant-menu-submenu)> :global(.ant-menu-submenu-title),
+        > :global(.ant-menu-submenu)> :global(.ant-menu-submenu-title) {
           padding-inline: calc(43% - calc(var(--ant-menu-collapsed-icon-size) / 2) - var(--ant-menu-item-margin-inline)) !important;
         }
       }
@@ -404,7 +407,7 @@
     flex-direction: column;
 
     // Routed page roots fill outlet so flex tables can use remaining height
-    > * {
+    >* {
       flex: 1 1 auto;
       min-height: 0;
       width: 100%;

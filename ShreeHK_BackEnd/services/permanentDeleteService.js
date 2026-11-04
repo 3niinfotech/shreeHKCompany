@@ -64,7 +64,16 @@ async function getAllTenantDbNames() {
   );
   const names = new Set(rows.map((r) => r.db_name));
   names.add(connection.META_DB); // meta DB also holds some data
-  return [...names];
+  const existingNames = [];
+  for (const name of names) {
+    const exists = await poolQuery(
+      connection.getMetaPool(),
+      "SELECT 1 FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ? LIMIT 1",
+      [name]
+    );
+    if (exists && exists.length > 0) existingNames.push(name);
+  }
+  return existingNames;
 }
 
 // ─── failed-attempt rate limiter ─────────────────────────────────────────────
@@ -337,7 +346,7 @@ async function getBranchDeleteImpact(branchId) {
  *
  * Returns { byModule: {label: count}, total: number, warnings: string[] }
  */
-async function executeCompanyDeleteInTx(companyId, q, allDbNames, warnings = []) {
+async function executeCompanyDeleteInTx(companyId, q, allDbNames, warnings = [], deleteTimestamp = new Date(), deletedBy = null) {
   const byModule = {};
   const metaDb = connection.META_DB;
   const tenantDbs = allDbNames;
@@ -361,7 +370,8 @@ async function executeCompanyDeleteInTx(companyId, q, allDbNames, warnings = [])
 
       const fqTable = `\`${db}\`.\`${cfg.table}\``;
       try {
-        let result;
+        let result = { affectedRows: 0 };
+        const hasDeleted = await columnExists(pool, db, cfg.table, "deleted");
 
         if (cfg.deleteType === "subquery") {
           const parentExists = await tableExists(pool, db, cfg.parentTable);
@@ -370,13 +380,16 @@ async function executeCompanyDeleteInTx(companyId, q, allDbNames, warnings = [])
           if (!colOk) { warnings.push(`[SKIP] ${db}.${cfg.parentTable} no company col`); continue; }
           const joinColOk = await columnExists(pool, db, cfg.table, cfg.parentJoinColumn);
           if (!joinColOk) { warnings.push(`[SKIP] ${db}.${cfg.table}.${cfg.parentJoinColumn} not found`); continue; }
-          result = await q(
-            `DELETE FROM ${fqTable} WHERE \`${cfg.parentJoinColumn}\` IN (SELECT id FROM \`${db}\`.\`${cfg.parentTable}\` WHERE \`${cfg.companyColumn || "company"}\` = ?)`,
-            [companyId]
-          );
+
+          if (hasDeleted) {
+            result = await q(
+              `UPDATE ${fqTable} SET deleted = 1, deleted_at = ?, deleted_by = ? WHERE \`${cfg.parentJoinColumn}\` IN (SELECT id FROM \`${db}\`.\`${cfg.parentTable}\` WHERE \`${cfg.companyColumn || "company"}\` = ?) AND (deleted = 0 OR deleted IS NULL)`,
+              [deleteTimestamp, deletedBy, companyId]
+            );
+          }
 
         } else if (cfg.deleteType === "gia_special") {
-          // Delete only GIA rows whose SKU does NOT exist in dai_product of any OTHER company
+          // Soft-delete only GIA rows whose SKU does NOT exist in dai_product of any OTHER company
           const dpExists = await tableExists(pool, db, "dai_product");
           if (!dpExists) { warnings.push(`[SKIP] ${db}.dai_product not found — skipping dai_gia`); continue; }
 
@@ -394,17 +407,13 @@ async function executeCompanyDeleteInTx(companyId, q, allDbNames, warnings = [])
             const sharedSet = new Set(sharedRows.map((r) => r.sku));
             const exclusiveSkus = candidateSkus.filter((sku) => !sharedSet.has(sku));
 
-            if (exclusiveSkus.length > 0) {
+            if (exclusiveSkus.length > 0 && hasDeleted) {
               const delPlaceholders = exclusiveSkus.map(() => "?").join(",");
               result = await q(
-                `DELETE FROM ${fqTable} WHERE sku IN (${delPlaceholders})`,
-                exclusiveSkus
+                `UPDATE ${fqTable} SET deleted = 1, deleted_at = ?, deleted_by = ? WHERE sku IN (${delPlaceholders}) AND (deleted = 0 OR deleted IS NULL)`,
+                [deleteTimestamp, deletedBy, ...exclusiveSkus]
               );
-            } else {
-              result = { affectedRows: 0 };
             }
-          } else {
-            result = { affectedRows: 0 };
           }
 
         } else if (cfg.deleteType === "transfer_special") {
@@ -414,10 +423,14 @@ async function executeCompanyDeleteInTx(companyId, q, allDbNames, warnings = [])
           const parts = []; const params = [];
           if (colFrom) { parts.push("from_company_id = ?"); params.push(companyId); }
           if (colTo) { parts.push("to_company_id = ?"); params.push(companyId); }
-          result = await q(`DELETE FROM ${fqTable} WHERE ${parts.join(" OR ")}`, params);
+          if (hasDeleted) {
+            result = await q(
+              `UPDATE ${fqTable} SET deleted = 1, deleted_at = ?, deleted_by = ? WHERE (${parts.join(" OR ")}) AND (deleted = 0 OR deleted IS NULL)`,
+              [deleteTimestamp, deletedBy, ...params]
+            );
+          }
 
         } else if (cfg.deleteType === "transfer_item_special") {
-          // Delete transfer items whose parent transfer references this company
           const parentFq = `\`${db}\`.\`dai_company_transfer\``;
           const parentExists = await tableExists(pool, db, "dai_company_transfer");
           if (!parentExists) { warnings.push(`[SKIP] ${db}.dai_company_transfer not found — skip items`); continue; }
@@ -427,24 +440,28 @@ async function executeCompanyDeleteInTx(companyId, q, allDbNames, warnings = [])
           const parts = []; const params = [];
           if (colFrom) { parts.push("from_company_id = ?"); params.push(companyId); }
           if (colTo) { parts.push("to_company_id = ?"); params.push(companyId); }
-          result = await q(
-            `DELETE FROM ${fqTable} WHERE transfer_id IN (SELECT id FROM ${parentFq} WHERE ${parts.join(" OR ")})`,
-            params
-          );
+          if (hasDeleted) {
+            result = await q(
+              `UPDATE ${fqTable} SET deleted = 1, deleted_at = ?, deleted_by = ? WHERE transfer_id IN (SELECT id FROM ${parentFq} WHERE ${parts.join(" OR ")}) AND (deleted = 0 OR deleted IS NULL)`,
+              [deleteTimestamp, deletedBy, ...params]
+            );
+          }
 
         } else {
           // direct
           const colOk = await columnExists(pool, db, cfg.table, cfg.companyColumn);
           if (!colOk) { warnings.push(`[SKIP] ${db}.${cfg.table}.${cfg.companyColumn} not found`); continue; }
-          result = await q(
-            `DELETE FROM ${fqTable} WHERE \`${cfg.companyColumn}\` = ?`,
-            [companyId]
-          );
+          if (hasDeleted) {
+            result = await q(
+              `UPDATE ${fqTable} SET deleted = 1, deleted_at = ?, deleted_by = ? WHERE \`${cfg.companyColumn}\` = ? AND (deleted = 0 OR deleted IS NULL)`,
+              [deleteTimestamp, deletedBy, companyId]
+            );
+          }
         }
 
         byModule[cfg.moduleLabel] = (byModule[cfg.moduleLabel] || 0) + (result?.affectedRows || 0);
       } catch (e) {
-        warnings.push(`[WARN] delete ${db}.${cfg.table}: ${e.message}`);
+        warnings.push(`[WARN] soft-delete ${db}.${cfg.table}: ${e.message}`);
       }
     }
   }
@@ -456,72 +473,33 @@ async function executeCompanyDeleteInTx(companyId, q, allDbNames, warnings = [])
     const tExists = await tableExists(metaPool, metaDb, cfg.table);
     if (!tExists) { warnings.push(`[SKIP] meta.${cfg.table} not found`); continue; }
     try {
-      let result;
-      if (cfg.matchType === "name_string") {
-        if (!companyName) { warnings.push(`[SKIP] meta.${cfg.table}: company name not found`); continue; }
-        result = await q(
-          `DELETE FROM \`${metaDb}\`.\`${cfg.table}\` WHERE \`${cfg.companyColumn}\` = ?`,
-          [companyName]
-        );
-      } else {
-        result = await q(
-          `DELETE FROM \`${metaDb}\`.\`${cfg.table}\` WHERE \`${cfg.companyColumn}\` = ?`,
-          [companyId]
-        );
+      let result = { affectedRows: 0 };
+      const hasDeleted = await columnExists(metaPool, metaDb, cfg.table, "deleted");
+      if (hasDeleted) {
+        if (cfg.matchType === "name_string") {
+          if (!companyName) { warnings.push(`[SKIP] meta.${cfg.table}: company name not found`); continue; }
+          result = await q(
+            `UPDATE \`${metaDb}\`.\`${cfg.table}\` SET deleted = 1, deleted_at = ?, deleted_by = ? WHERE \`${cfg.companyColumn}\` = ? AND (deleted = 0 OR deleted IS NULL)`,
+            [deleteTimestamp, deletedBy, companyName]
+          );
+        } else {
+          result = await q(
+            `UPDATE \`${metaDb}\`.\`${cfg.table}\` SET deleted = 1, deleted_at = ?, deleted_by = ? WHERE \`${cfg.companyColumn}\` = ? AND (deleted = 0 OR deleted IS NULL)`,
+            [deleteTimestamp, deletedBy, companyId]
+          );
+        }
       }
       byModule[cfg.moduleLabel] = (byModule[cfg.moduleLabel] || 0) + (result?.affectedRows || 0);
     } catch (e) {
-      warnings.push(`[WARN] delete meta.${cfg.table}: ${e.message}`);
+      warnings.push(`[WARN] soft-delete meta.${cfg.table}: ${e.message}`);
     }
   }
 
-  // Remove company from roll JSON arrays
-  const rolls = await metaQ("SELECT id, company FROM roll");
-  for (const row of rolls || []) {
-    let ids = [];
-    try { ids = JSON.parse(row.company || "[]"); } catch { ids = []; }
-    if (!Array.isArray(ids)) ids = [];
-    const filtered = ids.map(Number).filter((id) => id !== Number(companyId));
-    if (filtered.length !== ids.length) {
-      await q(
-        `UPDATE \`${metaDb}\`.\`roll\` SET company = ? WHERE id = ?`,
-        [JSON.stringify(filtered), row.id]
-      );
-    }
-  }
-
-  // Clear user.company_name references
-  if (companyName) {
-    try {
-      const usersExist = await tableExists(metaPool, metaDb, "user");
-      const colExists = await columnExists(metaPool, metaDb, "user", "company_name");
-      if (usersExist && colExists) {
-        await q(
-          `UPDATE \`${metaDb}\`.\`user\` SET company_name = NULL WHERE company_name = ?`,
-          [companyName]
-        );
-      }
-    } catch (e) {
-      warnings.push(`[WARN] clearing user.company_name: ${e.message}`);
-    }
-  }
-
-  // Delete dai_incrementid in meta DB for this company (if exists there too)
-  try {
-    const incExists = await tableExists(metaPool, metaDb, "dai_incrementid");
-    if (incExists) {
-      const r = await q(
-        `DELETE FROM \`${metaDb}\`.\`dai_incrementid\` WHERE company = ?`,
-        [companyId]
-      );
-      byModule["Settings/IncrementId"] = (byModule["Settings/IncrementId"] || 0) + (r?.affectedRows || 0);
-    }
-  } catch (e) {
-    warnings.push(`[WARN] meta.dai_incrementid: ${e.message}`);
-  }
-
-  // Finally delete from company table
-  const compDelRes = await q(`DELETE FROM \`${metaDb}\`.\`company\` WHERE id = ?`, [companyId]);
+  // Soft delete from company table (keep roll.company, user.company_name, and dai_incrementid intact for restore)
+  const compDelRes = await q(
+    `UPDATE \`${metaDb}\`.\`company\` SET deleted = 1, deleted_at = ?, deleted_by = ? WHERE id = ? AND (deleted = 0 OR deleted IS NULL)`,
+    [deleteTimestamp, deletedBy, companyId]
+  );
   if (!compDelRes || compDelRes.affectedRows === 0) {
     throw Object.assign(new Error("Company not found or already deleted."), { statusCode: 404 });
   }
@@ -621,7 +599,11 @@ async function executePermanentDeleteCompany({ companyId, sessionCompanyId, reqI
       const run = async () => {
         try {
           await q("START TRANSACTION");
-          const result = await executeCompanyDeleteInTx(companyId, q, allDbNames, warnings);
+          const timeRows = await q("SELECT NOW() AS now_time");
+          const nowTime = timeRows[0]?.now_time || new Date();
+          const deletedBy = reqInfo.userId || null;
+
+          const result = await executeCompanyDeleteInTx(companyId, q, allDbNames, warnings, nowTime, deletedBy);
           deletedCounts = result;
           await q("COMMIT");
           resolve();
@@ -636,8 +618,8 @@ async function executePermanentDeleteCompany({ companyId, sessionCompanyId, reqI
     });
   });
 
-  // Post-commit: clean up logo file
-  deleteCompanyLogo(companyRecord.logo);
+  // Post-commit: keep logo file on disk for potential restore
+  // deleteCompanyLogo(companyRecord.logo);
 
   // Post-commit: clear permission cache
   clearPermissionCache();
@@ -689,7 +671,7 @@ async function executePermanentDeleteBranch({ branchId, sessionCompanyBranchId, 
 
   const branchRecord = existing[0];
   const companies = await metaQ(
-    "SELECT id, name, logo FROM company WHERE branch_id = ? ORDER BY id",
+    "SELECT id, name, logo FROM company WHERE branch_id = ? AND (deleted = 0 OR deleted IS NULL) ORDER BY id",
     [branchId]
   );
 
@@ -711,31 +693,21 @@ async function executePermanentDeleteBranch({ branchId, sessionCompanyBranchId, 
       const run = async () => {
         try {
           await q("START TRANSACTION");
+          const timeRows = await q("SELECT NOW() AS now_time");
+          const nowTime = timeRows[0]?.now_time || new Date();
+          const deletedBy = reqInfo.userId || null;
 
           for (const company of companies) {
-            const result = await executeCompanyDeleteInTx(company.id, q, allDbNames, warnings);
+            const result = await executeCompanyDeleteInTx(company.id, q, allDbNames, warnings, nowTime, deletedBy);
             perCompanyCounts[company.name] = result.byModule;
             grandTotal += result.total;
           }
 
-          // Delete branch_year rows
-          try {
-            const metaDb = connection.META_DB;
-            const branchYearExists = await tableExists(
-              connection.getMetaPool(), metaDb, "branch_year"
-            );
-            if (branchYearExists) {
-              await q(
-                `DELETE FROM \`${metaDb}\`.\`branch_year\` WHERE branch_id = ?`,
-                [branchId]
-              );
-            }
-          } catch (e) {
-            warnings.push(`[WARN] branch_year delete: ${e.message}`);
-          }
-
-          // Delete branch itself
-          const branchDelRes = await q(`DELETE FROM \`${connection.META_DB}\`.\`branch\` WHERE id = ?`, [branchId]);
+          // Soft delete branch itself (keep branch_year intact for potential restore)
+          const branchDelRes = await q(
+            `UPDATE \`${connection.META_DB}\`.\`branch\` SET deleted = 1, deleted_at = ?, deleted_by = ? WHERE id = ? AND (deleted = 0 OR deleted IS NULL)`,
+            [nowTime, deletedBy, branchId]
+          );
           if (!branchDelRes || branchDelRes.affectedRows === 0) {
             throw Object.assign(new Error("Branch not found or already deleted."), { statusCode: 404 });
           }
@@ -753,10 +725,10 @@ async function executePermanentDeleteBranch({ branchId, sessionCompanyBranchId, 
     });
   });
 
-  // Post-commit: clean up all company logos
-  for (const company of companies) {
-    deleteCompanyLogo(company.logo);
-  }
+  // Post-commit: keep all company logos on disk for potential restore
+  // for (const company of companies) {
+  //   deleteCompanyLogo(company.logo);
+  // }
 
   // Post-commit: clear permission cache
   clearPermissionCache();

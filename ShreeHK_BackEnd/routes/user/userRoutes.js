@@ -72,7 +72,8 @@ userRouter.use(bodyParser.json());
 // LOGIN API
 // ─────────────────────────────────────────────────────────
 userRouter.post('/user/login', async (req, res) => {
-  const { username, password } = req.body;
+  const username = req.body?.username != null ? String(req.body.username).trim() : '';
+  const password = req.body?.password != null ? String(req.body.password) : '';
 
   if (!username || !password) {
     return res.status(400).json({ status: false, message: 'Username and password required.' });
@@ -89,7 +90,8 @@ userRouter.post('/user/login', async (req, res) => {
                        r.name AS role_name, r.resource AS role_resource
                 FROM user u
                 LEFT JOIN roll r ON u.roll = r.id
-                WHERE u.user_name = ? OR u.user_email = ?
+                WHERE (u.user_name = ? OR u.user_email = ?)
+                  AND (u.deleted = 0 OR u.deleted IS NULL)
                 LIMIT 1
             `;
       connection.query(query, [username, username], (error, data) => {

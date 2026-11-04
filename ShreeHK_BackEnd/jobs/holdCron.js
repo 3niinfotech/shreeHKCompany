@@ -32,46 +32,45 @@ async function runHoldCron() {
     const productId = parseInt(row.product_id, 10);
     if (!productId) continue;
 
-    await q(`UPDATE dai_product SET hold = 0 WHERE id = ?`, [productId]);
+    await q(`UPDATE dai_product SET hold = 0 WHERE id = ? AND (deleted = 0 OR deleted IS NULL)`, [productId]);
 
     let sku = "";
+    let detail = null;
     try {
-      const detail = await productHelper.getDetail(productId, "p.id");
+      detail = await productHelper.getDetail(productId, "p.id");
       sku = detail?.sku || "";
     } catch (_) {
       /* ignore */
     }
 
-    await helper.addHistory({
-      product_id: productId,
-      sku,
-      action: "unhold",
-      date: now,
-      description:
-        "stone put on unhold through auto unhold and show in inventory.",
-      price: detail?.price || null,
-      amount: detail?.amount || null,
-      pcs: detail?.polish_pcs ?? null,
-      carat: detail?.polish_carat ?? null,
-      balance_pcs: detail?.polish_pcs ?? null,
-      balance_carat: detail?.polish_carat ?? null,
-    });
+    try {
+      await helper.addHistory({
+        product_id: productId,
+        sku,
+        action: "unhold",
+        date: now,
+        description:
+          "stone put on unhold through auto unhold and show in inventory.",
+        price: detail?.price || null,
+        amount: detail?.amount || null,
+        pcs: detail?.polish_pcs ?? null,
+        carat: detail?.polish_carat ?? null,
+        balance_pcs: detail?.polish_pcs ?? null,
+        balance_carat: detail?.polish_carat ?? null,
+      });
+    } catch (histErr) {
+      console.error("[holdCron] addHistory error:", histErr);
+    }
 
     try {
-      let productRow = null;
-      try {
-        productRow = await productHelper.getDetail(productId, "p.id");
-      } catch (_) {
-        /* ignore */
-      }
       await logAudit({
         system: true,
         actionType: "UPDATE",
         moduleName: "Diamond Stock",
         recordId: productId,
         recordReference: sku || String(productId),
-        oldValue: productRow ? { ...productRow, hold: 1 } : { hold: 1 },
-        newValue: productRow ? { ...productRow, hold: 0 } : { hold: 0 },
+        oldValue: detail ? { ...detail, hold: 1 } : { hold: 1 },
+        newValue: detail ? { ...detail, hold: 0 } : { hold: 0 },
         description: `SYSTEM auto unhold stone ${sku || productId}`,
       });
     } catch (auditErr) {

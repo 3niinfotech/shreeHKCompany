@@ -50,11 +50,11 @@ const PAGE_ENTRIES = [
   { key: "transaction.company_transfer", label: "Inter-Company Stone Transfer", path: "/transaction/company-transfer", moduleKey: "transaction", apiPrefixes: ["/transaction/company-transfer"], legacyKeys: ["sale", "purchase"] },
 
   // Accounting
-  { key: "accounting.expanse", label: "Expense Entry", path: "/accounting/expanse", moduleKey: "accounting", apiPrefixes: ["/expanse/"], legacyKeys: ["expanse", "account"] },
-  { key: "accounting.expanse_list", label: "Expense List", path: "/accounting/expanse/table-data", moduleKey: "accounting", apiPrefixes: ["/expanse/"], legacyKeys: ["expanse", "account"] },
-  { key: "accounting.advance", label: "Advance Payment", path: "/accounting/advance", moduleKey: "accounting", apiPrefixes: ["/advance/"], legacyKeys: ["account"] },
-  { key: "accounting.advance_list", label: "Advance List", path: "/accounting/advance/table-data", moduleKey: "accounting", apiPrefixes: ["/advance/"], legacyKeys: ["account"] },
-  { key: "accounting.my_balance", label: "My Balance", path: "/accounting/my-balance", moduleKey: "accounting", apiPrefixes: ["/balance/", "/my-balance"], legacyKeys: ["my_balance", "account"] },
+  { key: "accounting.expanse", label: "Expense Entry", path: "/accounting/expanse", moduleKey: "accounting", apiPrefixes: ["/expanse/", "/expanse-payment"], legacyKeys: ["expanse", "account"] },
+  { key: "accounting.expanse_list", label: "Expense List", path: "/accounting/expanse/table-data", moduleKey: "accounting", apiPrefixes: ["/expanse/", "/expanse-payment", "/expanse-delete"], legacyKeys: ["expanse", "account"] },
+  { key: "accounting.advance", label: "Advance Payment", path: "/accounting/advance", moduleKey: "accounting", apiPrefixes: ["/advance/", "/advance-payment"], legacyKeys: ["account"] },
+  { key: "accounting.advance_list", label: "Advance List", path: "/accounting/advance/table-data", moduleKey: "accounting", apiPrefixes: ["/advance/", "/advance-payment", "/advance-delete"], legacyKeys: ["account"] },
+  { key: "accounting.my_balance", label: "My Balance", path: "/accounting/my-balance", moduleKey: "accounting", apiPrefixes: ["/balance/", "/my-balance", "/my-balance-book", "/my-balance-delete", "/currency-rate", "/currency-rate-delete"], legacyKeys: ["my_balance", "account"] },
   { key: "accounting.transactions", label: "Transactions", path: "/accounting/account-transaction", moduleKey: "accounting", apiPrefixes: ["/transaction"], legacyKeys: ["account"] },
   { key: "accounting.advance_transaction", label: "Adv Transaction", path: "/accounting/advance-transaction", moduleKey: "accounting", apiPrefixes: ["/advance/", "/transaction"], legacyKeys: ["account"] },
   { key: "accounting.party_wise", label: "Party Wise Transaction", path: "/accounting/party-wise-transaction", moduleKey: "accounting", apiPrefixes: ["/partywisetransaction", "/ai/customer-insight"], legacyKeys: ["account_party", "account"] },
@@ -145,7 +145,8 @@ const PUBLIC_API_PREFIXES = [
   "/common/",
   "/notification",
   "/api/profile/",
-  "/currency-rate/",
+
+  "/currency-rate/get",
   "/uploads/",
   "/company/getOption",
   "/admin/activity-log/track",

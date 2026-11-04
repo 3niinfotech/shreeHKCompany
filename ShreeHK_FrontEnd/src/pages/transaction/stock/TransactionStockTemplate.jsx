@@ -40,6 +40,7 @@ import { Pencil, CircleCheck } from 'lucide-react';
 import { cssVar } from '../../../theme';
 import styles from '../../../assets/scss/pages/outward.module.scss';
 import { SkuLink } from '../../../hooks/useSkuModalAction';
+import { calculateAmount } from '../../../utils/diamondCalculations';
 import { resolveCompanyLogoUrl } from '../../../utils/companyLogo';
 import '../../../assets/scss/masterEdit.scss';
 
@@ -1028,7 +1029,7 @@ const TransactionStockTemplate = ({
       if (field === "sell_price" || field === "polish_carat") {
         const price = Number(field === "sell_price" ? value : row.sell_price ?? row.price) || 0;
         const carat = Number(field === "polish_carat" ? value : row.polish_carat) || 0;
-        row.sell_amount = (price * carat).toFixed(2);
+        row.sell_amount = calculateAmount(carat, price).toFixed(2);
         row.amount = row.sell_amount;
       }
       updated[index] = row;
@@ -1693,6 +1694,25 @@ const TransactionStockTemplate = ({
       key: 'invoiceno',
       width: actions.invoiceWidth || 130,
       ellipsis: true,
+      render: (v, record) => {
+        if (!v) return '-';
+        return (
+          <a
+            href={`#invoice-${v}`}
+            role="button"
+            className={styles.invoice}
+            style={{ fontWeight: 600, textDecoration: 'none' }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              openInvoice(record);
+            }}
+            title={`View Invoice ${v}`}
+          >
+            {v}
+          </a>
+        );
+      },
     },
     {
       title: 'Reference',

@@ -18,8 +18,8 @@ companyRouter.get("/master/company", authenticateToken, (req, res) => {
 
   const paginationOffset = offset * limit;
 
-  let query = `SELECT * FROM dai_party WHERE company = ? `;
-  let countQuery = `SELECT COUNT(*) as totalItems FROM dai_party WHERE company = ? `;
+  let query = `SELECT * FROM dai_party WHERE company = ? AND (deleted = 0 OR deleted IS NULL) `;
+  let countQuery = `SELECT COUNT(*) as totalItems FROM dai_party WHERE company = ? AND (deleted = 0 OR deleted IS NULL) `;
   const params = [companyId];
   const countParams = [companyId];
 
@@ -73,7 +73,7 @@ companyRouter.post("/company/save", authenticateToken, async (req, res) => {
     await helper.runInTransaction(async (q) => {
       let oldRow = null;
       if (id != 0) {
-        const rows = await q("SELECT * FROM dai_party WHERE id=? AND company=?", [id, companyId]);
+        const rows = await q("SELECT * FROM dai_party WHERE id=? AND company=? AND (deleted = 0 OR deleted IS NULL)", [id, companyId]);
         oldRow = rows[0] || null;
       }
 
@@ -172,7 +172,7 @@ companyRouter.delete("/company/delete", authenticateToken, async (req, res) => {
         return "Cannot delete party: Active or historical transactions are linked to this party.";
       }
 
-      await q("DELETE FROM dai_party WHERE id=? AND company=?", [id, companyId]);
+      await q("UPDATE dai_party SET deleted = 1, deleted_at = NOW(), deleted_by = ? WHERE id=? AND company=? AND (deleted = 0 OR deleted IS NULL)", [req.user?.user_id || null, id, companyId]);
       await logAuditInTx(q, {
         actionType: "DELETE",
         moduleName: "Company",
@@ -209,10 +209,11 @@ companyRouter.get("/company/getOption", authenticateToken, (req, res) => {
   const query = allCompanies
     ? `SELECT id, name, address, country, pincode, email, contact_number, fax, contact_person, company
        FROM dai_party
+       WHERE (deleted = 0 OR deleted IS NULL)
        ORDER BY name`
     : `SELECT id, name, address, country, pincode, email, contact_number, fax, contact_person
        FROM dai_party
-       WHERE company = ?
+       WHERE company = ? AND (deleted = 0 OR deleted IS NULL)
        ORDER BY name`;
   const params = allCompanies ? [] : [companyId];
 

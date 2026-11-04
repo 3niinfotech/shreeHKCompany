@@ -16,6 +16,7 @@ function companyInClause(alias, companyIds) {
 }
 const { logAudit, logAuditInTx } = require("../../services/auditIntegration.js");
 const { diffFields } = require("../../services/auditService.js");
+const { getAuditFlag, computeExpectedInvoiceTotal } = require("../../services/auditFlagService.js");
 
 const addHistoryAudited = async (
   history,
@@ -109,8 +110,40 @@ function buildDateFilterClause(alias, post, params) {
   return clause;
 }
 
-async function getProductDetail(id) {
-  return productHelper.getDetail(id, "p.id");
+async function getProductDetail(id, q = null) {
+  return productHelper.getDetail(id, "p.id", q);
+}
+
+async function addHistoryTx(q, post) {
+  const history = { ...post };
+  if (history.description) {
+    history.description = String(history.description).toUpperCase();
+  }
+  if (history.user == null || history.user === "" || history.user === 0) {
+    history.user = helper.DEFAULT_USER_ID;
+  }
+  const data = helper.insertString(history);
+  return q(`INSERT INTO dai_history (${data[0]}) VALUES (${data[1]})`);
+}
+
+async function recordAuditedHistoryTx(q, history, moduleName, actionType, auditMeta, pendingAudits) {
+  await addHistoryTx(q, history);
+  const { oldValue, newValue, companyId } = auditMeta;
+  const changedFields =
+    auditMeta.changedFields ??
+    (oldValue && newValue ? diffFields(oldValue, newValue) : undefined);
+
+  pendingAudits.push({
+    actionType,
+    moduleName,
+    recordId: history.product_id,
+    recordReference: history.sku || String(history.product_id || ""),
+    description: history.description,
+    oldValue,
+    newValue,
+    changedFields,
+    companyId,
+  });
 }
 
 /** Product + stone attrs — always keep p.id (pv.* would overwrite id and drop attrs). */
@@ -945,171 +978,198 @@ async function returnGia(post, userContext = {}) {
     console.error("returnGia ensureStockItemSchema:", schemaErr?.message || schemaErr);
   }
 
-  const outwardItems = await stockMovement.getOutwardItems(query, outid);
+  let targetLab = lab || "GIA";
+  let isFullReturn = false;
+  const pendingAudits = [];
 
-  const processedProductIds = new Set();
+  await helper.runInTransaction(async (q) => {
+    const outwardItems = await stockMovement.getOutwardItems(q, outid);
+    const processedProductIds = new Set();
 
-  for (const rawId of returnedIds) {
-    const itemMatch = outwardItems.find(
-      (it) => Number(it.id) === Number(rawId) || Number(it.product_id) === Number(rawId)
-    );
-    const productId = itemMatch ? Number(itemMatch.product_id) : Number(rawId);
-    if (processedProductIds.has(productId)) continue;
-    processedProductIds.add(productId);
-
-    const v = record[rawId] || record[String(rawId)] || record[productId] || record[String(productId)] || {};
-    oProducts = oProducts.filter((id) => id !== String(productId) && id !== String(rawId));
-    const product = await getProductDetail(productId);
-    if (!product) continue;
-
-    const itemForProduct = itemMatch || outwardItems.find(
-      (it) => String(it.product_id) === String(productId)
-    );
-    let movePcs =
-      Number(itemForProduct?.pcs) > 0
-        ? Number(itemForProduct.pcs)
-        : Number(product.polish_pcs) || Number(product.onhand_pcs) || 0;
-    let moveCarat =
-      Number(itemForProduct?.carat) > 0
-        ? Number(itemForProduct.carat)
-        : Number(product.polish_carat) || Number(product.onhand_carat) || 0;
-
-    // Legacy lab send may leave polish/onhand at 0 with no item row — use last lab history qty
-    if (moveCarat <= 0 && movePcs <= 0) {
-      const hist = await query(
-        `SELECT pcs, carat FROM dai_history
-         WHERE product_id = ? AND action IN ('lab','gia')
-         ORDER BY id DESC LIMIT 1`,
-        [productId]
+    for (const rawId of returnedIds) {
+      const itemMatch = outwardItems.find(
+        (it) => Number(it.id) === Number(rawId) || Number(it.product_id) === Number(rawId)
       );
-      if (hist[0]) {
-        movePcs = Number(hist[0].pcs) || 0;
-        moveCarat = Number(hist[0].carat) || 0;
-      }
-    }
-    if (moveCarat <= 0 && movePcs <= 0) {
-      const purchased = Number(product.purchased_carat) || 0;
-      const sold = Number(product.sold_carat) || 0;
-      const memo = Number(product.memo_carat) || 0;
-      const restored = Math.max(0, purchased - sold - memo);
-      if (restored > 0) {
-        moveCarat = restored;
-        movePcs =
-          Math.max(
-            0,
-            (Number(product.purchased_pcs) || 0) -
-            (Number(product.sold_pcs) || 0) -
-            (Number(product.memo_pcs) || 0)
-          ) || 1;
-      }
-    }
+      const productId = itemMatch ? Number(itemMatch.product_id) : Number(rawId);
+      if (processedProductIds.has(productId)) continue;
+      processedProductIds.add(productId);
 
-    // Lab send zeroes onhand/polish — restore so stone appears in inventory again
-    let bal = {
-      onhand_pcs: Number(product.onhand_pcs ?? product.polish_pcs) || 0,
-      onhand_carat: Number(product.onhand_carat ?? product.polish_carat) || 0,
-    };
-    if (moveCarat > 0 || movePcs > 0) {
-      bal = await stockMovement.applyOutwardQty(
-        query,
-        productId,
-        "lab_return",
-        movePcs,
-        moveCarat
+      const v = record[rawId] || record[String(rawId)] || record[productId] || record[String(productId)] || {};
+      oProducts = oProducts.filter((id) => id !== String(productId) && id !== String(rawId));
+      const product = await getProductDetail(productId, q);
+      if (!product) continue;
+
+      const itemForProduct = itemMatch || outwardItems.find(
+        (it) => String(it.product_id) === String(productId)
       );
-    }
-    await stockMovement.markOutwardItemReturned(query, outid, productId, movePcs, moveCarat);
+      let movePcs =
+        Number(itemForProduct?.pcs) > 0
+          ? Number(itemForProduct.pcs)
+          : Number(product.polish_pcs) || Number(product.onhand_pcs) || 0;
+      let moveCarat =
+        Number(itemForProduct?.carat) > 0
+          ? Number(itemForProduct.carat)
+          : Number(product.polish_carat) || Number(product.onhand_carat) || 0;
 
-    const reportNo = String(v.report || "").trim();
-    const nextSku = v.sku || product.sku;
-    const nextMfg = v.mfg_code || product.mfg_code;
-    const nextColor = v.color || product.main_color || product.color || "";
-    const unitPrice = Number(product.price) || 0;
-    const amount = Number(((Number(bal.onhand_carat) || 0) * unitPrice).toFixed(2));
-    const targetLab = lab || product.lab || "GIA";
+      // Legacy lab send may leave polish/onhand at 0 with no item row — use last lab history qty
+      if (moveCarat <= 0 && movePcs <= 0) {
+        const hist = await q(
+          `SELECT pcs, carat FROM dai_history
+           WHERE product_id = ? AND action IN ('lab','gia')
+           ORDER BY id DESC LIMIT 1`,
+          [productId]
+        );
+        if (hist[0]) {
+          movePcs = Number(hist[0].pcs) || 0;
+          moveCarat = Number(hist[0].carat) || 0;
+        }
+      }
+      if (moveCarat <= 0 && movePcs <= 0) {
+        const purchased = Number(product.purchased_carat) || 0;
+        const sold = Number(product.sold_carat) || 0;
+        const memo = Number(product.memo_carat) || 0;
+        const restored = Math.max(0, purchased - sold - memo);
+        if (restored > 0) {
+          moveCarat = restored;
+          movePcs =
+            Math.max(
+              0,
+              (Number(product.purchased_pcs) || 0) -
+              (Number(product.sold_pcs) || 0) -
+              (Number(product.memo_pcs) || 0)
+            ) || 1;
+        }
+      }
 
-    if (!reportNo) {
-      await query(
-        `UPDATE dai_product SET lab=?, sku=?, mfg_code=?, outward='', visibility=1,
-         site_upload=0, rapnet_upload=0, amount=?
+      // Lab send zeroes onhand/polish — restore so stone appears in inventory again
+      let bal = {
+        onhand_pcs: Number(product.onhand_pcs ?? product.polish_pcs) || 0,
+        onhand_carat: Number(product.onhand_carat ?? product.polish_carat) || 0,
+      };
+      if (moveCarat > 0 || movePcs > 0) {
+        bal = await stockMovement.applyOutwardQty(
+          q,
+          productId,
+          "lab_return",
+          movePcs,
+          moveCarat
+        );
+      }
+      await stockMovement.markOutwardItemReturned(q, outid, productId, movePcs, moveCarat);
+
+      const reportNo = String(v.report || "").trim();
+      const nextSku = v.sku || product.sku;
+      const nextMfg = v.mfg_code || product.mfg_code;
+      const nextColor = v.color || product.main_color || product.color || "";
+      const unitPrice = Number(product.price) || 0;
+      const amount = Number(((Number(bal.onhand_carat) || 0) * unitPrice).toFixed(2));
+      targetLab = lab || product.lab || "GIA";
+
+      if (!reportNo) {
+        await q(
+          `UPDATE dai_product SET lab=?, sku=?, mfg_code=?, outward='', visibility=1,
+           site_upload=0, rapnet_upload=0, amount=?
+           WHERE id = ?`,
+          [targetLab, nextSku, nextMfg, amount, productId]
+        );
+        await recordAuditedHistoryTx(q, {
+          product_id: productId,
+          action: "lab_return",
+          date: moment().format("YYYY-MM-DD HH:mm:ss"),
+          description: `Lab Return (${targetLab}) with No Certificate — SKU ${nextSku} (invoice #${oData.invoiceno})`,
+          type: "cr",
+          pcs: movePcs,
+          carat: moveCarat,
+          balance_pcs: bal.onhand_pcs,
+          balance_carat: bal.onhand_carat,
+          price: unitPrice,
+          amount,
+          invoice: oData.invoiceno,
+          party: oData.party,
+          sku: nextSku,
+        }, "GIA Lab Stock", "LAB_RETURN", {
+          oldValue: { outward: "lab", lab: oData.lab, sku: product.sku },
+          newValue: { outward: "", lab: targetLab, sku: nextSku, amount },
+          companyId: product.company || oData.company,
+        }, pendingAudits);
+        continue;
+      }
+
+      await q(
+        `UPDATE dai_product SET lab=?, sku=?, mfg_code=?, main_color=?, amount=?,
+         outward='', site_upload=0, rapnet_upload=0, is_uploadsite=1, is_uploadrapnet=1, visibility=1
          WHERE id = ?`,
-        [targetLab, nextSku, nextMfg, amount, productId]
+        [targetLab, nextSku, nextMfg, nextColor, amount, productId]
       );
-      await addHistoryAudited({
+      await q(
+        `UPDATE dai_product_value SET intensity=?, overtone=?, color=?, report_no=? WHERE product_id = ?`,
+        [v.intensity || "", v.overtone || "", nextColor, reportNo, productId]
+      );
+      await recordAuditedHistoryTx(q, {
         product_id: productId,
         action: "lab_return",
         date: moment().format("YYYY-MM-DD HH:mm:ss"),
-        description: `Lab Return (${targetLab}) with No Certificate — SKU ${nextSku} (invoice #${oData.invoiceno})`,
+        description: `Lab Return (${targetLab}) with Certificate #${reportNo} — SKU ${nextSku} (invoice #${oData.invoiceno})`,
         type: "cr",
         pcs: movePcs,
         carat: moveCarat,
         balance_pcs: bal.onhand_pcs,
         balance_carat: bal.onhand_carat,
-        price: unitPrice,
         amount,
+        price: unitPrice,
         invoice: oData.invoiceno,
         party: oData.party,
         sku: nextSku,
       }, "GIA Lab Stock", "LAB_RETURN", {
         oldValue: { outward: "lab", lab: oData.lab, sku: product.sku },
-        newValue: { outward: "", lab: targetLab, sku: nextSku, amount },
+        newValue: { outward: "", lab: targetLab, sku: nextSku, report_no: reportNo, amount },
         companyId: product.company || oData.company,
-      });
-      continue;
+      }, pendingAudits);
     }
 
-    await query(
-      `UPDATE dai_product SET lab=?, sku=?, mfg_code=?, main_color=?, amount=?,
-       outward='', site_upload=0, rapnet_upload=0, is_uploadsite=1, is_uploadrapnet=1, visibility=1
-       WHERE id = ?`,
-      [targetLab, nextSku, nextMfg, nextColor, amount, productId]
-    );
-    await query(
-      `UPDATE dai_product_value SET intensity=?, overtone=?, color=?, report_no=? WHERE product_id = ?`,
-      [v.intensity || "", v.overtone || "", nextColor, reportNo, productId]
-    );
-    await addHistoryAudited({
-      product_id: productId,
-      action: "lab_return",
-      date: moment().format("YYYY-MM-DD HH:mm:ss"),
-      description: `Lab Return (${targetLab}) with Certificate #${reportNo} — SKU ${nextSku} (invoice #${oData.invoiceno})`,
-      type: "cr",
-      pcs: movePcs,
-      carat: moveCarat,
-      balance_pcs: bal.onhand_pcs,
-      balance_carat: bal.onhand_carat,
-      amount,
-      price: unitPrice,
-      invoice: oData.invoiceno,
-      party: oData.party,
-      sku: nextSku,
-    }, "GIA Lab Stock", "LAB_RETURN", {
-      oldValue: { outward: "lab", lab: oData.lab, sku: product.sku },
-      newValue: { outward: "", lab: targetLab, sku: nextSku, report_no: reportNo, amount },
-      companyId: product.company || oData.company,
-    });
+    if (!oProducts.length) {
+      await q("UPDATE dai_outward SET products='', status='close_lab' WHERE id = ?", [outid]);
+      isFullReturn = true;
+    } else {
+      await q("UPDATE dai_outward SET products=? WHERE id = ?", [oProducts.join(","), outid]);
+      isFullReturn = false;
+    }
+  });
+
+  for (const a of pendingAudits) {
+    try {
+      await logAudit(a);
+    } catch (e) {
+      console.error("transactionStock audit:", e);
+    }
   }
 
-  if (!oProducts.length) {
-    await query("UPDATE dai_outward SET products='', status='close_lab' WHERE id = ?", [outid]);
-    await logAudit({
-      actionType: "LAB_RETURN",
-      moduleName: "GIA Lab Stock",
-      recordId: outid,
-      recordReference: String(oData.invoiceno || outid),
-      description: `Lab Memo #${oData.invoiceno} returned from ${targetLab} and closed`,
-      companyId: oData.company,
-    });
+  if (isFullReturn) {
+    try {
+      await logAudit({
+        actionType: "LAB_RETURN",
+        moduleName: "GIA Lab Stock",
+        recordId: outid,
+        recordReference: String(oData.invoiceno || outid),
+        description: `Lab Memo #${oData.invoiceno} returned from ${targetLab} and closed`,
+        companyId: oData.company,
+      });
+    } catch (e) {
+      console.error("transactionStock audit:", e);
+    }
   } else {
-    await query("UPDATE dai_outward SET products=? WHERE id = ?", [oProducts.join(","), outid]);
-    await logAudit({
-      actionType: "LAB_RETURN",
-      moduleName: "GIA Lab Stock",
-      recordId: outid,
-      recordReference: String(oData.invoiceno || outid),
-      description: `Partial Lab Return from ${targetLab} for Memo #${oData.invoiceno}`,
-      companyId: oData.company,
-    });
+    try {
+      await logAudit({
+        actionType: "LAB_RETURN",
+        moduleName: "GIA Lab Stock",
+        recordId: outid,
+        recordReference: String(oData.invoiceno || outid),
+        description: `Partial Lab Return from ${targetLab} for Memo #${oData.invoiceno}`,
+        companyId: oData.company,
+      });
+    } catch (e) {
+      console.error("transactionStock audit:", e);
+    }
   }
 
   try {
@@ -1129,38 +1189,49 @@ async function returnInwardMemo(post, userContext = {}) {
   const inProducts = (inData.products || "").split(",").filter(Boolean);
   let returnProducts = (inData.return_products || "").split(",").filter(Boolean);
   const updateProduct = [];
+  const pendingAudits = [];
 
-  for (const pid of inProducts) {
-    if (products.includes(parseInt(pid, 10)) || products.includes(pid)) {
-      const product = await getProductDetail(pid);
-      if (!product || product.outward) continue;
-      returnProducts.push(pid);
-      await query("UPDATE dai_product SET visibility=0, inward_id='' WHERE id = ?", [pid]);
-      await addHistoryAudited({
-        product_id: product.id,
-        action: "purchase_return",
-        party: inData.party,
-        narretion: inData.narretion,
-        date: moment().format("YYYY-MM-DD"),
-        description: "Purchase Return",
-        pcs: product.polish_pcs,
-        carat: product.polish_carat,
-        amount: product.amount,
-        price: product.price,
-        sku: product.sku,
-        type: "dr",
-        invoice: inData.invoiceno,
-        entry_from: "inward",
-      });
-    } else {
-      updateProduct.push(pid);
+  await helper.runInTransaction(async (q) => {
+    for (const pid of inProducts) {
+      if (products.includes(parseInt(pid, 10)) || products.includes(pid)) {
+        const product = await getProductDetail(pid, q);
+        if (!product || product.outward) continue;
+        returnProducts.push(pid);
+        await q("UPDATE dai_product SET visibility=0, inward_id='' WHERE id = ?", [pid]);
+        await recordAuditedHistoryTx(q, {
+          product_id: product.id,
+          action: "purchase_return",
+          party: inData.party,
+          narretion: inData.narretion,
+          date: moment().format("YYYY-MM-DD"),
+          description: "Purchase Return",
+          pcs: product.polish_pcs,
+          carat: product.polish_carat,
+          amount: product.amount,
+          price: product.price,
+          sku: product.sku,
+          type: "dr",
+          invoice: inData.invoiceno,
+          entry_from: "inward",
+        }, "Transaction Stock", "UPDATE", {}, pendingAudits);
+      } else {
+        updateProduct.push(pid);
+      }
+    }
+
+    await q(
+      "UPDATE dai_inward SET return_products=?, products=? WHERE id = ?",
+      [[...new Set(returnProducts)].join(","), updateProduct.join(","), post.id]
+    );
+  });
+
+  for (const a of pendingAudits) {
+    try {
+      await logAudit(a);
+    } catch (e) {
+      console.error("transactionStock audit:", e);
     }
   }
-
-  await query(
-    "UPDATE dai_inward SET return_products=?, products=? WHERE id = ?",
-    [[...new Set(returnProducts)].join(","), updateProduct.join(","), post.id]
-  );
 
   const skus = [];
   for (const pid of products) {
@@ -1863,6 +1934,25 @@ async function outwardMemoToSale(post, userContext = {}) {
     if (!Number.isFinite(finalAmount) || finalAmount <= 0) {
       finalAmount = amount + shippingCharge;
     }
+
+    const verifyTotalsFlag = getAuditFlag("FLAG_VERIFY_INVOICE_TOTALS");
+    if (verifyTotalsFlag === "LOG_ONLY") {
+      try {
+        const expected = computeExpectedInvoiceTotal(amount, post);
+        const diff = Math.abs(finalAmount - expected);
+        if (diff > 0.05) {
+          console.warn("[AUDIT_FLAG:FLAG_VERIFY_INVOICE_TOTALS] Invoice total mismatch in memo-to-sale:", {
+            type,
+            invoiceno: String(invoice),
+            storedFinalAmount: finalAmount,
+            expectedFinalAmount: expected,
+            difference: Number(diff.toFixed(2)),
+            subtotal: amount,
+          });
+        }
+      } catch (_) {}
+    }
+
     const paidAmount = post.on_payment ? Number(post.paid_amount) || 0 : 0;
     const dueAmount =
       post.due_amount != null && post.due_amount !== ""
@@ -2293,18 +2383,97 @@ async function deleteInwardStock(id) {
   });
 }
 
-async function deleteGia(id, companyId = null) {
+async function deleteGia(id, companyId = null, options = {}) {
   const oData = await getOutwardData(id, companyId);
   if (!oData) return { ok: false, message: "Record not found or access denied" };
   const products = (oData.products || "").split(",").filter(Boolean);
-  for (const pid of products) {
-    await query("UPDATE dai_product SET outward='', visibility=1 WHERE id = ?", [pid]);
-  }
-  if (companyId) {
-    await query("DELETE FROM dai_outward WHERE id = ? AND company = ?", [id, companyId]);
-  } else {
-    await query("DELETE FROM dai_outward WHERE id = ?", [id]);
-  }
+
+  await helper.runInTransaction(async (q) => {
+    const outwardItems = await stockMovement.getOutwardItems(q, id);
+
+    for (const pid of products) {
+      await q("UPDATE dai_product SET outward='', visibility=1 WHERE id = ?", [pid]);
+
+      const product = await getProductDetail(pid, q);
+      if (!product) continue;
+
+      const itemForProduct = outwardItems.find(
+        (it) => String(it.product_id) === String(pid)
+      );
+
+      let histPcs =
+        Number(itemForProduct?.pcs) > 0
+          ? Number(itemForProduct.pcs)
+          : Number(product.polish_pcs) || Number(product.onhand_pcs) || 0;
+      let histCarat =
+        Number(itemForProduct?.carat) > 0
+          ? Number(itemForProduct.carat)
+          : Number(product.polish_carat) || Number(product.onhand_carat) || 0;
+
+      // Legacy lab send may leave polish/onhand at 0 with no item row — use last lab history qty
+      if (histCarat <= 0 && histPcs <= 0) {
+        const hist = await q(
+          `SELECT pcs, carat FROM dai_history
+           WHERE product_id = ? AND action IN ('lab','gia')
+           ORDER BY id DESC LIMIT 1`,
+          [pid]
+        );
+        if (hist[0]) {
+          histPcs = Number(hist[0].pcs) || 0;
+          histCarat = Number(hist[0].carat) || 0;
+        }
+      }
+      if (histCarat <= 0 && histPcs <= 0) {
+        const purchased = Number(product.purchased_carat) || 0;
+        const sold = Number(product.sold_carat) || 0;
+        const memo = Number(product.memo_carat) || 0;
+        const restored = Math.max(0, purchased - sold - memo);
+        if (restored > 0) {
+          histCarat = restored;
+          histPcs =
+            Math.max(
+              0,
+              (Number(product.purchased_pcs) || 0) -
+              (Number(product.sold_pcs) || 0) -
+              (Number(product.memo_pcs) || 0)
+            ) || 1;
+        }
+      }
+
+      try {
+        const histPayload = {
+          product_id: pid,
+          action: "outward_cancel",
+          party: oData.party || "",
+          narretion: oData.narretion || "",
+          date: moment().format("YYYY-MM-DD HH:mm:ss"),
+          description: `Outward ${oData.type || "gia"} cancelled: Restored to inventory`,
+          pcs: histPcs,
+          carat: histCarat,
+          amount: product.amount || 0,
+          price: product.price || 0,
+          sku: product.sku,
+          type: "cr",
+          invoice: oData.invoiceno || "",
+          entry_from: "outward",
+          entryno: id,
+          balance_pcs: Number(product.onhand_pcs) || 0,
+          balance_carat: Number(product.onhand_carat) || 0,
+          user: oData.user || options.userId || helper.DEFAULT_USER_ID,
+        };
+        await addHistoryTx(q, histPayload);
+      } catch (histErr) {
+        console.error("deleteGia product history error:", histErr);
+      }
+    }
+
+    if (companyId) {
+      await q("DELETE FROM dai_outward WHERE id = ? AND company = ?", [id, companyId]);
+    } else {
+      await q("DELETE FROM dai_outward WHERE id = ?", [id]);
+    }
+  });
+
   try {
     await logAudit({
       actionType: "DELETE",
@@ -2329,6 +2498,47 @@ async function deleteOutwardStock(id, options = {}) {
       : await q("SELECT * FROM dai_outward WHERE id = ?", [id]);
     const oData = oRows[0] || null;
     if (!oData) return { ok: false, message: "Outward record not found or access denied" };
+
+    const blockPaidSaleFlag = getAuditFlag("FLAG_BLOCK_PAID_SALE_DELETE");
+    if (blockPaidSaleFlag !== "OFF") {
+      const isPaidByHeader = Number(oData.paid_amount || 0) > 0;
+      let hasPaymentRows = false;
+      const targetCompany = companyId || oData.company;
+
+      const payRows = targetCompany
+        ? await q(
+            "SELECT id FROM acc_transaction WHERE sale_id = ? AND company = ? AND type = 'cr' AND (deleted = 0 OR deleted IS NULL) LIMIT 1",
+            [String(id), targetCompany]
+          )
+        : await q(
+            "SELECT id FROM acc_transaction WHERE sale_id = ? AND type = 'cr' AND (deleted = 0 OR deleted IS NULL) LIMIT 1",
+            [String(id)]
+          );
+      hasPaymentRows = payRows.length > 0;
+
+      if (isPaidByHeader || hasPaymentRows) {
+        if (blockPaidSaleFlag === "LOG_ONLY") {
+          try {
+            console.warn(
+              `[AUDIT_FLAG:FLAG_BLOCK_PAID_SALE_DELETE] Attempted deletion of paid sale voucher #${oData.invoiceno || id}:`,
+              {
+                outwardId: id,
+                invoiceno: oData.invoiceno,
+                companyId: targetCompany,
+                paidAmount: oData.paid_amount,
+                hasPaymentRows,
+              }
+            );
+          } catch (_) {}
+        } else if (blockPaidSaleFlag === "ENFORCE") {
+          const billRef = oData.invoiceno || id;
+          return {
+            ok: false,
+            message: `Cannot delete Sale #${billRef}: payment transactions are already recorded against this bill.`,
+          };
+        }
+      }
+    }
 
     const productIds = (oData.products || "")
       .split(",")

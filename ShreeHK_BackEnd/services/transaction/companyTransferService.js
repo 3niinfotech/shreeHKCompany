@@ -92,9 +92,9 @@ async function generateTargetSku(executor, baseSku) {
 
   const pattern = `${rootBase}-T%`;
   const sql = `
-    SELECT sku FROM dai_product WHERE sku LIKE ?
+    SELECT sku FROM dai_product WHERE sku LIKE ? AND (deleted = 0 OR deleted IS NULL)
     UNION
-    SELECT sku FROM dai_company_transfer_item WHERE sku LIKE ?
+    SELECT sku FROM dai_company_transfer_item WHERE sku LIKE ? AND (deleted = 0 OR deleted IS NULL)
   `;
   const rows = await queryWith(executor, sql, [pattern, pattern]);
 
@@ -139,7 +139,7 @@ const companyTransferService = {
               pv.intensity, pv.overtone, pv.color, pv.package, pv.bgm, pv.eyeclean
        FROM dai_product p
        LEFT JOIN dai_product_value pv ON p.id = pv.product_id
-       WHERE p.id IN (${ph}) FOR UPDATE`,
+       WHERE p.id IN (${ph}) AND (p.deleted = 0 OR p.deleted IS NULL) FOR UPDATE`,
       productIds
     );
 
@@ -606,7 +606,7 @@ const companyTransferService = {
          FROM dai_company_transfer t
          LEFT JOIN company fc ON fc.id = t.from_company_id
          LEFT JOIN company tc ON tc.id = t.to_company_id
-         WHERE t.id = ? FOR UPDATE`,
+         WHERE t.id = ? AND (t.deleted = 0 OR t.deleted IS NULL) FOR UPDATE`,
         [transfer_id]
       );
       const transfer = transferRows[0];
@@ -617,7 +617,7 @@ const companyTransferService = {
 
       const items = await queryWith(
         q,
-        "SELECT * FROM dai_company_transfer_item WHERE transfer_id = ? FOR UPDATE",
+        "SELECT * FROM dai_company_transfer_item WHERE transfer_id = ? AND (deleted = 0 OR deleted IS NULL) FOR UPDATE",
         [transfer_id]
       );
 
@@ -627,7 +627,7 @@ const companyTransferService = {
         // A. Verify target stone in target company
         const targetRows = await queryWith(
           q,
-          "SELECT * FROM dai_product WHERE id = ? AND company = ? FOR UPDATE",
+          "SELECT * FROM dai_product WHERE id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL) FOR UPDATE",
           [item.target_product_id, transfer.to_company_id]
         );
         const targetStone = targetRows[0];
@@ -643,7 +643,7 @@ const companyTransferService = {
             q,
             `UPDATE dai_product
              SET visibility = 0, outward = 'returned', polish_pcs = 0, polish_carat = 0, onhand_pcs = 0, onhand_carat = 0
-             WHERE id = ?`,
+             WHERE id = ? AND (deleted = 0 OR deleted IS NULL)`,
             [item.target_product_id]
           );
 
@@ -673,7 +673,7 @@ const companyTransferService = {
         // B. Restore stone in source company
         const sourceRows = await queryWith(
           q,
-          "SELECT * FROM dai_product WHERE id = ? AND company = ? FOR UPDATE",
+          "SELECT * FROM dai_product WHERE id = ? AND company = ? AND (deleted = 0 OR deleted IS NULL) FOR UPDATE",
           [item.source_product_id, transfer.from_company_id]
         );
         const sourceStone = sourceRows[0];
@@ -687,7 +687,7 @@ const companyTransferService = {
             `UPDATE dai_product
              SET polish_pcs = ?, polish_carat = ?, onhand_pcs = ?, onhand_carat = ?, amount = ?, visibility = 1,
                  outward = CASE WHEN outward = 'sale' OR outward = 'transferred' THEN '' ELSE outward END
-             WHERE id = ?`,
+             WHERE id = ? AND (deleted = 0 OR deleted IS NULL)`,
             [newPcs, newCarat, newPcs, newCarat, newAmount, item.source_product_id]
           );
 
@@ -727,22 +727,28 @@ const companyTransferService = {
       if (transfer.source_outward_id) {
         await queryWith(
           q,
-          "UPDATE dai_outward SET status = 'returned' WHERE id = ?",
+          "UPDATE dai_outward SET status = 'returned' WHERE id = ? AND (deleted = 0 OR deleted IS NULL)",
           [transfer.source_outward_id]
         );
         await queryWith(
           q,
-          "UPDATE dai_outward_item SET status = 'returned' WHERE outward_id = ?",
+          "UPDATE dai_outward_item SET status = 'returned' WHERE outward_id = ? AND (deleted = 0 OR deleted IS NULL)",
           [transfer.source_outward_id]
         );
       }
 
-      // Update target inward invoice status
+      // Update target inward invoice status (soft delete)
       if (transfer.target_inward_id) {
+        const deletedBy = userId || null;
         await queryWith(
           q,
-          "UPDATE dai_inward SET deleted = 1 WHERE id = ?",
-          [transfer.target_inward_id]
+          "UPDATE dai_inward_item SET deleted = 1, deleted_at = NOW(), deleted_by = ? WHERE inward_id = ? AND (deleted = 0 OR deleted IS NULL)",
+          [deletedBy, transfer.target_inward_id]
+        );
+        await queryWith(
+          q,
+          "UPDATE dai_inward SET deleted = 1, deleted_at = NOW(), deleted_by = ? WHERE id = ? AND (deleted = 0 OR deleted IS NULL)",
+          [deletedBy, transfer.target_inward_id]
         );
       }
 

@@ -194,6 +194,7 @@ router.get('/api/admin/users', authenticateToken, isSuperAdmin, (req, res) => {
         SELECT user_id, user_name, user_email, first_name, last_name,
                mobile, roll, profile_image, company_name, designation
         FROM user
+        WHERE (deleted = 0 OR deleted IS NULL)
         ORDER BY roll ASC, first_name ASC
     `;
     connection.query(query, (err, results) => {
@@ -243,7 +244,7 @@ router.post('/api/admin/users/create', authenticateToken, isSuperAdmin, (req, re
     const userRoll = roll === 1 ? 1 : 2; // Sirf 1 ya 2
 
     // Email duplicate check
-    connection.query('SELECT user_id FROM user WHERE user_email = ? OR user_name = ?', [user_email, user_name], (err, exists) => {
+    connection.query('SELECT user_id FROM user WHERE (user_email = ? OR user_name = ?) AND (deleted = 0 OR deleted IS NULL)', [user_email, user_name], (err, exists) => {
         if (err) return res.status(500).json({ status: false, message: err.message });
         if (exists.length > 0) return res.status(409).json({ status: false, message: 'Username or email already exists.' });
 
@@ -333,7 +334,7 @@ router.delete('/api/admin/users/:id/delete', authenticateToken, isSuperAdmin, (r
         return res.status(400).json({ status: false, message: 'You cannot delete your own account.' });
     }
 
-    connection.query('DELETE FROM user WHERE user_id = ?', [id], (err, result) => {
+    connection.query('UPDATE user SET deleted = 1, deleted_at = NOW(), deleted_by = ?, is_active = 0 WHERE user_id = ? AND (deleted = 0 OR deleted IS NULL)', [req.user?.user_id || null, id], (err, result) => {
         if (err) return res.status(500).json({ status: false, message: err.message });
         if (result.affectedRows === 0) return res.status(404).json({ status: false, message: 'User not found.' });
         res.json({ status: true, message: 'User deleted successfully.' });
