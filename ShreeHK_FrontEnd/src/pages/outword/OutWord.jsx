@@ -347,8 +347,6 @@ const OutWord = () => {
         { name: 'duedate', label: 'Due Date', type: 'date', required: true, span: 6 },
         { name: 'party', label: 'Party Name', type: 'select', options: partyOptions, required: true, span: 6 },
         { name: 'other_party', label: 'Other Party', type: 'select', options: partyOptions, required: true, span: 6 },
-        { name: 'paid_amount', label: 'Paid Amount', type: 'number', required: true, span: 6 },
-        { name: 'due_amount', label: 'Due Amount', type: 'number', required: true, span: 6 },
     ], [branchCompanyOptions, partyOptions]);
 
     const skuLookupDebounceTimers = useRef({});
@@ -614,6 +612,8 @@ const OutWord = () => {
 
             const payload = {
                 id: editingRecord.id,
+                paid_amount: editingRecord?.paid_amount,
+                due_amount: editingRecord?.due_amount,
                 ...values,
                 selected_banks: selectedBanks,
                 ...(originalCompanyId != null ? { company: originalCompanyId } : {}),
@@ -627,6 +627,8 @@ const OutWord = () => {
                 duedate: formattedDueDate,
                 products: fetchedProducts,
                 update: {
+                    paid_amount: editingRecord?.paid_amount,
+                    due_amount: editingRecord?.due_amount,
                     ...values,
                     selected_banks: selectedBanks,
                     ...(originalCompanyId != null ? { company: originalCompanyId } : {}),
