@@ -740,7 +740,7 @@
 }
 
 .stockEditBankLabel {
-  visibility: hidden;
+  font-weight: 500;
 }
 
 .memoConvertBody {
@@ -1448,11 +1448,11 @@
 .stockEditBankSlotWide {
   flex-wrap: wrap;
   height: auto;
-  min-height: 40px;
+  min-height: 30px;
   max-height: none;
   gap: 8px 16px;
   justify-content: flex-start;
-  padding: 8px 11px;
+  padding: 6px 11px;
 }
 
 .stockEditExportRow {

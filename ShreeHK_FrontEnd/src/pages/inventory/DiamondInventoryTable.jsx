@@ -34,6 +34,7 @@ import { resolveDiaPair } from "../../utils/resolveDiaPair";
 import { renderLocationWithFlag } from "../../components/inventory/LocationWithFlag";
 import useAiStockAlert from "../../components/ai/useAiStockAlert";
 import InventoryCaratCell from "../../components/inventory/InventoryCaratCell";
+import InventoryPcsCell from "../../components/inventory/InventoryPcsCell";
 import { buildInventoryApiFilters } from "../../utils/inventoryApiFilters";
 import useBranchCompanies from "../../hooks/useBranchCompanies";
 import useTableSkeleton from "../../components/common/skeleton/useTableSkeleton";
@@ -110,6 +111,7 @@ const mapInventoryProductRow = (item, index, offset = 1, baseIndex = 0) => ({
   certificate: item.report_no, shape: item.shape, polishPcs: Number(item.onhand_pcs != null && Number(item.onhand_pcs) > 0 ? item.onhand_pcs : item.polish_pcs) || 0, onhandPcs: Number(item.onhand_pcs != null ? item.onhand_pcs : item.polish_pcs) || 0,
   polishCarat: Number(item.onhand_carat != null && Number(item.onhand_carat) > 0 ? item.onhand_carat : item.polish_carat) || 0, onhandCarat: Number(item.onhand_carat != null ? item.onhand_carat : item.polish_carat) || 0,
   memoCarat: Number(item.memo_carat) || 0,
+  memoPcs: Number(item.memo_pcs != null ? item.memo_pcs : 0) || (item.memo_items || []).reduce((acc, m) => acc + (Number(m.polish_pcs) || 0), 0) || 0,
   memoItems: (item.memo_items || []).map((memoItem) => ({
     id: memoItem.id,
     sku: memoItem.sku,
@@ -140,6 +142,8 @@ const mapInventoryProductRow = (item, index, offset = 1, baseIndex = 0) => ({
     type: historyItem.type,
     narration: historyItem.narration,
     partyName: historyItem.party_name,
+    entryno: historyItem.entryno,
+    outwardId: historyItem.outward_id || historyItem.entryno,
   })),
   mainClarity: item.in_house_clarity,
   clarity: item.clarity,
@@ -649,6 +653,55 @@ const DiamondInventoryTable = () => {
     if (actionType === "export") return "export";
     return "memo";
   };
+
+  const handleOpenMemoInvoice = useCallback(async ({ invoiceno, type = "memo", outwardId, entryno }) => {
+    const targetId = outwardId || entryno;
+    let record = null;
+    if (targetId) {
+      try {
+        const res = await fetchOutwardById(targetId);
+        if (res?.status && res?.Data) {
+          record = {
+            ...res.Data,
+            products: Array.isArray(res.products) ? res.products : [],
+          };
+        }
+      } catch (err) {
+        console.error("fetchOutwardById error:", err);
+      }
+    }
+    if (!record && invoiceno) {
+      try {
+        const res = await api.post(ENDPOINTS.transactionStock.outward.list, { invoiceno: String(invoiceno).trim() });
+        const list = res?.data?.Data || res?.data?.data || [];
+        if (Array.isArray(list) && list.length > 0) {
+          const found = list[0];
+          if (found?.id) {
+            const full = await fetchOutwardById(found.id);
+            if (full?.status && full?.Data) {
+              record = {
+                ...full.Data,
+                products: Array.isArray(full.products) ? full.products : (found.products || []),
+              };
+            }
+          }
+          if (!record) record = found;
+        }
+      } catch (err) {
+        console.error("fetch outward list by invoiceno error:", err);
+      }
+    }
+    if (record) {
+      const pType = type === "consign" ? "consign" : (type === "sale" ? "sale" : "memo");
+      setInvoiceModal({
+        open: true,
+        record,
+        printType: pType,
+      });
+    } else {
+      toastWarning("Invoice record not found.");
+    }
+  }, []);
 
   const handleSuccessPrint = useCallback(async (outwardIdOverride, actionTypeOverride) => {
     const outwardId = outwardIdOverride || successModal.outwardId;
@@ -1315,7 +1368,22 @@ const DiamondInventoryTable = () => {
       onFilter: (value, record) =>
         String(record.shape || "").trim().toLowerCase() === String(value).trim().toLowerCase(),
     },
-    { title: "PCS", key: "polishPcs", dataIndex: "polishPcs", width: 84, ellipsis: true, align: "center" },
+    {
+      title: "PCS",
+      key: "polishPcs",
+      dataIndex: "polishPcs",
+      width: 84,
+      align: "center",
+      render: (value, record) => (
+        <InventoryPcsCell
+          polishPcs={value}
+          memoPcs={record.memoPcs}
+          memoItems={record.memoItems}
+          memoHistory={record.memoHistory}
+          onOpenInvoice={handleOpenMemoInvoice}
+        />
+      ),
+    },
     {
       title: "Carat",
       key: "polishCarat",
@@ -1329,6 +1397,7 @@ const DiamondInventoryTable = () => {
           memoCarat={record.memoCarat}
           memoItems={record.memoItems}
           memoHistory={record.memoHistory}
+          onOpenInvoice={handleOpenMemoInvoice}
         />
       ),
     },
@@ -2026,7 +2095,7 @@ const DiamondInventoryTable = () => {
         return;
       }
       const ignoreClick = target.closest(
-        "a, button, input, textarea, label, .ant-btn, .ant-dropdown-trigger, .inventory-memo-carat, .inventory-carat-cell--has-memo, .memo-carat-popover, .memo-carat-popover-overlay, .ant-popover",
+        "a, button, input, textarea, label, .ant-btn, .ant-dropdown-trigger, .inventory-memo-carat, .inventory-carat-cell--has-memo, .inventory-memo-pcs, .inventory-pcs-cell--has-memo, .memo-carat-popover, .memo-carat-popover-overlay, .ant-popover",
       );
       if (ignoreClick) return;
     }

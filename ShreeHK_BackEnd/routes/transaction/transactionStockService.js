@@ -355,6 +355,16 @@ async function loadProductsByIds(ids) {
 async function applyOutwardItemQtys(outwardId, products) {
   if (!outwardId || !Array.isArray(products) || !products.length) return products;
   try {
+    // Check if voucher has items in dai_outward_item
+    try {
+      const allOutwardItems = await query("SELECT id, status FROM dai_outward_item WHERE outward_id = ?", [outwardId]);
+      if (allOutwardItems && allOutwardItems.length > 0) {
+        const activeItems = allOutwardItems.filter(it => !it.status || !['returned', 'cancelled'].includes(it.status));
+        if (activeItems.length === 0) {
+          return [];
+        }
+      }
+    } catch (_) {}
     const items = await stockMovement.getOutwardItems(query, outwardId);
     if (!items.length) return dedupeProductsById(products);
 
@@ -1586,6 +1596,8 @@ async function returnOutwardMemo(post, userContext = {}) {
   );
   if (stillActive.length > 0) {
     mp = [...new Set(stillActive.map((r) => String(r.product_id)))];
+  } else if (outwardItems.length > 0) {
+    mp = [];
   }
 
   // Recalculate remaining final amount on outward memo header
@@ -1660,14 +1672,7 @@ async function outwardMemoToSale(post, userContext = {}) {
     const record = post.record || {};
     const type = post.type || "sale";
 
-    if (type === "sale") {
-      if (!post.shipping_name || String(post.shipping_name).trim() === "") {
-        throw new Error("Shipping is required");
-      }
-      if (!post.origin_of || String(post.origin_of).trim() === "") {
-        throw new Error("Origin is required");
-      }
-    }
+    // Shipping & Origin are optional per requirements
 
     // Sequence: lock counter + never reuse numbers already on dai_outward (fixes stuck #1)
     let seqRows = await q(
@@ -2035,8 +2040,11 @@ async function outwardMemoToSale(post, userContext = {}) {
     let mp = [];
     if (stillActiveItems.length > 0) {
       mp = [...new Set(stillActiveItems.map((r) => String(r.product_id)))];
+    } else if (memoItems.length > 0) {
+      // All items on this memo have been returned or sold -> memo is closed
+      mp = [];
     } else {
-      const soldSet = new Set(products.map(String));
+      const soldSet = new Set(outProducts.map(String));
       const leftoverSet = new Set(remainingOnMemo.map(String));
       mp = [
         ...new Set(

@@ -23,6 +23,7 @@ import { useFetchApi, useDeleteApiRequest, usePostApiRequest } from '../../../ap
 import { api } from '../../../api/client/axiosInstance';
 import { ENDPOINTS, QUERY_KEYS } from '../../../api/endpoints';
 import { ConfirmDeleteModal, BaseModal } from '../../../components/common/modals';
+import EnableEditButton from '../../../components/common/ui/EnableEditButton';
 import DynamicForm from '../../../components/common/ui/DynamicFormField';
 import GiaReturnModal from '../../../components/transaction/stock/GiaReturnModal';
 import MemoConvertModal from '../../../components/transaction/stock/MemoConvertModal';
@@ -54,7 +55,6 @@ export const defaultProductColumns = [
   { title: 'Sr No', key: 'srNo', width: 70, align: 'center', render: (_, __, index) => index + 1 },
   { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 120, render: (text, record) => <SkuLink sku={text} record={record} /> },
   { title: 'Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', width: 60, align: 'center', render: (v, row) => (v != null ? Number(v) : (row.pcs ?? row.purchase_pcs ?? row.rought_pcs ?? 0)) },
-  { title: 'Shape', dataIndex: 'shape', key: 'shape', width: 80, align: 'center', render: (v, row) => v || row.shape || '-' },
   { title: 'Carat', dataIndex: 'polish_carat', key: 'polish_carat', width: 90, align: 'center', render: (v, row) => { const c = v != null && v !== '' ? Number(v) : (row.purchase_carat ?? row.carat ?? row.rought_carat); return c != null && !isNaN(c) ? Number(c).toFixed(2) : '-'; } },
   { title: 'Color', dataIndex: 'color', key: 'color', width: 90, align: 'center', render: (v, row) => v || row.color || row.main_color || '-' },
   { title: 'Clarity', dataIndex: 'clarity', key: 'clarity', width: 90, align: 'center', render: (v, row) => v || row.clarity || '-' },
@@ -62,6 +62,7 @@ export const defaultProductColumns = [
   { title: 'Price', dataIndex: 'sell_price', key: 'sell_price', width: 100, align: 'right', render: (v, row) => { const p = v || row.sell_price || row.purchase_price || row.price; return p != null && p !== '' ? (typeof p === 'number' ? p.toFixed(2) : p) : '-'; } },
   { title: 'Amount', dataIndex: 'sell_amount', key: 'sell_amount', width: 100, align: 'right', render: (v, row) => { const a = v || row.sell_amount || row.purchase_amount || row.amount; return a != null && a !== '' ? (typeof a === 'number' ? a.toFixed(2) : a) : '-'; } },
   { title: 'Certificate', dataIndex: 'report_no', key: 'report_no', width: 130, render: (v, row) => v || row.report_no || row.certificate || '-' },
+  { title: 'Shape', dataIndex: 'shape', key: 'shape', width: 80, align: 'center', render: (v, row) => v || row.shape || '-' },
   { title: 'Lab', dataIndex: 'lab', key: 'lab', width: 80, render: (v, row) => v || row.lab || '-' },
   { title: 'Location', dataIndex: 'location', key: 'location', width: 100, render: (v, row) => v || row.location || row.loc || '-' },
   { title: 'Intensity', dataIndex: 'intensity', key: 'intensity', width: 80, align: 'center', render: (v, row) => v || row.intensity || row.f_intensity || '-' },
@@ -185,6 +186,7 @@ const TransactionStockTemplate = ({
   });
   const [toExportLoading, setToExportLoading] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isEditEnabled, setIsEditEnabled] = useState(false);
   const [editId, setEditId] = useState(null);
   const [editingRecord, setEditingRecord] = useState(null);
   const [fetchedProducts, setFetchedProducts] = useState([]);
@@ -939,6 +941,7 @@ const TransactionStockTemplate = ({
   const handleEditClick = (record) => {
     setEditingRecord(record);
     setEditId(record.id);
+    setIsEditEnabled(false);
     setIsEditModalOpen(true);
     setFetchedProducts([]);
     setOriginalSproducts('');
@@ -1062,6 +1065,7 @@ const TransactionStockTemplate = ({
   const closeEditModal = () => {
     Object.values(skuLookupDebounceTimers.current).forEach(clearTimeout);
     skuLookupDebounceTimers.current = {};
+    setIsEditEnabled(false);
     setIsEditModalOpen(false);
     setEditId(null);
     setEditingRecord(null);
@@ -1200,6 +1204,7 @@ const TransactionStockTemplate = ({
           type={opts.type || "text"}
           value={val ?? ""}
           placeholder={opts.placeholder || ""}
+          disabled={opts.disabled || !isEditEnabled}
           className={styles.stockEditCellInput}
           onChange={(e) => handleProductFieldChange(idx, field, e.target.value)}
           onBlur={field === "sku" ? (e) => handleSkuLookup(idx, e.target.value, false) : undefined}
@@ -1208,6 +1213,7 @@ const TransactionStockTemplate = ({
       ),
     });
 
+    // Master 29 Product Table Columns matching MemoConvertModal.jsx
     const cols = [
       {
         title: "No",
@@ -1217,55 +1223,34 @@ const TransactionStockTemplate = ({
         align: "center",
         render: (_v, _r, idx) => idx + 1,
       },
-      ...(isVenyaSaleEditGrid
-        ? [
-          textCol("SKU", "sku", 170, { fixed: "left", placeholder: "SKU" }),
-          textCol("P.Pcs", "polish_pcs", 80, { type: "number", placeholder: "0" }),
-          textCol("P.Carat", "polish_carat", 90, { type: "number", placeholder: "0.00" }),
-          textCol("Cost", "cost", 130, { type: "number", placeholder: "0.00" }),
-          textCol("Price", "sell_price", 130, { type: "number", placeholder: "0.00" }),
-          textCol("Amount", "sell_amount", 140, { type: "number", placeholder: "0.00" }),
-          textCol("Lab", "lab", 80, { placeholder: "Lab" }),
-          textCol("Report No.", "report_no", 110, { placeholder: "Report No." }),
-          textCol("Shape", "shape", 90, { placeholder: "Shape" }),
-          textCol("Clarity", "clarity", 90, { placeholder: "Clarity" }),
-          textCol("Intensity", "intensity", 90, { placeholder: "Intensity" }),
-          textCol("Overtone", "overtone", 90, { placeholder: "Overtone" }),
-          textCol("Color", "color", 80, { placeholder: "Color" }),
-          textCol("Size", "size", 90, { placeholder: "Size" }),
-          textCol("Polish", "polish", 90, { placeholder: "Polish" }),
-          textCol("Symm", "symm", 90, { placeholder: "Symm" }),
-          textCol("Cut", "cut", 90, { placeholder: "Cut" }),
-          textCol("Flo. Intensity", "floIntensity", 110, { placeholder: "Flo. Intensity" }),
-          textCol("Measurements", "measurements", 130, { placeholder: "Measurements" }),
-          textCol("Table%", "tablePer", 90, { placeholder: "Table%" }),
-          textCol("Depth%", "depthPer", 90, { placeholder: "Depth%" }),
-          textCol("Gridle", "girdle", 90, { placeholder: "Gridle" }),
-          textCol("BGM", "bgm", 80, { placeholder: "BGM" }),
-          textCol("Eyeclean", "eyeclean", 90, { placeholder: "Eyeclean" }),
-          textCol("LOC", "location", 90, { placeholder: "LOC" }),
-          textCol("Remark", "remark", 180, { placeholder: "Remark" }),
-        ]
-        : [
-          textCol("Mfg. code", "mfg_code", 100, { fixed: "left", placeholder: "Mfg" }),
-          textCol("D. No.", "diamond_no", 90, { fixed: "left", placeholder: "D.No" }),
-          textCol("SKU", "sku", 170, { fixed: "left", placeholder: "SKU" }),
-          textCol("Pcs", "polish_pcs", 80, { type: "number", placeholder: "0" }),
-          textCol("Carat", "polish_carat", 90, { type: "number", placeholder: "0.00" }),
-          textCol("Cost", "cost", 130, { type: "number", placeholder: "0.00" }),
-          textCol("Price", "sell_price", 130, { type: "number", placeholder: "0.00" }),
-          textCol("Amount", "sell_amount", 140, { type: "number", placeholder: "0.00" }),
-          textCol("LOC", "location", 90, { placeholder: "LOC" }),
-          textCol("Remark", "remark", 650, { placeholder: "Remark" }),
-          textCol("Lab", "lab", 80, { placeholder: "Lab" }),
-          textCol("Group Type", "group_type", 100, { placeholder: "Group" }),
-          textCol("Report No.", "report_no", 110, { placeholder: "Report" }),
-          textCol("Shape", "shape", 90, { placeholder: "Shape" }),
-          textCol("Clarity", "clarity", 90, { placeholder: "Clarity" }),
-          textCol("Intensity", "intensity", 90, { placeholder: "Intensity" }),
-          textCol("Overtone", "overtone", 90, { placeholder: "Overtone" }),
-          textCol("Color", "color", 80, { placeholder: "Color" }),
-        ]),
+      textCol("Mfg. code", "mfg_code", 100, { placeholder: "Mfg" }),
+      textCol("D. No.", "diamond_no", 90, { placeholder: "D.No" }),
+      textCol("SKU", "sku", 240, { fixed: "left", placeholder: "SKU" }),
+      textCol("Pcs", "polish_pcs", 105, { type: "number", placeholder: "0" }),
+      textCol("Carat", "polish_carat", 115, { type: "number", placeholder: "0.00" }),
+      textCol("Cost", "cost", 120, { type: "number", placeholder: "0.00" }),
+      textCol("Price", "sell_price", 120, { type: "number", placeholder: "0.00" }),
+      textCol("Amount", "sell_amount", 130, { type: "number", placeholder: "0.00" }),
+      textCol("LOC", "location", 90, { placeholder: "LOC" }),
+      textCol("Report No.", "report_no", 110, { placeholder: "Report No." }),
+      textCol("Shape", "shape", 110, { placeholder: "Shape" }),
+      textCol("Clarity", "clarity", 80, { placeholder: "Clarity" }),
+      textCol("Intensity", "intensity", 90, { placeholder: "Intensity" }),
+      textCol("Overtone", "overtone", 90, { placeholder: "Overtone" }),
+      textCol("Lab", "lab", 70, { placeholder: "Lab" }),
+      textCol("Color", "color", 80, { placeholder: "Color" }),
+      textCol("Size", "size", 70, { placeholder: "Size" }),
+      textCol("Polish", "polish", 70, { placeholder: "Polish" }),
+      textCol("Symm", "symm", 70, { placeholder: "Symm" }),
+      textCol("Cut", "cut", 70, { placeholder: "Cut" }),
+      textCol("Flo. Intensity", "floIntensity", 110, { placeholder: "Flo. Intensity" }),
+      textCol("Measurements", "measurements", 180, { placeholder: "Measurements" }),
+      textCol("Table%", "tablePer", 70, { placeholder: "Table%" }),
+      textCol("Depth%", "depthPer", 70, { placeholder: "Depth%" }),
+      textCol("Gridle", "girdle", 80, { placeholder: "Gridle" }),
+      textCol("BGM", "bgm", 60, { placeholder: "BGM" }),
+      textCol("Eyeclean", "eyeclean", 80, { placeholder: "Eyeclean" }),
+      textCol("Remark", "remark", 650, { placeholder: "Remark" }),
     ];
 
     if (allowAddProductInEdit) {
@@ -1280,6 +1265,7 @@ const TransactionStockTemplate = ({
             type="text"
             danger
             size="small"
+            disabled={!isEditEnabled}
             icon={<DeleteOutlined />}
             onClick={() => handleRemoveProductRow(idx)}
             aria-label="Remove row"
@@ -1288,7 +1274,7 @@ const TransactionStockTemplate = ({
       });
     }
     return cols;
-  }, [allowAddProductInEdit, isVenyaSaleEditGrid, handleSkuLookup]);
+  }, [allowAddProductInEdit, isVenyaSaleEditGrid, handleSkuLookup, isEditEnabled]);
 
   const editProductSkeletonColumns = useMemo(
     () =>
@@ -2403,6 +2389,12 @@ const TransactionStockTemplate = ({
           title={editModalTitle}
           subtitle={editModalSubtitle}
           variant="edit"
+          extraHeaderRight={(
+            <EnableEditButton
+              isEnabled={isEditEnabled}
+              onToggle={() => setIsEditEnabled((prev) => !prev)}
+            />
+          )}
           headerIcon={<Pencil size={16} strokeWidth={2} />}
           saveIcon={<CircleCheck size={15} strokeWidth={2.25} />}
           isOpen={isEditModalOpen}
@@ -2437,12 +2429,12 @@ const TransactionStockTemplate = ({
                   -webkit-text-fill-color: #e2e8f0 !important;
                 }
               `}</style>
-              <Form form={editForm} layout="vertical" className={`edit-modal-form-readable ${styles.stockEditForm}`}>
+              <Form form={editForm} layout="vertical" disabled={!isEditEnabled} className={`edit-modal-form-readable ${styles.stockEditForm}`}>
                 {isEditLoading ? (
                   <SkeletonForm fields={6} />
                 ) : (
                   <>
-                    <DynamicForm fields={editMainFields} />
+                    <DynamicForm fields={editMainFields.map((f) => ({ ...f, disabled: Boolean(f.disabled) || !isEditEnabled }))} />
                   </>
                 )}
                 <div className={styles.stockEditProductsHead}>
@@ -2451,6 +2443,7 @@ const TransactionStockTemplate = ({
                     <Button
                       type="primary"
                       size="small"
+                      disabled={!isEditEnabled}
                       icon={<PlusOutlined />}
                       className={styles.stockEditAddProductBtn}
                       onClick={handleAddProductRow}
@@ -2468,7 +2461,7 @@ const TransactionStockTemplate = ({
                     rowKey={(r) => r.id ?? r._tempId}
                     pagination={false}
                     size="small"
-                    scroll={{ x: isVenyaSaleEditGrid ? 2620 : 2600, y: 180 }}
+                    scroll={{ x: 3350, y: 180 }}
                     locale={
                       allowAddProductInEdit
                         ? { emptyText: 'No products — click Add New Data' }
@@ -2484,14 +2477,12 @@ const TransactionStockTemplate = ({
                         <span>Amount : <b>{editProductTotals.amount.toFixed(2)}</b></span>
                       </div>
                       {!isVenyaSaleEdit ? (
-                        <Form.Item
-                          name="narretion"
-                          label="Narration"
-                          colon={false}
-                          className={styles.stockEditTotalsNarration}
-                        >
-                          <Input placeholder="Enter Narration" allowClear />
-                        </Form.Item>
+                        <div className={styles.stockEditTotalsNarration}>
+                          <span className={styles.stockEditTotalsNarrationLabel}>Narration</span>
+                          <Form.Item name="narretion" noStyle>
+                            <Input placeholder="Enter Narration" allowClear />
+                          </Form.Item>
+                        </div>
                       ) : null}
                     </div>
                   ) : null}

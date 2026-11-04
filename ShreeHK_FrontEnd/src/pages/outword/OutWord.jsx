@@ -79,6 +79,7 @@ const OutWord = () => {
     const [selectedRowKeys, setSelectedRowKeys] = useState([]);
     const [partyOptions, setPartyOptions] = useState([]);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isEditEnabled, setIsEditEnabled] = useState(false);
     const [editId, setEditId] = useState(null);
     const [editingRecord, setEditingRecord] = useState(null);
     const [fetchedProducts, setFetchedProducts] = useState([]);
@@ -520,6 +521,17 @@ const OutWord = () => {
                     intensity: p.intensity ?? "",
                     overtone: p.overtone ?? "",
                     color: p.color ?? p.main_color ?? "",
+                    size: p.size ?? "",
+                    polish: p.polish ?? "",
+                    symm: p.symm ?? p.symmentry ?? p.symmetry ?? "",
+                    cut: p.cut ?? "",
+                    floIntensity: p.floIntensity ?? p.f_intensity ?? p.flo_intensity ?? p.fluorescence ?? "",
+                    measurements: p.measurements ?? p.measurement ?? p.mesurment ?? "",
+                    tablePer: p.tablePer ?? p.table_pc ?? p.table_pct ?? "",
+                    depthPer: p.depthPer ?? p.depth_pc ?? p.depth_pct ?? "",
+                    girdle: p.girdle ?? p.gridle ?? p.griddle_pc ?? "",
+                    bgm: p.bgm ?? "",
+                    eyeclean: p.eyeclean ?? p.eye_clean ?? "",
                 };
                 return updated;
             });
@@ -612,6 +624,17 @@ const OutWord = () => {
                 intensity: "",
                 overtone: "",
                 color: "",
+                size: "",
+                polish: "",
+                symm: "",
+                cut: "",
+                floIntensity: "",
+                measurements: "",
+                tablePer: "",
+                depthPer: "",
+                girdle: "",
+                bgm: "",
+                eyeclean: "",
             },
         ]);
     };
@@ -627,6 +650,7 @@ const OutWord = () => {
     const handleEditClick = (record) => {
         setEditingRecord(record);
         setEditId(record.id);
+        setIsEditEnabled(false);
         setIsEditModalOpen(true);
         setFetchedProducts([]);
         const rawComp = record?.company;
@@ -981,12 +1005,19 @@ const OutWord = () => {
                 title={editingRecord?.type ? `Edit Outward (${String(editingRecord.type).toUpperCase()})` : "Edit Outward"}
                 subtitle={`${editingRecord?.invoiceno || (editingRecord?.entryno ? `#${editingRecord.entryno}` : (editingRecord?.id ? `#${editingRecord.id}` : ''))}${editingRecord?.company ? ` • ${editingRecord?.company_name || companyMap.get(Number(editingRecord.company)) || `Company #${editingRecord.company}`}` : ''}`}
                 variant="edit"
+                extraHeaderRight={(
+                    <EnableEditButton
+                        isEnabled={isEditEnabled}
+                        onToggle={() => setIsEditEnabled((prev) => !prev)}
+                    />
+                )}
                 headerIcon={<Pencil size={16} strokeWidth={2} />}
                 saveIcon={<CircleCheck size={15} strokeWidth={2.25} />}
                 isOpen={isEditModalOpen}
                 onClose={() => {
                     Object.values(skuLookupDebounceTimers.current).forEach(clearTimeout);
                     skuLookupDebounceTimers.current = {};
+                    setIsEditEnabled(false);
                     setIsEditModalOpen(false);
                     setEditId(null);
                     setFetchedProducts([]);
@@ -1020,13 +1051,14 @@ const OutWord = () => {
                               -webkit-text-fill-color: #e2e8f0 !important;
                             }
                         `}</style>
-                        <Form form={editForm} layout="vertical" className={`edit-modal-form-readable ${styles.stockEditForm}`}>
-                            <DynamicForm fields={editMainFields} />
+                        <Form form={editForm} layout="vertical" disabled={!isEditEnabled} className={`edit-modal-form-readable ${styles.stockEditForm}`}>
+                            <DynamicForm fields={editMainFields.map((f) => ({ ...f, disabled: Boolean(f.disabled) || !isEditEnabled }))} />
                             <div className={styles.stockEditProductsHead}>
                                 <span>Products</span>
                                 <Button
                                     type="primary"
                                     size="small"
+                                    disabled={!isEditEnabled}
                                     icon={<PlusOutlined />}
                                     className={styles.stockEditAddProductBtn}
                                     onClick={handleAddProductRow}
@@ -1040,24 +1072,34 @@ const OutWord = () => {
                                     loading={isProductLoading}
                                     columns={[
                                         { title: 'No', key: 'no', width: 50, fixed: 'left', align: 'center', render: (_v, _r, idx) => idx + 1 },
-                                        { title: 'Mfg. code', dataIndex: 'mfg_code', key: 'mfg_code', width: 100, fixed: 'left', render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'mfg_code', e.target.value)} /> },
-                                        { title: 'D. No.', dataIndex: 'diamond_no', key: 'diamond_no', width: 90, fixed: 'left', render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'diamond_no', e.target.value)} /> },
-                                        { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 170, fixed: 'left', render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'sku', e.target.value)} onBlur={(e) => handleSkuLookup(idx, e.target.value, false)} onPressEnter={(e) => handleSkuLookup(idx, e.target.value, false)} /> },
-                                        { title: 'Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', width: 80, render: (val, _r, idx) => <Input type="number" value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'polish_pcs', e.target.value)} /> },
-                                        { title: 'Carat', dataIndex: 'polish_carat', key: 'polish_carat', width: 90, render: (val, _r, idx) => <Input type="number" value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'polish_carat', e.target.value)} /> },
-                                        { title: 'Cost', dataIndex: 'cost', key: 'cost', width: 130, render: (val, _r, idx) => <Input type="number" value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'cost', e.target.value)} /> },
-                                        { title: 'Price', dataIndex: 'sell_price', key: 'sell_price', width: 130, render: (val, _r, idx) => <Input type="number" value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'sell_price', e.target.value)} /> },
-                                        { title: 'Amount', dataIndex: 'sell_amount', key: 'sell_amount', width: 140, render: (val, _r, idx) => <Input type="number" value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'sell_amount', e.target.value)} /> },
-                                        { title: 'LOC', dataIndex: 'location', key: 'location', width: 90, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'location', e.target.value)} /> },
-                                        { title: 'Lab', dataIndex: 'lab', key: 'lab', width: 80, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'lab', e.target.value)} /> },
-                                        { title: 'Group Type', dataIndex: 'group_type', key: 'group_type', width: 100, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'group_type', e.target.value)} /> },
-                                        { title: 'Report No.', dataIndex: 'report_no', key: 'report_no', width: 110, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'report_no', e.target.value)} /> },
-                                        { title: 'Shape', dataIndex: 'shape', key: 'shape', width: 90, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'shape', e.target.value)} /> },
-                                        { title: 'Clarity', dataIndex: 'clarity', key: 'clarity', width: 90, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'clarity', e.target.value)} /> },
-                                        { title: 'Intensity', dataIndex: 'intensity', key: 'intensity', width: 90, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'intensity', e.target.value)} /> },
-                                        { title: 'Overtone', dataIndex: 'overtone', key: 'overtone', width: 90, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'overtone', e.target.value)} /> },
-                                        { title: 'Color', dataIndex: 'color', key: 'color', width: 80, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'color', e.target.value)} /> },
-                                        { title: 'Remark', dataIndex: 'remark', key: 'remark', width: 140, render: (val, _r, idx) => <Input value={val} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'remark', e.target.value)} /> },
+                                        { title: 'Mfg. code', dataIndex: 'mfg_code', key: 'mfg_code', width: 100, render: (val, _r, idx) => <Input value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'mfg_code', e.target.value)} /> },
+                                        { title: 'D. No.', dataIndex: 'diamond_no', key: 'diamond_no', width: 90, render: (val, _r, idx) => <Input value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'diamond_no', e.target.value)} /> },
+                                        { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 240, fixed: 'left', render: (val, _r, idx) => <Input value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'sku', e.target.value)} onBlur={(e) => handleSkuLookup(idx, e.target.value, false)} onPressEnter={(e) => handleSkuLookup(idx, e.target.value, false)} /> },
+                                        { title: 'Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', width: 105, render: (val, _r, idx) => <Input type="number" value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'polish_pcs', e.target.value)} /> },
+                                        { title: 'Carat', dataIndex: 'polish_carat', key: 'polish_carat', width: 115, render: (val, _r, idx) => <Input type="number" value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'polish_carat', e.target.value)} /> },
+                                        { title: 'Cost', dataIndex: 'cost', key: 'cost', width: 120, render: (val, _r, idx) => <Input type="number" value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'cost', e.target.value)} /> },
+                                        { title: 'Price', dataIndex: 'sell_price', key: 'sell_price', width: 120, render: (val, _r, idx) => <Input type="number" value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'sell_price', e.target.value)} /> },
+                                        { title: 'Amount', dataIndex: 'sell_amount', key: 'sell_amount', width: 130, render: (val, _r, idx) => <Input type="number" value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'sell_amount', e.target.value)} /> },
+                                        { title: 'LOC', dataIndex: 'location', key: 'location', width: 90, render: (val, _r, idx) => <Input value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'location', e.target.value)} /> },
+                                        { title: 'Report No.', dataIndex: 'report_no', key: 'report_no', width: 110, render: (val, _r, idx) => <Input value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'report_no', e.target.value)} /> },
+                                        { title: 'Shape', dataIndex: 'shape', key: 'shape', width: 110, render: (val, _r, idx) => <Input value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'shape', e.target.value)} /> },
+                                        { title: 'Clarity', dataIndex: 'clarity', key: 'clarity', width: 80, render: (val, _r, idx) => <Input value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'clarity', e.target.value)} /> },
+                                        { title: 'Intensity', dataIndex: 'intensity', key: 'intensity', width: 90, render: (val, _r, idx) => <Input value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'intensity', e.target.value)} /> },
+                                        { title: 'Overtone', dataIndex: 'overtone', key: 'overtone', width: 90, render: (val, _r, idx) => <Input value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'overtone', e.target.value)} /> },
+                                        { title: 'Lab', dataIndex: 'lab', key: 'lab', width: 70, render: (val, _r, idx) => <Input value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'lab', e.target.value)} /> },
+                                        { title: 'Color', dataIndex: 'color', key: 'color', width: 80, render: (val, _r, idx) => <Input value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'color', e.target.value)} /> },
+                                        { title: 'Size', dataIndex: 'size', key: 'size', width: 70, render: (val, _r, idx) => <Input value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'size', e.target.value)} /> },
+                                        { title: 'Polish', dataIndex: 'polish', key: 'polish', width: 70, render: (val, _r, idx) => <Input value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'polish', e.target.value)} /> },
+                                        { title: 'Symm', dataIndex: 'symm', key: 'symm', width: 70, render: (val, _r, idx) => <Input value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'symm', e.target.value)} /> },
+                                        { title: 'Cut', dataIndex: 'cut', key: 'cut', width: 70, render: (val, _r, idx) => <Input value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'cut', e.target.value)} /> },
+                                        { title: 'Flo. Intensity', dataIndex: 'floIntensity', key: 'floIntensity', width: 110, render: (val, _r, idx) => <Input value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'floIntensity', e.target.value)} /> },
+                                        { title: 'Measurements', dataIndex: 'measurements', key: 'measurements', width: 180, render: (val, _r, idx) => <Input value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'measurements', e.target.value)} /> },
+                                        { title: 'Table%', dataIndex: 'tablePer', key: 'tablePer', width: 70, render: (val, _r, idx) => <Input value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'tablePer', e.target.value)} /> },
+                                        { title: 'Depth%', dataIndex: 'depthPer', key: 'depthPer', width: 70, render: (val, _r, idx) => <Input value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'depthPer', e.target.value)} /> },
+                                        { title: 'Gridle', dataIndex: 'girdle', key: 'girdle', width: 80, render: (val, _r, idx) => <Input value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'girdle', e.target.value)} /> },
+                                        { title: 'BGM', dataIndex: 'bgm', key: 'bgm', width: 60, render: (val, _r, idx) => <Input value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'bgm', e.target.value)} /> },
+                                        { title: 'Eyeclean', dataIndex: 'eyeclean', key: 'eyeclean', width: 80, render: (val, _r, idx) => <Input value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'eyeclean', e.target.value)} /> },
+                                        { title: 'Remark', dataIndex: 'remark', key: 'remark', width: 650, render: (val, _r, idx) => <Input value={val} disabled={!isEditEnabled} className={styles.stockEditCellInput} onChange={(e) => handleProductFieldChange(idx, 'remark', e.target.value)} /> },
                                         {
                                             title: '',
                                             key: 'action',
@@ -1065,12 +1107,7 @@ const OutWord = () => {
                                             fixed: 'right',
                                             align: 'center',
                                             render: (_val, _record, idx) => (
-                                                <Button
-                                                    type="text"
-                                                    danger
-                                                    size="small"
-                                                    icon={<DeleteOutlined />}
-                                                    onClick={() => handleRemoveProductRow(idx)}
+                                                <Button type="text" danger size="small" disabled={!isEditEnabled} icon={<DeleteOutlined />} onClick={() => handleRemoveProductRow(idx)}
                                                     aria-label="Remove row"
                                                 />
                                             ),
@@ -1080,7 +1117,7 @@ const OutWord = () => {
                                     rowKey={(r) => r.id ?? r._tempId}
                                     pagination={false}
                                     size="small"
-                                    scroll={{ x: 2100, y: 192 }}
+                                    scroll={{ x: 3350, y: 192 }}
                                     locale={{ emptyText: 'No products — click Add New Data' }}
                                 />
                                 {fetchedProducts.length > 0 ? (
@@ -1094,7 +1131,7 @@ const OutWord = () => {
                                         <div className={styles.stockEditTotalsNarration}>
                                             <span className={styles.stockEditTotalsNarrationLabel}>Narration</span>
                                             <Form.Item name="narretion" noStyle>
-                                                <Input placeholder="Narration..." />
+                                                <Input placeholder="Narration..." disabled={!isEditEnabled} />
                                             </Form.Item>
                                         </div>
                                     </div>

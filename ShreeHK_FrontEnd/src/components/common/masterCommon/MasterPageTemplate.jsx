@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import DynamicFormField from "../../../components/common/ui/DynamicFormField";
 import { Form } from 'antd';
 import { BaseModal } from "../modals";
+import EnableEditButton from "../ui/EnableEditButton";
 import { MasterListTable } from '../table';
 
 const MasterTemplate = ({
@@ -31,10 +32,12 @@ const MasterTemplate = ({
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalLoading, setModalLoading] = useState(false);
     const [modalConfig, setModalConfig] = useState({ title: '', mode: 'add' });
+    const [isEditEnabled, setIsEditEnabled] = useState(false);
 
     const handleAddClick = () => {
         if (onEdit) onEdit(null);
         setModalConfig({ title: `Add ${title} Details`, mode: 'add' });
+        setIsEditEnabled(false);
         setIsModalOpen(true);
     };
 
@@ -43,6 +46,7 @@ const MasterTemplate = ({
             title: `Edit ${title}: ${record.name || ''}`,
             mode: 'edit'
         });
+        setIsEditEnabled(false);
 
         onEdit?.(record);
 
@@ -100,21 +104,34 @@ const MasterTemplate = ({
             <BaseModal
                 title={modalConfig.title}
                 isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+                onClose={() => {
+                    setIsModalOpen(false);
+                    setIsEditEnabled(false);
+                }}
                 onSave={handleInternalSave}
                 loading={modalLoading}
                 width={modalWidth}
                 saveBtnText={modalConfig.mode === 'add' ? "Save" : "Update"}
                 cancelBtnText="Close"
+                extraHeaderRight={modalConfig.mode === 'edit' ? (
+                    <EnableEditButton
+                        isEnabled={isEditEnabled}
+                        onToggle={() => setIsEditEnabled((prev) => !prev)}
+                    />
+                ) : null}
                 content={
                     <Form
                         form={form}
                         layout="vertical"
+                        disabled={modalConfig.mode === 'edit' && !isEditEnabled}
                         key={initialValues ? initialValues.id : 'add'}
                     >
                         {Array.isArray(formFields) ? (
                             <DynamicFormField
-                                fields={formFields}
+                                fields={formFields.map((f) => ({
+                                    ...f,
+                                    disabled: modalConfig.mode === 'edit' ? (Boolean(f.disabled) || !isEditEnabled) : Boolean(f.disabled),
+                                }))}
                                 forceFullWidth={formFields.length <= 2}
                             />
                         ) : (

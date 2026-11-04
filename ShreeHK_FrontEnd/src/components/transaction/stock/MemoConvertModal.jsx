@@ -28,6 +28,7 @@ const ATTR_COLS = [
   { title: "Clarity", dataIndex: "clarity", width: 80 },
   { title: "Intensity", dataIndex: "intensity", width: 90 },
   { title: "Overtone", dataIndex: "overtone", width: 90 },
+  { title: "Lab", dataIndex: "lab", width: 70 },
   { title: "Color", dataIndex: "color", width: 80 },
   { title: "Size", dataIndex: "size", width: 70 },
   { title: "Polish", dataIndex: "polish", width: 70 },
@@ -41,7 +42,6 @@ const ATTR_COLS = [
   { title: "BGM", dataIndex: "bgm", width: 60 },
   { title: "Eyeclean", dataIndex: "eyeclean", width: 80 },
   { title: "Remark", dataIndex: "remark", width: 650 },
-  { title: "Lab", dataIndex: "lab", width: 70 },
 ];
 
 /**

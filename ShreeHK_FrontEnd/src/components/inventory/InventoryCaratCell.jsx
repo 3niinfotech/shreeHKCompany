@@ -6,7 +6,7 @@ const stopRowClick = (event) => {
   event.stopPropagation();
 };
 
-const InventoryCaratCell = ({ polishCarat, memoCarat = 0, memoItems = [], memoHistory = [] }) => {
+const InventoryCaratCell = ({ polishCarat, memoCarat = 0, memoItems = [], memoHistory = [], onOpenInvoice }) => {
   const displayValue =
     polishCarat != null && polishCarat !== "" ? polishCarat : "—";
   const hasMemoBadge = Number(memoCarat) > 0;
@@ -23,6 +23,7 @@ const InventoryCaratCell = ({ polishCarat, memoCarat = 0, memoItems = [], memoHi
           items={memoItems}
           history={memoHistory}
           totalCarat={memoCarat}
+          onOpenInvoice={onOpenInvoice}
         />
       }
     >

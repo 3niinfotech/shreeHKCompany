@@ -34,12 +34,16 @@ const stopRowClick = (event) => {
   event.stopPropagation();
 };
 
-const MemoCaratHoverPanel = ({ items = [], history = [], totalCarat = 0, totalPcs = null }) => {
+const MemoCaratHoverPanel = ({ items = [], history = [], totalCarat = 0, totalPcs = null, onOpenInvoice }) => {
   const navigate = useNavigate();
 
-  const goToInvoice = (event, { invoiceno, type }) => {
+  const goToInvoice = (event, { invoiceno, type, outwardId, entryno }) => {
     event.preventDefault();
     event.stopPropagation();
+    if (onOpenInvoice) {
+      onOpenInvoice({ invoiceno, type, outwardId, entryno });
+      return;
+    }
     if (!invoiceno) return;
     navigate(buildOutwardInvoiceUrl({ invoiceno, type }));
   };
@@ -101,6 +105,7 @@ const MemoCaratHoverPanel = ({ items = [], history = [], totalCarat = 0, totalPc
                         goToInvoice(event, {
                           invoiceno: item.invoiceno,
                           type: item.outward || "memo",
+                          outwardId: item.outwardId || item.entryno,
                         })
                       }
                     >
@@ -156,6 +161,8 @@ const MemoCaratHoverPanel = ({ items = [], history = [], totalCarat = 0, totalPc
                         goToInvoice(event, {
                           invoiceno: entry.invoice,
                           type: entry.action === "consign" ? "consign" : "memo",
+                          entryno: entry.entryno,
+                          outwardId: entry.outwardId || entry.entryno,
                         })
                       }
                     >

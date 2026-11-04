@@ -22,6 +22,7 @@ const BaseModal = ({
     className,
     rootClassName,
     footer,
+    extraHeaderRight,
     ...props
 }) => {
     const isEdit = variant === "edit";
@@ -33,21 +34,35 @@ const BaseModal = ({
         .join(" ");
 
     const titleNode = isEdit ? (
-        <span className="master-edit-modal__title-row">
-            {headerIcon ? (
-                <span className="master-edit-modal__icon" aria-hidden>
-                    {headerIcon}
+        <span className="master-edit-modal__title-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                {headerIcon ? (
+                    <span className="master-edit-modal__icon" aria-hidden>
+                        {headerIcon}
+                    </span>
+                ) : null}
+                <span className="master-edit-modal__title-text">
+                    <span className="master-edit-modal__title">{title}</span>
+                    {subtitle ? (
+                        <span className="master-edit-modal__subtitle">{subtitle}</span>
+                    ) : null}
+                </span>
+            </span>
+            {extraHeaderRight ? (
+                <span style={{ marginLeft: 'auto', flexShrink: 0 }}>
+                    {extraHeaderRight}
                 </span>
             ) : null}
-            <span className="master-edit-modal__title-text">
-                <span className="master-edit-modal__title">{title}</span>
-                {subtitle ? (
-                    <span className="master-edit-modal__subtitle">{subtitle}</span>
-                ) : null}
-            </span>
         </span>
     ) : (
-        <span className={styles.modalTitle}>{title}</span>
+        <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <span className={styles.modalTitle}>{title}</span>
+            {extraHeaderRight ? (
+                <span style={{ marginLeft: 'auto', flexShrink: 0 }}>
+                    {extraHeaderRight}
+                </span>
+            ) : null}
+        </span>
     );
 
     return (

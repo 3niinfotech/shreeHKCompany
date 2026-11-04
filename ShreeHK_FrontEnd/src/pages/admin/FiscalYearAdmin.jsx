@@ -23,6 +23,7 @@ const FiscalYearAdmin = () => {
   const [editForm] = Form.useForm();
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [isEditEnabled, setIsEditEnabled] = useState(false);
 
   const { data, isLoading, isFetching, refetch } = useFetchApi("fiscalYears", ENDPOINTS.portal.years);
   const { mutate: createYear, isPending: isCreating } = usePostApiRequest(
@@ -55,6 +56,7 @@ const FiscalYearAdmin = () => {
 
   const openEdit = (record) => {
     setEditing(record);
+    setIsEditEnabled(false);
     editForm.setFieldsValue({
       year: record.year,
       fromDate: record.fromDate ? dayjs(record.fromDate) : null,
@@ -236,14 +238,21 @@ const FiscalYearAdmin = () => {
 
       <Modal
         title={(
-          <Space>
-            <EditOutlined style={{ color: "var(--color-primary)" }} />
-            <span>Edit Financial Year</span>
-          </Space>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <Space>
+              <EditOutlined style={{ color: "var(--color-primary)" }} />
+              <span>Edit Financial Year</span>
+            </Space>
+            <EnableEditButton
+              isEnabled={isEditEnabled}
+              onToggle={() => setIsEditEnabled((prev) => !prev)}
+            />
+          </div>
         )}
         open={editOpen}
         rootClassName={styles.editModalRoot}
         onCancel={() => {
+          setIsEditEnabled(false);
           setEditOpen(false);
           setEditing(null);
           editForm.resetFields();
@@ -266,7 +275,7 @@ const FiscalYearAdmin = () => {
         mask={{ closable: false }}
         className={styles.editModal}
       >
-        <Form form={editForm} layout="vertical" onFinish={handleUpdate}>
+        <Form form={editForm} layout="vertical" disabled={!isEditEnabled} onFinish={handleUpdate}>
           <Form.Item name="year" label="Year Label" rules={[{ required: true, message: "Enter year label" }]}>
             <Input prefix={<CalendarOutlined />} />
           </Form.Item>

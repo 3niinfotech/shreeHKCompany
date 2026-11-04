@@ -107,10 +107,29 @@ const OUTWARD_TYPE_CONFIG = {
 const INITIAL_LINE = {
   sku: '',
   productId: null,
+  mfg_code: '',
+  diamond_no: '',
+  cost: 0,
+  location: '',
+  report_no: '',
   shape: '',
-  color: '',
   clarity: '',
+  intensity: '',
+  overtone: '',
   lab: '',
+  color: '',
+  size: '',
+  polish: '',
+  symmentry: '',
+  cut: '',
+  f_intensity: '',
+  mesurment: '',
+  table_pc: '',
+  depth_pc: '',
+  gridle: '',
+  bgm: '',
+  eyeclean: '',
+  remark: '',
   polishPcs: 0,
   polishCarat: 0,
   rapPrice: 0,
@@ -148,10 +167,29 @@ function buildLineFromProduct(row, p) {
     ...row,
     sku: p.sku,
     productId: p.id,
+    mfg_code: p.mfg_code || p.mfgCode || '',
+    diamond_no: p.diamond_no || p.d_no || p.diamondNo || '',
+    cost: p.cost != null ? p.cost : (p.purchase_price || 0),
+    location: p.location || p.loc || '',
+    report_no: p.report_no || p.certificate || '',
     shape: p.shape || '',
-    color: p.color || p.main_color || '',
     clarity: p.clarity || '',
+    intensity: p.intensity || '',
+    overtone: p.overtone || '',
     lab: p.lab || '',
+    color: p.color || p.main_color || '',
+    size: p.size || '',
+    polish: p.polish || '',
+    symmentry: p.symmentry || p.symm || p.symmetry || '',
+    cut: p.cut || '',
+    f_intensity: p.f_intensity || p.floIntensity || p.flo_intensity || '',
+    mesurment: p.mesurment || p.measurements || p.measurement || '',
+    table_pc: p.table_pc || p.tablePer || '',
+    depth_pc: p.depth_pc || p.depthPer || '',
+    gridle: p.gridle || p.girdle || '',
+    bgm: p.bgm || '',
+    eyeclean: p.eyeclean || p.eye_clean || '',
+    remark: p.remark || '',
     polishPcs: pcs,
     polishCarat: carat,
     rapPrice: rap,
@@ -652,7 +690,7 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
     [companyOptions, partyId],
   );
 
-  const renderCell = (record, field, placeholder, type = 'text') => {
+  const renderCell = (record, field, placeholder, type = 'text', cellWidth = 110) => {
     const required = field === 'sku';
     const hasError = isSubmitted && required && !record.productId && String(record.sku || '').trim();
     if (type === 'number') {
@@ -661,9 +699,9 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
           status={hasError ? 'error' : ''}
           value={record[field]}
           onChange={(v) => handleCellChange(record.key, field, v)}
-          style={{ width: 90 }}
+          style={{ width: cellWidth || 90 }}
           min={0}
-          step={field === 'polishCarat' || field === 'price' ? 0.01 : 1}
+          step={field === 'polishCarat' || field === 'price' || field === 'cost' ? 0.01 : 1}
         />
       );
     }
@@ -672,15 +710,55 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
         status={hasError ? 'error' : ''}
         value={record[field]}
         onChange={(e) => handleCellChange(record.key, field, e.target.value)}
-        onPressEnter={(e) => lookupSku(e.target.value, record.key)}
-        onBlur={(e) => lookupSku(e.target.value, record.key)}
+        onPressEnter={field === 'sku' ? (e) => lookupSku(e.target.value, record.key) : undefined}
+        onBlur={field === 'sku' ? (e) => lookupSku(e.target.value, record.key) : undefined}
         placeholder={placeholder}
-        style={{ width: 110 }}
+        style={{ width: cellWidth || 110 }}
       />
     );
   };
 
-  const columns = [
+  const saleMasterColumns = [
+    { title: 'No', width: 50, fixed: 'left', align: 'center', render: (_, __, i) => i + 1 },
+    { title: 'Mfg. code', width: 100, render: (_, r) => renderCell(r, 'mfg_code', 'Mfg', 'text', 90) },
+    { title: 'D. No.', width: 90, render: (_, r) => renderCell(r, 'diamond_no', 'D.No', 'text', 80) },
+    { title: 'SKU', width: 240, fixed: 'left', render: (_, r) => renderCell(r, 'sku', 'SKU', 'text', 220) },
+    { title: 'Pcs', width: 105, render: (_, r) => renderCell(r, 'polishPcs', '0', 'number', 90) },
+    { title: 'Carat', width: 115, render: (_, r) => renderCell(r, 'polishCarat', '0.00', 'number', 100) },
+    { title: 'Cost', width: 120, render: (_, r) => renderCell(r, 'cost', '0.00', 'number', 100) },
+    { title: 'Price', width: 120, render: (_, r) => renderCell(r, 'price', '0.00', 'number', 100) },
+    { title: 'Amount', width: 130, align: 'right', render: (_, r) => <strong>{(Number(r.amount) || 0).toFixed(2)}</strong> },
+    { title: 'LOC', width: 90, render: (_, r) => renderCell(r, 'location', 'LOC', 'text', 80) },
+    { title: 'Report No.', width: 110, render: (_, r) => renderCell(r, 'report_no', 'Report No.', 'text', 100) },
+    { title: 'Shape', width: 110, render: (_, r) => renderCell(r, 'shape', 'Shape', 'text', 100) },
+    { title: 'Clarity', width: 80, render: (_, r) => renderCell(r, 'clarity', 'Clarity', 'text', 70) },
+    { title: 'Intensity', width: 90, render: (_, r) => renderCell(r, 'intensity', 'Intensity', 'text', 80) },
+    { title: 'Overtone', width: 90, render: (_, r) => renderCell(r, 'overtone', 'Overtone', 'text', 80) },
+    { title: 'Lab', width: 70, render: (_, r) => renderCell(r, 'lab', 'Lab', 'text', 60) },
+    { title: 'Color', width: 80, render: (_, r) => renderCell(r, 'color', 'Color', 'text', 70) },
+    { title: 'Size', width: 70, render: (_, r) => renderCell(r, 'size', 'Size', 'text', 60) },
+    { title: 'Polish', width: 70, render: (_, r) => renderCell(r, 'polish', 'Polish', 'text', 60) },
+    { title: 'Symm', width: 70, render: (_, r) => renderCell(r, 'symmentry', 'Symm', 'text', 60) },
+    { title: 'Cut', width: 70, render: (_, r) => renderCell(r, 'cut', 'Cut', 'text', 60) },
+    { title: 'Flo. Intensity', width: 110, render: (_, r) => renderCell(r, 'f_intensity', 'Flo. Intensity', 'text', 100) },
+    { title: 'Measurements', width: 180, render: (_, r) => renderCell(r, 'mesurment', 'Measurements', 'text', 160) },
+    { title: 'Table%', width: 70, render: (_, r) => renderCell(r, 'table_pc', 'Table%', 'text', 60) },
+    { title: 'Depth%', width: 70, render: (_, r) => renderCell(r, 'depth_pc', 'Depth%', 'text', 60) },
+    { title: 'Gridle', width: 80, render: (_, r) => renderCell(r, 'gridle', 'Gridle', 'text', 70) },
+    { title: 'BGM', width: 60, render: (_, r) => renderCell(r, 'bgm', 'BGM', 'text', 50) },
+    { title: 'Eyeclean', width: 80, render: (_, r) => renderCell(r, 'eyeclean', 'Eyeclean', 'text', 70) },
+    { title: 'Remark', width: 650, render: (_, r) => renderCell(r, 'remark', 'Remark', 'text', 630) },
+    {
+      title: '',
+      width: 50,
+      fixed: 'right',
+      render: (_, record) => (
+        <Button type="text" danger icon={<Trash2 size={16} />} onClick={() => removeRow(record.key)} />
+      ),
+    },
+  ];
+
+  const genericColumns = [
     { title: 'No.', width: 50, render: (_, __, i) => i + 1 },
     { title: 'SKU', width: 120, render: (_, r) => renderCell(r, 'sku', 'SKU') },
     { title: 'Shape', width: 90, render: (_, r) => r.shape || '-' },
@@ -698,6 +776,8 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
       ),
     },
   ];
+
+  const columns = config.outwardType === 'sale' ? saleMasterColumns : genericColumns;
 
   return (
     <div className={`${styles.purchaseContainer} ${styles.purchaseContainerFixed}`}>
@@ -722,7 +802,7 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
           dataSource={items}
           pagination={false}
           size="small"
-          scroll={{ x: 'max-content', y: 4 * 54 }}
+          scroll={{ x: config.outwardType === 'sale' ? 3350 : 'max-content', y: 4 * 54 }}
         />
         <div className={`${styles.footerStats} ${styles.footerStatsBar}`}>
           <div className={styles.footerStatsTotals}>

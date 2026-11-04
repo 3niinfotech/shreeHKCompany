@@ -859,6 +859,37 @@ a.sku-table-link {
   cursor: help;
 }
 
+.inventory-pcs-cell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 100%;
+  min-height: 28px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.inventory-pcs-cell--has-memo {
+  cursor: help;
+}
+
+.inventory-pcs-value {
+  display: block;
+  line-height: 1.2;
+}
+
+.inventory-memo-pcs {
+  position: absolute;
+  top: 0px;
+  left: 16%;
+  transform: translateX(-50%);
+  color: var(--color-error);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
 .inventory-carat-value {
   display: block;
   line-height: 1.2;
