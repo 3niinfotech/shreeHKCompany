@@ -671,7 +671,7 @@ const TransactionStockTemplate = ({
         { name: 'party', label: 'Party', type: 'select', options: partyOptions, required: true, flex: c5 },
         { name: 'other_party', label: 'Other Party', type: 'select', options: partyOptions, flex: c5 },
         { name: 'paid_amount', label: 'Paid Amount', type: 'number', flex: c5, disabled: true },
-        { name: 'due_amount', label: 'Due Amount', type: 'number', flex: c5, disabled: true },
+        { name: 'due_amount', label: 'Due Amount', type: 'number', flex: '0 0 calc(20% - 13px)', disabled: true },
         {
           type: 'custom',
           noFormItem: true,
