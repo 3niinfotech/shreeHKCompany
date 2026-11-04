@@ -661,6 +661,35 @@ const TransactionStockTemplate = ({
         { name: 'other_party', label: 'Other Party', type: 'select', options: partyOptions, flex: c5 },
         { name: 'paid_amount', label: 'Paid Amount', type: 'number', flex: c5, disabled: true },
         { name: 'due_amount', label: 'Due Amount', type: 'number', flex: c5, disabled: true },
+        {
+          type: 'custom',
+          noFormItem: true,
+          flex: '1 1 calc(80% - 13px)',
+          render: () => (
+            <Form.Item
+              label="Bank"
+              colon={false}
+            >
+              <div className={`${styles.stockEditBankSlot} ${styles.stockEditBankSlotWide}`}>
+                {editCompanyBanks.length > 0 ? (
+                  <Form.Item name="selected_bank_indices" noStyle>
+                    <Checkbox.Group
+                      style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}
+                      options={editCompanyBanks.map((b, idx) => ({
+                        label: b.bank_label || b.bank_name || `Bank #${idx + 1}`,
+                        value: idx,
+                      }))}
+                    />
+                  </Form.Item>
+                ) : (
+                  <span style={{ fontSize: '12px', color: 'var(--color-text-muted, #8c8c8c)', fontStyle: 'italic', whiteSpace: 'nowrap' }}>
+                    No bank details added for this company
+                  </span>
+                )}
+              </div>
+            </Form.Item>
+          ),
+        },
       ];
     }
     return [
@@ -2364,34 +2393,6 @@ const TransactionStockTemplate = ({
                 ) : (
                   <>
                     <DynamicForm fields={editMainFields} />
-                    {isVenyaSaleEdit ? (
-                      <Row gutter={[16, 0]} className={styles.stockEditPayRow}>
-                        <Col span={24}>
-                          <Form.Item
-                            label={<span className={styles.stockEditBankLabel}>Bank</span>}
-                            colon={false}
-                          >
-                            <div className={`${styles.stockEditBankSlot} ${styles.stockEditBankSlotWide}`}>
-                              {editCompanyBanks.length > 0 ? (
-                                <Form.Item name="selected_bank_indices" noStyle>
-                                  <Checkbox.Group
-                                    style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}
-                                    options={editCompanyBanks.map((b, idx) => ({
-                                      label: b.bank_label || b.bank_name || `Bank #${idx + 1}`,
-                                      value: idx,
-                                    }))}
-                                  />
-                                </Form.Item>
-                              ) : (
-                                <span style={{ fontSize: '11px', color: 'var(--color-text-muted, #8c8c8c)', fontStyle: 'italic', whiteSpace: 'nowrap' }}>
-                                  No bank details added for this company
-                                </span>
-                              )}
-                            </div>
-                          </Form.Item>
-                        </Col>
-                      </Row>
-                    ) : null}
                   </>
                 )}
                 <div className={styles.stockEditProductsHead}>
