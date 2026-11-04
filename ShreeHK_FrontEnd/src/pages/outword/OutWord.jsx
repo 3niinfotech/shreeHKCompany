@@ -384,7 +384,7 @@ const OutWord = () => {
             span: 12,
             render: () => (
                 <Form.Item
-                    label={<span className={styles.stockEditBankLabel}>Bank</span>}
+                    label="Bank"
                     colon={false}
                 >
                     <div className={styles.stockEditBankSlot}>
@@ -1041,7 +1041,7 @@ const OutWord = () => {
                                             <span>Price : <b>{editProductTotals.price.toFixed(2)}</b></span>
                                             <span>Amount : <b>{editProductTotals.amount.toFixed(2)}</b></span>
                                         </div>
-                                        <Form.Item name="narretion" label="Narration" className={styles.stockEditTotalsNarration}>
+                                        <Form.Item name="narretion" label="Narration" colon={false} className={styles.stockEditTotalsNarration}>
                                             <Input placeholder="Narration..." />
                                         </Form.Item>
                                     </div>
