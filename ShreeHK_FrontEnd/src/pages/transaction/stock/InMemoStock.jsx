@@ -1,6 +1,13 @@
 import TransactionStockTemplate, { defaultProductColumns } from './TransactionStockTemplate';
 import { TRANSACTION_STOCK_KEYS } from '../../../api/services/transactionStockService';
 import { ENDPOINTS } from '../../../api/endpoints';
+import styles from '../../../assets/scss/pages/outward.module.scss';
+
+const inMemoProductColumns = defaultProductColumns.map((col) =>
+  col.key === 'sku'
+    ? { ...col, className: styles.childSkuCell, ellipsis: false }
+    : col
+);
 
 const InMemoStock = () => (
   <TransactionStockTemplate
@@ -11,7 +18,7 @@ const InMemoStock = () => (
     deleteEndpoint={ENDPOINTS.transactionStock.inward.delete}
     entryPath="/transaction/in-memo/entry"
     infiniteScroll
-    productColumns={defaultProductColumns}
+    productColumns={inMemoProductColumns}
     typeFilterOptions={[
       { value: 'memo', label: 'Memo' },
       { value: 'consign', label: 'Consign' },

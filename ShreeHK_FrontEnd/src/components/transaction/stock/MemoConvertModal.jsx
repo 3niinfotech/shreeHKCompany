@@ -239,12 +239,16 @@ const MemoConvertModal = ({
           : (p.sell_price ?? p.price),
       ) || 0;
       const cost = Number(p.cost) || 0;
+      const rapPrice = Number(p.rapPrice ?? p.rapnet_price ?? p.rap_price) || 0;
+      const disc = p.disc != null && p.disc !== "" ? Number(p.disc) : (rapPrice > 0 ? ((price * 100) / rapPrice - 100) : 0);
       return {
         id: p.id || id,
         product_id: p.product_id || p.id || id,
         outward_item_id: p.outward_item_id || p.id || id,
         ...pickAttr(p),
         cost,
+        rapPrice,
+        disc: Number.isFinite(disc) ? +disc.toFixed(2) : 0,
         maxPcs: pcs,
         maxCarat: carat,
         polish_pcs: pcs,
@@ -511,7 +515,7 @@ const MemoConvertModal = ({
       {
         title: "No",
         key: "no",
-        width: 48,
+        width: 50,
         fixed: "left",
         align: "center",
         render: (_v, _r, idx) => idx + 1,
@@ -574,8 +578,24 @@ const MemoConvertModal = ({
               onChange={(val) => updateRow(row.id, "cost", val ?? 0)}
             />
           ) : (
-            Number(v || 0).toFixed(2)
+            row.cost || row.purchase_price || "-"
           ),
+      },
+      {
+        title: "Rap Price",
+        dataIndex: "rapPrice",
+        key: "rapPrice",
+        width: 100,
+        align: "right",
+        render: (v, r) => (r.rapPrice ? `$${Number(r.rapPrice).toLocaleString()}` : "-"),
+      },
+      {
+        title: "Disc %",
+        dataIndex: "disc",
+        key: "disc",
+        width: 90,
+        align: "right",
+        render: (v, r) => (r.disc != null && r.disc !== "" ? `${Number(r.disc).toFixed(2)}%` : "-"),
       },
       {
         title: "Price",
@@ -611,13 +631,13 @@ const MemoConvertModal = ({
         key: c.dataIndex,
         width: c.width,
         ellipsis: true,
-        render: (v) => (v == null || v === "" ? "" : String(v)),
+        render: (v) => (v == null || v === "" ? "-" : String(v)),
       })),
     ];
     return cols;
   }, [isSale, isPurchase, isSaleReturn]);
 
-  const scrollX = 48 + 100 + 90 + 240 + 105 + 115 + 120 + 120 + 130 + 90
+  const scrollX = 50 + 100 + 90 + 240 + 105 + 115 + 120 + 100 + 90 + 120 + 130 + 90
     + ATTR_COLS.reduce((s, c) => s + c.width, 0);
 
   const titleNode = (

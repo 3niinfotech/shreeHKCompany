@@ -726,6 +726,8 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
     { title: 'Pcs', width: 105, render: (_, r) => renderCell(r, 'polishPcs', '0', 'number', 90) },
     { title: 'Carat', width: 115, render: (_, r) => renderCell(r, 'polishCarat', '0.00', 'number', 100) },
     { title: 'Cost', width: 120, render: (_, r) => renderCell(r, 'cost', '0.00', 'number', 100) },
+    { title: 'Rap Price', width: 100, align: 'right', render: (_, r) => (r.rapPrice ? `$${Number(r.rapPrice).toLocaleString()}` : '-') },
+    { title: 'Disc %', width: 90, align: 'right', render: (_, r) => (r.disc != null && r.disc !== '' ? `${Number(r.disc).toFixed(2)}%` : '-') },
     { title: 'Price', width: 120, render: (_, r) => renderCell(r, 'price', '0.00', 'number', 100) },
     { title: 'Amount', width: 130, align: 'right', render: (_, r) => <strong>{(Number(r.amount) || 0).toFixed(2)}</strong> },
     { title: 'LOC', width: 90, render: (_, r) => renderCell(r, 'location', 'LOC', 'text', 80) },
@@ -759,14 +761,37 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
   ];
 
   const genericColumns = [
-    { title: 'No.', width: 50, render: (_, __, i) => i + 1 },
-    { title: 'SKU', width: 120, render: (_, r) => renderCell(r, 'sku', 'SKU') },
-    { title: 'Shape', width: 90, render: (_, r) => r.shape || '-' },
-    { title: 'Carat', width: 100, render: (_, r) => renderCell(r, 'polishCarat', '', 'number') },
-    { title: 'Color', width: 80, render: (_, r) => r.color || '-' },
+    { title: 'No', width: 50, fixed: 'left', align: 'center', render: (_, __, i) => i + 1 },
+    { title: 'Mfg. code', width: 100, render: (_, r) => r.mfg_code || r.mfgCode || '-' },
+    { title: 'D. No.', width: 90, render: (_, r) => r.diamond_no || r.d_no || '-' },
+    { title: 'SKU', width: 240, fixed: 'left', render: (_, r) => renderCell(r, 'sku', 'SKU', 'text', 220) },
+    { title: 'Pcs', width: 105, render: (_, r) => (r.polishPcs != null && r.polishPcs !== '' ? r.polishPcs : '-') },
+    { title: 'Carat', width: 115, render: (_, r) => renderCell(r, 'polishCarat', '0.00', 'number', 100) },
+    { title: 'Cost', width: 120, render: (_, r) => r.cost || r.purchase_price || '-' },
+    { title: 'Rap Price', width: 100, align: 'right', render: (_, r) => (r.rapPrice ? `$${Number(r.rapPrice).toLocaleString()}` : '-') },
+    { title: 'Disc %', width: 90, align: 'right', render: (_, r) => (r.disc != null && r.disc !== '' ? `${Number(r.disc).toFixed(2)}%` : '-') },
+    { title: 'Price', width: 120, render: (_, r) => renderCell(r, 'price', '0.00', 'number', 100) },
+    { title: 'Amount', width: 130, align: 'right', render: (_, r) => <strong>{(Number(r.amount) || 0).toFixed(2)}</strong> },
+    { title: 'LOC', width: 90, render: (_, r) => r.location || r.loc || '-' },
+    { title: 'Report No.', width: 110, render: (_, r) => r.report_no || r.certificate || '-' },
+    { title: 'Shape', width: 110, render: (_, r) => r.shape || '-' },
     { title: 'Clarity', width: 80, render: (_, r) => r.clarity || '-' },
-    { title: 'Price', width: 100, render: (_, r) => renderCell(r, 'price', '', 'number') },
-    { title: 'AMOUNT', width: 110, align: 'right', render: (_, r) => (Number(r.amount) || 0).toFixed(2) },
+    { title: 'Intensity', width: 90, render: (_, r) => r.intensity || '-' },
+    { title: 'Overtone', width: 90, render: (_, r) => r.overtone || '-' },
+    { title: 'Lab', width: 70, render: (_, r) => r.lab || '-' },
+    { title: 'Color', width: 80, render: (_, r) => r.color || '-' },
+    { title: 'Size', width: 70, render: (_, r) => r.size || '-' },
+    { title: 'Polish', width: 70, render: (_, r) => r.polish || '-' },
+    { title: 'Symm', width: 70, render: (_, r) => r.symmentry || r.symm || '-' },
+    { title: 'Cut', width: 70, render: (_, r) => r.cut || '-' },
+    { title: 'Flo. Intensity', width: 110, render: (_, r) => r.f_intensity || r.floIntensity || '-' },
+    { title: 'Measurements', width: 180, render: (_, r) => r.mesurment || r.measurements || '-' },
+    { title: 'Table%', width: 70, render: (_, r) => r.table_pc || r.tablePer || '-' },
+    { title: 'Depth%', width: 70, render: (_, r) => r.depth_pc || r.depthPer || '-' },
+    { title: 'Gridle', width: 80, render: (_, r) => r.gridle || r.girdle || '-' },
+    { title: 'BGM', width: 60, render: (_, r) => r.bgm || '-' },
+    { title: 'Eyeclean', width: 80, render: (_, r) => r.eyeclean || '-' },
+    { title: 'Remark', width: 650, render: (_, r) => r.remark || '-' },
     {
       title: '',
       width: 50,
@@ -802,7 +827,7 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
           dataSource={items}
           pagination={false}
           size="small"
-          scroll={{ x: config.outwardType === 'sale' ? 3350 : 'max-content', y: 4 * 54 }}
+          scroll={{ x: 3550, y: 4 * 54 }}
         />
         <div className={`${styles.footerStats} ${styles.footerStatsBar}`}>
           <div className={styles.footerStatsTotals}>

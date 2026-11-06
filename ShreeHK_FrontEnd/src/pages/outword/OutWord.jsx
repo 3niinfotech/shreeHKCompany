@@ -13,6 +13,7 @@ import { toastSuccess, toastWarning, toastApiError } from '../../utils/toastNoti
 import { fetchProductDetail } from '../../api/services/productService';
 import useFiltersFormFields from "../../components/common/filters/FilterFormFields";
 import { BaseModal } from "../../components/common/modals";
+import EnableEditButton from "../../components/common/ui/EnableEditButton";
 import DynamicForm from '../../components/common/ui/DynamicFormField';
 import { ConfirmDeleteModal } from "../../components/common/modals";
 import AdvancedFilterPanel, { filterPanelStyles } from '../../components/common/filters/AdvancedFilterPanel';
