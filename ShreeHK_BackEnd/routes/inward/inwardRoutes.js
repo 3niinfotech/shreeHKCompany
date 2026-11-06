@@ -1283,14 +1283,15 @@ inwardRouter.post("/inward/update", authenticateToken, async (req, res) => {
     if (post.invoiceno != null) updateFields.invoiceno = post.invoiceno;
     if (post.paid_amount != null) updateFields.paid_amount = Number(post.paid_amount) || 0;
     if (post.due_amount != null) updateFields.due_amount = Number(post.due_amount) || 0;
-    if (post.boc != null) updateFields.boc = post.boc ? 1 : 0;
-    if (post.citi != null) updateFields.citi = post.citi ? 1 : 0;
-    if (post.dbs != null) updateFields.dbs = post.dbs ? 1 : 0;
-    if (post.sc != null) updateFields.sc = post.sc ? 1 : 0;
-    if (post.boc_sksm != null) updateFields.boc_sksm = post.boc_sksm ? 1 : 0;
-    if (post.citi_sksm != null) updateFields.citi_sksm = post.citi_sksm ? 1 : 0;
     if (post.shipping_name != null) updateFields.shipping_name = post.shipping_name;
     if (post.narretion != null) updateFields.narretion = post.narretion;
+
+    // Shared stock-edit payload includes outward invoice bank flags (boc, citi, …)
+    // and other dai_outward-only fields. dai_inward does not have those columns.
+    const inwardColumns = new Set(Object.keys(existing));
+    for (const key of Object.keys(updateFields)) {
+      if (!inwardColumns.has(key)) delete updateFields[key];
+    }
 
     if (Array.isArray(post.products) && post.products.length > 0) {
       let totalAmount = 0;

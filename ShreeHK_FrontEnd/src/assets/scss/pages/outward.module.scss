@@ -433,6 +433,23 @@
         background: transparent !important;
       }
 
+      :global(.ant-table-tbody > tr:not(.ant-table-measure-row) > td.ant-table-cell).childSkuCell,
+      :global(.ant-table-thead > tr > th.ant-table-cell).childSkuCell {
+        white-space: normal !important;
+        overflow: hidden !important;
+        word-break: break-word !important;
+        overflow-wrap: anywhere !important;
+
+        :global(a.sku-table-link),
+        :global(a.inventory-sku-link) {
+          display: inline !important;
+          max-width: 100%;
+          white-space: normal !important;
+          overflow-wrap: anywhere !important;
+          word-break: break-word !important;
+        }
+      }
+
       :global(.ant-table-tbody > tr:not(.ant-table-measure-row):last-child > td) {
         border-bottom: 1px solid var(--color-border) !important;
       }

@@ -843,7 +843,19 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
       title: "Cost",
       dataIndex: "cost",
       width: 120,
-      render: (v) => Number(v || 0).toFixed(2),
+      render: (v, r) => r.cost || r.purchase_price || "-",
+    },
+    {
+      title: "Rap Price",
+      dataIndex: "rapPrice",
+      width: 100,
+      render: (v) => (v ? `$${Number(v || 0).toLocaleString()}` : "-"),
+    },
+    {
+      title: "Disc %",
+      dataIndex: "disc",
+      width: 90,
+      render: (v) => (v != null && v !== "" ? `${Number(v).toFixed(2)}%` : "-"),
     },
     {
       title: "Price",
@@ -903,29 +915,14 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
   ];
 
   const genericColumns = [
-    { title: "No", width: 50, align: "center", render: (_, __, idx) => idx + 1 },
-    {
-      title: "Company",
-      dataIndex: "company",
-      width: 90,
-      align: "center",
-      ellipsis: true,
-      render: (_, record) => {
-        const code =
-          record.companyCode ||
-          record.company_code ||
-          companyCodeMap.get(Number(record.company)) ||
-          record.companyName ||
-          record.company_name ||
-          "—";
-        return code || "—";
-      },
-    },
+    { title: "No", width: 50, fixed: "left", align: "center", render: (_, __, idx) => idx + 1 },
+    { title: "Mfg. code", dataIndex: "mfg_code", width: 100, render: (v) => v || "-" },
+    { title: "D. No.", dataIndex: "diamond_no", width: 90, render: (v) => v || "-" },
     {
       title: "SKU",
       dataIndex: "sku",
-      width: 130,
-      align: "center",
+      width: 240,
+      fixed: "left",
       render: (text, record) => {
         if (record._isManual && !record._resolved) {
           return (
@@ -944,16 +941,27 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
         return <SkuLink sku={text} record={record} />;
       },
     },
-    { title: "Shape", dataIndex: "shape", width: 90, align: "center" },
-    { title: "Color", dataIndex: "color", width: 70, align: "center" },
-    { title: "Clarity", dataIndex: "clarity", width: 80, align: "center" },
-    { title: "Lab", dataIndex: "lab", width: 60, align: "center" },
-    { title: "Cert #", dataIndex: "certificate", width: 120, align: "center" },
+    {
+      title: "Company",
+      dataIndex: "company",
+      width: 90,
+      align: "center",
+      ellipsis: true,
+      render: (_, record) => {
+        const code =
+          record.companyCode ||
+          record.company_code ||
+          companyCodeMap.get(Number(record.company)) ||
+          record.companyName ||
+          record.company_name ||
+          "—";
+        return code || "—";
+      },
+    },
     {
       title: "Pcs",
       dataIndex: "polishPcs",
-      width: 80,
-      align: "center",
+      width: 105,
       render: (value, record) => (
         <InputNumber
           value={value}
@@ -973,8 +981,7 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
     {
       title: "Carat",
       dataIndex: "polishCarat",
-      width: 80,
-      align: "center",
+      width: 115,
       render: (value, record) => (
         <InputNumber
           value={value}
@@ -990,7 +997,19 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
         />
       ),
     },
-    { title: "Rap Price", dataIndex: "rapPrice", width: 100, align: "center", render: (v) => `$${Number(v || 0).toLocaleString()}` },
+    {
+      title: "Cost",
+      dataIndex: "cost",
+      width: 120,
+      render: (v, r) => r.cost || r.purchase_price || "-",
+    },
+    {
+      title: "Rap Price",
+      dataIndex: "rapPrice",
+      width: 100,
+      align: "center",
+      render: (v, r) => (r.rapPrice ? `$${Number(r.rapPrice || 0).toLocaleString()}` : "-"),
+    },
     {
       title: "Disc %",
       dataIndex: "disc",
@@ -1007,7 +1026,7 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
       ),
     },
     {
-      title: "Price/Ct",
+      title: "Price",
       dataIndex: "price",
       width: 120,
       align: "center",
@@ -1037,9 +1056,30 @@ const OnMemoModal = ({ open, onClose, selectedRows = [], onSubmit, actionType = 
         />
       ),
     },
+    { title: "LOC", dataIndex: "location", width: 90, render: (v) => v || "-" },
+    { title: "Report No.", dataIndex: "report_no", width: 110, render: (v, r) => v || r.certificate || "-" },
+    { title: "Shape", dataIndex: "shape", width: 110, align: "center", render: (v) => v || "-" },
+    { title: "Clarity", dataIndex: "clarity", width: 80, align: "center", render: (v) => v || "-" },
+    { title: "Intensity", dataIndex: "intensity", width: 90, render: (v) => v || "-" },
+    { title: "Overtone", dataIndex: "overtone", width: 90, render: (v) => v || "-" },
+    { title: "Lab", dataIndex: "lab", width: 70, align: "center", render: (v) => v || "-" },
+    { title: "Color", dataIndex: "color", width: 80, align: "center", render: (v) => v || "-" },
+    { title: "Size", dataIndex: "size", width: 70, render: (v) => v || "-" },
+    { title: "Polish", dataIndex: "polish", width: 70, render: (v) => v || "-" },
+    { title: "Symm", dataIndex: "symmentry", width: 70, render: (v, r) => v || r.symm || "-" },
+    { title: "Cut", dataIndex: "cut", width: 70, render: (v) => v || "-" },
+    { title: "Flo. Intensity", dataIndex: "f_intensity", width: 110, render: (v, r) => v || r.floIntensity || "-" },
+    { title: "Measurements", dataIndex: "mesurment", width: 180, render: (v, r) => v || r.measurements || "-" },
+    { title: "Table%", dataIndex: "table_pc", width: 70, render: (v, r) => v || r.tablePer || "-" },
+    { title: "Depth%", dataIndex: "depth_pc", width: 70, render: (v) => v || "-" },
+    { title: "Gridle", dataIndex: "gridle", width: 80, render: (v, r) => v || r.girdle || "-" },
+    { title: "BGM", dataIndex: "bgm", width: 60, render: (v) => v || "-" },
+    { title: "Eyeclean", dataIndex: "eyeclean", width: 80, render: (v, r) => v || r.eye_clean || "-" },
+    { title: "Remark", dataIndex: "remark", width: 650, render: (v) => v || "-" },
     {
-      title: "Action",
+      title: "",
       width: 60,
+      fixed: "right",
       align: "center",
       render: (_, record) => (
         <Button

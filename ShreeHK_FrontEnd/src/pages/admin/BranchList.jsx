@@ -27,6 +27,7 @@ import { ENDPOINTS } from "../../api/endpoints";
 import DynamicForm from "../../components/common/ui/DynamicFormField";
 import { branchFields } from "./branchData";
 import PageHeroHeader from "../../components/common/PageHeroHeader";
+import EnableEditButton from "../../components/common/ui/EnableEditButton";
 import useAuthStore from "../../store/Auth.Store";
 import styles from "../../assets/scss/pages/admin/tenantCompany.module.scss";
 import branchStyles from "../../assets/scss/pages/admin/branch.module.scss";
@@ -377,9 +378,8 @@ const BranchList = () => {
                     </div>
                     <div className={styles.bankLinkedText}>
                       {linkedNames.length > 0 || Number(item?.company_count) > 0
-                        ? `${linkedNames.length || Number(item?.company_count)} ${
-                            (linkedNames.length || Number(item?.company_count)) === 1 ? "company" : "companies"
-                          } linked`
+                        ? `${linkedNames.length || Number(item?.company_count)} ${(linkedNames.length || Number(item?.company_count)) === 1 ? "company" : "companies"
+                        } linked`
                         : "No company linked"}
                     </div>
                   </div>

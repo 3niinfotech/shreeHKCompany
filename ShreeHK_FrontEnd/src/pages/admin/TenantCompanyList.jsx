@@ -28,6 +28,7 @@ import { ENDPOINTS } from "../../api/endpoints";
 import DynamicForm from "../../components/common/ui/DynamicFormField";
 import { tenantCompanyFields } from "./tenantCompanyData";
 import PageHeroHeader from "../../components/common/PageHeroHeader";
+import EnableEditButton from "../../components/common/ui/EnableEditButton";
 import useAuthStore from "../../store/Auth.Store";
 import { resolveUploadUrl } from "../../utils/uploadBaseUrl";
 import styles from "../../assets/scss/pages/admin/tenantCompany.module.scss";

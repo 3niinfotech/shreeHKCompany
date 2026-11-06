@@ -101,7 +101,7 @@ const RapNetPriceList = () => {
 
     return (
         <>
-           
+
             {loadError && (
                 <Alert
                     type="error"

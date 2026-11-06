@@ -413,11 +413,11 @@ const InwardEntryForm = ({
       width: inputW,
       ...(isLabFilled
         ? {
-            backgroundColor: '#f0fdf4',
-            borderColor: '#86efac',
-            color: '#15803d',
-            transition: 'background-color 0.3s ease, border-color 0.3s ease',
-          }
+          backgroundColor: '#f0fdf4',
+          borderColor: '#86efac',
+          color: '#15803d',
+          transition: 'background-color 0.3s ease, border-color 0.3s ease',
+        }
         : {}),
     };
 
@@ -430,80 +430,60 @@ const InwardEntryForm = ({
 
   const w = wideLineFields
     ? {
-        no: 56,
-        sku: 180,
-        rPcs: 110,
-        pPcs: 110,
-        pCarat: 120,
-        cost: 130,
-        price: 130,
-        amount: 140,
-        mainColor: 140,
-        loc: 110,
-        lab: 110,
-        reportNo: 160,
-        shape: 140,
-        clarity: 120,
-        action: 56,
-      }
+      no: 56,
+      sku: 180,
+      rPcs: 110,
+      pPcs: 110,
+      pCarat: 120,
+      cost: 130,
+      price: 130,
+      amount: 140,
+      mainColor: 140,
+      loc: 110,
+      lab: 110,
+      reportNo: 160,
+      shape: 140,
+      clarity: 120,
+      action: 56,
+    }
     : {
-        no: 50,
-        sku: 120,
-        rPcs: 90,
-        pPcs: 90,
-        pCarat: 100,
-        cost: 100,
-        price: 100,
-        amount: 120,
-        mainColor: 100,
-        loc: 100,
-        lab: 100,
-        reportNo: 120,
-        shape: 100,
-        clarity: 100,
-        action: 50,
-      };
+      no: 50,
+      sku: 120,
+      rPcs: 90,
+      pPcs: 90,
+      pCarat: 100,
+      cost: 100,
+      price: 100,
+      amount: 120,
+      mainColor: 100,
+      loc: 100,
+      lab: 100,
+      reportNo: 120,
+      shape: 100,
+      clarity: 100,
+      action: 50,
+    };
 
-  const baseColumns = [
-    { title: 'No.', width: w.no, fixed: 'left', render: (_, __, index) => index + 1 },
-    ...(!hideMfgDno
-      ? [
-          { title: 'Mfg. code', width: 100, fixed: 'left', render: (_, r) => renderInput(r, 'mfgCode', 'Mfg') },
-          { title: 'D. No.', width: 100, fixed: 'left', render: (_, r) => renderInput(r, 'dNo', 'D.No') },
-        ]
-      : []),
-    { title: 'SKU', width: w.sku, fixed: 'left', render: (_, r) => renderInput(r, 'sku', 'SKU') },
-  ];
-  const pcsTitle = polishFieldLabels ? 'Polish Pcs' : 'P.Pcs';
-  const caratTitle = polishFieldLabels ? 'Polish Carat' : 'P.Carat';
+  const pcsTitle = polishFieldLabels ? 'Polish Pcs' : 'Pcs';
+  const caratTitle = polishFieldLabels ? 'Polish Carat' : 'Carat';
   const rPcsColumn = { title: 'R.Pcs', width: w.rPcs, render: (_, r) => renderInput(r, 'rPcs', 'R.Pcs', 'number') };
-  const restColumns = [
-    { title: pcsTitle, width: w.pPcs, render: (_, r) => renderInput(r, 'pPcs', pcsTitle, 'number') },
-    { title: caratTitle, width: w.pCarat, render: (_, r) => renderInput(r, 'pCarat', caratTitle, 'number') },
-    { title: 'Cost', width: w.cost, render: (_, r) => renderInput(r, 'cost', 'Cost', 'number') },
-    { title: 'Price', width: w.price, render: (_, r) => renderInput(r, 'price', 'Price', 'number') },
-    { title: 'Amount', width: w.amount, align: 'right', render: (_, r) => renderInput(r, 'amount', 'Amount', 'number') },
-    { title: 'Main Color', width: w.mainColor, render: (_, r) => renderInput(r, 'mainColor', 'Color') },
-    { title: 'LOC', width: w.loc, render: (_, r) => renderInput(r, 'loc', 'LOC') },
+
+  const columns = [
+    { title: 'No', width: 50, fixed: 'left', align: 'center', render: (_, __, index) => index + 1 },
+    { title: 'Mfg. code', width: 100, render: (_, r) => (!hideMfgDno ? renderInput(r, 'mfgCode', 'Mfg') : (r.mfgCode || r.mfg_code || '-')) },
+    { title: 'D. No.', width: 90, render: (_, r) => (!hideMfgDno ? renderInput(r, 'dNo', 'D.No') : (r.dNo || r.diamond_no || '-')) },
+    { title: 'SKU', width: 240, fixed: 'left', render: (_, r) => renderInput(r, 'sku', 'SKU') },
+    ...(showRPcs ? [rPcsColumn] : []),
+    { title: 'Pcs', width: 105, render: (_, r) => renderInput(r, 'pPcs', pcsTitle, 'number') },
+    { title: 'Carat', width: 115, render: (_, r) => renderInput(r, 'pCarat', caratTitle, 'number') },
+    { title: 'Cost', width: 120, render: (_, r) => r.cost || r.purchase_price || '-' },
+    { title: 'Rap Price', width: 100, align: 'right', render: (_, r) => (r.rapPrice || r.rapnet_price || r.rap_price ? `$${Number(r.rapPrice || r.rapnet_price || r.rap_price).toLocaleString()}` : '-') },
+    { title: 'Disc %', width: 90, align: 'right', render: (_, r) => (r.disc != null && r.disc !== '' ? `${Number(r.disc).toFixed(2)}%` : '-') },
+    { title: 'Price', width: 120, render: (_, r) => renderInput(r, 'price', 'Price', 'number') },
+    { title: 'Amount', width: 130, align: 'right', render: (_, r) => renderInput(r, 'amount', 'Amount', 'number') },
+    { title: 'LOC', width: 90, render: (_, r) => renderInput(r, 'loc', 'LOC') },
     {
-      title: 'Lab',
-      width: w.lab,
-      render: (_, r) => (
-        <Select
-          value={r.lab || 'GIA'}
-          onChange={(val) => handleUpdateCell(r.key, 'lab', val)}
-          style={{ width: '100%' }}
-          options={[
-            { value: 'GIA', label: 'GIA' },
-            { value: 'IGI', label: 'IGI' },
-            { value: 'HRD', label: 'HRD' },
-            { value: 'NONE', label: 'None' },
-          ]}
-        />
-      ),
-    },
-    {
-      title: 'Report No',
+      title: 'Report No.',
       width: wideLineFields ? 220 : 180,
       render: (_, r) => {
         const isFetching = Boolean(fetchingRowKeys[r.key]);
@@ -543,14 +523,45 @@ const InwardEntryForm = ({
         );
       },
     },
-    { title: 'Shape', width: w.shape, render: (_, r) => renderInput(r, 'shape', 'Shape') },
-    { title: 'Clarity', width: w.clarity, render: (_, r) => renderInput(r, 'clarity', 'Clarity') },
+    { title: 'Shape', width: 110, render: (_, r) => renderInput(r, 'shape', 'Shape') },
+    { title: 'Clarity', width: 80, render: (_, r) => renderInput(r, 'clarity', 'Clarity') },
+    { title: 'Intensity', width: 90, render: (_, r) => r.intensity || '-' },
+    { title: 'Overtone', width: 90, render: (_, r) => r.overtone || '-' },
+    {
+      title: 'Lab',
+      width: 70,
+      render: (_, r) => (
+        <Select
+          value={r.lab || 'GIA'}
+          onChange={(val) => handleUpdateCell(r.key, 'lab', val)}
+          style={{ width: '100%' }}
+          options={[
+            { value: 'GIA', label: 'GIA' },
+            { value: 'IGI', label: 'IGI' },
+            { value: 'HRD', label: 'HRD' },
+            { value: 'NONE', label: 'None' },
+          ]}
+        />
+      ),
+    },
+    { title: 'Color', width: 80, render: (_, r) => renderInput(r, 'mainColor', 'Color') },
+    { title: 'Size', width: 70, render: (_, r) => r.size || '-' },
+    { title: 'Polish', width: 70, render: (_, r) => r.polish || '-' },
+    { title: 'Symm', width: 70, render: (_, r) => r.symm || r.symmentry || '-' },
+    { title: 'Cut', width: 70, render: (_, r) => r.cut || '-' },
+    { title: 'Flo. Intensity', width: 110, render: (_, r) => r.floIntensity || r.f_intensity || '-' },
+    { title: 'Measurements', width: 180, render: (_, r) => r.measurements || r.mesurment || '-' },
+    { title: 'Table%', width: 70, render: (_, r) => r.tablePer || r.table_pc || '-' },
+    { title: 'Depth%', width: 70, render: (_, r) => r.depthPer || r.depth_pc || '-' },
+    { title: 'Gridle', width: 80, render: (_, r) => r.girdle || r.gridle || '-' },
+    { title: 'BGM', width: 60, render: (_, r) => r.bgm || '-' },
+    { title: 'Eyeclean', width: 80, render: (_, r) => r.eyeclean || r.eye_clean || r.eyeClean || '-' },
+    { title: 'Remark', width: 650, render: (_, r) => renderInput(r, 'remark', 'Remark') },
     {
       title: '', key: 'action', fixed: 'right', width: w.action,
       render: (_, record) => <Button type="text" danger icon={<Trash2 size={16} />} onClick={() => removeRow(record.key)} />,
     },
   ];
-  const columns = showRPcs ? [...baseColumns, rPcsColumn, ...restColumns] : [...baseColumns, ...restColumns];
 
   const lineRowHeight = 54;
   const tableBodyScrollY = useMemo(() => {
