@@ -200,6 +200,7 @@ const BranchList = () => {
         <EnableEditButton
           isEnabled={isEditEnabled}
           onToggle={() => setIsEditEnabled((prev) => !prev)}
+          variant="onDark"
         />
       ) : null}
     </div>

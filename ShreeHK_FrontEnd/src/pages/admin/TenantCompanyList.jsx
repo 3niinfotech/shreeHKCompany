@@ -299,6 +299,7 @@ const TenantCompanyList = () => {
         <EnableEditButton
           isEnabled={isEditEnabled}
           onToggle={() => setIsEditEnabled((prev) => !prev)}
+          variant="onDark"
         />
       ) : null}
     </div>
@@ -393,97 +394,97 @@ const TenantCompanyList = () => {
                 (activeBranchId != null && Number(item.branch_id) === activeBranchId);
               const itemBanks = parseCompanyBanks(item);
               return (
-              <article
-                key={item.id}
-                className={`${styles.companyCard} ${isActive ? styles.companyCardActive : ""}`}
-                onClick={() => handleCardClick(item)}
-              >
-                <div className={styles.cardHeader}>
-                  <div className={styles.cardHeaderLeft}>
-                    <div
-                      className={`${styles.avatar} ${isActive ? "" : styles.avatarMuted}`}
-                      data-initials={getInitials(item.name)}
-                    >
-                      {item.logo ? (
-                        <img
-                          src={resolveUploadUrl(item.logo)}
-                          alt={item.name || "logo"}
-                          style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit" }}
-                        />
-                      ) : (
-                        getInitials(item.name)
-                      )}
-                    </div>
-                    <div className={styles.cardHeaderInfo}>
-                      <Title level={5} className={styles.companyName} title={item.name}>
-                        {item.name}
-                      </Title>
-                      <div className={styles.companyLocation}>
-                        <GlobalOutlined className={styles.infoIcon} />
-                        <span>
-                          {[item.city, item.country].filter(Boolean).join(", ") || item.address || "—"}
-                        </span>
+                <article
+                  key={item.id}
+                  className={`${styles.companyCard} ${isActive ? styles.companyCardActive : ""}`}
+                  onClick={() => handleCardClick(item)}
+                >
+                  <div className={styles.cardHeader}>
+                    <div className={styles.cardHeaderLeft}>
+                      <div
+                        className={`${styles.avatar} ${isActive ? "" : styles.avatarMuted}`}
+                        data-initials={getInitials(item.name)}
+                      >
+                        {item.logo ? (
+                          <img
+                            src={resolveUploadUrl(item.logo)}
+                            alt={item.name || "logo"}
+                            style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit" }}
+                          />
+                        ) : (
+                          getInitials(item.name)
+                        )}
+                      </div>
+                      <div className={styles.cardHeaderInfo}>
+                        <Title level={5} className={styles.companyName} title={item.name}>
+                          {item.name}
+                        </Title>
+                        <div className={styles.companyLocation}>
+                          <GlobalOutlined className={styles.infoIcon} />
+                          <span>
+                            {[item.city, item.country].filter(Boolean).join(", ") || item.address || "—"}
+                          </span>
+                        </div>
                       </div>
                     </div>
+
+                    <div className={styles.cardHeaderRight} onClick={(e) => e.stopPropagation()}>
+                      <Dropdown
+                        menu={{
+                          items: [
+                            {
+                              key: "edit",
+                              icon: <EditOutlined />,
+                              label: "Edit",
+                              onClick: () => openEdit(item),
+                            },
+                            {
+                              key: "delete",
+                              icon: <DeleteOutlined style={{ color: "#ef4444" }} />,
+                              label: <span style={{ color: "#ef4444", fontWeight: 500 }}>Delete</span>,
+                              danger: true,
+                              onClick: () => openDelete(item),
+                            },
+                          ],
+                        }}
+                        trigger={["click"]}
+                        placement="bottomRight"
+                      >
+                        <Button
+                          type="text"
+                          icon={<MoreOutlined style={{ fontSize: 18 }} />}
+                          className={styles.moreBtn}
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label="More actions"
+                        />
+                      </Dropdown>
+                    </div>
                   </div>
 
-                  <div className={styles.cardHeaderRight} onClick={(e) => e.stopPropagation()}>
-                    <Dropdown
-                      menu={{
-                        items: [
-                          {
-                            key: "edit",
-                            icon: <EditOutlined />,
-                            label: "Edit",
-                            onClick: () => openEdit(item),
-                          },
-                          {
-                            key: "delete",
-                            icon: <DeleteOutlined style={{ color: "#ef4444" }} />,
-                            label: <span style={{ color: "#ef4444", fontWeight: 500 }}>Delete</span>,
-                            danger: true,
-                            onClick: () => openDelete(item),
-                          },
-                        ],
-                      }}
-                      trigger={["click"]}
-                      placement="bottomRight"
-                    >
-                      <Button
-                        type="text"
-                        icon={<MoreOutlined style={{ fontSize: 18 }} />}
-                        className={styles.moreBtn}
-                        onClick={(e) => e.stopPropagation()}
-                        aria-label="More actions"
-                      />
-                    </Dropdown>
+                  <div className={styles.cardDetails}>
+                    <div className={styles.detailLine}>
+                      <PhoneOutlined className={styles.infoIcon} />
+                      <span>{item.number || "—"}</span>
+                    </div>
+                    <div className={styles.detailLine}>
+                      <MailOutlined className={styles.infoIcon} />
+                      <span>{item.email || "—"}</span>
+                    </div>
                   </div>
-                </div>
 
-                <div className={styles.cardDetails}>
-                  <div className={styles.detailLine}>
-                    <PhoneOutlined className={styles.infoIcon} />
-                    <span>{item.number || "—"}</span>
+                  <div className={styles.cardFooter}>
+                    <div className={styles.cardStatusBadge}>
+                      <span className={styles.statusDot} />
+                      <span>Active</span>
+                    </div>
+                    <div className={styles.bankLinkedText}>
+                      {itemBanks.length > 0
+                        ? `${itemBanks.length} ${itemBanks.length === 1 ? "bank" : "banks"} linked`
+                        : "No bank added"}
+                    </div>
                   </div>
-                  <div className={styles.detailLine}>
-                    <MailOutlined className={styles.infoIcon} />
-                    <span>{item.email || "—"}</span>
-                  </div>
-                </div>
-
-                <div className={styles.cardFooter}>
-                  <div className={styles.cardStatusBadge}>
-                    <span className={styles.statusDot} />
-                    <span>Active</span>
-                  </div>
-                  <div className={styles.bankLinkedText}>
-                    {itemBanks.length > 0
-                      ? `${itemBanks.length} ${itemBanks.length === 1 ? "bank" : "banks"} linked`
-                      : "No bank added"}
-                  </div>
-                </div>
-              </article>
-            );
+                </article>
+              );
             })}
           </div>
         )}
@@ -500,17 +501,17 @@ const TenantCompanyList = () => {
           ]}
           width="min(900px, calc(100vw - 32px))"
           centered
-          closable={false} 
+          closable={false}
           maskClosable={false}
           mask={{ closable: false }}
           destroyOnClose
           className={styles.companyModal}
         >
-          <Form 
-            form={form} 
-            layout="vertical" 
+          <Form
+            form={form}
+            layout="vertical"
             disabled={Boolean(editing) && !isEditEnabled}
-            onFinish={handleSave} 
+            onFinish={handleSave}
             onFinishFailed={(errorInfo) => {
               if (errorInfo.errorFields && errorInfo.errorFields.length > 0) {
                 toast.error(errorInfo.errorFields[0].errors[0]);

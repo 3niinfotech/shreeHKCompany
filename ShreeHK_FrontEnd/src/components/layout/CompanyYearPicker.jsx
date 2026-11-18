@@ -13,6 +13,7 @@ import {
 } from "@ant-design/icons";
 import { api } from "../../api/client/axiosInstance";
 import { ENDPOINTS } from "../../api/endpoints";
+import { fetchCompanyYears } from "../../api/services/portalService";
 import useAuthStore from "../../store/Auth.Store";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { toastApiSuccess, toastApiError } from "../../utils/toastNotify";
@@ -397,7 +398,7 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
     setSelectedBranch(null);
     setSelectedCompany(null);
     setLoading(true);
-    api.get(ENDPOINTS.portal.companyYears)
+    fetchCompanyYears()
       .then((res) => {
         const rows = res.data?.Data || [];
         const apiBranches = res.data?.Branches || [];

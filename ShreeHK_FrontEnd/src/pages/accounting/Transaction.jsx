@@ -74,11 +74,52 @@ const Transaction = () => {
         { title: 'Other Party', dataIndex: 'otherParty', key: 'otherParty', width: 120, render: (v) => resolvePartyName(v) },
         { title: 'Cheque', dataIndex: 'cheque', key: 'cheque', width: 160 },
         { title: 'Description', dataIndex: 'description', key: 'description', ellipsis: true },
-        { title: 'Credit', dataIndex: 'credit', key: 'credit', width: 100, align: 'right', className: 'text-success' },
-        { title: 'Debit', dataIndex: 'debit', key: 'debit', width: 100, align: 'right', className: 'text-danger' },
         {
-            title: 'Balance', dataIndex: 'balance', key: 'balance', width: 110, align: 'right',
-            render: (v) => <Text strong>{v}</Text>
+            title: 'Credit',
+            dataIndex: 'credit',
+            key: 'credit',
+            width: 100,
+            align: 'right',
+            className: 'text-success',
+            render: (v) => (
+                v != null && v !== '' && Number(v) !== 0 ? (
+                    <Text strong style={{ color: 'var(--color-success, #2f9e6a)' }}>{v}</Text>
+                ) : (
+                    v || '-'
+                )
+            ),
+        },
+        {
+            title: 'Debit',
+            dataIndex: 'debit',
+            key: 'debit',
+            width: 100,
+            align: 'right',
+            className: 'text-danger',
+            render: (v) => (
+                v != null && v !== '' && Number(v) !== 0 ? (
+                    <Text strong style={{ color: 'var(--color-danger, #d93025)' }}>{v}</Text>
+                ) : (
+                    v || '-'
+                )
+            ),
+        },
+        {
+            title: 'Balance',
+            dataIndex: 'balance',
+            key: 'balance',
+            width: 110,
+            align: 'right',
+            render: (v) => {
+                if (v == null || v === '') return '-';
+                const num = Number(v);
+                const color = num > 0
+                    ? 'var(--color-success, #2f9e6a)'
+                    : num < 0
+                        ? 'var(--color-danger, #d93025)'
+                        : 'inherit';
+                return <Text strong style={{ color }}>{v}</Text>;
+            },
         },
     ];
 

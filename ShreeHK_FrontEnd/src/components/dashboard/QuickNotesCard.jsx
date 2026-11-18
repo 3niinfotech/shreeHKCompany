@@ -257,7 +257,6 @@ const QuickNotesCard = () => {
                   value={assignedTo}
                   onChange={(val) => setAssignedTo(val)}
                   placeholder="Assign User"
-                  size="small"
                   className="notes-user-select"
                   options={userOptions}
                   allowClear
@@ -277,7 +276,6 @@ const QuickNotesCard = () => {
                 <Select
                   value={priority}
                   onChange={(val) => setPriority(val)}
-                  size="small"
                   className="priority-select"
                   options={[
                     { label: "High", value: "High" },

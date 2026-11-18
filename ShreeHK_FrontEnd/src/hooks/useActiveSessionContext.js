@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import useAuthStore from "../store/Auth.Store";
-import { api } from "../api/client/axiosInstance";
-import { ENDPOINTS } from "../api/endpoints";
+import { fetchCompanyYears } from "../api/services/portalService";
 import { normalizeHexColor } from "../utils/colorUtils";
 
 export const useActiveSessionContext = () => {
@@ -35,9 +34,14 @@ export const useActiveSessionContext = () => {
       return;
     }
 
+    // No context selected yet (e.g. at login screen when CompanyYearPicker is shown)
+    if (!yearId && !branchId && !companyId) {
+      return;
+    }
+
     let cancelled = false;
 
-    api.get(ENDPOINTS.portal.companyYears)
+    fetchCompanyYears()
       .then((res) => {
         if (cancelled) return;
         const years = res.data?.Years || res.data?.years || [];

@@ -5,8 +5,59 @@ import { Pencil, Lock } from 'lucide-react';
  * Standard project-wide Enable / Disable Edit toggle button for Edit/View modals.
  * Premium ERP styling with micro-interactions, status dot, and dynamic theme support.
  */
-const EnableEditButton = ({ isEnabled, onToggle }) => {
+const EnableEditButton = ({ isEnabled, onToggle, variant = 'default', className = '', style = {} }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const isOnDark = variant === 'onDark';
+
+  const border = isOnDark
+    ? isEnabled
+      ? isHovered
+        ? '1px solid #ea580c'
+        : '1px solid rgba(234, 88, 12, 0.6)'
+      : isHovered
+        ? '1px solid rgba(255, 255, 255, 1)'
+        : '1px solid rgba(255, 255, 255, 0.85)'
+    : isEnabled
+      ? isHovered
+        ? '1px solid #ea580c'
+        : '1px solid rgba(234, 88, 12, 0.4)'
+      : isHovered
+        ? '1px solid #2563eb'
+        : '1px solid rgba(37, 99, 235, 0.35)';
+
+  const backgroundColor = isOnDark
+    ? isEnabled
+      ? isHovered
+        ? '#fff7ed'
+        : '#ffffff'
+      : isHovered
+        ? '#ffffff'
+        : 'rgba(255, 255, 255, 0.95)'
+    : isEnabled
+      ? isHovered
+        ? 'rgba(234, 88, 12, 0.14)'
+        : 'rgba(234, 88, 12, 0.08)'
+      : isHovered
+        ? 'rgba(37, 99, 235, 0.12)'
+        : 'rgba(37, 99, 235, 0.05)';
+
+  const color = isOnDark
+    ? isEnabled ? '#c2410c' : '#0d7b6b'
+    : isEnabled ? '#ea580c' : '#2563eb';
+
+  const boxShadow = isOnDark
+    ? isHovered
+      ? isEnabled
+        ? '0 4px 12px rgba(234, 88, 12, 0.28)'
+        : '0 4px 12px rgba(0, 0, 0, 0.24)'
+      : isEnabled
+        ? '0 2px 6px rgba(234, 88, 12, 0.16)'
+        : '0 2px 6px rgba(0, 0, 0, 0.15)'
+    : isHovered
+      ? isEnabled
+        ? '0 2px 8px rgba(234, 88, 12, 0.2)'
+        : '0 2px 8px rgba(37, 99, 235, 0.18)'
+      : '0 1px 2px rgba(0, 0, 0, 0.04)';
 
   return (
     <button
@@ -15,6 +66,7 @@ const EnableEditButton = ({ isEnabled, onToggle }) => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       title={isEnabled ? 'Click to lock and make fields read-only' : 'Click to enable editing'}
+      className={className}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -29,27 +81,12 @@ const EnableEditButton = ({ isEnabled, onToggle }) => {
         userSelect: 'none',
         outline: 'none',
         transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-        border: isEnabled
-          ? isHovered
-            ? '1px solid #ea580c'
-            : '1px solid rgba(234, 88, 12, 0.4)'
-          : isHovered
-            ? '1px solid #2563eb'
-            : '1px solid rgba(37, 99, 235, 0.35)',
-        backgroundColor: isEnabled
-          ? isHovered
-            ? 'rgba(234, 88, 12, 0.14)'
-            : 'rgba(234, 88, 12, 0.08)'
-          : isHovered
-            ? 'rgba(37, 99, 235, 0.12)'
-            : 'rgba(37, 99, 235, 0.05)',
-        color: isEnabled ? '#ea580c' : '#2563eb',
-        boxShadow: isHovered
-          ? isEnabled
-            ? '0 2px 8px rgba(234, 88, 12, 0.2)'
-            : '0 2px 8px rgba(37, 99, 235, 0.18)'
-          : '0 1px 2px rgba(0, 0, 0, 0.04)',
+        border,
+        backgroundColor,
+        color,
+        boxShadow,
         transform: isHovered ? 'translateY(-0.5px)' : 'none',
+        ...style,
       }}
     >
       {isEnabled ? (

@@ -316,6 +316,7 @@ import {
 import useAuthStore from '../../store/Auth.Store';
 import { api } from '../../api/client/axiosInstance';
 import { ENDPOINTS } from '../../api/endpoints';
+import { fetchCompanyYears } from '../../api/services/portalService';
 import { Link, useNavigate } from 'react-router-dom';
 import { resolveUploadUrl } from '../../utils/uploadBaseUrl';
 import { formatLastActive } from '../../utils/relativeTime';
@@ -568,7 +569,7 @@ const ProfileDropdown = () => {
           return;
         }
 
-        const res = await api.get(ENDPOINTS.portal.companyYears);
+        const res = await fetchCompanyYears();
         const branches = res.data?.Branches || res.data?.branches || [];
         const combos = res.data?.Data || [];
         let name = null;
@@ -618,7 +619,7 @@ const ProfileDropdown = () => {
     let cancelled = false;
     const resolveYear = async () => {
       try {
-        const res = await api.get(ENDPOINTS.portal.companyYears);
+        const res = await fetchCompanyYears();
         const years = res.data?.Years || res.data?.years || [];
         const match = years.find((y) => String(y.yearId) === String(yearId));
         const label = match?.yearLabel || match?.year || null;
