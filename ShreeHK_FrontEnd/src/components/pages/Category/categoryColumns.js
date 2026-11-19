@@ -8,6 +8,7 @@ import { getMasterRowNumberColumn } from "../../../utils/masterColumns";
 
 export const getCategoryColumns = (dataSource = []) => [
     getMasterRowNumberColumn(),
+    { title: "Category Id", dataIndex: "id", key: "id", width: 120, align: "center" },
     { title: "Name", dataIndex: "name", key: "name" },
     {
         title: "Parent",

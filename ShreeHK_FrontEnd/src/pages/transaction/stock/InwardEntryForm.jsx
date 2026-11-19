@@ -18,7 +18,7 @@ import PageHeroHeader, { pageHeroHeaderStyles } from '../../../components/common
 import { SwapOutlined } from '@ant-design/icons';
 
 const INITIAL_ITEM_STATE = {
-  mfgCode: '', dNo: '', sku: '', rPcs: 0, pPcs: 0, pCarat: 0, cost: 0, price: 0, amount: 0,
+  mfgCode: '', dNo: '', sku: '', rPcs: 0, pPcs: 0, pCarat: 0, balance_carat: 0, cost: 0, price: 0, amount: 0,
   mainColor: '', loc: '', lab: '', reportNo: '', shape: '', clarity: '', intensity: '',
   overtone: '', color: '', size: '', polish: '', symm: '', cut: '', floIntensity: '',
   measurements: '', tablePer: '', depthPer: '', girdle: '', bgm: '', package: '', remark: '', groupType: ''
@@ -476,12 +476,36 @@ const InwardEntryForm = ({
     ...(showRPcs ? [rPcsColumn] : []),
     { title: 'Pcs', width: 105, render: (_, r) => renderInput(r, 'pPcs', pcsTitle, 'number') },
     { title: 'Carat', width: 115, render: (_, r) => renderInput(r, 'pCarat', caratTitle, 'number') },
+    {
+      title: 'B.Carat',
+      dataIndex: 'balance_carat',
+      width: 105,
+      align: 'right',
+      render: (_, r) => (r.balance_carat != null && r.balance_carat !== '' ? (Number(r.balance_carat) || 0).toFixed(2) : (r.pCarat != null && r.pCarat !== '' ? (Number(r.pCarat) || 0).toFixed(2) : '-')),
+    },
     { title: 'Cost', width: 120, render: (_, r) => r.cost || r.purchase_price || '-' },
     { title: 'Rap Price', width: 100, align: 'right', render: (_, r) => (r.rapPrice || r.rapnet_price || r.rap_price ? `$${Number(r.rapPrice || r.rapnet_price || r.rap_price).toLocaleString()}` : '-') },
     { title: 'Disc %', width: 90, align: 'right', render: (_, r) => (r.disc != null && r.disc !== '' ? `${Number(r.disc).toFixed(2)}%` : '-') },
     { title: 'Price', width: 120, render: (_, r) => renderInput(r, 'price', 'Price', 'number') },
     { title: 'Amount', width: 130, align: 'right', render: (_, r) => renderInput(r, 'amount', 'Amount', 'number') },
     { title: 'LOC', width: 90, render: (_, r) => renderInput(r, 'loc', 'LOC') },
+    {
+      title: 'Lab',
+      width: 70,
+      render: (_, r) => (
+        <Select
+          value={r.lab || 'GIA'}
+          onChange={(val) => handleUpdateCell(r.key, 'lab', val)}
+          style={{ width: '100%' }}
+          options={[
+            { value: 'GIA', label: 'GIA' },
+            { value: 'IGI', label: 'IGI' },
+            { value: 'HRD', label: 'HRD' },
+            { value: 'NONE', label: 'None' },
+          ]}
+        />
+      ),
+    },
     {
       title: 'Report No.',
       width: wideLineFields ? 220 : 180,
@@ -527,23 +551,6 @@ const InwardEntryForm = ({
     { title: 'Clarity', width: 80, render: (_, r) => renderInput(r, 'clarity', 'Clarity') },
     { title: 'Intensity', width: 90, render: (_, r) => r.intensity || '-' },
     { title: 'Overtone', width: 90, render: (_, r) => r.overtone || '-' },
-    {
-      title: 'Lab',
-      width: 70,
-      render: (_, r) => (
-        <Select
-          value={r.lab || 'GIA'}
-          onChange={(val) => handleUpdateCell(r.key, 'lab', val)}
-          style={{ width: '100%' }}
-          options={[
-            { value: 'GIA', label: 'GIA' },
-            { value: 'IGI', label: 'IGI' },
-            { value: 'HRD', label: 'HRD' },
-            { value: 'NONE', label: 'None' },
-          ]}
-        />
-      ),
-    },
     { title: 'Color', width: 80, render: (_, r) => renderInput(r, 'mainColor', 'Color') },
     { title: 'Size', width: 70, render: (_, r) => r.size || '-' },
     { title: 'Polish', width: 70, render: (_, r) => r.polish || '-' },

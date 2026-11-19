@@ -12,8 +12,21 @@ import useModal from "../../hooks/common/useModal";
 const columns = [
   { title: "Name", dataIndex: "name", key: "name" },
   { title: "Code", dataIndex: "code", key: "code" },
-  { title: "Value", dataIndex: "value", key: "value" },
+  { title: "Type", dataIndex: "type", key: "type", render: (v) => v || "-" },
+  {
+    title: "Status",
+    dataIndex: "status",
+    key: "status",
+    render: (v) => (Number(v) === 1 || v === "1" || v === true ? "Yes" : (v === 0 || v === "0" || v === false ? "No" : (v || "-"))),
+  },
+  {
+    title: "Required",
+    dataIndex: "required",
+    key: "required",
+    render: (v) => (Number(v) === 1 || v === "1" || v === true ? "Yes" : (v === 0 || v === "0" || v === false ? "No" : (v || "-"))),
+  },
   { title: "Sort", dataIndex: "short_order", key: "short_order", width: 80 },
+  { title: "Value", dataIndex: "value", key: "value" },
 ];
 
 const Attribute = () => {

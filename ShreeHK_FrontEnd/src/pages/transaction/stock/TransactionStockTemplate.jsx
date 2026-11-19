@@ -53,9 +53,11 @@ const SCROLL_LIMIT = 20;
 
 export const defaultProductColumns = [
   { title: 'Sr No', key: 'srNo', width: 70, align: 'center', render: (_, __, index) => index + 1 },
+  { title: 'Parent SKU', dataIndex: 'parent_sku', key: 'parent_sku', width: 120, render: (v, row) => v || row.parent_sku || '-' },
   { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 120, render: (text, record) => <SkuLink sku={text} record={record} /> },
   { title: 'Pcs', dataIndex: 'polish_pcs', key: 'polish_pcs', width: 60, align: 'center', render: (v, row) => (v != null ? Number(v) : (row.pcs ?? row.purchase_pcs ?? row.rought_pcs ?? 0)) },
   { title: 'Carat', dataIndex: 'polish_carat', key: 'polish_carat', width: 90, align: 'center', render: (v, row) => { const c = v != null && v !== '' ? Number(v) : (row.purchase_carat ?? row.carat ?? row.rought_carat); return c != null && !isNaN(c) ? Number(c).toFixed(2) : '-'; } },
+  { title: 'B.Carat', dataIndex: 'balance_carat', key: 'balance_carat', width: 90, align: 'center', render: (v, row) => { const c = v != null && v !== '' ? Number(v) : row.balance_carat; return c != null && !isNaN(c) ? Number(c).toFixed(2) : '-'; } },
   { title: 'Color', dataIndex: 'color', key: 'color', width: 90, align: 'center', render: (v, row) => v || row.color || row.main_color || '-' },
   { title: 'Clarity', dataIndex: 'clarity', key: 'clarity', width: 90, align: 'center', render: (v, row) => v || row.clarity || '-' },
   { title: 'Cost', dataIndex: 'cost', key: 'cost', width: 90, align: 'right', render: (v, row) => (v != null && v !== '' && v !== 0 ? v : (row.cost || row.purchase_price || '-')) },
@@ -67,6 +69,11 @@ export const defaultProductColumns = [
   { title: 'Location', dataIndex: 'location', key: 'location', width: 100, render: (v, row) => v || row.location || row.loc || '-' },
   { title: 'Intensity', dataIndex: 'intensity', key: 'intensity', width: 80, align: 'center', render: (v, row) => v || row.intensity || row.f_intensity || '-' },
   { title: 'Overtone', dataIndex: 'overtone', key: 'overtone', width: 80, align: 'center', render: (v, row) => v || row.overtone || '-' },
+  { title: 'Size', dataIndex: 'size', key: 'size', width: 80, align: 'center', render: (v, row) => v || row.size || '-' },
+  { title: 'Polish', dataIndex: 'polish', key: 'polish', width: 80, align: 'center', render: (v, row) => v || row.polish || '-' },
+  { title: 'Symm', dataIndex: 'symmentry', key: 'symmentry', width: 80, align: 'center', render: (v, row) => v || row.symmentry || row.symm || '-' },
+  { title: 'Cut', dataIndex: 'cut', key: 'cut', width: 80, align: 'center', render: (v, row) => v || row.cut || '-' },
+  { title: 'Flo. Intensity', dataIndex: 'f_intensity', key: 'f_intensity', width: 110, align: 'center', render: (v, row) => v || row.f_intensity || row.floIntensity || '-' },
   { title: 'Table%', dataIndex: 'table_pc', key: 'table_pc', width: 80, align: 'center', render: (v, row) => v || row.table_pc || '-' },
   { title: 'Depth%', dataIndex: 'depth_pc', key: 'depth_pc', width: 80, align: 'center', render: (v, row) => v || row.depth_pc || '-' },
   { title: 'Gridle', dataIndex: 'griddle_pc', key: 'griddle_pc', width: 80, align: 'center', render: (v, row) => v || row.gridle || row.griddle_pc || row.gridle_pc || '-' },

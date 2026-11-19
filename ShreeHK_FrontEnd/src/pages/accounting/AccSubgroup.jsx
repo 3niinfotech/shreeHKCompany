@@ -56,6 +56,13 @@ const AccSubgroup = () => {
   ], [groupOptions]);
 
   const columns = useMemo(() => [
+    {
+      title: "Sr. No.",
+      key: "srNo",
+      width: 80,
+      align: "center",
+      render: (_, __, index) => index + 1,
+    },
     { title: "Sub Group", dataIndex: "name", key: "name" },
     {
       title: "Under",

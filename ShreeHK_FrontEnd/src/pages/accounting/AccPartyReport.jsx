@@ -168,9 +168,9 @@ const AccPartyReport = () => {
       },
     },
     { title: 'Other Party', dataIndex: 'otherParty', key: 'otherParty', width: 200, render: (v) => resolvePartyName(v) },
+    { title: 'Description', dataIndex: 'description', key: 'description', width: 320 },
     { title: 'Book', dataIndex: 'book', key: 'book', width: 140, render: (v) => v || '-' },
     { title: 'Cheque', dataIndex: 'cheque', key: 'cheque', width: 120 },
-    { title: 'Description', dataIndex: 'description', key: 'description', width: 320 },
     {
       title: 'Credit',
       dataIndex: 'credit',

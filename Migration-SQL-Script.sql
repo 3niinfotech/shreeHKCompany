@@ -1,7 +1,7 @@
 -- =====================================================================
 -- MIGRATION SCRIPT: venya (Old PHP) -> shreehkweb_snj2024 (New Node/React)
 -- Generated: 2026-09-18
--- Updated: 2026-11-03 — added Lab Integration tables, Branch hierarchy, and Universal Soft Delete
+-- Updated: 2026-11-19 — added stock movement item tables (dai_inward_item, dai_outward_item), company transfer tables (dai_company_transfer, dai_company_transfer_item), company voucher prefixes & bank_details, stock balance columns on dai_product, and hot-path indexes
 -- Purpose: Bring an existing (old PHP) live database up to date with
 --          the new project's schema — WITHOUT touching existing data.
 --
@@ -25,7 +25,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 START TRANSACTION;
 
 -- =====================================================================
--- SECTION 1: NEW TABLES (14 tables)
+-- SECTION 1: NEW TABLES (18 tables)
 -- =====================================================================
 
 -- 1. acc_transaction_copy
@@ -261,6 +261,110 @@ CREATE TABLE IF NOT EXISTS `lab_provider_credential` (
   KEY `idx_cred_company` (`company_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 15. dai_inward_item (Item-level lines for Inward / Memo / Purchase)
+CREATE TABLE IF NOT EXISTS `dai_inward_item` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company` int(11) NOT NULL DEFAULT 1,
+  `inward_id` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL,
+  `sku` varchar(100) DEFAULT NULL,
+  `party` varchar(100) DEFAULT NULL,
+  `inward_type` varchar(50) DEFAULT NULL,
+  `pcs` decimal(18,3) NOT NULL DEFAULT 0.000,
+  `carat` decimal(18,3) NOT NULL DEFAULT 0.000,
+  `price` decimal(18,2) NOT NULL DEFAULT 0.00,
+  `amount` decimal(18,2) NOT NULL DEFAULT 0.00,
+  `balance_pcs` decimal(18,3) DEFAULT NULL,
+  `balance_carat` decimal(18,3) DEFAULT NULL,
+  `entry_date` date DEFAULT NULL,
+  `invoice_no` varchar(100) DEFAULT NULL,
+  `reference` varchar(100) DEFAULT NULL,
+  `narretion` text DEFAULT NULL,
+  `user` int(11) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_inward_item_inward` (`inward_id`),
+  KEY `idx_inward_item_product` (`product_id`),
+  KEY `idx_inward_item_company_product` (`company`, `product_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 16. dai_outward_item (Item-level lines for Outward / Memo / Sale)
+CREATE TABLE IF NOT EXISTS `dai_outward_item` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `company` int(11) NOT NULL DEFAULT 1,
+  `outward_id` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL,
+  `sku` varchar(100) DEFAULT NULL,
+  `party` varchar(100) DEFAULT NULL,
+  `outward_type` varchar(50) NOT NULL DEFAULT 'memo',
+  `pcs` decimal(18,3) NOT NULL DEFAULT 0.000,
+  `carat` decimal(18,3) NOT NULL DEFAULT 0.000,
+  `price` decimal(18,2) NOT NULL DEFAULT 0.00,
+  `amount` decimal(18,2) NOT NULL DEFAULT 0.00,
+  `balance_pcs` decimal(18,3) DEFAULT NULL,
+  `balance_carat` decimal(18,3) DEFAULT NULL,
+  `entry_date` date DEFAULT NULL,
+  `invoice_no` varchar(100) DEFAULT NULL,
+  `reference` varchar(100) DEFAULT NULL,
+  `narretion` text DEFAULT NULL,
+  `status` varchar(50) DEFAULT NULL,
+  `user` int(11) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_outward_item_outward` (`outward_id`),
+  KEY `idx_outward_item_product` (`product_id`),
+  KEY `idx_outward_item_company_product` (`company`, `product_id`),
+  KEY `idx_outward_item_type` (`outward_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 17. dai_company_transfer (Header for inter-company stock transfers)
+CREATE TABLE IF NOT EXISTS `dai_company_transfer` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `transfer_no` varchar(50) NOT NULL,
+  `from_company_id` int(11) NOT NULL,
+  `to_company_id` int(11) NOT NULL,
+  `transfer_date` date NOT NULL,
+  `from_party` varchar(255) DEFAULT NULL,
+  `to_party` varchar(255) DEFAULT NULL,
+  `source_outward_id` int(11) DEFAULT NULL,
+  `source_invoice_no` varchar(100) DEFAULT NULL,
+  `target_inward_id` int(11) DEFAULT NULL,
+  `target_invoice_no` varchar(100) DEFAULT NULL,
+  `total_pcs` decimal(12,2) DEFAULT 0.00,
+  `total_carat` decimal(12,4) DEFAULT 0.0000,
+  `total_amount` decimal(15,2) DEFAULT 0.00,
+  `currency` varchar(10) DEFAULT 'USD',
+  `status` enum('transferred','returned') DEFAULT 'transferred',
+  `return_date` date DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_from_comp` (`from_company_id`),
+  KEY `idx_to_comp` (`to_company_id`),
+  KEY `idx_date` (`transfer_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 18. dai_company_transfer_item (Line items for inter-company stock transfers)
+CREATE TABLE IF NOT EXISTS `dai_company_transfer_item` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `transfer_id` int(11) NOT NULL,
+  `source_product_id` int(11) NOT NULL,
+  `target_product_id` int(11) DEFAULT NULL,
+  `source_sku` varchar(100) DEFAULT NULL,
+  `sku` varchar(100) NOT NULL,
+  `pcs` decimal(12,2) DEFAULT 1.00,
+  `carat` decimal(12,4) DEFAULT 0.0000,
+  `price` decimal(12,2) DEFAULT 0.00,
+  `amount` decimal(15,2) DEFAULT 0.00,
+  `status` enum('transferred','returned') DEFAULT 'transferred',
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_transfer_id` (`transfer_id`),
+  KEY `idx_sku` (`sku`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- =====================================================================
 -- SECTION 2: NEW COLUMNS ON EXISTING TABLES
 -- Using "ADD COLUMN IF NOT EXISTS" so this script is safe to re-run.
@@ -353,7 +457,12 @@ ALTER TABLE `company`
   ADD COLUMN IF NOT EXISTS `rapnet_id` varchar(100) DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS `rapnet_password` varchar(100) DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS `shortcutName` varchar(255) DEFAULT NULL,
-  ADD COLUMN IF NOT EXISTS `logo` varchar(500) DEFAULT NULL;
+  ADD COLUMN IF NOT EXISTS `logo` varchar(500) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `bank_details` longtext DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `invoice_prefix` varchar(50) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `memo_prefix` varchar(50) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `purchase_prefix` varchar(50) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `lab_prefix` varchar(50) DEFAULT NULL;
 
 -- dai_attribute
 ALTER TABLE `dai_attribute`
@@ -470,6 +579,7 @@ ALTER TABLE `dai_inward`
   ADD COLUMN IF NOT EXISTS `origin_of` varchar(50) DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS `pcs` int(11) DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS `carat` decimal(25,3) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `entryno` varchar(100) DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS `deleted` tinyint(1) DEFAULT NULL;
 
 -- dai_jewelry
@@ -557,7 +667,9 @@ ALTER TABLE `dai_outward`
   ADD COLUMN IF NOT EXISTS `sc` int(11) NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS `boc_sksm` int(11) NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS `citi_sksm` int(11) NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS `other_party` varchar(100) NOT NULL DEFAULT '';
+  ADD COLUMN IF NOT EXISTS `other_party` varchar(100) NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS `entryno` varchar(100) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `selected_banks` longtext DEFAULT NULL;
 
 -- dai_party
 ALTER TABLE `dai_party`
@@ -637,7 +749,15 @@ ALTER TABLE `dai_product`
   ADD COLUMN IF NOT EXISTS `argyle_color` varchar(100) NOT NULL DEFAULT '',
   ADD COLUMN IF NOT EXISTS `in_house_clarity` varchar(100) NOT NULL DEFAULT '',
   ADD COLUMN IF NOT EXISTS `mining` varchar(100) NOT NULL DEFAULT '',
-  ADD COLUMN IF NOT EXISTS `origin` varchar(100) NOT NULL DEFAULT '';
+  ADD COLUMN IF NOT EXISTS `origin` varchar(100) NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS `purchased_pcs` decimal(18,3) NOT NULL DEFAULT 0.000,
+  ADD COLUMN IF NOT EXISTS `purchased_carat` decimal(18,3) NOT NULL DEFAULT 0.000,
+  ADD COLUMN IF NOT EXISTS `memo_pcs` decimal(18,3) NOT NULL DEFAULT 0.000,
+  ADD COLUMN IF NOT EXISTS `memo_carat` decimal(18,3) NOT NULL DEFAULT 0.000,
+  ADD COLUMN IF NOT EXISTS `sold_pcs` decimal(18,3) NOT NULL DEFAULT 0.000,
+  ADD COLUMN IF NOT EXISTS `sold_carat` decimal(18,3) NOT NULL DEFAULT 0.000,
+  ADD COLUMN IF NOT EXISTS `onhand_pcs` decimal(18,3) NOT NULL DEFAULT 0.000,
+  ADD COLUMN IF NOT EXISTS `onhand_carat` decimal(18,3) NOT NULL DEFAULT 0.000;
 
 -- dai_product_delete
 ALTER TABLE `dai_product_delete`
@@ -1527,6 +1647,71 @@ SET @idx_sql = (
     ),
     'SELECT 1',
     'ALTER TABLE \`user_track\` ADD KEY \`idx_deleted\` (\`deleted\`)'
+  )
+);
+PREPARE stmt FROM @idx_sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- =====================================================================
+-- SECTION 4: HOT-PATH PERFORMANCE INDEXES
+-- Safe, idempotent: only creates index if not already present.
+-- =====================================================================
+
+SET @idx_sql = (
+  SELECT IF(
+    EXISTS(
+      SELECT 1 FROM information_schema.STATISTICS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dai_product' AND INDEX_NAME = 'idx_dai_product_company_vis'
+    ),
+    'SELECT 1',
+    'ALTER TABLE `dai_product` ADD KEY `idx_dai_product_company_vis` (`company`, `visibility`, `outward`, `hold`)'
+  )
+);
+PREPARE stmt FROM @idx_sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @idx_sql = (
+  SELECT IF(
+    EXISTS(
+      SELECT 1 FROM information_schema.STATISTICS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dai_product' AND INDEX_NAME = 'idx_dai_product_sku'
+    ),
+    'SELECT 1',
+    'ALTER TABLE `dai_product` ADD KEY `idx_dai_product_sku` (`sku`)'
+  )
+);
+PREPARE stmt FROM @idx_sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @idx_sql = (
+  SELECT IF(
+    EXISTS(
+      SELECT 1 FROM information_schema.STATISTICS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dai_product' AND INDEX_NAME = 'idx_dai_product_mfg_code'
+    ),
+    'SELECT 1',
+    'ALTER TABLE `dai_product` ADD KEY `idx_dai_product_mfg_code` (`mfg_code`)'
+  )
+);
+PREPARE stmt FROM @idx_sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @idx_sql = (
+  SELECT IF(
+    EXISTS(
+      SELECT 1 FROM information_schema.STATISTICS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dai_product_value' AND INDEX_NAME = 'idx_dai_product_value_product_id'
+    ),
+    'SELECT 1',
+    'ALTER TABLE `dai_product_value` ADD KEY `idx_dai_product_value_product_id` (`product_id`)'
+  )
+);
+PREPARE stmt FROM @idx_sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @idx_sql = (
+  SELECT IF(
+    EXISTS(
+      SELECT 1 FROM information_schema.STATISTICS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dai_outward' AND INDEX_NAME = 'idx_dai_outward_company_status'
+    ),
+    'SELECT 1',
+    'ALTER TABLE `dai_outward` ADD KEY `idx_dai_outward_company_status` (`company`, `type`, `status`, `date`)'
   )
 );
 PREPARE stmt FROM @idx_sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;

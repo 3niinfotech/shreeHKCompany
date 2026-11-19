@@ -302,7 +302,6 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
                 </Text>
             )
         },
-        { title: 'Contact Number', dataIndex: 'contact_number', key: 'contact_number', width: 150 },
         {
             title: 'Address',
             dataIndex: 'address',
@@ -310,6 +309,7 @@ const PartyWiseTransaction = ({ pageTitle = 'Party Wise Transaction' }) => {
             ellipsis: true,
             width: 400
         },
+        { title: 'Contact Number', dataIndex: 'contact_number', key: 'contact_number', width: 150 },
         {
             title: 'Actions',
             key: 'actions',

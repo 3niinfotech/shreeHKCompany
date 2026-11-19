@@ -10,7 +10,16 @@ import { useFetchApi, usePostApiRequest, useDeleteApiRequest } from "../../api/A
 import { ENDPOINTS } from "../../api/endpoints";
 import useModal from "../../hooks/common/useModal";
 
-const columns = [{ title: "Group Name", dataIndex: "name", key: "name" }];
+const columns = [
+  {
+    title: "Sr. No.",
+    key: "srNo",
+    width: 80,
+    align: "center",
+    render: (_, __, index) => index + 1,
+  },
+  { title: "Group Name", dataIndex: "name", key: "name" },
+];
 
 const AccGroup = () => {
   const [form] = Form.useForm();

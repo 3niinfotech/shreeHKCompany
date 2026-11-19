@@ -1248,6 +1248,7 @@ inwardRouter.get("/inward/", authenticateToken, (req, res) => {
           ...p,
           sell_price: p.sell_price || p.purchase_price || p.price,
           sell_amount: p.sell_amount || p.purchase_amount || p.amount,
+          balance_carat: p.balance_carat != null ? Number(p.balance_carat) : (p.polish_carat != null ? Number(p.polish_carat) : 0),
         }));
 
         return res.status(201).json({

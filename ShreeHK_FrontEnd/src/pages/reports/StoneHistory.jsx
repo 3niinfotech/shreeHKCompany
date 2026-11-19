@@ -1750,17 +1750,6 @@ const StoneHistory = () => {
             ),
         },
         {
-            title: 'Party',
-            dataIndex: 'party_name',
-            key: 'party',
-            width: 210,
-            ellipsis: true,
-            render: (value, row) => {
-                const name = String(value || row.party || '').trim();
-                return <span style={{ whiteSpace: 'nowrap' }}>{name || '—'}</span>;
-            },
-        },
-        {
             title: 'Invoice',
             dataIndex: 'invoice',
             key: 'invoice',
@@ -1774,6 +1763,17 @@ const StoneHistory = () => {
                     handleOpenInvoiceModal,
                     (r) => canViewInvoiceVoucher(r, authUser, authPermissions)
                 ),
+        },
+        {
+            title: 'Party',
+            dataIndex: 'party_name',
+            key: 'party',
+            width: 210,
+            ellipsis: true,
+            render: (value, row) => {
+                const name = String(value || row.party || '').trim();
+                return <span style={{ whiteSpace: 'nowrap' }}>{name || '—'}</span>;
+            },
         },
         {
             title: 'Description',

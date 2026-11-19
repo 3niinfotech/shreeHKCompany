@@ -319,8 +319,9 @@ outwardRouter.get("/outward/", authenticateToken, async (req, res) => {
         }
 
         const placeholders = productIds.map(() => "?").join(",");
-        const pquery = `SELECT p.*, pv.* FROM dai_product p
+        const pquery = `SELECT p.*, pv.*, parent.sku AS parent_sku FROM dai_product p
           LEFT JOIN dai_product_value pv ON p.id = pv.product_id
+          LEFT JOIN dai_product parent ON (p.outward_parent > 0 AND p.outward_parent = parent.id)
           WHERE p.id IN (${placeholders})`;
 
         connection.query(pquery, productIds, (error, pdata) => {
@@ -509,8 +510,9 @@ function loadOutwardProductsResponse(res, outwardRow, companyParams, companyPlac
   }
 
   const placeholders = productIds.map(() => "?").join(",");
-  const pquery = `SELECT p.*, pv.* FROM dai_product p
+  const pquery = `SELECT p.*, pv.*, parent.sku AS parent_sku FROM dai_product p
     LEFT JOIN dai_product_value pv ON p.id = pv.product_id
+    LEFT JOIN dai_product parent ON (p.outward_parent > 0 AND p.outward_parent = parent.id)
     WHERE p.id IN (${placeholders})
       AND p.company IN (${companyPlaceholders})`;
 
@@ -529,8 +531,9 @@ function loadOutwardProductsResponse(res, outwardRow, companyParams, companyPlac
 
     // Product company mismatch — try without company filter, then outward_item
     connection.query(
-      `SELECT p.*, pv.* FROM dai_product p
+      `SELECT p.*, pv.*, parent.sku AS parent_sku FROM dai_product p
        LEFT JOIN dai_product_value pv ON p.id = pv.product_id
+       LEFT JOIN dai_product parent ON (p.outward_parent > 0 AND p.outward_parent = parent.id)
        WHERE p.id IN (${placeholders})`,
       productIds,
       (err2, pdata2) => {

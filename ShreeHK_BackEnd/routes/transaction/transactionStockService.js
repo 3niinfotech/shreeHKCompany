@@ -151,6 +151,7 @@ const PRODUCT_WITH_VALUE_SELECT = `
   p.*,
   p.id AS id,
   p.sku AS sku,
+  parent.sku AS parent_sku,
   p.lab AS lab,
   p.remark AS remark,
   p.location AS location,
@@ -185,6 +186,7 @@ async function loadProductsByInwardId(inwardId, filterMemo = true) {
     `SELECT ${PRODUCT_WITH_VALUE_SELECT}
      FROM dai_product p
      LEFT JOIN dai_product_value pv ON p.id = pv.product_id
+     LEFT JOIN dai_product parent ON (p.outward_parent > 0 AND p.outward_parent = parent.id)
      WHERE p.inward_id = ?`,
     [inwardId]
   );
@@ -211,8 +213,10 @@ function productsFromInwardItems(items) {
     return {
       id: it.product_id,
       sku: it.sku || "",
+      parent_sku: null,
       polish_pcs: pcs,
       polish_carat: carat,
+      balance_carat: carat,
       rought_pcs: pcs,
       price,
       amount,
@@ -302,6 +306,7 @@ async function applyInwardItemQtys(inwardId, products) {
         inward_item_id: it.id,
         polish_pcs: pcs,
         polish_carat: carat,
+        balance_carat: Number(p.polish_carat != null ? p.polish_carat : (p.onhand_carat != null ? p.onhand_carat : carat)),
         rought_pcs: pcs,
         price,
         amount,
@@ -344,6 +349,7 @@ async function loadProductsByIds(ids) {
     `SELECT ${PRODUCT_WITH_VALUE_SELECT}
      FROM dai_product p
      LEFT JOIN dai_product_value pv ON p.id = pv.product_id
+     LEFT JOIN dai_product parent ON (p.outward_parent > 0 AND p.outward_parent = parent.id)
      WHERE p.id IN (${placeholders})`,
     ids
   );
@@ -461,6 +467,8 @@ function mapProducts(products) {
     sell_amount: p.sell_amount || p.amount,
     purchase_price: p.purchase_price || p.price,
     purchase_amount: p.purchase_amount || p.amount,
+    balance_carat: p.balance_carat != null ? Number(p.balance_carat) : (p.polish_carat != null ? Number(p.polish_carat) : 0),
+    parent_sku: p.parent_sku || null,
     report_no: p.report_no || "",
     certificate: p.report_no || "",
     shape: p.shape || "",
@@ -497,6 +505,11 @@ function normalizeInwardRow(row, products) {
       : row.id != null
         ? `Inward-${row.id}`
         : "";
+  const mappedProducts = mapProducts(products);
+  const totalBalanceCarat = mappedProducts.reduce(
+    (acc, p) => acc + (p.balance_carat != null ? Number(p.balance_carat) : Number(p.polish_carat || 0)),
+    0
+  );
   return {
     id: row.id,
     company: row.company != null ? Number(row.company) : undefined,
@@ -529,7 +542,9 @@ function normalizeInwardRow(row, products) {
     type: row.inward_type,
     inward_type: row.inward_type,
     final_amount: row.final_amount,
-    products: mapProducts(products),
+    balance_carat: totalBalanceCarat,
+    total_balance_carat: totalBalanceCarat,
+    products: mappedProducts,
   };
 }
 
@@ -912,6 +927,7 @@ async function listOutwardStock(post, stockType, userContext = {}) {
           products = items.map((it) => ({
             id: it.product_id,
             sku: it.sku || "",
+            parent_sku: null,
             polish_pcs: Number(it.pcs) || 0,
             polish_carat: Number(it.carat) || 0,
             sell_price: Number(it.price) || 0,
