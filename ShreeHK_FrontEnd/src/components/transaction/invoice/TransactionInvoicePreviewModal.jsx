@@ -9,6 +9,9 @@ import { ENDPOINTS } from "../../../api/endpoints";
 
 const PRINT_ROOT_CLASS = "transaction-invoice-print-root";
 
+const COMPANY_OPTIONS_PARAMS = { all: "1" };
+const MASTER_PARTIES_PARAMS = { limit: 1000 };
+
 const TransactionInvoicePreviewModal = ({
   open,
   onClose,
@@ -21,17 +24,15 @@ const TransactionInvoicePreviewModal = ({
   const { data: partyOptionsRes } = useFetchApi(
     "GetCompany",
     ENDPOINTS.company.options,
-    { all: "1" },
-    "GET",
-    { enabled: !!open }
+    COMPANY_OPTIONS_PARAMS,
+    "GET"
   );
 
   const { data: partiesRes } = useFetchApi(
     "allMasterParties",
     ENDPOINTS.company.list,
-    { limit: 1000 },
-    "GET",
-    { enabled: !!open }
+    MASTER_PARTIES_PARAMS,
+    "GET"
   );
 
   const operatingCompanies = useMemo(() => {

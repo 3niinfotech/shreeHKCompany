@@ -1169,7 +1169,7 @@ export default function TaskManager() {
             {isSuperAdmin && (
                 <Modal
                     title={(
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', paddingRight: 24 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                             <span>{editingTask ? "Edit Task" : "Create New Task"}</span>
                             {editingTask ? (
                                 <EnableEditButton
@@ -1193,6 +1193,11 @@ export default function TaskManager() {
                     closable={false}
                     maskClosable={false}
                     mask={{ closable: false }}
+                    className="task-modal"
+                    rootClassName="task-modal-root"
+                    styles={{
+                        header: { paddingInlineEnd: 0, paddingRight: 0 },
+                    }}
                 >
                     <Form
                         form={form}
