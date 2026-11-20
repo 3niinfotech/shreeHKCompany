@@ -70,7 +70,7 @@ const AccountingMasterTemplate = ({
             mode: 'edit',
         });
         onEdit?.(record);
-        setTimeout(() => setIsModalOpen(true), 0);
+        setIsModalOpen(true);
     };
 
     const handleInternalSave = async () => {

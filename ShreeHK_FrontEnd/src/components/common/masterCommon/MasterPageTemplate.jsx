@@ -49,10 +49,7 @@ const MasterTemplate = ({
         setIsEditEnabled(false);
 
         onEdit?.(record);
-
-        setTimeout(() => {
-            setIsModalOpen(true);
-        }, 0);
+        setIsModalOpen(true);
     };
 
     const handleInternalSave = async () => {

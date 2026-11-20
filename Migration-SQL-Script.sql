@@ -1,7 +1,7 @@
 -- =====================================================================
 -- MIGRATION SCRIPT: venya (Old PHP) -> shreehkweb_snj2024 (New Node/React)
 -- Generated: 2026-09-18
--- Updated: 2026-11-19 — added stock movement item tables (dai_inward_item, dai_outward_item), company transfer tables (dai_company_transfer, dai_company_transfer_item), company voucher prefixes & bank_details, stock balance columns on dai_product, and hot-path indexes
+-- Updated: 2026-11-20 — Production Live Release: added branch_year, notification table definitions, branch columns parity (shortcutName, status, color_code), company parity (bank_name, bank_address, color_code, sale_prefix), notification title column, legacy dai_product stock balances alignment (onhand_pcs, onhand_carat, purchased_pcs, purchased_carat), dai_incrementid seed guard, super admin roll permission guard, and branch auto-seed.
 -- Purpose: Bring an existing (old PHP) live database up to date with
 --          the new project's schema — WITHOUT touching existing data.
 --
@@ -25,7 +25,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 START TRANSACTION;
 
 -- =====================================================================
--- SECTION 1: NEW TABLES (18 tables)
+-- SECTION 1: NEW TABLES (20 tables)
 -- =====================================================================
 
 -- 1. acc_transaction_copy
@@ -192,6 +192,12 @@ CREATE TABLE IF NOT EXISTS `branch` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL,
   `code` varchar(50) DEFAULT NULL,
+  `shortcutName` varchar(50) DEFAULT NULL,
+  `address` varchar(500) DEFAULT NULL,
+  `number` varchar(50) DEFAULT NULL,
+  `city` varchar(100) DEFAULT NULL,
+  `country` varchar(100) DEFAULT NULL,
+  `status` tinyint(4) NOT NULL DEFAULT 1,
   `color_code` varchar(50) DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `deleted` tinyint(1) NOT NULL DEFAULT 0,
@@ -365,6 +371,33 @@ CREATE TABLE IF NOT EXISTS `dai_company_transfer_item` (
   KEY `idx_sku` (`sku`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 19. branch_year (Branch to fiscal year mapping)
+CREATE TABLE IF NOT EXISTS `branch_year` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `branch_id` int(11) NOT NULL,
+  `year_id` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_branch_year` (`branch_id`, `year_id`),
+  KEY `idx_branch_year_branch` (`branch_id`),
+  KEY `idx_branch_year_year` (`year_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 20. notification
+CREATE TABLE IF NOT EXISTS `notification` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `title` varchar(255) DEFAULT NULL,
+  `message` varchar(500) DEFAULT NULL,
+  `image` varchar(255) DEFAULT NULL,
+  `user` int(11) DEFAULT NULL,
+  `company` int(11) DEFAULT NULL,
+  `datetine` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint(1) NOT NULL DEFAULT 0,
+  `deleted_at` datetime DEFAULT NULL,
+  `deleted_by` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- =====================================================================
 -- SECTION 2: NEW COLUMNS ON EXISTING TABLES
 -- Using "ADD COLUMN IF NOT EXISTS" so this script is safe to re-run.
@@ -426,6 +459,16 @@ ALTER TABLE `applist`
   ADD COLUMN IF NOT EXISTS `serial` varchar(70) DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS `datetime` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP;
 
+-- branch
+ALTER TABLE `branch`
+  ADD COLUMN IF NOT EXISTS `shortcutName` varchar(50) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `address` varchar(500) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `number` varchar(50) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `city` varchar(100) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `country` varchar(100) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `status` tinyint(4) NOT NULL DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS `color_code` varchar(50) DEFAULT NULL;
+
 -- category
 ALTER TABLE `category`
   ADD COLUMN IF NOT EXISTS `company` int(11) NOT NULL DEFAULT 1;
@@ -457,9 +500,13 @@ ALTER TABLE `company`
   ADD COLUMN IF NOT EXISTS `rapnet_id` varchar(100) DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS `rapnet_password` varchar(100) DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS `shortcutName` varchar(255) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `color_code` varchar(50) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `bank_name` varchar(150) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `bank_address` varchar(500) DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS `logo` varchar(500) DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS `bank_details` longtext DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS `invoice_prefix` varchar(50) DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS `sale_prefix` varchar(50) DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS `memo_prefix` varchar(50) DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS `purchase_prefix` varchar(50) DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS `lab_prefix` varchar(50) DEFAULT NULL;
@@ -821,6 +868,7 @@ ALTER TABLE `dai_temp`
 
 -- notification
 ALTER TABLE `notification`
+  ADD COLUMN IF NOT EXISTS `title` varchar(255) DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS `message` varchar(500) DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS `image` varchar(255) DEFAULT NULL,
   ADD COLUMN IF NOT EXISTS `user` int(11) DEFAULT NULL,
@@ -1650,6 +1698,48 @@ SET @idx_sql = (
   )
 );
 PREPARE stmt FROM @idx_sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- 3f. dai_product — align onhand and purchased balances for existing legacy products
+-- Ensures existing non-sold inventory has positive onhand_carat / onhand_pcs so it can be transacted.
+UPDATE `dai_product`
+SET
+  `purchased_pcs` = CASE WHEN (`purchased_pcs` = 0 OR `purchased_pcs` IS NULL) AND `purchase_pcs` IS NOT NULL AND `purchase_pcs` > 0 THEN `purchase_pcs`
+                         WHEN (`purchased_pcs` = 0 OR `purchased_pcs` IS NULL) AND `polish_pcs` IS NOT NULL AND `polish_pcs` > 0 THEN `polish_pcs`
+                         ELSE `purchased_pcs` END,
+  `purchased_carat` = CASE WHEN (`purchased_carat` = 0 OR `purchased_carat` IS NULL) AND `purchase_carat` IS NOT NULL AND `purchase_carat` > 0 THEN `purchase_carat`
+                           WHEN (`purchased_carat` = 0 OR `purchased_carat` IS NULL) AND `polish_carat` IS NOT NULL AND `polish_carat` > 0 THEN `polish_carat`
+                           ELSE `purchased_carat` END,
+  `onhand_pcs` = CASE WHEN (`onhand_pcs` = 0 OR `onhand_pcs` IS NULL) AND (`outward` IS NULL OR `outward` = '' OR `outward` = 'memo' OR `outward` = 'consign') AND `polish_pcs` > 0 THEN `polish_pcs`
+                      ELSE `onhand_pcs` END,
+  `onhand_carat` = CASE WHEN (`onhand_carat` = 0 OR `onhand_carat` IS NULL) AND (`outward` IS NULL OR `outward` = '' OR `outward` = 'memo' OR `outward` = 'consign') AND `polish_carat` > 0 THEN `polish_carat`
+                        ELSE `onhand_carat` END
+WHERE (`onhand_carat` = 0 OR `onhand_carat` IS NULL OR `purchased_carat` = 0 OR `purchased_carat` IS NULL)
+  AND (`polish_carat` > 0 OR `purchase_carat` > 0);
+
+-- 3g. dai_incrementid — ensure every active company has an increment tracking row
+INSERT INTO `dai_incrementid` (`company`, `inward`, `outward`, `invoice`, `reference`, `purchase`, `sale`)
+SELECT c.id, 'Inward-1', '1', '1', '1', 'Purchase-1', 'Sale-1'
+FROM `company` c
+WHERE NOT EXISTS (SELECT 1 FROM `dai_incrementid` inc WHERE inc.company = c.id);
+
+-- 3h. roll — ensure super admin (id = 1) has full permissions array
+UPDATE `roll`
+SET `resource` = '["all"]'
+WHERE `id` = 1 AND (`resource` IS NULL OR `resource` = '' OR `resource` = 'null');
+
+-- 3i. branch — ensure default branches (HK and Dubai) exist
+INSERT INTO `branch` (`name`, `shortcutName`, `status`)
+SELECT 'HK', 'HK', 1
+WHERE NOT EXISTS (SELECT 1 FROM `branch` WHERE LOWER(`name`) = 'hk');
+
+INSERT INTO `branch` (`name`, `shortcutName`, `status`)
+SELECT 'Dubai', 'UAE', 1
+WHERE NOT EXISTS (SELECT 1 FROM `branch` WHERE LOWER(`name`) = 'dubai');
+
+-- 3j. company — link companies with missing branch_id to default branch
+UPDATE `company`
+SET `branch_id` = (SELECT `id` FROM `branch` WHERE LOWER(`name`) = 'hk' LIMIT 1)
+WHERE `branch_id` IS NULL OR `branch_id` = 0;
 
 -- =====================================================================
 -- SECTION 4: HOT-PATH PERFORMANCE INDEXES

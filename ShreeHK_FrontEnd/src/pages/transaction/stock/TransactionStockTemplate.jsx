@@ -950,7 +950,6 @@ const TransactionStockTemplate = ({
     setEditId(record.id);
     setIsEditEnabled(false);
     setIsEditModalOpen(true);
-    setFetchedProducts([]);
     setOriginalSproducts('');
     editForm.resetFields();
     // Fill immediately from list row (API may be inward/outward; list already has header + products)
@@ -2437,7 +2436,7 @@ const TransactionStockTemplate = ({
                 }
               `}</style>
               <Form form={editForm} layout="vertical" disabled={!isEditEnabled} className={`edit-modal-form-readable ${styles.stockEditForm}`}>
-                {isEditLoading ? (
+                {isEditLoading && !editingRecord ? (
                   <SkeletonForm fields={6} />
                 ) : (
                   <>
@@ -2446,7 +2445,7 @@ const TransactionStockTemplate = ({
                 )}
                 <div className={styles.stockEditProductsHead}>
                   <span>{isVenyaSaleEdit ? `Total Record : ${fetchedProducts.length}` : 'Products'}</span>
-                  {allowAddProductInEdit && !isEditLoading ? (
+                  {allowAddProductInEdit && (!isEditLoading || editingRecord) ? (
                     <Button
                       type="primary"
                       size="small"
@@ -2463,8 +2462,8 @@ const TransactionStockTemplate = ({
                   <Table
                     className={styles.stockEditProductTable}
                     loading={false}
-                    columns={isEditLoading ? editProductSkeletonColumns : editProductColumns}
-                    dataSource={isEditLoading ? Array.from({ length: 3 }, (_, i) => ({ id: `sk-p-${i}` })) : fetchedProducts}
+                    columns={isEditLoading && !fetchedProducts.length ? editProductSkeletonColumns : editProductColumns}
+                    dataSource={isEditLoading && !fetchedProducts.length ? Array.from({ length: 3 }, (_, i) => ({ id: `sk-p-${i}` })) : fetchedProducts}
                     rowKey={(r) => r.id ?? r._tempId}
                     pagination={false}
                     size="small"
@@ -2475,7 +2474,7 @@ const TransactionStockTemplate = ({
                         : undefined
                     }
                   />
-                  {!isEditLoading && fetchedProducts.length > 0 ? (
+                  {fetchedProducts.length > 0 ? (
                     <div className={`${styles.stockEditTotalsBar} ${styles.stockEditTotalsBarCompact}`}>
                       <div className={styles.stockEditTotalsMetrics}>
                         <span>Pcs : <b>{editProductTotals.pcs}</b></span>
@@ -2494,7 +2493,7 @@ const TransactionStockTemplate = ({
                     </div>
                   ) : null}
                 </div>
-                {isVenyaSaleEdit && !isEditLoading ? (
+                {isVenyaSaleEdit && (!isEditLoading || editingRecord) ? (
                   <>
                     <Row gutter={[12, 8]} className={styles.stockEditExportRow}>
                       <Col xs={24} sm={12} md={6}>

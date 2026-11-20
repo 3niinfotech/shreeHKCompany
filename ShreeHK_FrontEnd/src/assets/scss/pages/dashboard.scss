@@ -1713,6 +1713,14 @@
 }
 
 // Modal Styles
+.task-modal-root,
+.task-modal {
+  .ant-modal-header {
+    padding-inline-end: 0 !important;
+    padding-right: 0 !important;
+  }
+}
+
 .task-reminder-modal {
   .ant-modal-content {
     padding: 24px;
