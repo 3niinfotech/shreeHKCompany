@@ -173,7 +173,7 @@ transactionStockRouter.delete("/transaction/gia", authenticateToken, async (req,
   if (!id) return res.status(400).json({ status: false, message: "Invalid deleteId" });
   try {
     const userContext = buildUserContext(req);
-    const result = await stockService.deleteGia(id, userContext.companyId, { userId: userContext.userId });
+    const result = await stockService.deleteGia(id, userContext.companyId, { userId: userContext.userId, userContext });
     return res.status(200).json({ status: result.ok, message: result.message });
   } catch (error) {
     console.error("delete gia error:", error);
@@ -186,7 +186,7 @@ transactionStockRouter.delete("/transaction/outward-stock", authenticateToken, a
   if (!id) return res.status(400).json({ status: false, message: "Invalid deleteId" });
   try {
     const userContext = buildUserContext(req);
-    const result = await stockService.deleteOutwardStock(id, { companyId: userContext.companyId, userId: userContext.userId });
+    const result = await stockService.deleteOutwardStock(id, { companyId: userContext.companyId, userId: userContext.userId, userContext });
     return res.status(200).json({ status: result.ok, message: result.message });
   } catch (error) {
     console.error("delete outward stock error:", error);

@@ -29,7 +29,11 @@ const SaleStock = () => (
       toExportEndpoint: ENDPOINTS.transactionStock.outward.toExport,
       printType: 'sale',
       typeWidth: 80,
-      referenceWidth: 160,
+      referenceWidth: 80,
+      entryWidth: 80,
+      partyWidth: 160,
+      invoiceWidth: 120,
+      dateWidth: 85,
     }}
   />
 );

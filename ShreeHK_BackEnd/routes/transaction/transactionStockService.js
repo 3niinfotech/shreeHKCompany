@@ -2408,7 +2408,23 @@ async function deleteInwardStock(id) {
 }
 
 async function deleteGia(id, companyId = null, options = {}) {
-  const oData = await getOutwardData(id, companyId);
+  const userContext = options.userContext || null;
+  const lookupCompanyIds = userContext
+    ? await resolveListCompanyIds(userContext, companyId || DEFAULT_COMPANY_ID)
+    : (companyId ? await resolveListCompanyIds({ companyId }, companyId) : []);
+
+  let oRows = [];
+  if (lookupCompanyIds.length > 0) {
+    const placeholders = lookupCompanyIds.map(() => "?").join(",");
+    oRows = await query(
+      `SELECT * FROM dai_outward WHERE id = ? AND company IN (${placeholders})`,
+      [id, ...lookupCompanyIds]
+    );
+  }
+  if (!oRows.length && (userContext?.isSuperAdmin || !companyId)) {
+    oRows = await query("SELECT * FROM dai_outward WHERE id = ?", [id]);
+  }
+  const oData = oRows[0] || null;
   if (!oData) return { ok: false, message: "Record not found or access denied" };
   const products = (oData.products || "").split(",").filter(Boolean);
 
@@ -2491,11 +2507,11 @@ async function deleteGia(id, companyId = null, options = {}) {
       }
     }
 
-    if (companyId) {
-      await q("DELETE FROM dai_outward WHERE id = ? AND company = ?", [id, companyId]);
-    } else {
-      await q("DELETE FROM dai_outward WHERE id = ?", [id]);
-    }
+    try {
+      await q("DELETE FROM dai_outward_item WHERE outward_id = ?", [id]);
+    } catch (_) {}
+
+    await q("DELETE FROM dai_outward WHERE id = ? AND company = ?", [id, oData.company]);
   });
 
   try {
@@ -2515,11 +2531,26 @@ async function deleteGia(id, companyId = null, options = {}) {
 
 async function deleteOutwardStock(id, options = {}) {
   const moduleName = options.moduleName || "Outward Stock";
-  const companyId = options.companyId || null;
+  const userContext = options.userContext || null;
+  const companyId = options.companyId || userContext?.companyId || null;
+
+  // Resolve allowed company IDs for the current user/branch (same as listOutwardStock, returnOutward, etc.)
+  const lookupCompanyIds = userContext
+    ? await resolveListCompanyIds(userContext, companyId || DEFAULT_COMPANY_ID)
+    : (companyId ? await resolveListCompanyIds({ companyId }, companyId) : []);
+
   const result = await helper.runInTransaction(async (q) => {
-    const oRows = companyId
-      ? await q("SELECT * FROM dai_outward WHERE id = ? AND company = ?", [id, companyId])
-      : await q("SELECT * FROM dai_outward WHERE id = ?", [id]);
+    let oRows = [];
+    if (lookupCompanyIds.length > 0) {
+      const placeholders = lookupCompanyIds.map(() => "?").join(",");
+      oRows = await q(
+        `SELECT * FROM dai_outward WHERE id = ? AND company IN (${placeholders})`,
+        [id, ...lookupCompanyIds]
+      );
+    }
+    if (!oRows.length && (userContext?.isSuperAdmin || !companyId)) {
+      oRows = await q("SELECT * FROM dai_outward WHERE id = ?", [id]);
+    }
     const oData = oRows[0] || null;
     if (!oData) return { ok: false, message: "Outward record not found or access denied" };
 
@@ -2527,7 +2558,7 @@ async function deleteOutwardStock(id, options = {}) {
     if (blockPaidSaleFlag !== "OFF") {
       const isPaidByHeader = Number(oData.paid_amount || 0) > 0;
       let hasPaymentRows = false;
-      const targetCompany = companyId || oData.company;
+      const targetCompany = oData.company || companyId;
 
       const payRows = targetCompany
         ? await q(
@@ -2573,6 +2604,15 @@ async function deleteOutwardStock(id, options = {}) {
       const pRows = await q("SELECT * FROM dai_product WHERE id = ?", [pid]);
       const pdata = pRows[0] || null;
       if (!pdata) continue;
+
+      const isExport = oData.type === "export";
+      const isSale = oData.type === "sale";
+      const histAction = isExport ? "export_close" : (isSale ? "sale_close" : "outward_cancel");
+      const histDesc = isExport
+        ? "EXPORT CLOSING / DELETING"
+        : (isSale
+          ? "sale Closing / deleting"
+          : `Outward ${oData.type || ""} cancelled: Restored to inventory`);
 
       // Handle split/child products from Box/Parcel (created via separateSale)
       if (pdata.outward_parent) {
@@ -2626,14 +2666,12 @@ async function deleteOutwardStock(id, options = {}) {
           "UPDATE dai_product SET outward = '', visibility = 0, outward_parent = 0, site_upload = 0, rapnet_upload = 0 WHERE id = ?",
           [pid]
         );
-        const isExport = oData.type === "export";
-        const isSale = oData.type === "sale";
-        const histAction = isExport ? "export_close" : (isSale ? "sale_close" : "outward_cancel");
-        const histDesc = isExport
-          ? "EXPORT CLOSING / DELETING"
-          : (isSale
-            ? "sale Closing / deleting"
-            : `Outward ${oData.type || ""} cancelled: Restored to inventory`);
+      } else {
+        // Standard standalone product restoration
+        await q(
+          "UPDATE dai_product SET outward = '', visibility = 1, is_uploadsite = 1, is_uploadrapnet = 1, site_upload = 0, rapnet_upload = 0 WHERE id = ?",
+          [pid]
+        );
 
         if ((isExport || isSale) && (Number(pdata.sold_carat) > 0 || Number(pdata.sold_pcs) > 0)) {
           try {
@@ -2647,11 +2685,6 @@ async function deleteOutwardStock(id, options = {}) {
           } catch (_) {}
         }
 
-        // Standard standalone product restoration
-        await q(
-          "UPDATE dai_product SET outward = '', visibility = 1, is_uploadsite = 1, is_uploadrapnet = 1, site_upload = 0, rapnet_upload = 0 WHERE id = ?",
-          [pid]
-        );
         try {
           const histPayload = {
             product_id: pid,
@@ -2681,11 +2714,11 @@ async function deleteOutwardStock(id, options = {}) {
       }
     }
 
-    if (companyId) {
-      await q("DELETE FROM dai_outward WHERE id = ? AND company = ?", [id, companyId]);
-    } else {
-      await q("DELETE FROM dai_outward WHERE id = ?", [id]);
-    }
+    try {
+      await q("DELETE FROM dai_outward_item WHERE outward_id = ?", [id]);
+    } catch (_) {}
+
+    await q("DELETE FROM dai_outward WHERE id = ? AND company = ?", [id, oData.company]);
     return { ok: true, oData };
   });
 

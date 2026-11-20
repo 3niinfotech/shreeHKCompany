@@ -23,6 +23,12 @@ const GIAMemoStock = () => (
       giaReturn: true,
       returnEndpoint: ENDPOINTS.transactionStock.gia.return,
       printType: 'gia',
+      typeWidth: 110,
+      referenceWidth: 80,
+      entryWidth: 80,
+      partyWidth: 160,
+      invoiceWidth: 120,
+      dateWidth: 85,
     }}
   />
 );

@@ -32,8 +32,8 @@ const OutMemoStock = () => (
       referenceWidth: 80,
       entryWidth: 80,
       partyWidth: 160,
-      invoiceWidth: 80,
-      dateWidth: 100,
+      invoiceWidth: 120,
+      dateWidth: 85,
       operationsWidth: 230,
     }}
   />
