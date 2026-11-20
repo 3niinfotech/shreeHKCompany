@@ -27,6 +27,12 @@ const PurchaseStock = () => (
       toggleEndpoint: ENDPOINTS.transactionStock.purchase.toggleType,
       editGetEndpoint: ENDPOINTS.inward.getById,
       printType: 'purchase',
+      typeWidth: 110,
+      referenceWidth: 80,
+      entryWidth: 80,
+      partyWidth: 160,
+      invoiceWidth: 120,
+      dateWidth: 85,
     }}
   />
 );
