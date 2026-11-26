@@ -864,7 +864,7 @@
 
     .ant-select-selector {
       height: var(--filter-control-height, 32px) !important;
-      border-radius: 8px !important;
+      border-radius: 4px !important;
     }
   }
 
@@ -1264,7 +1264,7 @@
   .notes-textarea {
     width: 100%;
     border: 1px solid var(--color-border, #cbd5e1);
-    border-radius: 8px;
+    border-radius: 4px;
     padding: 8px 12px;
     font-size: 0.82rem;
     line-height: 1.4;
@@ -1341,7 +1341,7 @@
     .ant-select-selector {
       height: 32px !important;
       min-height: 32px !important;
-      border-radius: 6px !important;
+      border-radius: 4px !important;
       border: 1px solid var(--color-border, #cbd5e1) !important;
       font-size: 0.78rem !important;
       display: flex;
@@ -1358,7 +1358,7 @@
   .notes-date-picker {
     width: 100%;
     border: 1px solid var(--color-border, #cbd5e1);
-    border-radius: 6px;
+    border-radius: 4px;
     padding: 0 8px;
     font-size: 0.78rem;
     outline: none;
@@ -1515,7 +1515,7 @@
     .edit-note-input {
       width: 100%;
       padding: 4px 8px;
-      border-radius: 6px;
+      border-radius: 4px;
       border: 1px solid var(--color-primary, #059669);
       font-size: 0.8rem;
       outline: none;
@@ -1526,7 +1526,7 @@
 
     .edit-date-input {
       border: 1px solid var(--color-border, #cbd5e1);
-      border-radius: 6px;
+      border-radius: 4px;
       padding: 3px 6px;
       font-size: 0.74rem;
       height: 26px;
@@ -1546,7 +1546,7 @@
         height: 26px !important;
         padding: 0 6px !important;
         font-size: 0.74rem !important;
-        border-radius: 6px !important;
+        border-radius: 4px !important;
         display: flex;
         align-items: center;
       }
@@ -1706,7 +1706,7 @@
 
 .edit-date-input {
   border: 1px solid #cbd5e1;
-  border-radius: 6px;
+  border-radius: 4px;
   padding: 4px 6px;
   font-size: 0.76rem;
   outline: none;

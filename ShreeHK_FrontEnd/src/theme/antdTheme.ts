@@ -59,8 +59,8 @@ export function getAntdThemeConfig(mode: ThemeMode, viewMode: ViewMode = "web") 
         headerHeight: 46,
       },
       Input: {
-        controlHeight: 34,
-        borderRadius: parseInt(t.radiusControl, 10),
+        controlHeight: 32,
+        borderRadius: 4,
         activeBorderColor: t.colorInputFocusBorder,
         hoverBorderColor: t.colorInputFocusBorder,
         activeShadow: "none",
@@ -68,8 +68,8 @@ export function getAntdThemeConfig(mode: ThemeMode, viewMode: ViewMode = "web") 
         colorBorder: t.colorInputBorder,
       },
       InputNumber: {
-        controlHeight: 34,
-        borderRadius: parseInt(t.radiusControl, 10),
+        controlHeight: 32,
+        borderRadius: 4,
         activeBorderColor: t.colorInputFocusBorder,
         hoverBorderColor: t.colorInputFocusBorder,
         activeShadow: "none",
@@ -82,8 +82,8 @@ export function getAntdThemeConfig(mode: ThemeMode, viewMode: ViewMode = "web") 
         handleWidth: 0,
       },
       DatePicker: {
-        controlHeight: 34,
-        borderRadius: parseInt(t.radiusControl, 10),
+        controlHeight: 32,
+        borderRadius: 4,
         activeBorderColor: t.colorInputFocusBorder,
         hoverBorderColor: t.colorInputFocusBorder,
         activeShadow: "none",
@@ -93,8 +93,8 @@ export function getAntdThemeConfig(mode: ThemeMode, viewMode: ViewMode = "web") 
         colorBorder: t.colorInputBorder,
       },
       Select: {
-        controlHeight: 34,
-        borderRadius: parseInt(t.radiusControl, 10),
+        controlHeight: 32,
+        borderRadius: 4,
         activeBorderColor: t.colorInputFocusBorder,
         hoverBorderColor: t.colorInputFocusBorder,
         activeOutlineColor: "transparent",

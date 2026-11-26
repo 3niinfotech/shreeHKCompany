@@ -149,7 +149,7 @@
   min-height: var(--crm-control-height, 34px);
   padding: 8px 10px;
   border: 1px solid var(--line);
-  border-radius: var(--crm-control-radius, 6px);
+  border-radius: 4px;
   font-size: var(--font-size-sm, 13px);
   background: var(--color-input-bg, var(--color-card-bg));
   color: var(--ink);

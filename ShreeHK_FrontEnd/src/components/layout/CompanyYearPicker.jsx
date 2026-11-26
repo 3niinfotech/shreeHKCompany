@@ -521,7 +521,20 @@ const CompanyYearPicker = ({ open, onClose, force = false }) => {
       centered
       className={styles.companyYearModal}
       classNames={{ mask: styles.companyYearMask }}
-      styles={{ mask: { background: "rgb(235 235 235 / 45%)" } }}
+      styles={{
+        mask: { background: "rgb(235 235 235 / 45%)" },
+        header: {
+          background: "linear-gradient(135deg, var(--color-primary-dark, #0b5e52) 0%, var(--color-primary, #0d7b6b) 55%, var(--color-primary-medium, #149c88) 100%)",
+          borderBottom: "none",
+          padding: "22px 26px",
+          margin: 0,
+        },
+        content: {
+          padding: 0,
+          borderRadius: 18,
+          overflow: "hidden",
+        },
+      }}
       width="min(1080px, calc(100vw - 32px))"
       destroyOnHidden
     >

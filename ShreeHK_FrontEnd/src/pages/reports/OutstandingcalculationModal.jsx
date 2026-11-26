@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, DatePicker, Input, InputNumber, Modal, Select, Table } from "antd";
+import { Button, ConfigProvider, DatePicker, Input, InputNumber, Modal, Select, Table } from "antd";
 import dayjs from "dayjs";
 import { formatDateDisplay } from "../../utils/dateDisplayFormat";
 import {
@@ -14,7 +14,6 @@ import {
   Percent,
   ReceiptText,
   RotateCcw,
-  ShieldCheck,
   WalletCards,
 } from "lucide-react";
 import { useFetchApi, usePostApiRequest } from "../../api/ApiFunction";
@@ -315,9 +314,50 @@ const OutstandingCalculationModal = ({ open, onClose, data, onSaved }) => {
       closable={false}
       maskClosable={false}
       mask={{ closable: false }}
+      styles={{
+        content: {
+          paddingTop: 10,
+          paddingBottom: 0,
+        },
+        body: {
+          paddingTop: 0,
+          paddingBottom: 0,
+        },
+      }}
     >
-      {data && (
-        <div className={styles.content}>
+      <ConfigProvider
+        theme={{
+          token: {
+            borderRadius: 4,
+            borderRadiusSM: 4,
+            borderRadiusLG: 4,
+          },
+          components: {
+            InputNumber: {
+              borderRadius: 4,
+              borderRadiusSM: 4,
+              borderRadiusLG: 4,
+            },
+            Input: {
+              borderRadius: 4,
+              borderRadiusSM: 4,
+              borderRadiusLG: 4,
+            },
+            DatePicker: {
+              borderRadius: 4,
+              borderRadiusSM: 4,
+              borderRadiusLG: 4,
+            },
+            Select: {
+              borderRadius: 4,
+              borderRadiusSM: 4,
+              borderRadiusLG: 4,
+            },
+          },
+        }}
+      >
+        {data && (
+          <div className={styles.content}>
           <header className={styles.modalHeader}>
             <span className={styles.headerIcon}>
               <CircleDollarSign size={25} />
@@ -480,11 +520,14 @@ const OutstandingCalculationModal = ({ open, onClose, data, onSaved }) => {
               <div>
                 <InputLabel>Amount</InputLabel>
                 <InputNumber
+                  rootClassName="amount-input-number-4px"
+                  className={styles.amountInput}
                   value={paymentAmount}
                   min={0}
                   max={calculation.dueAmount}
                   controls={false}
                   prefix="$"
+                  style={{ borderRadius: 4 }}
                   onChange={(v) => setPaymentAmount(v || 0)}
                 />
               </div>
@@ -523,32 +566,26 @@ const OutstandingCalculationModal = ({ open, onClose, data, onSaved }) => {
               <Button className={styles.btnReset} icon={<RotateCcw size={17} />} onClick={resetInstallment}>
                 Reset
               </Button>
-              <Button
-                type="primary"
-                className={styles.btnSave}
-                icon={<Check size={17} />}
-                loading={isSavingInstallment}
-                onClick={handleSaveInstallment}
-              >
-                Save Installment
-              </Button>
             </div>
           </section>
 
           <footer className={styles.footer}>
-            <span>
-              <ShieldCheck size={25} />
-              <span>
-                <b>All changes are secure and logged</b>
-                <small>Your data is protected with enterprise-grade security.</small>
-              </span>
-            </span>
+            <Button
+              type="primary"
+              className={styles.btnSave}
+              icon={<Check size={17} />}
+              loading={isSavingInstallment}
+              onClick={handleSaveInstallment}
+            >
+              Save Installment
+            </Button>
             <Button onClick={onClose} danger>
               Close
             </Button>
           </footer>
         </div>
       )}
+      </ConfigProvider>
     </Modal>
   );
 };

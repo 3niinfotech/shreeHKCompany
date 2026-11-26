@@ -249,9 +249,9 @@ const TransactionStockTemplate = ({
 
   const isPurchaseInterTransfer = Boolean(
     isInterTransfer &&
-      (queryKey === 'INTER_TRANSFER_PURCHASE' ||
-        title === 'Inter Transfer Purchase' ||
-        (typeof window !== 'undefined' && window.location.pathname.includes('/inter-transfer/purchase')))
+    (queryKey === 'INTER_TRANSFER_PURCHASE' ||
+      title === 'Inter Transfer Purchase' ||
+      (typeof window !== 'undefined' && window.location.pathname.includes('/inter-transfer/purchase')))
   );
 
   const isInward =
@@ -421,7 +421,7 @@ const TransactionStockTemplate = ({
         parsedSelectedBanks = typeof details.selected_banks === 'string'
           ? JSON.parse(details.selected_banks)
           : details.selected_banks;
-      } catch {}
+      } catch { }
     }
 
     let selectedIndices = [];
@@ -1720,21 +1720,21 @@ const TransactionStockTemplate = ({
     },
     ...(!isInterTransfer
       ? [
-          {
-            title: 'Type',
-            key: 'type',
-            width: actions.typeWidth || 135,
-            align: 'center',
-            render: (_, record) => {
-              const displayType = record.type || record.inward_type;
-              return (
-                <Tag color={getTypeColor(displayType)} style={{ textTransform: 'uppercase', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                  {String(displayType || '-')}
-                </Tag>
-              );
-            },
+        {
+          title: 'Type',
+          key: 'type',
+          width: actions.typeWidth || 135,
+          align: 'center',
+          render: (_, record) => {
+            const displayType = record.type || record.inward_type;
+            return (
+              <Tag color={getTypeColor(displayType)} style={{ textTransform: 'uppercase', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                {String(displayType || '-')}
+              </Tag>
+            );
           },
-        ]
+        },
+      ]
       : []),
     {
       title: isInterTransfer ? 'To Company' : 'Party',
@@ -2126,6 +2126,7 @@ const TransactionStockTemplate = ({
                 onChange={(v) => { setSelectedCompany(''); setFromCompany(v || ''); resetList(); }}
                 options={branchCompanies}
                 style={{ minWidth: 150, borderRadius: 4 }}
+                popupMatchSelectWidth={false}
               />
             </FilterField>
             <FilterField>
@@ -2139,6 +2140,7 @@ const TransactionStockTemplate = ({
                 onChange={(v) => { setToCompany(v || ''); resetList(); }}
                 options={branchCompanies}
                 style={{ minWidth: 150, borderRadius: 4 }}
+                popupMatchSelectWidth={false}
               />
             </FilterField>
             {showSkuFilter && (
@@ -2167,6 +2169,7 @@ const TransactionStockTemplate = ({
                 onChange={(v) => { setSelectedCompany(v || ''); resetList(); }}
                 options={branchCompanies}
                 style={{ minWidth: 150, borderRadius: 4 }}
+                popupMatchSelectWidth={false}
               />
             </FilterField>
             {showSkuFilter && (

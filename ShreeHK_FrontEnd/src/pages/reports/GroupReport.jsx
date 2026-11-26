@@ -47,7 +47,7 @@ const GroupReport = () => {
 
     const companyOptions = useMemo(() => {
         const list = companyData?.Data || [];
-        return [{ value: '0', label: 'All Company' }, ...list.map((c) => ({ value: String(c.id), label: c.name }))];
+        return [{ value: '0', label: 'All Party' }, ...list.map((c) => ({ value: String(c.id), label: c.name }))];
     }, [companyData]);
 
     const mainGroupOptions = useMemo(() => {
@@ -101,8 +101,8 @@ const GroupReport = () => {
                 );
             },
         },
-        { title: 'US Date', dataIndex: 'date', key: 'usDate', width: 95, align: 'center', render: (v) => toUsDate(v) || '-' },
-        { title: 'Date', dataIndex: 'date', key: 'date', width: 100, render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
+        { title: 'US Date', dataIndex: 'date', key: 'usDate', width: 95, align: 'center', render: (v) => formatReportDate(v, true) },
+        { title: 'Date', dataIndex: 'date', key: 'date', width: 100, align: 'center', render: (v) => formatReportDate(v, false) },
         { title: 'Invoice', dataIndex: 'invoice', key: 'invoice', width: 120, align: 'center' },
         { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 100, render: (text, record) => <SkuLink sku={text} record={record} /> },
         { title: 'Lab', dataIndex: 'lab', key: 'lab', width: 50, align: 'center' },
@@ -147,23 +147,29 @@ const GroupReport = () => {
     const tableRef = useRef(null);
     const tableHeight = useTableBodyScrollHeight(tableRef, [tableData.length, tableLoading]);
 
-    const toUsDate = (value) => {
-        if (!value) return '';
+    const formatReportDate = (value, isUsFormat = false) => {
+        if (!value) return '-';
         const s = String(value).trim();
-        const m = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
-        if (m) {
-            const dd = m[1].padStart(2, '0');
-            const mm = m[2].padStart(2, '0');
-            const yyyy = m[3].length === 2 ? `20${m[3]}` : m[3];
-            return `${mm}-${dd}-${yyyy}`;
+        if (!s || s === '-' || s.toLowerCase() === 'invalid date' || s.startsWith('0000-00-00')) return '-';
+        const dmy = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
+        if (dmy) {
+            const dd = dmy[1].padStart(2, '0');
+            const mm = dmy[2].padStart(2, '0');
+            const yyyy = dmy[3].length === 2 ? `20${dmy[3]}` : dmy[3];
+            return isUsFormat ? `${mm}-${dd}-${yyyy}` : `${dd}-${mm}-${yyyy}`;
         }
         const d = dayjs(s);
-        return d.isValid() ? d.format('MM-DD-YYYY') : s;
+        if (d.isValid()) {
+            return d.format(isUsFormat ? 'MM-DD-YYYY' : 'DD-MM-YYYY');
+        }
+        return '-';
     };
 
+    const toUsDate = (value) => formatReportDate(value, true);
+
     const exportHeaders = [
-        { title: 'US Date', key: 'usDate', width: 12, accessor: (row) => toUsDate(row.date) },
-        { title: 'Date', key: 'date', width: 12 },
+        { title: 'US Date', key: 'usDate', width: 12, accessor: (row) => formatReportDate(row.date, true) },
+        { title: 'Date', key: 'date', width: 12, accessor: (row) => formatReportDate(row.date, false) },
         { title: 'Invoice', key: 'invoice', width: 12 },
         { title: 'Sku', key: 'sku', width: 16 },
         { title: 'Lab', key: 'lab', width: 8 },
@@ -272,7 +278,7 @@ const GroupReport = () => {
                                 <Select
                                     allowClear
                                     showSearch
-                                    placeholder="All Company"
+                                    placeholder="All Party"
                                     options={companyOptions}
                                     optionFilterProp="label"
                                     className={styles.fieldDate}

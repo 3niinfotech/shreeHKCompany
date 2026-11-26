@@ -9,7 +9,6 @@ import { usePostApiRequest } from '../../api/ApiFunction';
 import { ENDPOINTS } from '../../api/endpoints';
 import useAuthStore from '../../store/Auth.Store';
 import { getPostLoginPath } from '../../routes/Routes';
-import { ShieldCheck } from 'lucide-react';
 
 const { Title, Text } = Typography;
 
@@ -153,16 +152,20 @@ const Login = () => {
 
           <Title level={3} className={styles.signInHeading}>Sign In</Title>
           <Text className={styles.signInSubtext}>
-            Login with <b>Email or UserName</b>
+            Login with <b>UserName</b>
           </Text>
 
           <Form layout="vertical" onFinish={onFinish} requiredMark={false}>
             <Form.Item
-              label="Username / Email"
+              label="Username"
               name="username"
               rules={[{ required: true, message: 'Please enter username' }]}
             >
-              <Input placeholder="Enter your username or email" className={styles.inputField} />
+              <Input
+                placeholder="Enter your username"
+                className={styles.inputField}
+                style={{ borderRadius: 4 }}
+              />
             </Form.Item>
 
             <Form.Item
@@ -170,7 +173,11 @@ const Login = () => {
               name="password"
               rules={[{ required: true, message: 'Please enter password' }]}
             >
-              <Input.Password placeholder="Enter your password" className={styles.inputField} />
+              <Input.Password
+                placeholder="Enter your password"
+                className={`${styles.inputField} ${styles.passwordField}`}
+                style={{ borderRadius: 4 }}
+              />
             </Form.Item>
 
             <Button
@@ -184,24 +191,7 @@ const Login = () => {
               Sign In
             </Button>
           </Form>
-
-          <section className={styles.securityRow}>
-            <ShieldCheck
-              size={15}
-              strokeWidth={2}
-              className={styles.shieldIcon}
-            />
-            <span>Secure</span>
-            <span className={styles.dot}>•</span>
-            <span>Reliable</span>
-            <span className={styles.dot}>•</span>
-            <span>Efficient</span>
-          </section>
         </div>
-
-        <footer className={styles.footerArea}>
-          <Text type="secondary">2026 © Smart DIA. All rights reserved. Developed by 3ni Infotech.</Text>
-        </footer>
       </div>
     </>
   );

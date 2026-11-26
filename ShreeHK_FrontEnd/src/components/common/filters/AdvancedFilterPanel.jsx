@@ -4,8 +4,8 @@ import styles from '../../../assets/scss/components/advancedFilterPanel.module.s
 
 const { Title, Text } = Typography;
 
-export const FilterField = ({ label, icon, children, className = '' }) => (
-    <div className={`${styles.filterField} ${className}`.trim()}>
+export const FilterField = ({ label, icon, children, className = '', style }) => (
+    <div className={`${styles.filterField} ${className}`.trim()} style={style}>
         {label ? (
             <label className={styles.fieldLabel}>
                 {icon}

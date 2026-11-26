@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useRef } from 'react';
 import {
-    Button, Card, Typography, Checkbox, Form, Select, Input, DatePicker,
+    Button, Card, Typography, Checkbox, Form, Select, Input, DatePicker, Tag,
 } from 'antd';
 import { toastSuccess, toastError, toastWarning } from '../../utils/toastNotify';
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons';
@@ -30,15 +30,32 @@ const SALE_STATUS_OPTIONS = [
     { value: 'close', label: 'Close Sale' },
 ];
 const TYPE_OPTIONS = [
-    { value: 'company', label: 'Company' },
+    { value: 'company', label: 'Party' },
     { value: 'sku', label: 'SKU' },
 ];
 
 const PARTY_COLUMNS = [
     { title: 'No', dataIndex: 'no', key: 'no', width: 60, align: 'center' },
-    { title: 'Company', dataIndex: 'company', key: 'company', align: 'center' },
+    {
+        title: 'Company',
+        dataIndex: 'company',
+        key: 'company',
+        width: 100,
+        align: 'center',
+        render: (v, r) => {
+            const code = r.company_code || v || '';
+            const baseName = r.company_name || '';
+            if (!code || code === '-') return '-';
+            return (
+                <Tag color="blue" title={baseName || undefined} style={{ fontWeight: 600 }}>
+                    {code}
+                </Tag>
+            );
+        },
+    },
+    { title: 'Party', dataIndex: 'party', key: 'party', align: 'center', render: (v, r) => v || r.party_name || '-' },
     { title: 'Invoice', dataIndex: 'invoice', key: 'invoice', align: 'center' },
-    { title: 'Date', dataIndex: 'date', key: 'date', align: 'center', render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
+    { title: 'Date', dataIndex: 'date', key: 'date', align: 'center', render: (v) => formatDateDisplay(v) },
     { title: 'Pcs', dataIndex: 'pcs', key: 'pcs', align: 'center' },
     { title: 'Carat', dataIndex: 'carat', key: 'carat', align: 'center' },
     {
@@ -56,13 +73,13 @@ const PARTY_COLUMNS = [
         render: (v) => <span style={{ color: 'var(--color-primary-dark)' }}>{v ?? '-'}</span>,
     },
     { title: 'Term', dataIndex: 'term', key: 'term', align: 'center' },
-    { title: 'Due Date', dataIndex: 'dueDate', key: 'dueDate', align: 'center', render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
+    { title: 'Due Date', dataIndex: 'dueDate', key: 'dueDate', align: 'center', render: (v) => formatDateDisplay(v) },
     { title: 'Reference', dataIndex: 'reference', key: 'reference', align: 'center' },
 ];
 
 const PACKET_COLUMNS = [
     { title: 'No', dataIndex: 'no', key: 'no', width: 40, align: 'center' },
-    { title: 'Date', dataIndex: 'out_date', key: 'out_date', width: 100, align: 'center', render: (v) => (v && dayjs(v).isValid() ? dayjs(v).format('DD-MM-YYYY') : (v || '-')) },
+    { title: 'Date', dataIndex: 'out_date', key: 'out_date', width: 100, align: 'center', render: (v) => formatDateDisplay(v) },
     { title: 'Sku', dataIndex: 'sku', key: 'sku', width: 160, align: 'center', render: (text, record) => <SkuLink sku={text} record={record} /> },
     { title: 'Lab', dataIndex: 'lab', key: 'lab', width: 70, align: 'center' },
     { title: 'Report No.', dataIndex: 'report_no', key: 'report_no', width: 120, align: 'center' },
@@ -92,26 +109,33 @@ const PACKET_COLUMNS = [
     { title: 'Color', dataIndex: 'color', key: 'color', width: 70, align: 'center' },
     { title: 'Clarity', dataIndex: 'clarity', key: 'clarity', width: 80, align: 'center' },
     { title: 'Remark', dataIndex: 'remark', key: 'remark', width: 160, align: 'center' },
-    { title: 'Company', dataIndex: 'party', key: 'party', width: 180, align: 'center' },
+    {
+        title: 'Company',
+        dataIndex: 'company',
+        key: 'company',
+        width: 110,
+        align: 'center',
+        render: (v, r) => {
+            const code = r.company_code || v || '';
+            const baseName = r.company_name || '';
+            if (!code || code === '-') return '-';
+            return (
+                <Tag color="blue" title={baseName || undefined} style={{ fontWeight: 600 }}>
+                    {code}
+                </Tag>
+            );
+        },
+    },
+    { title: 'Party', dataIndex: 'party', key: 'party', width: 180, align: 'center', render: (v, r) => v || r.party_name || '-' },
 ];
 
-const formatExcelDate = (value) => {
-    if (!value) return '';
-    const s = String(value).trim();
-    const m = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
-    if (m) {
-        const dd = m[1].padStart(2, '0');
-        const mm = m[2].padStart(2, '0');
-        const yyyy = m[3].length === 2 ? `20${m[3]}` : m[3];
-        return `${dd}-${mm}-${yyyy}`;
-    }
-    const d = dayjs(s);
-    return d.isValid() ? d.format('DD-MM-YYYY') : s;
-};
+const formatExcelDate = (value) => formatDateDisplay(value, '');
 
 const PARTY_EXCEL_HEADERS = [
     { title: 'NO', key: 'no', width: 6, align: 'center' },
-    { title: 'Company', key: 'company', width: 42, align: 'left', accessor: (row) => String(row.company || '').toUpperCase() },
+    { title: 'Company', key: 'company', width: 32, align: 'left', accessor: (row) => String(row.company || row.company_name || '').toUpperCase() },
+    { title: 'Type', key: 'type', width: 14, align: 'center', accessor: (row) => String(row.type || '').toUpperCase() },
+    { title: 'Party', key: 'party', width: 32, align: 'left', accessor: (row) => String(row.party || row.party_name || '').toUpperCase() },
     { title: 'Invoice', key: 'invoice', width: 12, align: 'center' },
     { title: 'Date', key: 'date', width: 14, align: 'center', accessor: (row) => formatExcelDate(row.date) },
     { title: 'Term', key: 'term', width: 8, align: 'center' },
@@ -138,7 +162,9 @@ const PACKET_EXCEL_HEADERS = [
     { title: 'Shape', key: 'shape', width: 12, align: 'left' },
     { title: 'Color', key: 'color', width: 10, align: 'center' },
     { title: 'Clarity', key: 'clarity', width: 10, align: 'center' },
-    { title: 'Company', key: 'party', width: 22, align: 'left', accessor: (row) => String(row.party || '').toUpperCase() },
+    { title: 'Company', key: 'company', width: 22, align: 'left', accessor: (row) => String(row.company || row.company_name || '').toUpperCase() },
+    { title: 'Type', key: 'type', width: 14, align: 'center', accessor: (row) => String(row.type || '').toUpperCase() },
+    { title: 'Party', key: 'party', width: 22, align: 'left', accessor: (row) => String(row.party || row.party_name || '').toUpperCase() },
     { title: 'Remark', key: 'remark', width: 18, align: 'left' },
 ];
 
@@ -157,7 +183,7 @@ const TransactionReport = () => {
             : (companyData?.Data || []);
 
         if (actualData.length === 0) {
-            return [{ value: 'all', label: 'All Companies' }];
+            return [{ value: 'all', label: 'All Party' }];
         }
 
         const apiOptions = actualData.map(item => ({
@@ -165,7 +191,7 @@ const TransactionReport = () => {
             label: item.name ? item.name.trim() : `Unknown (${item.id})`
         }));
 
-        return [{ value: 'all', label: 'All Companies' }, ...apiOptions];
+        return [{ value: 'all', label: 'All Party' }, ...apiOptions];
     }, [companyData]);
 
     const {
@@ -200,7 +226,11 @@ const TransactionReport = () => {
             onSuccess: (res) => {
                 setViewType(type);
                 const rows = res?.Data || res?.data || [];
-                setTableData((Array.isArray(rows) ? rows : []).map((row, i) => ({ ...row, key: row.key ?? i + 1 })));
+                setTableData((Array.isArray(rows) ? rows : []).map((row, i) => ({
+                    ...row,
+                    type: String(row.type || row.outward_type || row.inward_type || saleStatus || '').toUpperCase(),
+                    key: row.key ?? i + 1,
+                })));
             },
         });
     };
@@ -349,7 +379,7 @@ const TransactionReport = () => {
                                 <Select
                                     allowClear
                                     showSearch
-                                    placeholder="All Companies"
+                                    placeholder="All Party"
                                     options={companyOptions}
                                     loading={isCompanyLoading}
                                     optionFilterProp="label"

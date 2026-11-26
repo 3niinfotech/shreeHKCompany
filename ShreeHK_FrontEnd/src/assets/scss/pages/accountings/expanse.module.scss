@@ -186,7 +186,7 @@
     :global(.ant-input-number),
     :global(.ant-select-selector),
     :global(.ant-picker) {
-        border-radius: 8px !important;
+        border-radius: 4px !important;
         min-height: var(--form-control-height, 32px) !important;
         height: var(--form-control-height, 32px) !important;
     }

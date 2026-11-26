@@ -103,7 +103,7 @@
     height: var(--filter-control-height) !important;
     min-height: var(--filter-control-height) !important;
     padding: 0 14px;
-    border-radius: 10px !important;
+    border-radius: 4px !important;
     border: 1px solid var(--color-border-strong, #d0dbe3);
     background: var(--color-bg-card, #fff);
     box-shadow: inset 0 1px 2px rgba(10, 30, 45, 0.04);
@@ -170,10 +170,10 @@
         max-width: 450px;
 
         input {
-          height: 38px;
+          height: 32px;
           border: 1px solid var(--color-border-strong);
-          border-radius: 6px;
-          padding: 0 12px;
+          border-radius: 4px;
+          padding: 4px 11px;
           font-size: 14px;
           transition: all 0.2s;
 
@@ -281,7 +281,7 @@
       }
 
       :global(.form-control) {
-        height: 36px;
+        height: 32px;
         font-size: 13.5px;
         border: 1px solid var(--color-border);
         border-radius: 4px;

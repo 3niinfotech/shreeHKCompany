@@ -892,6 +892,18 @@ async function getPartyMap() {
   return map;
 }
 
+async function getCompanyMap() {
+  const rows = await queryAsync("SELECT id, name, shortcutName FROM company");
+  const map = {};
+  rows.forEach((r) => {
+    map[r.id] = {
+      name: r.name || r.shortcutName || "",
+      code: r.shortcutName || r.name || "",
+    };
+  });
+  return map;
+}
+
 /** Map user_id → display name (first+last, else user_name). Prefer meta DB. */
 async function getUserMap() {
   const map = {};
@@ -1035,6 +1047,7 @@ async function getGroupReport(post, companyId, userId) {
             party: row.party,
             party_name: partyMap[row.party] || "",
             out_date: row.date,
+            invoicedate: row.invoicedate,
             entryno: row.entryno,
             invoiceno: row.invoiceno,
           });
@@ -1051,6 +1064,7 @@ async function getGroupReport(post, companyId, userId) {
               party: row.party,
               party_name: partyMap[row.party] || "",
               out_date: row.date,
+              invoicedate: row.invoicedate,
               entryno: row.entryno,
               invoiceno: row.invoiceno,
             });
@@ -1088,6 +1102,7 @@ async function getGroupReport(post, companyId, userId) {
           party: row.party,
           party_name: partyMap[row.party] || "",
           out_date: row.date,
+          invoicedate: row.invoicedate,
           entryno: row.entryno,
           invoiceno: row.invoiceno,
         });
@@ -1118,11 +1133,19 @@ function formatGroupRow(row, report, no) {
     }
   }
 
+  const rawDate =
+    row.out_date && row.out_date !== "0000-00-00" && row.out_date !== "0000-00-00 00:00:00"
+      ? row.out_date
+      : row.invoicedate && row.invoicedate !== "0000-00-00" && row.invoicedate !== "0000-00-00 00:00:00"
+        ? row.invoicedate
+        : null;
+  const formattedDate = rawDate && moment(rawDate).isValid() ? moment(rawDate).format("DD-MM-YYYY") : "";
+
   return {
     no,
     company: row.party_name || "",
     company_id: row.company || "",
-    date: row.out_date ? moment(row.out_date).format("DD-MM-YYYY") : "",
+    date: formattedDate,
     invoice: row.invoiceno || "",
     sku: row.sku || "",
     lab: row.lab || "",
@@ -2634,20 +2657,21 @@ async function getOutwardTransactionRows(post, companyId, userId) {
     ...invoiceFilter.values,
     limit,
   ];
-  // perf: party map and outward rows are independent
-  const [partyMap, outwardRows] = await Promise.all([
+  // perf: party map, company map and outward rows are independent
+  const [partyMap, companyMap, outwardRows] = await Promise.all([
     getPartyMap(),
+    getCompanyMap(),
     queryAsync(outwardSql, outwardValues),
   ]);
 
   if (type === "packet") {
-    return getTransactionPacketRows(outwardRows, report, partyMap, giaSql);
+    return getTransactionPacketRows(outwardRows, report, partyMap, giaSql, companyMap);
   }
 
-  return getTransactionPartyRows(outwardRows, report, partyMap, giaSql);
+  return getTransactionPartyRows(outwardRows, report, partyMap, giaSql, companyMap);
 }
 
-async function getTransactionPacketRows(outwardRows, report, partyMap, giaSql) {
+async function getTransactionPacketRows(outwardRows, report, partyMap, giaSql, companyMap = {}) {
   const productIds = [];
   const returnIds = [];
   const rowsData = [];
@@ -2701,7 +2725,9 @@ async function getTransactionPacketRows(outwardRows, report, partyMap, giaSql) {
       return_ids.forEach((id) => {
         const r = returnData[parseInt(id, 10)];
         if (!r) return;
+        const comp = companyMap[row.company] || {};
         data.push({
+          type: (row.type || report || "").toUpperCase(),
           out_date: formatOutwardDate(row.invoicedate),
           sku: r.sku || "",
           lab: r.lab || "",
@@ -2713,7 +2739,11 @@ async function getTransactionPacketRows(outwardRows, report, partyMap, giaSql) {
           shape: r.shape || "",
           color: r.color || "",
           clarity: r.clarity || "",
+          company: comp.code || comp.name || "",
+          company_name: comp.name || "",
+          company_code: comp.code || "",
           party: partyMap[row.party] || "",
+          party_name: partyMap[row.party] || "",
           remark: r.remark || "",
           entryno: row.entryno,
         });
@@ -2724,6 +2754,7 @@ async function getTransactionPacketRows(outwardRows, report, partyMap, giaSql) {
       product_ids.forEach((id) => {
         const r = productData[parseInt(id, 10)];
         if (!r) return;
+        const comp = companyMap[row.company] || {};
         const price = parseFloat(r.sell_price) === 0 ? r.price : r.sell_price;
         const amount = parseFloat(r.sell_amount) === 0 ? r.amount : r.sell_amount;
         data.push({
@@ -2738,7 +2769,11 @@ async function getTransactionPacketRows(outwardRows, report, partyMap, giaSql) {
           shape: r.shape || "",
           color: r.color || "",
           clarity: r.clarity || "",
+          company: comp.code || comp.name || "",
+          company_name: comp.name || "",
+          company_code: comp.code || "",
           party: partyMap[row.party] || "",
+          party_name: partyMap[row.party] || "",
           remark: r.remark || "",
           entryno: row.entryno,
         });
@@ -2749,7 +2784,7 @@ async function getTransactionPacketRows(outwardRows, report, partyMap, giaSql) {
   return data.map((row, idx) => ({ ...row, no: idx + 1, key: idx + 1 }));
 }
 
-async function getTransactionPartyRows(outwardRows, report, partyMap, giaSql) {
+async function getTransactionPartyRows(outwardRows, report, partyMap, giaSql, companyMap = {}) {
   const productIds = [];
   const returnIds = [];
   const rowsData = [];
@@ -2769,11 +2804,14 @@ async function getTransactionPartyRows(outwardRows, report, partyMap, giaSql) {
         ? moment(row.duedate).format("DD/MM/YY")
         : "";
 
+    const comp = companyMap[row.company] || {};
     rowsData.push({
       ...row,
       product_ids,
       return_ids,
       party: partyMap[row.party] || "",
+      company_name: comp.name || "",
+      company_code: comp.code || "",
       out_date: formatOutwardDate(row.invoicedate),
       duedate,
     });
@@ -2890,9 +2928,12 @@ async function getTransactionPartyRows(outwardRows, report, partyMap, giaSql) {
 
     data.push({
       id: row.id,
+      type: (row.type || report || "").toUpperCase(),
       invoiceno: row.invoiceno || "",
       out_date: row.out_date,
       party: row.party,
+      company_name: row.company_name,
+      company_code: row.company_code,
       tpp,
       tpc: Number(tpc.toFixed(3)),
       tp: Number(tp.toFixed(2)),
@@ -2912,9 +2953,14 @@ async function getTransactionPartyRows(outwardRows, report, partyMap, giaSql) {
     return {
       no: idx + 1,
       key: idx + 1,
+      type: (row.type || "").toUpperCase(),
       invoice: row.invoiceno,
       date: row.out_date,
-      company: row.party,
+      company: row.company_code || row.company_name || "",
+      company_name: row.company_name || "",
+      company_code: row.company_code || "",
+      party: row.party || "",
+      party_name: row.party || "",
       pcs: row.tpp,
       carat: row.tpc,
       price: row.tp,
@@ -2957,9 +3003,10 @@ async function getPurchaseTransactionRows(post, companyId, userId) {
     WHERE (deleted = 0 OR deleted IS NULL) AND company = ?${userFilter}
     AND inward_type IN ('purchase','import')${partyFilter.sql}${dateFilter.sql}${invoiceFilter.sql}
     ORDER BY date DESC, id DESC LIMIT ?`;
-  // perf: party map and inward rows are independent
-  const [partyMap, inwardRows] = await Promise.all([
+  // perf: party map, company map and inward rows are independent
+  const [partyMap, companyMap, inwardRows] = await Promise.all([
     getPartyMap(),
+    getCompanyMap(),
     queryAsync(inwardSql, [
       companyId,
       ...partyFilter.values,
@@ -3008,7 +3055,9 @@ async function getPurchaseTransactionRows(post, companyId, userId) {
           parseFloat(prod.purchase_price) === 0 ? prod.price : prod.purchase_price;
         const amount =
           parseFloat(prod.purchase_amount) === 0 ? prod.amount : prod.purchase_amount;
+        const comp = companyMap[row.company] || {};
         data.push({
+          type: (row.type || report || "").toUpperCase(),
           out_date: formatOutwardDate(row.invoicedate),
           sku: prod.sku || "",
           lab: prod.lab || "",
@@ -3020,7 +3069,11 @@ async function getPurchaseTransactionRows(post, companyId, userId) {
           shape: prod.shape || "",
           color: prod.color || "",
           clarity: prod.clarity || "",
+          company: comp.code || comp.name || "",
+          company_name: comp.name || "",
+          company_code: comp.code || "",
           party: partyMap[row.party] || "",
+          party_name: partyMap[row.party] || "",
           remark: prod.remark || "",
           entryno: row.entryno,
         });
@@ -3050,12 +3103,18 @@ async function getPurchaseTransactionRows(post, companyId, userId) {
     const finalCarat = parseFloat(row.carat) === 0 ? tpc : row.carat;
     const tp = tpc > 0 ? ta / tpc : 0;
 
+    const comp = companyMap[row.company] || {};
     data.push({
       no: 0,
       key: 0,
+      type: (row.inward_type || report || "purchase").toUpperCase(),
       invoice: row.invoiceno || "",
       date: formatOutwardDate(row.invoicedate),
-      company: partyMap[row.party] || "",
+      company: comp.code || comp.name || "",
+      company_name: comp.name || "",
+      company_code: comp.code || "",
+      party: partyMap[row.party] || "",
+      party_name: partyMap[row.party] || "",
       pcs: finalPcs,
       carat: Number(parseFloat(finalCarat).toFixed(3)),
       price: Number(tp.toFixed(2)),

@@ -181,7 +181,8 @@ reportRouter.post("/report/outstanding", authenticateToken, async (req, res) => 
     const type = post.type;
     const userId = Number(post.userid ?? buildUserContext(req).userId) || 0;
 
-    const saleSelect = `SELECT o.id, o.entryno, o.type, o.invoiceno, p.name, o.reference,
+    const saleSelect = `SELECT o.id, o.entryno, o.type, o.invoiceno, p.name, p.name AS party_name, o.reference,
+                                 o.company AS company_id, c.name AS company_name, c.shortcutName AS company_code,
                                  DATE_FORMAT(o.invoicedate, '%d-%m-%Y') AS invoicedate,
                                  DATE_FORMAT(o.date, '%d-%m-%Y') AS date,
                                  DATE_FORMAT(o.duedate, '%d-%m-%Y') AS due_date,
@@ -193,8 +194,9 @@ reportRouter.post("/report/outstanding", authenticateToken, async (req, res) => 
                                  o.due_amount`;
     const saleFrom = `FROM dai_outward o
                          LEFT JOIN dai_party p ON o.party = p.id AND p.company = ?
+                         LEFT JOIN company c ON o.company = c.id
                          LEFT JOIN dai_product dp ON FIND_IN_SET(dp.id, o.products) AND dp.company = ?`;
-    const saleGroupBy = `GROUP BY o.id, o.entryno, o.type, o.invoiceno, p.name, o.reference, o.invoicedate, o.date, o.duedate, o.terms, o.final_amount, o.paid_amount, o.due_amount
+    const saleGroupBy = `GROUP BY o.id, o.entryno, o.type, o.invoiceno, p.name, o.reference, o.company, c.name, c.shortcutName, o.invoicedate, o.date, o.duedate, o.terms, o.final_amount, o.paid_amount, o.due_amount
                          ORDER BY o.date DESC, o.id DESC`;
 
     if (type === "sale") {
@@ -211,7 +213,8 @@ reportRouter.post("/report/outstanding", authenticateToken, async (req, res) => 
       queryParams = [companyId, companyId, companyId, ...filterParams];
     } else if (type === "purchase") {
       const userFilter = (userId === 16 || userId === 1) ? "" : " AND o.user != 16";
-      query = `SELECT o.id, o.entryno, o.inward_type as type, o.invoiceno, p.name, o.reference,
+      query = `SELECT o.id, o.entryno, o.inward_type as type, o.invoiceno, p.name, p.name AS party_name, o.reference,
+                                 o.company AS company_id, c.name AS company_name, c.shortcutName AS company_code,
                                  DATE_FORMAT(o.invoicedate, '%d-%m-%Y') AS invoicedate,
                                  DATE_FORMAT(o.date, '%d-%m-%Y') AS date,
                                  DATE_FORMAT(o.duedate, '%d-%m-%Y') AS due_date,
@@ -223,6 +226,7 @@ reportRouter.post("/report/outstanding", authenticateToken, async (req, res) => 
                                  o.due_amount
                          FROM dai_inward o
                          LEFT JOIN dai_party p ON o.party = p.id AND p.company = ?
+                         LEFT JOIN company c ON o.company = c.id
                          WHERE o.company = ?
                          AND o.inward_type IN ('purchase', 'import')
                          AND (o.deleted = 0 OR o.deleted IS NULL)
@@ -273,7 +277,8 @@ reportRouter.post("/report/outstandingRecords", authenticateToken, async (req, r
     const normalizedType = String(type || "").toLowerCase();
     if (normalizedType === "sale" || normalizedType === "export") {
       idQuery = "AND sale_id = ?";
-      query = `SELECT o.id, o.entryno, o.type, o.invoiceno, p.name, o.reference, 
+      query = `SELECT o.id, o.entryno, o.type, o.invoiceno, p.name, p.name AS party_name, o.reference,
+                      o.company AS company_id, c.name AS company_name, c.shortcutName AS company_code,
                       DATE_FORMAT(o.invoicedate, '%d-%m-%Y') AS invoicedate, 
                       DATE_FORMAT(o.date, '%d-%m-%Y') AS date, 
                       DATE_FORMAT(o.duedate, '%d-%m-%Y') AS due_date, 
@@ -283,10 +288,12 @@ reportRouter.post("/report/outstandingRecords", authenticateToken, async (req, r
                       o.due_amount                                
                FROM dai_outward o
                LEFT JOIN dai_party p ON o.party = p.id AND p.company = ?
+               LEFT JOIN company c ON o.company = c.id
                WHERE o.id = ? AND o.company = ? AND (o.deleted = 0 OR o.deleted IS NULL)`;
     } else if (normalizedType === "purchase" || normalizedType === "import") {
       idQuery = "AND purchase_id = ?";
-      query = `SELECT o.id, o.entryno, o.inward_type as type, o.invoiceno, p.name, o.reference, 
+      query = `SELECT o.id, o.entryno, o.inward_type as type, o.invoiceno, p.name, p.name AS party_name, o.reference,
+                      o.company AS company_id, c.name AS company_name, c.shortcutName AS company_code,
                       DATE_FORMAT(o.invoicedate, '%d-%m-%Y') AS invoicedate, 
                       DATE_FORMAT(o.date, '%d-%m-%Y') AS date, 
                       DATE_FORMAT(o.duedate, '%d-%m-%Y') AS due_date, 
@@ -296,6 +303,7 @@ reportRouter.post("/report/outstandingRecords", authenticateToken, async (req, r
                       o.due_amount                                
                FROM dai_inward o
                LEFT JOIN dai_party p ON o.party = p.id AND p.company = ?
+               LEFT JOIN company c ON o.company = c.id
                WHERE o.id = ? AND o.company = ? AND (o.deleted = 0 OR o.deleted IS NULL)`;
     } else {
       return res.status(400).json({ error: "Invalid type. Allowed values: sale, purchase, export, import" });

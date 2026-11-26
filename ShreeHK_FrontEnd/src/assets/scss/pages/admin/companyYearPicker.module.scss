@@ -13,11 +13,11 @@
   }
 
   :global(.ant-modal-header) {
-    margin: 0;
-    padding: 22px 26px;
-    background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 55%, var(--color-primary-medium) 100%);
-    border-bottom: none;
-    overflow: hidden;
+    margin: 0 !important;
+    padding: 22px 26px !important;
+    background: linear-gradient(135deg, var(--color-primary-dark, #0b5e52) 0%, var(--color-primary, #0d7b6b) 55%, var(--color-primary-medium, #149c88) 100%) !important;
+    border-bottom: none !important;
+    overflow: hidden !important;
   }
 
   :global(.ant-modal-close) {
