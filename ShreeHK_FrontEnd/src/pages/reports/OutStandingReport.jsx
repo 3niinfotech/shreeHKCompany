@@ -77,7 +77,7 @@ const OutStandingReport = () => {
 
     const companyOptions = useMemo(() => {
         const actualData = companyData?.Data || (Array.isArray(companyData) ? companyData : []);
-        return [{ value: '', label: 'All Companies' }, ...actualData.map(item => ({
+        return [{ value: '', label: 'All Party' }, ...actualData.map(item => ({
             value: String(item.id),
             label: item.name ? item.name.trim() : `Unknown (${item.id})`
         }))];
@@ -89,6 +89,7 @@ const OutStandingReport = () => {
             typeOptions: [{ value: 'sale', label: 'Sale Type' }, { value: 'purchase', label: 'Purchase Type' }],
             partyOptions: companyOptions,
             isPartyLoading: isCompanyLoading,
+            separateDate: true,
         }
     );
 
@@ -96,9 +97,12 @@ const OutStandingReport = () => {
     const isPurchase = selectedType === 'purchase';
 
     const handleSearch = (currentValues) => {
+        const fromDateVal = currentValues.startDate || currentValues.dateRange?.[0];
+        const toDateVal = currentValues.endDate || currentValues.dateRange?.[1];
+
         const payload = {
-            from: currentValues.dateRange?.[0]?.format('YYYY-MM-DD') || "",
-            to: currentValues.dateRange?.[1]?.format('YYYY-MM-DD') || "",
+            from: fromDateVal ? dayjs(fromDateVal).format('YYYY-MM-DD') : "",
+            to: toDateVal ? dayjs(toDateVal).format('YYYY-MM-DD') : "",
             invoiceno: currentValues.invoiceNo || "",
             party: currentValues.party || "",
             type: currentValues.type || "sale",
@@ -132,14 +136,31 @@ const OutStandingReport = () => {
             align: 'center',
             render: (text, record) => (
                 <span
-                    style={{ color: cssVar('color-text-link'), cursor: 'pointer', fontWeight: 500 }}
+                    style={{ color: '#1F2937', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}
                     onClick={() => openModal(record)}
                 >
-                    {text}
+                    {text ? (String(text).startsWith('#') ? text : `#${text}`) : '-'}
                 </span>
             )
         },
-        { title: 'Company', dataIndex: 'name', key: 'name', width: 220, align: 'center' },
+        {
+            title: 'Company',
+            dataIndex: 'company_code',
+            key: 'company',
+            width: 100,
+            align: 'center',
+            render: (v, record) => {
+                const code = record.company_code || record.company_shortcut || v || '';
+                const baseName = record.company_name || '';
+                if (!code || code === '-') return '-';
+                return (
+                    <Tag color="blue" title={baseName || undefined} style={{ fontWeight: 600 }}>
+                        {code}
+                    </Tag>
+                );
+            },
+        },
+        { title: 'Party', dataIndex: 'name', key: 'party', width: 220, align: 'center', render: (v, r) => v || r.party_name || '-' },
         {
             title: 'Invoice',
             dataIndex: 'invoiceno',
@@ -230,8 +251,9 @@ const OutStandingReport = () => {
     };
 
     const exportHeaders = [
-        { title: 'Entry No', key: 'entryno', width: 16, align: 'center' },
-        { title: 'Company', key: 'name', width: 42, align: 'center', accessor: (row) => String(row.name || '').toUpperCase() },
+        { title: 'Entry No', key: 'entryno', width: 16, align: 'center', accessor: (row) => row.entryno ? (String(row.entryno).startsWith('#') ? row.entryno : `#${row.entryno}`) : '' },
+        { title: 'Company', key: 'company_code', width: 14, align: 'center', accessor: (row) => String(row.company_code || row.company || '').toUpperCase() },
+        { title: 'Party', key: 'name', width: 42, align: 'center', accessor: (row) => String(row.name || row.party_name || '').toUpperCase() },
         { title: 'Invoice', key: 'invoiceno', width: 12, align: 'center' },
         { title: 'Date', key: 'invoicedate', width: 14, align: 'center' },
         { title: 'Term', key: 'terms', width: 10, align: 'center' },
@@ -317,7 +339,7 @@ const OutStandingReport = () => {
                     </>
                 )}
             >
-                <div className={filterPanelStyles.filterInlineRow}>
+                <div className={`${filterPanelStyles.filterInlineRow} ${styles.filterRow}`}>
                     <Form form={form}>
                         {renderFilters()}
                     </Form>

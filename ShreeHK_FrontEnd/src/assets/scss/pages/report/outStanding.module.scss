@@ -52,6 +52,64 @@
     }
 }
 
+.filterRow {
+    :global {
+        .filter-form-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+
+            .filter-item {
+                margin: 0 !important;
+
+                .ant-input-affix-wrapper,
+                .ant-picker {
+                    height: 32px !important;
+                    min-height: 32px !important;
+                    max-height: 32px !important;
+                    box-sizing: border-box;
+                    border-radius: 4px !important;
+                }
+
+                .ant-select {
+                    height: 32px !important;
+                    min-height: 32px !important;
+                    max-height: 32px !important;
+                    box-sizing: border-box;
+
+                    .ant-select-selector {
+                        height: 32px !important;
+                        min-height: 32px !important;
+                        max-height: 32px !important;
+                        box-sizing: border-box;
+                        border-radius: 4px !important;
+                        display: flex;
+                        align-items: center;
+                    }
+
+                    .ant-select-selection-item,
+                    .ant-select-selection-placeholder {
+                        line-height: 30px !important;
+                    }
+                }
+
+                .width-invoice,
+                .width-type,
+                .width-party,
+                .width-single-date,
+                .width-date,
+                .ant-select,
+                .ant-input-affix-wrapper,
+                .ant-picker {
+                    width: 195px !important;
+                    min-width: 195px !important;
+                    max-width: 195px !important;
+                }
+            }
+        }
+    }
+}
+
 .tableCard {
     border: none;
     box-shadow: none;
@@ -128,7 +186,7 @@
         .ant-select-selector,
         .ant-picker {
             height: var(--filter-control-height) !important;
-            border-radius: 6px;
+            border-radius: 4px;
         }
     }
 }

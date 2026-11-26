@@ -412,7 +412,7 @@ textarea.ant-input:not([disabled]):not(.ant-input-disabled),
 .ant-input-number:not(.ant-input-number-disabled):not([disabled]),
 .ant-select:not(.ant-select-disabled) .ant-select-selector,
 .ant-picker:not(.ant-picker-disabled) {
-  border-radius: var(--radius-control) !important;
+  border-radius: 4px !important;
   border: 0.5px solid var(--color-border) !important;
   background: var(--color-card-bg) !important;
 }

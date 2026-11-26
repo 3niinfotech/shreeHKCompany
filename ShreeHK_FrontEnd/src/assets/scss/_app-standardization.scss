@@ -2,7 +2,7 @@
 // shared component appearance belongs here.
 
 :root {
-  --crm-control-height: 34px;
+  --crm-control-height: 32px;
   --crm-control-height-sm: 30px;
   --crm-card-padding: 16px;
   --crm-page-gap: 16px;
@@ -78,7 +78,7 @@ input:not(.ant-input):not([type="checkbox"]):not([type="radio"]):not([type="rang
 select:not([class*="ant-"]),
 textarea:not(.ant-input):not([class*="ant-"]) {
   border-color: var(--color-input-border, var(--color-border));
-  border-radius: var(--crm-control-radius);
+  border-radius: 4px;
 }
 
 // Keep headings calm and consistent across legacy pages and Ant Design views.
@@ -224,19 +224,128 @@ h6,
 .ant-tree-select .ant-select-selector,
 .ant-cascader-picker,
 .form-control,
-.form-select {
+.form-select,
+.stockEditCellInput,
+.stockEditBankSlot,
+[class*="stockEditCellInput"],
+[class*="stockEditBankSlot"] {
   min-height: var(--crm-control-height) !important;
   height: var(--crm-control-height) !important;
-  border-radius: var(--crm-control-radius) !important;
+  max-height: var(--crm-control-height) !important;
+  box-sizing: border-box !important;
+  border-radius: 4px !important;
   font-size: var(--font-size-sm, 13px) !important;
   line-height: 1.35 !important;
+}
+
+.ant-input:not(textarea):not(.ant-input-affix-wrapper input),
+.form-control,
+.form-select {
+  padding: 4px 11px !important;
+  line-height: 22px !important;
+}
+
+/* Affix wrapper, Select selector, Picker, InputNumber: inner padding & flex-center */
+.ant-input-affix-wrapper,
+.ant-input-number,
+.ant-picker,
+.ant-select-single:not(.ant-select-customize-input) .ant-select-selector {
+  padding: 0 11px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Inner input inside affix wrapper: auto height, no duplicate padding, radius 0 */
+.ant-input-affix-wrapper > input.ant-input {
+  min-height: auto !important;
+  height: auto !important;
+  max-height: none !important;
+  padding: 0 !important;
+  line-height: 22px !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+/* InputNumber inner input vertical centering & radius 0 */
+.ant-input-number-input {
+  height: 30px !important;
+  line-height: 30px !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
+/* Select items vertical centering (single mode) */
+.ant-select-single:not(.ant-select-customize-input) .ant-select-selection-item,
+.ant-select-single:not(.ant-select-customize-input) .ant-select-selection-placeholder {
+  line-height: 30px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Multi-select: collapsed min-height 32px, height auto to grow on chip wrap, 4px radius */
+.ant-select-multiple .ant-select-selector {
+  min-height: 32px !important;
+  height: auto !important;
+  max-height: none !important;
+  padding: 1px 4px !important;
+  border-radius: 4px !important;
+}
+
+/* DatePicker RangePicker wrapper & inner inputs, 4px radius */
+.ant-picker.ant-picker-range {
+  min-height: 32px !important;
+  height: 32px !important;
+  max-height: 32px !important;
+  box-sizing: border-box !important;
+  padding: 0 11px !important;
+  border-radius: 4px !important;
+}
+.ant-picker-range .ant-picker-input > input {
+  height: auto !important;
+  line-height: 22px !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
+/* Size small / large variants forced to 32px & 4px radius */
+.ant-input-sm,
+.ant-input-lg,
+.ant-select-sm .ant-select-selector,
+.ant-select-lg .ant-select-selector,
+.ant-picker-sm,
+.ant-picker-lg,
+.ant-input-number-sm,
+.ant-input-number-lg {
+  min-height: 32px !important;
+  height: 32px !important;
+  max-height: 32px !important;
+  border-radius: 4px !important;
+}
+
+/* Disabled, readonly, error, focus, hover states 32px & 4px radius */
+.ant-input:disabled,
+.ant-input[readonly],
+.ant-input-status-error,
+.ant-select-status-error .ant-select-selector,
+.ant-picker-status-error,
+.ant-input-affix-wrapper-status-error,
+.ant-input-affix-wrapper-focused,
+.ant-input-affix-wrapper:hover,
+.ant-input:hover,
+.ant-input:focus {
+  min-height: 32px !important;
+  height: 32px !important;
+  max-height: 32px !important;
+  border-radius: 4px !important;
 }
 
 textarea.ant-input,
 textarea.form-control {
   min-height: 76px !important;
   height: auto !important;
-  border-radius: var(--crm-control-radius) !important;
+  border-radius: 4px !important;
   font-size: var(--font-size-sm, 13px) !important;
   line-height: var(--line-height-normal, 1.5) !important;
 }

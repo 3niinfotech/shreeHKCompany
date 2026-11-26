@@ -150,7 +150,7 @@
       :global(.ant-input-affix-wrapper) {
         background: var(--color-sidebar-active-bg, rgba(255, 255, 255, 0.06));
         border-color: var(--color-sidebar-border);
-        border-radius: v.$radius-control;
+        border-radius: 4px;
         color: var(--color-neutral);
 
         &:hover,

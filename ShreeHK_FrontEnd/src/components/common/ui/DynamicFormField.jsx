@@ -53,8 +53,10 @@ const DynamicForm = ({ fields, forceFullWidth, layout = 'grid' }) => {
     const isStack = layout === 'stack';
 
     const renderInput = (field) => {
+        const isMulti = field.mode === 'multiple' || field.mode === 'tags';
         const inputStyle = {
-            height: field.type === 'textarea' ? 'auto' : 'var(--form-control-height, 32px)',
+            height: (field.type === 'textarea' || isMulti) ? 'auto' : 'var(--form-control-height, 32px)',
+            minHeight: field.type === 'textarea' ? undefined : 'var(--form-control-height, 32px)',
             width: isStack ? '100%' : (field.width || '100%'),
         };
 

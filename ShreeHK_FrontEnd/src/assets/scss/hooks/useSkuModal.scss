@@ -7,6 +7,124 @@
   }
 }
 
+// =============================================================================
+// SMALL POPOVER BOX (Rendered directly beside clicked SKU)
+// =============================================================================
+.sku-action-popover {
+  z-index: 10500 !important;
+
+  .ant-popover-inner {
+    padding: 0 !important;
+    border-radius: 8px !important;
+    overflow: hidden;
+    box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.22), 0 4px 10px -2px rgba(15, 23, 42, 0.1) !important;
+    border: 1px solid var(--color-border, #e2e8f0);
+  }
+
+  .ant-popover-arrow {
+    display: none !important;
+  }
+}
+
+.sku-popover-box {
+  width: 320px;
+  background: var(--color-card-bg, #ffffff);
+  border-radius: 8px;
+  overflow: hidden;
+
+  .sku-popover-header {
+    background: var(--color-primary, #0d7a68);
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+
+    .sku-popover-title {
+      margin: 0;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      width: 100%;
+    }
+  }
+
+  .sku-popover-actions {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    padding: 10px 8px;
+    background: var(--color-card-bg, #ffffff);
+
+    .sku-popover-btn {
+      appearance: none;
+      -webkit-appearance: none;
+      background: var(--color-page-bg, #f8fafc);
+      border: 1px solid var(--color-border, #e2e8f0);
+      border-radius: 6px;
+      padding: 8px 4px 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+
+      &:hover {
+        background: color-mix(in srgb, var(--color-primary, #0d7a68) 10%, #ffffff);
+        border-color: var(--color-primary, #0d7a68);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.08);
+      }
+
+      &:active {
+        transform: translateY(0);
+      }
+
+      &__icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: color-mix(in srgb, var(--color-primary, #0d7a68) 12%, transparent);
+        color: var(--color-primary, #0d7a68);
+      }
+
+      &__label {
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--color-text-heading, #1e293b);
+        text-align: center;
+        line-height: 1.2;
+        white-space: nowrap;
+      }
+    }
+  }
+}
+
+// Compact modal fallback (for header search modal)
+.sku-action-compact-modal {
+  .ant-modal-content {
+    padding: 0 !important;
+    border-radius: 8px !important;
+    overflow: hidden;
+    box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.25) !important;
+    border: 1px solid var(--color-border, #e2e8f0);
+  }
+
+  .ant-modal-body {
+    padding: 0 !important;
+  }
+
+  .sku-popover-box {
+    width: 100%;
+  }
+}
+
 .sku-action-modal {
   .ant-modal-content {
     padding: 0 !important;

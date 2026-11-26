@@ -147,7 +147,7 @@
         .ant-select-selector,
         .ant-picker {
             height: var(--filter-control-height) !important;
-            border-radius: 6px;
+            border-radius: 4px;
         }
     }
 }
@@ -160,10 +160,9 @@
     :global(.ant-select),
     :global(.ant-picker),
     :global(.ant-input-affix-wrapper),
-    :global(.ant-input) {
-        // height: 38px !important;
-        // min-height: 38px !important;
-        border-radius: 8px !important;
+    :global(.ant-input),
+    :global(.ant-select-selector) {
+        border-radius: 4px !important;
     }
 }
 

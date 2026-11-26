@@ -48,7 +48,8 @@ const EXPORT_COLUMNS = [
 
 /** Venya Helper::getInventoryAttribute() — inventory I.Export button */
 const IEXPORT_COLUMNS = [
-  { key: "mfg_code", header: "Type", width: 10, align: "center" },
+  { key: "type", header: "Type", width: 10, align: "center" },
+  { key: "company", header: "Company", width: 14, align: "center" },
   { key: "sku", header: "Sku", width: 16, align: "center" },
   { key: "lab", header: "Lab", width: 8, align: "center" },
   { key: "report_no", header: "Certificate", width: 14, align: "center" },
@@ -123,10 +124,34 @@ const cellText = (value) => {
   return String(value);
 };
 
-const pickField = (row, key) => {
+const pickField = (row, key, companyMetaMap) => {
   switch (key) {
-    case "mfg_code":
-      return row.mfgCode ?? row.mfg_code ?? "";
+    case "type":
+    case "mfg_code": {
+      const val = row.group_type || row.groupType || row.type || row.mfg_code || row.mfgCode || "";
+      return val ? String(val).toUpperCase() : "";
+    }
+    case "company": {
+      const direct =
+        row.company_code ||
+        row.companyCode ||
+        row.company_shortcut ||
+        row.companyShortcut ||
+        row.company_name ||
+        row.companyName ||
+        "";
+      if (direct) return String(direct).toUpperCase();
+      const compId = Number(row.company ?? row.company_id ?? row.companyId ?? row.operating_company_id);
+      if (compId && companyMetaMap && companyMetaMap.get(compId)) {
+        const m = companyMetaMap.get(compId);
+        const resolved = m.code || m.shortcutName || m.name;
+        if (resolved) return String(resolved).toUpperCase();
+      }
+      const session = useAuthStore.getState();
+      const sessionCode = session.companyShortcut || session.companyCode || session.companyName || "";
+      if (sessionCode) return String(sessionCode).toUpperCase();
+      return compId ? `Company #${compId}` : "";
+    }
     case "sku":
       return row.sku ?? "";
     case "lab":
@@ -294,7 +319,62 @@ export const exportVenyaInventoryExcel = async ({
     alignment: { horizontal: "left", vertical: "middle" },
   };
 
-  // --- 1. RESOLVE COMPANY INFO HEADER ---
+  // --- 1. RESOLVE COMPANY INFO HEADER & METADATA ---
+  const companyMetaMap = new Map();
+  try {
+    const [combosRes, branchRes, optRes] = await Promise.allSettled([
+      api.get(ENDPOINTS.portal.companyYears),
+      api.get(ENDPOINTS.portal.branchCompanies),
+      api.get(ENDPOINTS.company.options),
+    ]);
+    if (combosRes.status === "fulfilled") {
+      (combosRes.value.data?.Data || []).forEach((c) => {
+        if (c.companyId) {
+          companyMetaMap.set(Number(c.companyId), {
+            code: c.companyShortcut || c.companyCode || c.companyName || "",
+            name: c.companyName || "",
+            address: c.companyAddress || "",
+            website: c.companyWebsite || "",
+            email: c.companyEmail || "",
+            number: c.companyNumber || "",
+            rapnetId: c.companyRapnetId || "",
+          });
+        }
+      });
+    }
+    if (branchRes.status === "fulfilled") {
+      (branchRes.value.data?.Data || []).forEach((c) => {
+        if (c.id) {
+          const prev = companyMetaMap.get(Number(c.id)) || {};
+          companyMetaMap.set(Number(c.id), {
+            ...prev,
+            code: c.code || c.shortcutName || prev.code || c.name || "",
+            name: c.name || prev.name || "",
+            address: c.address || prev.address || "",
+            website: c.website || prev.website || "",
+            email: c.email || prev.email || "",
+            number: c.number || prev.number || "",
+            rapnetId: c.rapnet_id || prev.rapnetId || "",
+          });
+        }
+      });
+    }
+    if (optRes.status === "fulfilled") {
+      const opts = Array.isArray(optRes.value.data) ? optRes.value.data : (optRes.value.data?.Data || []);
+      opts.forEach((c) => {
+        if (c.id || c.value) {
+          const id = Number(c.id || c.value);
+          const prev = companyMetaMap.get(id) || {};
+          companyMetaMap.set(id, {
+            ...prev,
+            code: c.shortcutName || c.code || prev.code || c.name || c.label || "",
+            name: c.name || c.label || prev.name || "",
+          });
+        }
+      });
+    }
+  } catch (_) {}
+
   // If all selected stones belong to the same company, show that company's address & info.
   // If stones belong to multiple different companies, hide the address/contact info.
   const companyIds = [
@@ -597,7 +677,7 @@ export const exportVenyaInventoryExcel = async ({
       cell.border = thinBorder;
       cell.alignment = { horizontal: col.align || "left", vertical: "middle" };
 
-      const raw = pickField(row, col.key);
+      const raw = pickField(row, col.key, companyMetaMap);
 
       // --- A. SKU HYPERLINK (Venya Rapnet URL / ERP Stone Detail) ---
       if (col.key === "sku") {

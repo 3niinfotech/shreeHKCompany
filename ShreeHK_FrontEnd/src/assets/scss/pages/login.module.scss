@@ -94,7 +94,7 @@
       height: 45px;
       background-color: var(--color-page-bg);
       border: 0.5px solid var(--color-border);
-      border-radius: var(--radius-control);
+      border-radius: 4px;
 
       &:hover,
       &:focus {
@@ -271,7 +271,7 @@
       height: 44px;
       background-color: #edf3fc !important;
       border: 1px solid #dbe5f5 !important;
-      border-radius: 8px !important;
+      border-radius: 4px !important;
       font-size: 14px;
       color: #0f172a;
       transition: all 0.2s ease;
@@ -288,6 +288,10 @@
         background-color: #ffffff !important;
         border-color: #0d7a68 !important;
         box-shadow: 0 0 0 2px rgba(13, 122, 104, 0.12) !important;
+      }
+
+      &.passwordField {
+        border-radius: 4px !important;
       }
     }
 

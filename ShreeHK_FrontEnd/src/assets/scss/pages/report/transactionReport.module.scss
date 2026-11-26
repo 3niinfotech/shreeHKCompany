@@ -181,16 +181,18 @@
 .transactionFilterForm {
     :global(.ant-select),
     :global(.ant-picker),
-    :global(.ant-input-affix-wrapper) {
+    :global(.ant-input-affix-wrapper),
+    :global(.ant-input) {
         height: var(--filter-control-height) !important;
     }
 
     :global(.ant-select-selector),
     :global(.ant-picker),
-    :global(.ant-input-affix-wrapper) {
+    :global(.ant-input-affix-wrapper),
+    :global(.ant-input) {
         height: var(--filter-control-height) !important;
         min-height: var(--filter-control-height) !important;
-        border-radius: 8px !important;
+        border-radius: 4px !important;
         display: flex;
         align-items: center;
     }
@@ -200,6 +202,12 @@
     :global(.ant-picker-input > input) {
         font-size: 13px;
         line-height: var(--filter-control-line-height) !important;
+    }
+
+    // Invoice No and Date fields border-radius: 4px
+    :global(.ant-picker),
+    :global(.ant-input-affix-wrapper) {
+        border-radius: 4px !important;
     }
 }
 

@@ -109,7 +109,34 @@ const useFiltersFormFields = (enabledFields = [], fieldConfigs = {}) => {
                 />
             </Form.Item>
         ),
-        date: (
+        date: fieldConfigs.separateDate ? (
+            <React.Fragment key="date">
+                <Form.Item
+                    key="startDate"
+                    name="startDate"
+                    className="filter-item"
+                    label={fieldLabel('startDate')}
+                >
+                    <DatePicker
+                        className="width-single-date"
+                        placeholder="Start date"
+                        format="DD-MM-YYYY"
+                    />
+                </Form.Item>
+                <Form.Item
+                    key="endDate"
+                    name="endDate"
+                    className="filter-item"
+                    label={fieldLabel('endDate')}
+                >
+                    <DatePicker
+                        className="width-single-date"
+                        placeholder="End date"
+                        format="DD-MM-YYYY"
+                    />
+                </Form.Item>
+            </React.Fragment>
+        ) : (
             <Form.Item
                 key="date"
                 name="dateRange"

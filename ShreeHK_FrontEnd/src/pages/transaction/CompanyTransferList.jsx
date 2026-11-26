@@ -798,6 +798,7 @@ const CompanyTransferList = () => {
             }}
             options={branchCompanies}
             style={{ minWidth: 150, borderRadius: 4 }}
+            popupMatchSelectWidth={false}
           />
         </FilterField>
 
@@ -815,6 +816,7 @@ const CompanyTransferList = () => {
             }}
             options={branchCompanies}
             style={{ minWidth: 150, borderRadius: 4 }}
+            popupMatchSelectWidth={false}
           />
         </FilterField>
 
