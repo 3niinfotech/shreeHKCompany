@@ -47,16 +47,16 @@ export const spacing: SpacingTokens = {
   radiusXl: "16px",
   radiusFull: "9999px",
   radiusCard: "12px",
-  radiusControl: "4px",
+  radiusControl: "6px",
   layoutHeaderHeight: "64px",
   layoutSidebarWidth: "240px",
   layoutSidebarCollapsed: "72px",
   blurAmount: "4px",
-  borderWidthThin: "0.5px",
+  borderWidthThin: "1px",
   borderWidthDefault: "1px",
 };
 
-/** Dashboard view uses slightly larger card radius */
+/** Shared web and dashboard card geometry */
 export const dashboardSpacingOverrides: Partial<SpacingTokens> = {
-  radiusCard: "16px",
+  radiusCard: "12px",
 };

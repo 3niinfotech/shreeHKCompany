@@ -698,7 +698,7 @@ a.sku-table-link {
   background: inherit !important;
   border: none !important;
   box-shadow: none !important;
-  color: #1a1840 !important;
+  color: var(--color-text-heading) !important;
 
   &::placeholder {
     color: #000 !important;
@@ -721,7 +721,7 @@ a.sku-table-link {
     border: none !important;
     box-shadow: none !important;
     border-radius: 0 !important;
-    color: #1a1840 !important;
+    color: var(--color-text-heading) !important;
   }
 }
 

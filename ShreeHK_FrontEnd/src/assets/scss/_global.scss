@@ -6,17 +6,17 @@
 
 body {
   margin: 0;
-  font-family: "Inter", sans-serif;
-  font-size: 13px;
-  font-weight: 400;
+  font-family: var(--font-family-base, Inter, system-ui, sans-serif);
+  font-size: var(--font-size-sm, 13px);
+  font-weight: var(--font-weight-normal, 400);
   font-feature-settings: "tnum";
   background: v.$page-bg;
   color: v.$text-color;
 }
 
 .ag-theme-alpine {
-  font-family: "Inter", sans-serif;
-  font-size: 12px;
+  font-family: var(--font-family-base, Inter, system-ui, sans-serif);
+  font-size: var(--font-size-xs, 12px);
   font-variant-numeric: tabular-nums;
 }
 
@@ -230,4 +230,3 @@ textarea.ant-input,
   height: auto !important;
   min-height: 56px !important;
 }
- 

@@ -186,7 +186,7 @@
     transform: translateY(-2px);
     border-color: var(--color-primary);
     background: var(--color-primary-pale);
-    box-shadow: 0 12px 28px rgba(91, 79, 207, 0.14);
+    box-shadow: 0 12px 28px rgba(13, 123, 107, 0.14);
   }
 
   &:focus-visible {
@@ -207,7 +207,7 @@
   .companyArrow {
     background: var(--color-primary);
     color: #fff;
-    box-shadow: 0 6px 14px rgba(91, 79, 207, 0.32);
+    box-shadow: 0 6px 14px rgba(13, 123, 107, 0.32);
   }
 }
 
@@ -309,7 +309,7 @@
     background: var(--color-primary);
     color: #fff;
     transform: translateX(2px);
-    box-shadow: 0 6px 14px rgba(91, 79, 207, 0.32);
+    box-shadow: 0 6px 14px rgba(13, 123, 107, 0.32);
   }
 }
 
@@ -354,7 +354,7 @@
     border-color: var(--color-primary);
     background: var(--color-primary-pale);
     color: var(--color-primary-dark);
-    box-shadow: 0 8px 18px rgba(91, 79, 207, 0.16);
+    box-shadow: 0 8px 18px rgba(13, 123, 107, 0.16);
     transform: translateY(-1px);
 
     svg {
@@ -369,7 +369,7 @@
 
   &:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(91, 79, 207, 0.25);
+    box-shadow: 0 0 0 3px rgba(13, 123, 107, 0.25);
   }
 }
 
@@ -410,7 +410,7 @@
   &:hover:not(:disabled) {
     transform: translateY(-2px);
     border-color: var(--color-primary);
-    box-shadow: 0 12px 26px rgba(91, 79, 207, 0.14);
+    box-shadow: 0 12px 26px rgba(13, 123, 107, 0.14);
   }
 
   &:focus-visible {
@@ -431,7 +431,7 @@
 
 .yearCardSelecting {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(91, 79, 207, 0.18);
+  box-shadow: 0 0 0 2px rgba(13, 123, 107, 0.18);
 }
 
 .yearTop {

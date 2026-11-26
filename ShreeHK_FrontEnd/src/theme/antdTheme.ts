@@ -30,11 +30,14 @@ export function getAntdThemeConfig(mode: ThemeMode, viewMode: ViewMode = "web") 
       borderRadiusLG: parseInt(t.radiusCard, 10),
       fontFamily: t.fontFamilyBase,
       fontSize: parseFloat(t.fontSizeMd) * 16,
+      controlHeight: 34,
+      controlHeightSM: 30,
+      controlHeightLG: 40,
     },
     components: {
       Button: {
-        controlHeight: 32,
-        controlHeightSM: 32,
+        controlHeight: 34,
+        controlHeightSM: 30,
         controlHeightLG: 40,
         paddingInline: 10,
         paddingInlineSM: 8,
@@ -52,8 +55,11 @@ export function getAntdThemeConfig(mode: ThemeMode, viewMode: ViewMode = "web") 
       },
       Card: {
         borderRadiusLG: parseInt(t.radiusCard, 10),
+        bodyPadding: 16,
+        headerHeight: 46,
       },
       Input: {
+        controlHeight: 34,
         borderRadius: parseInt(t.radiusControl, 10),
         activeBorderColor: t.colorInputFocusBorder,
         hoverBorderColor: t.colorInputFocusBorder,
@@ -62,6 +68,7 @@ export function getAntdThemeConfig(mode: ThemeMode, viewMode: ViewMode = "web") 
         colorBorder: t.colorInputBorder,
       },
       InputNumber: {
+        controlHeight: 34,
         borderRadius: parseInt(t.radiusControl, 10),
         activeBorderColor: t.colorInputFocusBorder,
         hoverBorderColor: t.colorInputFocusBorder,
@@ -75,6 +82,7 @@ export function getAntdThemeConfig(mode: ThemeMode, viewMode: ViewMode = "web") 
         handleWidth: 0,
       },
       DatePicker: {
+        controlHeight: 34,
         borderRadius: parseInt(t.radiusControl, 10),
         activeBorderColor: t.colorInputFocusBorder,
         hoverBorderColor: t.colorInputFocusBorder,
@@ -85,6 +93,7 @@ export function getAntdThemeConfig(mode: ThemeMode, viewMode: ViewMode = "web") 
         colorBorder: t.colorInputBorder,
       },
       Select: {
+        controlHeight: 34,
         borderRadius: parseInt(t.radiusControl, 10),
         activeBorderColor: t.colorInputFocusBorder,
         hoverBorderColor: t.colorInputFocusBorder,
@@ -130,6 +139,10 @@ export function getAntdThemeConfig(mode: ThemeMode, viewMode: ViewMode = "web") 
         horizontalItemHoverColor: t.colorNavActive,
       },
       Table: {
+        cellPaddingBlock: 6,
+        cellPaddingInline: 10,
+        cellPaddingBlockMD: 6,
+        cellPaddingInlineMD: 10,
         headerBg: t.colorTableHeaderBg,
         headerColor: t.colorTableHeaderText,
         rowHoverBg: t.colorTableRowHover,

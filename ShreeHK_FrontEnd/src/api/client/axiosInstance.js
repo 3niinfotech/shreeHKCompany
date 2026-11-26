@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const baseURL = import.meta.env.VITE_NODE_API_URL || "";
+const baseURL = import.meta.env.VITE_NODE_API_URL || (import.meta.env.PROD ? "https://crmapi.shreehk.com" : "");
 
 export const api = axios.create({
     baseURL: baseURL,

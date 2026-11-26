@@ -28,7 +28,7 @@ export default function AntdThemeProvider({ children }) {
       locale={antdLocale}
       theme={getAntdThemeConfig(mode, viewMode)}
       modal={{
-        closable: false,
+        closable: true,
         mask: { closable: false },
       }}
     >

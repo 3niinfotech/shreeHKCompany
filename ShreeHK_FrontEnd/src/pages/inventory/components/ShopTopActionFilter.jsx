@@ -300,14 +300,14 @@ export function StoneActionSuccessModal({
           max-width: 390px;
           background: var(--color-card-bg, #ffffff);
           border: 1px solid var(--color-border, #E2E8F0);
-          border-radius: 20px;
-          padding: 38px 28px 28px;
+          border-radius: var(--crm-card-radius, 12px);
+          padding: 28px 24px 24px;
           display: flex;
           flex-direction: column;
           align-items: center;
           text-align: center;
           box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16), 0 4px 16px rgba(0, 0, 0, 0.04);
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+          font-family: var(--font-family-base, Inter, system-ui, sans-serif);
         }
         .stone-modal-card.is-open { animation: cardIn 0.42s cubic-bezier(.2,.9,.25,1.1) both; }
         .stone-modal-card.is-closing { animation: cardOut 0.22s ease both; }
@@ -425,8 +425,8 @@ export function StoneActionSuccessModal({
         }
         .stone-modal-heading {
           font-family: inherit;
-          font-size: 25px;
-          font-weight: 700;
+          font-size: 18px;
+          font-weight: 600;
           color: var(--color-text-heading, #1E293B);
           margin: 0 0 8px;
           letter-spacing: 0.01em;
@@ -464,9 +464,9 @@ export function StoneActionSuccessModal({
         }
         .stone-btn:active { transform: scale(0.97); }
         .stone-btn-primary {
-          background: linear-gradient(135deg, var(--accent, #5B4FCF), #4A3FBA);
+          background: linear-gradient(135deg, var(--accent, #0D7B6B), var(--color-primary-dark, #095B50));
           color: #ffffff;
-          box-shadow: 0 4px 14px rgba(91, 79, 207, 0.22);
+          box-shadow: 0 4px 14px rgba(13, 123, 107, 0.22);
         }
         .stone-btn-ghost {
           background: #F8FAFC;

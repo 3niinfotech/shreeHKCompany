@@ -22,8 +22,8 @@ const EnableEditButton = ({ isEnabled, onToggle, variant = 'default', className 
         ? '1px solid #ea580c'
         : '1px solid rgba(234, 88, 12, 0.4)'
       : isHovered
-        ? '1px solid #2563eb'
-        : '1px solid rgba(37, 99, 235, 0.35)';
+        ? '1px solid #0d7b6b'
+        : '1px solid rgba(13, 123, 107, 0.35)';
 
   const backgroundColor = isOnDark
     ? isEnabled
@@ -38,12 +38,12 @@ const EnableEditButton = ({ isEnabled, onToggle, variant = 'default', className 
         ? 'rgba(234, 88, 12, 0.14)'
         : 'rgba(234, 88, 12, 0.08)'
       : isHovered
-        ? 'rgba(37, 99, 235, 0.12)'
-        : 'rgba(37, 99, 235, 0.05)';
+        ? 'rgba(13, 123, 107, 0.12)'
+        : 'rgba(13, 123, 107, 0.05)';
 
   const color = isOnDark
     ? isEnabled ? '#c2410c' : '#0d7b6b'
-    : isEnabled ? '#ea580c' : '#2563eb';
+    : isEnabled ? '#ea580c' : '#0d7b6b';
 
   const boxShadow = isOnDark
     ? isHovered
@@ -56,7 +56,7 @@ const EnableEditButton = ({ isEnabled, onToggle, variant = 'default', className 
     : isHovered
       ? isEnabled
         ? '0 2px 8px rgba(234, 88, 12, 0.2)'
-        : '0 2px 8px rgba(37, 99, 235, 0.18)'
+        : '0 2px 8px rgba(13, 123, 107, 0.18)'
       : '0 1px 2px rgba(0, 0, 0, 0.04)';
 
   return (

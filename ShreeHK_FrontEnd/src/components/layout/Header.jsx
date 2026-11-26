@@ -37,6 +37,9 @@ const prefetchHeaderRoute = (path) => {
 const HEALTH_DEDUPE_MS = 1500;
 let healthInFlight = false;
 let lastHealthCheckAt = 0;
+const API_BASE_URL = String(
+  import.meta.env.VITE_NODE_API_URL || (import.meta.env.PROD ? "https://crmapi.shreehk.com" : "")
+).replace(/\/$/, "");
 
 const ConnectionStatusPill = ({ isOnline }) => (
   <div
@@ -206,7 +209,7 @@ const Header = ({
     const timeout = setTimeout(() => controller.abort(), 4000);
 
     try {
-      const res = await fetch("/health", {
+      const res = await fetch(`${API_BASE_URL}/health`, {
         method: "GET",
         cache: "no-store",
         signal: controller.signal,

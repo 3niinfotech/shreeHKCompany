@@ -62,7 +62,6 @@ const isProduction = process.env.NODE_ENV === "production";
 const corsBase = {
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "X-Audit-Page-Path", "X-Audit-Page-Label", "X-Audit-Page-Search"],
 };
 
 // Dev: reflect any Origin (5173, 5174, LAN IP, etc.). Prod: whitelist from CORS_ORIGIN.

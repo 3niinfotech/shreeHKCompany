@@ -59,11 +59,26 @@
   align-items: center;
 }
 
-// ShreeHK ERP: Remove cross icon from header across all modals project-wide
+// Shared modal close control. Explicit per-modal `closable={false}` remains respected.
 .ant-modal-close,
 .ant-modal-root .ant-modal-close,
 .ant-modal-container > .ant-modal-close {
-  display: none !important;
+  display: flex !important;
+  top: 10px !important;
+  inset-inline-end: 12px !important;
+  width: 28px !important;
+  height: 28px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 6px !important;
+  color: var(--color-text-muted) !important;
+  background: transparent !important;
+  transition: color 140ms ease, background-color 140ms ease;
+
+  &:hover {
+    color: var(--color-text-heading) !important;
+    background: var(--color-bg-muted) !important;
+  }
 }
 
 .ant-popover .ant-popover-inner,
