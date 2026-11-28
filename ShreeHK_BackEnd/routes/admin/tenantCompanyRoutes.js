@@ -28,7 +28,7 @@ const COMPANY_COLUMNS = [
   "pincode", "country", "email", "website", "panno", "tinno", "iecno",
   "vatno", "vwef", "cstno", "cwef", "period", "startdate", "enddate",
   "rapnet_id", "rapnet_password", "shortcutName", "logo", "branch_id",
-  "invoice_prefix", "memo_prefix", "purchase_prefix", "lab_prefix",
+  "invoice_prefix", "memo_prefix", "consign_prefix", "purchase_prefix", "lab_prefix",
   "color_code", "bank_details",
 ];
 const COMPANY_SAFE_SELECT = ["id", ...COMPANY_COLUMNS.filter((column) => column !== "rapnet_password")]
@@ -91,6 +91,7 @@ const ensureCompanyPrefixColumns = async () => {
   const cols = [
     { name: "invoice_prefix", def: "VARCHAR(50) NULL DEFAULT 'INV-'" },
     { name: "memo_prefix", def: "VARCHAR(50) NULL DEFAULT 'MEMO-'" },
+    { name: "consign_prefix", def: "VARCHAR(50) NULL DEFAULT 'CONSIGN-'" },
     { name: "purchase_prefix", def: "VARCHAR(50) NULL DEFAULT 'PUR-'" },
     { name: "lab_prefix", def: "VARCHAR(50) NULL DEFAULT 'LAB-'" },
     { name: "color_code", def: "VARCHAR(50) NULL DEFAULT NULL" },

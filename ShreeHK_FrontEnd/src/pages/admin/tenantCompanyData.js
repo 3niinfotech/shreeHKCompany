@@ -40,6 +40,7 @@ export const tenantCompanyFields = (branchOptions = []) => [
   { type: "input", label: "RapNet ID", name: "rapnet_id", span: 12 },
   { type: "input", label: "Sale / Export Invoice Prefix", name: "invoice_prefix", span: 12, placeholder: "e.g. HK-INV- or INV-" },
   { type: "input", label: "Out-Memo Prefix", name: "memo_prefix", span: 12, placeholder: "e.g. HK-MEMO- or MEMO-" },
+  { type: "input", label: "Consign Prefix", name: "consign_prefix", span: 12, placeholder: "e.g. HK-CSG- or CONSIGN-" },
   { type: "input", label: "Purchase Note Prefix", name: "purchase_prefix", span: 12, placeholder: "e.g. HK-PUR- or PUR-" },
   { type: "input", label: "GIA / Lab Prefix", name: "lab_prefix", span: 12, placeholder: "e.g. HK-LAB- or LAB-" },
 ];

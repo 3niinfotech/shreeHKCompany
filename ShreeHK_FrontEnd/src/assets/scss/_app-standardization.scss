@@ -325,16 +325,16 @@ h6,
 }
 
 /* Disabled, readonly, error, focus, hover states 32px & 4px radius */
-.ant-input:disabled,
-.ant-input[readonly],
-.ant-input-status-error,
+.ant-input:not(textarea):not(.ant-input-affix-wrapper input):disabled,
+.ant-input:not(textarea):not(.ant-input-affix-wrapper input)[readonly],
+.ant-input:not(textarea):not(.ant-input-affix-wrapper input).ant-input-status-error,
 .ant-select-status-error .ant-select-selector,
 .ant-picker-status-error,
 .ant-input-affix-wrapper-status-error,
 .ant-input-affix-wrapper-focused,
 .ant-input-affix-wrapper:hover,
-.ant-input:hover,
-.ant-input:focus {
+.ant-input:not(textarea):not(.ant-input-affix-wrapper input):hover,
+.ant-input:not(textarea):not(.ant-input-affix-wrapper input):focus {
   min-height: 32px !important;
   height: 32px !important;
   max-height: 32px !important;
@@ -342,12 +342,19 @@ h6,
 }
 
 textarea.ant-input,
-textarea.form-control {
-  min-height: 76px !important;
-  height: auto !important;
+textarea.form-control,
+textarea.ant-input:hover,
+textarea.ant-input:focus,
+textarea.ant-input:focus-within,
+textarea.ant-input:disabled,
+textarea.ant-input[readonly],
+textarea.ant-input.ant-input-status-error {
+  height: 72px !important;
+  min-height: 72px !important;
   border-radius: 4px !important;
   font-size: var(--font-size-sm, 13px) !important;
   line-height: var(--line-height-normal, 1.5) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
 }
 
 .ant-input,
