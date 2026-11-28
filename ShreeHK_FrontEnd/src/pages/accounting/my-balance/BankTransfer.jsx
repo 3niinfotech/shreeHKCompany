@@ -10,7 +10,7 @@ const bankTransferFields = [
     { name: 'to_book', label: 'To Book', type: 'select', required: true, span: 12, options: [{ value: 'bank', label: 'HDFC Bank' }] },
     { name: 'amount', label: 'Amount', type: 'number', required: true, span: 12 },
     { name: 'rate', label: 'Rate', type: 'number', required: true, span: 12 },
-    { name: 'date', label: 'Date', type: 'date', required: true, span: 24 },
+    { name: 'date', label: 'Date', type: 'date', required: true, span: 12 },
 ];
 
 const BankTransfer = () => {

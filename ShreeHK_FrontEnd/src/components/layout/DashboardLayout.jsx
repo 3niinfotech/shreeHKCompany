@@ -5,8 +5,6 @@ import {
   Gem,
   ChevronUp,
   Headphones,
-  PanelLeftClose,
-  PanelLeftOpen,
   Search,
 } from "lucide-react";
 import Header from "./Header";
@@ -273,26 +271,6 @@ const DashboardLayout = () => {
                 </button>
               </div>
             )} */}
-          </div>
-
-          <div
-            className={styles.collapseToggle}
-            onClick={() => setCollapsed((c) => !c)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) =>
-              (e.key === "Enter" || e.key === " ") &&
-              setCollapsed((c) => !c)
-            }
-          >
-            {collapsed ? (
-              <PanelLeftOpen size={18} />
-            ) : (
-              <>
-                <PanelLeftClose size={18} />
-                <span>Collapse</span>
-              </>
-            )}
           </div>
         </Sider>
 

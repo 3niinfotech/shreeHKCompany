@@ -132,7 +132,7 @@ commonRouter.get("/common/getIncrement", authenticateToken, async (req, res) => 
     if (user && user.company != null) {
       try {
         const companies = await metaQuery(
-          "SELECT name, invoice_prefix, memo_prefix, purchase_prefix, lab_prefix FROM company WHERE id = ? LIMIT 1",
+          "SELECT name, invoice_prefix, memo_prefix, consign_prefix, purchase_prefix, lab_prefix FROM company WHERE id = ? LIMIT 1",
           [user.company]
         );
         if (companies?.[0]) {
@@ -140,6 +140,7 @@ commonRouter.get("/common/getIncrement", authenticateToken, async (req, res) => 
           user.company_name = companies[0].name;
           user.invoice_prefix = companies[0].invoice_prefix || "INV-";
           user.memo_prefix = companies[0].memo_prefix || "MEMO-";
+          user.consign_prefix = companies[0].consign_prefix || "CONSIGN-";
           user.purchase_prefix = companies[0].purchase_prefix || "PUR-";
           user.lab_prefix = companies[0].lab_prefix || "LAB-";
         }

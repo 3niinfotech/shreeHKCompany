@@ -2436,6 +2436,34 @@ async function getStoneDetail(sku, companyId, userId) {
   const companyName = companyMeta?.name || "";
   const companyCode = companyMeta?.shortcutName || "";
 
+  let purchaseCompanyName = companyName;
+  let purchaseCompanyCode = companyCode;
+  let purchaseCompanyId = stockCompanyId;
+  try {
+    const purchaseRows = await queryAsync(
+      `SELECT p.id, p.company, i.id as inward_id, i.inward_type, i.company as inward_company
+       FROM dai_product p
+       LEFT JOIN dai_inward i ON p.inward_id = i.id
+       WHERE UPPER(TRIM(p.sku)) = UPPER(?)
+       ORDER BY CASE WHEN i.inward_type IN ('purchase', 'import') THEN 0 ELSE 1 END, p.id ASC
+       LIMIT 1`,
+      [detail.sku || sku]
+    );
+    const pRow = purchaseRows?.[0];
+    const resolvedCompId = Number(pRow?.inward_company || pRow?.company);
+    if (resolvedCompId > 0 && resolvedCompId !== stockCompanyId) {
+      const pCompanyRows = await metaQuery(
+        "SELECT id, name, shortcutName FROM company WHERE id = ? LIMIT 1",
+        [resolvedCompId]
+      ).catch(() => []);
+      if (pCompanyRows?.[0]) {
+        purchaseCompanyId = resolvedCompId;
+        purchaseCompanyName = pCompanyRows[0].name || "";
+        purchaseCompanyCode = pCompanyRows[0].shortcutName || "";
+      }
+    }
+  } catch (_) {}
+
   // Group history by distinct party for party-wise history
   const partyIds = await queryAsync(
     "SELECT DISTINCT party FROM dai_history WHERE product_id = ? AND party IS NOT NULL AND party <> ''",
@@ -2466,11 +2494,17 @@ async function getStoneDetail(sku, companyId, userId) {
       is_container: isContainer,
       company_name: companyName,
       company_code: companyCode,
+      purchase_company_id: purchaseCompanyId,
+      purchase_company_name: purchaseCompanyName,
+      purchase_company_code: purchaseCompanyCode,
       last_updated_at: lastUpdatedAt,
       last_updated_display: formatStoneDateTime(lastUpdatedAt),
     },
     company_name: companyName,
     company_code: companyCode,
+    purchase_company_id: purchaseCompanyId,
+    purchase_company_name: purchaseCompanyName,
+    purchase_company_code: purchaseCompanyCode,
     history: enrichedHistory,
     transfer,
     status: !detail.outward ? "AVAILABLE" : String(detail.outward).toUpperCase(),

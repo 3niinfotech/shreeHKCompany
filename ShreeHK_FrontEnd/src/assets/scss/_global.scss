@@ -224,9 +224,11 @@ input[type="number"] {
   }
 }
 
-// Textarea multi-line auto-height preservation
+// Textarea multi-line height preservation (72px, 4px radius)
 textarea.ant-input,
 .ant-input[rows] {
-  height: auto !important;
-  min-height: 56px !important;
+  height: 72px !important;
+  min-height: 72px !important;
+  border-radius: 4px !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
 }

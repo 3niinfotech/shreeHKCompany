@@ -355,7 +355,8 @@ const OutwardEntryForm = ({ outwardType = 'memo' }) => {
       const d = incrementData.Data;
       let prefix = d.invoice_prefix;
       if (config.type === 'lab') prefix = d.lab_prefix;
-      else if (config.type === 'memo' || config.type === 'consign') prefix = d.memo_prefix || d.invoice_prefix;
+      else if (config.type === 'consign') prefix = d.consign_prefix || d.memo_prefix || d.invoice_prefix;
+      else if (config.type === 'memo') prefix = d.memo_prefix || d.invoice_prefix;
 
       form.setFieldsValue({
         entryno: formatOutwardEntryNo(config.type, d.outward),

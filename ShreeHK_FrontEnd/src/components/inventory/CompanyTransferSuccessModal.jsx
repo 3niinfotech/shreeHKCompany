@@ -158,7 +158,7 @@ const CompanyTransferSuccessModal = ({
       styles={{
         content: {
           borderRadius: 8,
-          padding: "20px 24px",
+          padding: "20px 0px",
         },
         body: {
           paddingTop: 14,

@@ -1002,6 +1002,7 @@ const StoneHistory = () => {
     const highlightTimerRef = React.useRef(null);
     const [status, setStatus] = useState('');
     const [lastUpdated, setLastUpdated] = useState('');
+    const [purchaseCompany, setPurchaseCompany] = useState({ name: '', code: '' });
     const [stoneDetail, setStoneDetail] = useState(null);
     const [byParty, setByParty] = useState([]);
     const isContainer = Boolean(stoneDetail?.is_container);
@@ -1098,6 +1099,9 @@ const StoneHistory = () => {
         setHighlightedRowKey(null);
         setStatus(st || '');
         setLastUpdated(detail?.last_updated_display || '');
+        const pName = detail?.purchase_company_name || res.data?.purchase_company_name || detail?.company_name || res.data?.company_name || '';
+        const pCode = detail?.purchase_company_code || res.data?.purchase_company_code || detail?.company_code || res.data?.company_code || '';
+        setPurchaseCompany({ name: pName, code: pCode });
         setStockSummary(stock_summary || null);
         setLineage(lin || null);
         setActivityLogs(activity_logs || []);
@@ -2073,6 +2077,7 @@ const StoneHistory = () => {
         if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
         setStatus('');
         setLastUpdated('');
+        setPurchaseCompany({ name: '', code: '' });
         setStoneDetail(null);
         setByParty([]);
         setStockSummary(null);
@@ -2116,8 +2121,21 @@ const StoneHistory = () => {
                             />
                         </Form.Item>
                     </Form>
-                    {(status || lastUpdated) ? (
+                    {(status || lastUpdated || purchaseCompany.name || purchaseCompany.code) ? (
                         <div className={styles.headerMeta}>
+                            {(purchaseCompany.code || purchaseCompany.name) ? (
+                                <span className={styles.headerMetaItem}>
+                                    <span className={styles.headerMetaLabel}>Company:</span>
+                                    <Tag
+                                        color="blue"
+                                        className={styles.headerStatusTag}
+                                        title={purchaseCompany.name || undefined}
+                                        style={{ fontWeight: 600 }}
+                                    >
+                                        {purchaseCompany.code || purchaseCompany.name}
+                                    </Tag>
+                                </span>
+                            ) : null}
                             {status ? (
                                 <span className={styles.headerMetaItem}>
                                     <span className={styles.headerMetaLabel}>Status:</span>

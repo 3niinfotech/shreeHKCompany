@@ -148,7 +148,7 @@ async function allocateOutwardNumbers(q, companyId, type) {
   let compRows = [];
   try {
     compRows = await q(
-      "SELECT invoice_prefix, memo_prefix, purchase_prefix, lab_prefix FROM company WHERE id = ? LIMIT 1",
+      "SELECT invoice_prefix, memo_prefix, consign_prefix, purchase_prefix, lab_prefix FROM company WHERE id = ? LIMIT 1",
       [cid]
     );
   } catch (_) {
@@ -158,7 +158,9 @@ async function allocateOutwardNumbers(q, companyId, type) {
   let customPrefix = compPrefix.invoice_prefix || "INV-";
   if (tLower === "lab") {
     customPrefix = compPrefix.lab_prefix || "LAB-";
-  } else if (tLower === "memo" || tLower === "consign") {
+  } else if (tLower === "consign") {
+    customPrefix = compPrefix.consign_prefix || compPrefix.memo_prefix || "CONSIGN-";
+  } else if (tLower === "memo") {
     customPrefix = compPrefix.memo_prefix || compPrefix.invoice_prefix || "MEMO-";
   }
 

@@ -337,25 +337,7 @@
 
     // ── Collapse Toggle ──
     .collapseToggle {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 14px 16px;
-      color: var(--color-neutral);
-      font-size: 0.82rem;
-      cursor: pointer;
-      border-top: 0.5px solid var(--color-sidebar-border);
-      background: var(--color-sidebar-footer-bg);
-      transition: color 0.2s, background 0.2s;
-      white-space: nowrap;
-      flex-shrink: 0;
-      user-select: none;
-
-      &:hover {
-        color: var(--color-sidebar-accent);
-        background: var(--color-sidebar-hover-bg);
-      }
+      display: none !important;
     }
 
     // ── Collapsed state ──

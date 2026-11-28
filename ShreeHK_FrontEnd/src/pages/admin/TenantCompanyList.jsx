@@ -194,6 +194,7 @@ const TenantCompanyList = () => {
       branch_id: sessionBranchId != null ? Number(sessionBranchId) : undefined,
       invoice_prefix: "INV-",
       memo_prefix: "MEMO-",
+      consign_prefix: "CONSIGN-",
       purchase_prefix: "PUR-",
       lab_prefix: "LAB-",
     });
@@ -898,6 +899,12 @@ const TenantCompanyList = () => {
                           <span className={styles.drawerDetailLabel}>Memo Prefix</span>
                           <span className={styles.drawerDetailValue}>
                             <Tag color="cyan">{drawerCompany.memo_prefix || "MEMO-"}</Tag>
+                          </span>
+                        </div>
+                        <div className={styles.drawerDetailRow}>
+                          <span className={styles.drawerDetailLabel}>Consign Prefix</span>
+                          <span className={styles.drawerDetailValue}>
+                            <Tag color="gold">{drawerCompany.consign_prefix || "CONSIGN-"}</Tag>
                           </span>
                         </div>
                         <div className={styles.drawerDetailRow}>
